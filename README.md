@@ -298,6 +298,10 @@ time — a violation fails the build with error `GITEXT001` rather than waiting 
 | MVVM | CommunityToolkit.Mvvm |
 | Tests | xUnit v3 + Shouldly |
 
+Each of these choices — and the alternatives that were rejected — is recorded in
+**[docs/adr/](./docs/adr/)**. Read the relevant record before proposing a change to one of these
+areas; several of the decisions there are enforced by the build rather than by code review.
+
 ---
 
 ## Contributing

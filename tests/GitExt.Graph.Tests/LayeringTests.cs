@@ -21,7 +21,7 @@ public class LayeringTests
                      || n.Equals("ReactiveUI", StringComparison.OrdinalIgnoreCase))];
 
         forbidden.ShouldBeEmpty(
-            "GitExt.Graph UI'dan bağımsız kalmalıdır (ADR-0003). Bulunan: "
+            "GitExt.Graph must stay independent of the UI (docs/adr/0003-solution-structure.md). Found: "
             + string.Join(", ", forbidden));
     }
 }

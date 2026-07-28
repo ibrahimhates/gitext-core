@@ -5,7 +5,7 @@ namespace GitExt.Core;
 /// Testlerin ve DI taramalarının <c>typeof(AssemblyMarker).Assembly</c> diyebilmesi içindir.
 /// </summary>
 /// <remarks>
-/// Faz 01 iskelet fazıdır; gerçek Git kodu Faz 02'de
-/// (<c>plans/02-git-core-layer.md</c>, P02-T01'den itibaren) eklenecektir.
+/// Bu proje şu an iskelet hâlindedir; gerçek Git kodu (süreç yürütücü, komut sarmalayıcıları,
+/// çıktı ayrıştırıcıları) bir sonraki aşamada eklenecektir. Bkz. <c>docs/adr/0002-git-backend.md</c>.
 /// </remarks>
 public static class AssemblyMarker;

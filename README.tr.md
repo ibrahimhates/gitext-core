@@ -261,6 +261,10 @@ zorlanır — ihlal, kod incelemesini beklemeden `GITEXT001` hatasıyla derlemey
 | MVVM | CommunityToolkit.Mvvm |
 | Testler | xUnit v3 + Shouldly |
 
+Bu seçimlerin her biri — ve reddedilen alternatifler — **[docs/adr/](./docs/adr/)** altında
+kayıtlıdır (İngilizce). Bu alanlardan birinde değişiklik önermeden önce ilgili kaydı oku;
+oradaki kararların birkaçı kod incelemesiyle değil, derlemeyle zorlanıyor.
+
 ---
 
 ## Katkı

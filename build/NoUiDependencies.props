@@ -25,7 +25,7 @@
 
     <Error Condition="'@(_ForbiddenUiReference)' != ''"
            Code="GITEXT001"
-           Text="KATMAN İHLALİ (ADR-0003): '$(MSBuildProjectName)' bir UI bağımlılığı içeriyor: @(_ForbiddenUiReference->'%(Filename)', ', '). Bu proje UI'dan bağımsız kalmalıdır. Bağımlılığı kaldır veya kodu GitExt.UI'a taşı." />
+           Text="Layering violation: '$(MSBuildProjectName)' pulls in a UI dependency: @(_ForbiddenUiReference->'%(Filename)', ', '). This project must stay independent of the UI. Remove the dependency, or move the code to GitExt.UI. Rationale: docs/adr/0003-solution-structure.md" />
 
   </Target>
 

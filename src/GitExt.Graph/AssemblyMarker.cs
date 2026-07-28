@@ -4,7 +4,8 @@ namespace GitExt.Graph;
 /// Bu derlemeyi referans almak için kullanılan işaretçi tip.
 /// </summary>
 /// <remarks>
-/// Yerleşim algoritması Faz 03'te (<c>plans/03-commit-graph.md</c>, P03-T03'ten itibaren)
-/// eklenecektir. Bu proje kasıtlı olarak UI'dan bağımsızdır (ADR-0003).
+/// Commit DAG yerleşim algoritması (şerit atama, kenar yönlendirme, renk atama) buraya gelecek.
+/// Bu proje kasıtlı olarak UI'dan bağımsızdır; böylece algoritma hiçbir şey çizmeden test
+/// edilebilir. Bkz. <c>docs/adr/0003-solution-structure.md</c>.
 /// </remarks>
 public static class AssemblyMarker;
