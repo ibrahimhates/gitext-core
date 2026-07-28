@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a capability or improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening: check the roadmap in the README. Your idea may already be scheduled
+        for a later phase, in which case a comment on the existing issue is more useful than
+        a new one.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >
+        Describe the workflow that is painful today, not the solution you have in mind.
+        Concrete examples from real repositories are the most persuasive.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+    validations:
+      required: true
+
+  - type: input
+    id: gitextensions
+    attributes:
+      label: How does GitExtensions handle this?
+      description: >
+        This project measures itself against GitExtensions. If it already solves this,
+        describing how is very helpful.
+
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Design principles check
+      description: gitext-core deliberately does not hide how Git works.
+      options:
+        - label: This does not require hiding or simplifying Git's real model
+        - label: I have checked the README roadmap and this is not already scheduled

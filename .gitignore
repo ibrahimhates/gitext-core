@@ -1,0 +1,193 @@
+# ---------------------------------------------------------------------------
+# gitext-core / .gitignore
+# ---------------------------------------------------------------------------
+
+# --- .NET build output ---
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]uild/
+# Kök /build/ dizini paylaşılan MSBuild mantığını taşır ve DEPOYA GİRMELİDİR.
+# (NoUiDependencies.props'u her .csproj import eder; olmadan proje derlenmez.)
+# Not: dizinin İÇİNDEKİ dosyaları negatif kuralla geri almak işe yaramaz — git
+# dışlanmış bir dizinin içine hiç bakmaz. Dizinin kendisi geri alınmalıdır.
+!/build/
+[Oo]bj[Dd]/
+BenchmarkDotNet.Artifacts/
+
+# --- .NET / MSBuild intermediates ---
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.sln.iml
+*.userprefs
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+*.binlog
+*.svclog
+*.VisualState.xml
+*.cache
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+project.lock.json
+project.fragment.lock.json
+.packages/
+*.nuget.props
+*.nuget.targets
+# Keep the committed, pinned lock files (see ADR-0006)
+!packages.lock.json
+
+# --- Test / coverage output ---
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+coverage/
+TestResults/
+.coverlet/
+
+# --- NuGet ---
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.dgspec.json
+
+# --- Avalonia ---
+# XAML compiler / previewer scratch files
+*.g.cs
+*.g.i.cs
+.avalonia/
+*.designer.deps.json
+*.designer.runtimeconfig.json
+
+# --- Native / self-contained publish leftovers ---
+*.so
+*.dylib
+*.dSYM/
+!**/runtimes/**/*.so
+!**/runtimes/**/*.dylib
+
+# --- Packaging output (deb/rpm/AppImage/Flatpak/MSI/dmg) ---
+dist/
+packaging/**/out/
+packaging/**/build/
+packaging/**/.flatpak-builder/
+packaging/**/*.deb
+packaging/**/*.rpm
+packaging/**/*.AppImage
+packaging/**/*.flatpak
+packaging/**/*.snap
+packaging/**/*.msi
+packaging/**/*.dmg
+packaging/**/*.pkg
+packaging/**/*.AppDir/
+*.tar.gz
+*.tar.xz
+*.zip
+!docs/**/*.zip
+
+# --- IDE / editor ---
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.idea/
+*.sln.iml
+*.swp
+*.swo
+*~
+.\#*
+\#*\#
+.vsconfig
+*.DotSettings.user
+
+# --- Rider ---
+.idea/
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# --- OS ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.directory
+.fuse_hidden*
+.nfs*
+
+# --- Tooling / local dev ---
+.env
+.env.local
+*.local.json
+appsettings.Local.json
+.tools/
+.dotnet/
+.local-cache/
+
+# --- Scratch / notes that should not be published ---
+scratch/
+tmp/
+TODO.local.md
+NOTES.local.md
+
+# --- Planlama ve iş takibi (yerel kalır, depoya gitmez) ---
+# Faz planları ve ilerleme takibi geliştirme sürecine ait iç belgelerdir.
+plans/
+PROGRESS.md
+CLAUDE.md

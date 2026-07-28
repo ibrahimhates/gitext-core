@@ -1,0 +1,52 @@
+<Project>
+
+  <!--
+    Merkezi Paket Sürüm Yönetimi (CPM) — ADR-0006.
+    TÜM paket sürümleri burada. .csproj dosyaları sürüm YAZMAZ.
+    Sürümler kesin sabitlenir; kayan sürüm (12.*) veya aralık kullanılmaz.
+  -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <!-- Sürüm grupları: tek yerden yükseltmek için -->
+  <PropertyGroup>
+    <AvaloniaVersion>12.1.0</AvaloniaVersion>
+    <MicrosoftExtensionsVersion>10.0.10</MicrosoftExtensionsVersion>
+    <XunitVersion>3.2.2</XunitVersion>
+  </PropertyGroup>
+
+  <ItemGroup Label="Avalonia (ADR-0001)">
+    <PackageVersion Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <!-- Native Wayland backend'i Avalonia 12.1'de opt-in'dir; Linux varsayılanı hâlâ X11. -->
+    <PackageVersion Include="Avalonia.Wayland" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Headless" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Headless.XUnit" Version="$(AvaloniaVersion)" />
+    <!-- Headless testlerde gerçek Skia render'ı için (P01-T16 görsel doğrulama). -->
+    <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+  </ItemGroup>
+
+  <ItemGroup Label="MVVM ve DI (ADR-0004)">
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test altyapısı">
+    <!-- xunit v3: Avalonia.Headless.XUnit 12.1.0 xunit.v3'e bağımlı, bu yüzden baştan v3. -->
+    <PackageVersion Include="xunit.v3" Version="$(XunitVersion)" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <!-- Shouldly: MIT. FluentAssertions v8 lisans değişikliği nedeniyle kullanılmıyor (ADR-0003). -->
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Avalonia arayüzü: View'lar, ViewModel'lar, özel kontroller, temalar.
+    Avalonia'ya bağımlı tek kütüphane projesi (ADR-0003).
+  -->
+
+  <PropertyGroup>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../GitExt.Core/GitExt.Core.csproj" />
+    <ProjectReference Include="../GitExt.Graph/GitExt.Graph.csproj" />
+  </ItemGroup>
+
+</Project>

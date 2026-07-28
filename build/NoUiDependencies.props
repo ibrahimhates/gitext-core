@@ -1,0 +1,32 @@
+<Project>
+
+  <!--
+    P01-T11 — Katman ihlali koruması.
+
+    ADR-0003: GitExt.Core ve GitExt.Graph hiçbir UI paketine bağımlı OLAMAZ.
+    ADR-0001: Bu kural, UI framework'ünü değiştirebilme güvencesini ayakta tutan tek mekanizma.
+
+    Disipline değil derleyiciye güveniyoruz: ihlal DERLEME HATASI üretir.
+    ReferencePath çözümlenmiş kapanışı içerdiği için transitif bağımlılıklar da yakalanır.
+  -->
+
+  <Target Name="EnsureNoUiDependencies" AfterTargets="ResolveReferences">
+
+    <ItemGroup>
+      <_ForbiddenUiReference Include="@(ReferencePath)"
+                             Condition="$([System.String]::Copy('%(Filename)').StartsWith('Avalonia'))" />
+      <_ForbiddenUiReference Include="@(ReferencePath)"
+                             Condition="$([System.String]::Copy('%(Filename)').StartsWith('SkiaSharp'))" />
+      <_ForbiddenUiReference Include="@(ReferencePath)"
+                             Condition="$([System.String]::Copy('%(Filename)').StartsWith('HarfBuzzSharp'))" />
+      <_ForbiddenUiReference Include="@(ReferencePath)"
+                             Condition="'%(Filename)' == 'ReactiveUI'" />
+    </ItemGroup>
+
+    <Error Condition="'@(_ForbiddenUiReference)' != ''"
+           Code="GITEXT001"
+           Text="KATMAN İHLALİ (ADR-0003): '$(MSBuildProjectName)' bir UI bağımlılığı içeriyor: @(_ForbiddenUiReference->'%(Filename)', ', '). Bu proje UI'dan bağımsız kalmalıdır. Bağımlılığı kaldır veya kodu GitExt.UI'a taşı." />
+
+  </Target>
+
+</Project>

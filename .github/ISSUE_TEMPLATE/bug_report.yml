@@ -1,0 +1,80 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. gitext-core drives the real `git` binary, so knowing your
+        Git version and how the repository is set up is usually the fastest path to a fix.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open repository X
+        2. Select commit Y
+        3. Click Z
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: gitext-core version
+      placeholder: "0.1.0 (or commit SHA if built from source)"
+    validations:
+      required: true
+
+  - type: input
+    id: git-version
+    attributes:
+      label: Git version
+      description: Output of `git --version`
+      placeholder: "git version 2.55.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux (X11)
+        - Linux (Wayland)
+        - Windows
+        - macOS
+    validations:
+      required: true
+
+  - type: input
+    id: os-detail
+    attributes:
+      label: Distribution / OS version
+      placeholder: "Fedora 42, Windows 11 23H2, macOS 15.2 …"
+
+  - type: textarea
+    id: git-output
+    attributes:
+      label: Git output panel contents
+      description: >
+        If the problem involves a Git operation, paste the contents of the Git output panel.
+        It shows the exact command that was run and its output.
+      render: shell
+
+  - type: textarea
+    id: repo-shape
+    attributes:
+      label: Repository characteristics
+      description: >
+        Anything unusual? Very large history, submodules, LFS, worktrees, sparse checkout,
+        non-UTF-8 filenames, shallow clone?

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Git ile konuşan katman. Süreç yürütme, komut sarmalayıcıları, parser'lar, domain modelleri.
+    ADR-0002 (git CLI), ADR-0003 (katman yapısı).
+
+    KURAL: Bu projeye UI bağımlılığı EKLENEMEZ. build/NoUiDependencies.props bunu zorlar.
+  -->
+
+  <Import Project="$(MSBuildThisFileDirectory)../../build/NoUiDependencies.props" />
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

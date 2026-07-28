@@ -1,0 +1,12 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="GitExt.Desktop.App"
+             RequestedThemeVariant="Default">
+
+    <!-- "Default" sistem temasını takip eder. Tam tema altyapısı Faz 08'de (P08-T07). -->
+
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+</Application>

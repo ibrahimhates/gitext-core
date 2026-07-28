@@ -1,0 +1,80 @@
+using Avalonia;
+using Avalonia.Headless;
+using Avalonia.Headless.XUnit;
+using Avalonia.Media.Imaging;
+using GitExt.UI.ViewModels;
+using GitExt.UI.Views;
+
+namespace GitExt.UI.Tests.Views;
+
+/// <summary>
+/// P01-T16 — Pencerenin gerçekten çizildiğini ve metnin render edildiğini doğrular.
+/// </summary>
+/// <remarks>
+/// Bu test, ADR-0001'deki text shaping sorusunun (Avalonia 12'de <c>UseHarfBuzz()</c> gerekli mi?)
+/// cevabıdır: pencerede boş olmayan piksel varsa metin çiziliyor demektir.
+/// <para>
+/// Headless olduğu için CI'da da çalışır — masaüstü oturumu gerektirmez.
+/// </para>
+/// </remarks>
+public class MainWindowRenderTests
+{
+    [AvaloniaFact]
+    public void Pencere_cizilir_ve_metin_render_edilir()
+    {
+        MainWindow window = new() { DataContext = new MainWindowViewModel() };
+        window.Show();
+
+        using Bitmap frame = window.CaptureRenderedFrame()
+            ?? throw new InvalidOperationException("Render edilmiş kare alınamadı.");
+
+        frame.PixelSize.Width.ShouldBeGreaterThan(0);
+        frame.PixelSize.Height.ShouldBeGreaterThan(0);
+
+        // Hata ayıklama eseri: render sonucunu diske yaz. CI'da başarısız testin nedenini
+        // görmenin en hızlı yolu budur.
+        string artifact = Path.Combine(AppContext.BaseDirectory, "render-mainwindow.png");
+        frame.Save(artifact, new PngBitmapEncoderOptions());
+
+        // Arka planla aynı olmayan piksel sayısı: metin çizilmediyse bu sayı sıfıra yakın olur.
+        int distinctPixels = CountNonBackgroundPixels(frame);
+
+        distinctPixels.ShouldBeGreaterThan(
+            500,
+            "pencerede metin render edilmiş olmalı (ADR-0001 text shaping doğrulaması)");
+    }
+
+    private static int CountNonBackgroundPixels(Bitmap frame)
+    {
+        PixelSize size = frame.PixelSize;
+        int stride = size.Width * 4;
+        byte[] buffer = new byte[stride * size.Height];
+
+        System.Runtime.InteropServices.GCHandle handle =
+            System.Runtime.InteropServices.GCHandle.Alloc(
+                buffer, System.Runtime.InteropServices.GCHandleType.Pinned);
+
+        try
+        {
+            frame.CopyPixels(new PixelRect(size), handle.AddrOfPinnedObject(), buffer.Length, stride);
+        }
+        finally
+        {
+            handle.Free();
+        }
+
+        // Sol üst köşeyi arka plan referansı kabul et.
+        (byte B, byte G, byte R) background = (buffer[0], buffer[1], buffer[2]);
+
+        int count = 0;
+        for (int i = 0; i + 3 < buffer.Length; i += 4)
+        {
+            if (buffer[i] != background.B || buffer[i + 1] != background.G || buffer[i + 2] != background.R)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+}

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GitExt.Core/GitExt.Core.csproj" />
+    <Project Path="src/GitExt.Desktop/GitExt.Desktop.csproj" />
+    <Project Path="src/GitExt.Graph/GitExt.Graph.csproj" />
+    <Project Path="src/GitExt.UI/GitExt.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GitExt.Core.Tests/GitExt.Core.Tests.csproj" />
+    <Project Path="tests/GitExt.Graph.Tests/GitExt.Graph.Tests.csproj" />
+    <Project Path="tests/GitExt.UI.Tests/GitExt.UI.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- Kök Directory.Build.props'u devral, sonra teste özgü ayarları ekle. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <ItemGroup Label="Tüm test projeleri için implicit using'ler">
+    <Using Include="Xunit" />
+    <Using Include="Shouldly" />
+  </ItemGroup>
+
+</Project>

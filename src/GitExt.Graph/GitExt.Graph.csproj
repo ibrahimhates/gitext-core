@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Commit DAG yerleşim algoritması. Şerit atama, kenar yönlendirme, renk atama.
+    Çıktısı SAF VERİdir: (satır, şerit, renk, kenar listesi). Piksel yok, DrawingContext yok.
+    ADR-0003 — UI olmadan test edilebilir olması Faz 03'ün riskini yarıya indirir.
+
+    KURAL: Bu projeye UI bağımlılığı EKLENEMEZ.
+  -->
+
+  <Import Project="$(MSBuildThisFileDirectory)../../build/NoUiDependencies.props" />
+
+  <ItemGroup>
+    <ProjectReference Include="../GitExt.Core/GitExt.Core.csproj" />
+  </ItemGroup>
+
+</Project>

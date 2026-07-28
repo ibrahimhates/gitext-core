@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        mc:Ignorable="d"
+        d:DesignWidth="800" d:DesignHeight="500"
+        x:Class="GitExt.UI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="gitext-core"
+        Width="800" Height="500"
+        MinWidth="480" MinHeight="320"
+        WindowStartupLocation="CenterScreen">
+
+    <StackPanel HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="12">
+
+        <!-- Metin binding ile gelir, code-behind'dan değil (P01-T13). -->
+        <TextBlock Text="{Binding Greeting}"
+                   FontSize="42"
+                   FontWeight="SemiBold"
+                   HorizontalAlignment="Center" />
+
+        <TextBlock Text="{Binding Subtitle}"
+                   FontSize="14"
+                   Opacity="0.7"
+                   TextWrapping="Wrap"
+                   MaxWidth="480"
+                   TextAlignment="Center"
+                   HorizontalAlignment="Center" />
+
+    </StackPanel>
+
+</Window>

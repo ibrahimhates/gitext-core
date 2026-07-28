@@ -1,0 +1,62 @@
+<Project>
+
+  <!-- Tüm projeler için ortak ayarlar. Bkz. ADR-0006. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Uyarı birikmesini ilk günden engelle (P01-T07). Sonradan açmak pratikte hiç yapılmaz. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <!--
+      Bağımlılık ağacını sabitle (ADR-0006). Lock dosyaları commit'lenir.
+
+      Koşul ÖNEMLİ: RID belirtilen restore'lar (publish -r linux-x64 gibi) lock dosyasına
+      RID'e özgü girdiler ve trimming'in ILLink.Tasks'ı gibi ek paketler yazar. Bu, sonraki
+      RID'siz kilitli restore çağrısını NU1004 ile kırar.
+      Lock dosyalarını yalnızca RID'siz restore üretsin/doğrulasın; publish onlara dokunmasın.
+    -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <!--
+      RID'li restore'ları ayrı bir lock dosyasına yönlendir.
+      NuGet, packages.lock.json diskte varsa RestorePackagesWithLockFile'dan bağımsız olarak
+      onu günceller; bu yüzden koşullu kapatmak yetmez. Yolu obj/ altına taşımak, publish'in
+      commit'lenen lock dosyasına dokunmasını engeller (obj/ zaten .gitignore'da).
+    -->
+    <NuGetLockFilePath Condition="'$(RuntimeIdentifier)' != ''">$(MSBuildProjectDirectory)/obj/packages.$(RuntimeIdentifier).lock.json</NuGetLockFilePath>
+
+    <!-- Sürüm CI'da git tag'inden -p:Version= ile geçilir; burada yalnızca taban değer. -->
+    <VersionPrefix>0.1.0</VersionPrefix>
+
+    <Product>gitext-core</Product>
+    <Company>gitext-core contributors</Company>
+    <Authors>gitext-core contributors</Authors>
+    <Copyright>Copyright (C) 2026 gitext-core contributors</Copyright>
+    <RepositoryUrl>https://github.com/ibrahimhates/gitext-core</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- ADR-0005: GPL-3.0-or-later. FSF'nin önerdiği "or later" biçimi kullanılıyor;
+         ileride GPLv4 çıkarsa proje ona geçebilir. -->
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+
+    <!-- IDE0005 (gereksiz using) yalnızca doküman dosyası üretildiğinde çalışır.
+         Bkz. https://github.com/dotnet/roslyn/issues/41640 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- CS1591: her public üye için XML yorumu zorunlu değil (doküman dosyası yalnızca
+         IDE0005 için üretiliyor). CA1416: platforma özgü API uyarıları. -->
+    <NoWarn>$(NoWarn);CS1591;CA1416</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>portable</DebugType>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+</Project>
