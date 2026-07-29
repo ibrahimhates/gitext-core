@@ -13,4 +13,12 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      Saf ayrıştırma mantığı (ölçülmüş git çıktı biçimleri) doğrudan test edilebilsin diye.
+      Bu mantığı public API'ye açmak, yalnızca test için genişletilmiş bir yüzey demek olurdu.
+    -->
+    <InternalsVisibleTo Include="GitExt.Core.Tests" />
+  </ItemGroup>
+
 </Project>
