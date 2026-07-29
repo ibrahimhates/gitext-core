@@ -316,6 +316,43 @@ public class CommitLogReaderTests
     }
 
     [Fact]
+    public async Task Imzali_commit_mesaji_bozmaz()
+    {
+        // P02-T14 — İmza, commit nesnesine `gpgsig` başlığı olarak ÇOK SATIRLI biçimde
+        // yazılır ve mesajdan önce gelir. Ölçüldü: `%s`/`%b` alanlarına sızmıyor,
+        // ama bu doğrulanmadan varsayılamaz — imza satırları mesaj sanılsaydı
+        // her imzalı commit'in gövdesi çöp olurdu.
+        using TestRepository repository = TestRepository.CreateEmpty();
+        repository.WriteFile("a.txt", "a\n");
+        repository.Git("add", "a.txt");
+
+        if (!repository.TryEnableSshSigning())
+        {
+            Assert.Skip("ssh-keygen bulunamadı; imzalama testi atlandı.");
+        }
+
+        repository.Git("commit", "-S", "-m", "imzalı başlık", "-m", "gövde satırı bir\ngövde satırı iki");
+        repository.Git("commit", "--allow-empty", "-m", "imzasız sonraki");
+
+        CommitLogReader reader = await CreateReaderAsync();
+
+        IReadOnlyList<CommitInfo> commits =
+            await reader.ReadAsync(repository.Path, new CommitLogQuery(), Ct);
+
+        commits.Count.ShouldBe(2);
+
+        CommitInfo signed = commits.Single(c => c.Subject == "imzalı başlık");
+        signed.Body.ShouldBe("gövde satırı bir\ngövde satırı iki");
+        // İmza metni hiçbir alana sızmamalı.
+        signed.Body.ShouldNotContain("SSH SIGNATURE");
+        signed.Subject.ShouldNotContain("gpgsig");
+        signed.Author.Name.ShouldBe("gitext-core tests");
+
+        // İmzalı kayıttan sonraki commit de doğru okunmalı — hiza korunmuş olmalı.
+        commits.Single(c => c.Subject == "imzasız sonraki").Body.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Bosluklu_ve_unicode_yollar_filtrede_calisir()
     {
         const string awkward = "belgeler/çalışma günlüğü.md";

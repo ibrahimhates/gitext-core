@@ -60,6 +60,57 @@ jobs:
           path: '**/render-*.png'
           if-no-files-found: ignore
 
+  # P02-T15 — Çekirdek katman, desteklenen EN ESKİ git sürümüne karşı da çalışmalı.
+  # git'in çıktı formatları sürümler arası değişir ve ayrıştırıcılarımız bunlara dayanıyor;
+  # yalnızca güncel git ile test etmek, eski dağıtımlardaki kullanıcıyı görmemek demek.
+  #
+  # 2.30.2 = ADR-0002'deki minimum (Debian bullseye'ın taşıdığı sürüm).
+  # Runner'lar çok daha yeni git taşıdığı için kaynaktan derleniyor; sonuç önbelleklenir.
+  min-git:
+    name: Test with minimum git (2.30.2)
+    runs-on: ubuntu-latest
+    # git derlemesi önbelleklenir; ilk çalıştırma ~3 dk, sonrakiler ~1 dk.
+    env:
+      GIT_VERSION: 2.30.2
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache git build
+        id: cache-git
+        uses: actions/cache@v4
+        with:
+          path: ~/git-${{ env.GIT_VERSION }}
+          key: git-${{ env.GIT_VERSION }}-${{ runner.os }}
+
+      - name: Build git from source
+        if: steps.cache-git.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcurl4-openssl-dev libexpat1-dev gettext libz-dev libssl-dev
+          curl -fsSL -o git.tar.gz \
+            "https://mirrors.edge.kernel.org/pub/software/scm/git/git-${GIT_VERSION}.tar.gz"
+          tar -xf git.tar.gz
+          cd "git-${GIT_VERSION}"
+          make prefix="$HOME/git-${GIT_VERSION}" -j"$(nproc)" install
+
+      - name: Verify git version
+        run: |
+          echo "$HOME/git-${GIT_VERSION}/bin" >> "$GITHUB_PATH"
+          "$HOME/git-${GIT_VERSION}/bin/git" --version
+
+      # Yalnızca çekirdek testleri: UI testleri git sürümünden etkilenmez.
+      - name: Test GitExt.Core
+        run: |
+          git --version
+          dotnet test tests/GitExt.Core.Tests -c Release
+
   publish:
     name: Publish smoke (${{ matrix.rid }})
     runs-on: ubuntu-latest

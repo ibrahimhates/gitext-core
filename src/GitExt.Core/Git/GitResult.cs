@@ -54,7 +54,7 @@ public sealed class GitResult
     /// istisna fırlatmak, o dosyayı hiç göstermemekten daha kötüdür.
     /// </remarks>
     public string GetStandardOutputText() =>
-        StandardOutput.Length == 0 ? string.Empty : Utf8Lenient.GetString(StandardOutput);
+        StandardOutput.Length == 0 ? string.Empty : _utf8Lenient.GetString(StandardOutput);
 
     /// <summary>
     /// stdout'u NUL (<c>\0</c>) ayracına göre böler; <b>boş parçaları atar</b>.
@@ -102,7 +102,7 @@ public sealed class GitResult
         return text.Split('\0');
     }
 
-    private static readonly UTF8Encoding Utf8Lenient = new(
+    private static readonly UTF8Encoding _utf8Lenient = new(
         encoderShouldEmitUTF8Identifier: false,
         throwOnInvalidBytes: false);
 }

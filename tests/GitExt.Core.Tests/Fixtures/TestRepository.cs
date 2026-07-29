@@ -127,6 +127,46 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
+    /// Bu depoda SSH imzalamayı açar ve imzalı commit atılabilir hale getirir.
+    /// </summary>
+    /// <remarks>
+    /// GPG yerine SSH imzalama kullanılıyor: anahtar üretimi etkileşimsiz ve hızlı,
+    /// GPG keyring kurulumu gerekmiyor. İmzanın commit nesnesindeki yapısı ikisinde de aynı
+    /// (<c>gpgsig</c> başlığı, çok satırlı).
+    /// </remarks>
+    /// <returns>İmzalama kurulabildiyse <see langword="true"/>.</returns>
+    public bool TryEnableSshSigning()
+    {
+        string keyPath = System.IO.Path.Combine(_root, "imza-anahtari");
+
+        try
+        {
+            using Process keygen = Process.Start(new ProcessStartInfo("ssh-keygen")
+            {
+                ArgumentList = { "-q", "-t", "ed25519", "-N", string.Empty, "-f", keyPath, "-C", "test@invalid" },
+                UseShellExecute = false,
+                RedirectStandardError = true,
+            }) ?? throw new InvalidOperationException("ssh-keygen başlatılamadı.");
+
+            keygen.WaitForExit();
+
+            if (keygen.ExitCode != 0)
+            {
+                return false;
+            }
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // ssh-keygen yok (bazı Windows kurulumlarında). Test atlanır.
+            return false;
+        }
+
+        Git("config", "--local", "gpg.format", "ssh");
+        Git("config", "--local", "user.signingkey", keyPath + ".pub");
+        return true;
+    }
+
+    /// <summary>
     /// Depoya bir hook kurar.
     /// </summary>
     /// <param name="name">Hook adı, örn. <c>pre-commit</c>.</param>

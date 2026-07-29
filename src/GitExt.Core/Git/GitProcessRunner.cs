@@ -96,9 +96,9 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
         try
         {
-            await foreach (string token_ in ReadNulSeparatedAsync(process, token).ConfigureAwait(false))
+            await foreach (string readToken in ReadNulSeparatedAsync(process, token).ConfigureAwait(false))
             {
-                yield return token_;
+                yield return readToken;
             }
         }
         finally
@@ -190,12 +190,12 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
     private static string DecodeAndReset(MemoryStream pending)
     {
-        string value = Utf8Lenient.GetString(pending.GetBuffer(), 0, (int)pending.Length);
+        string value = _utf8Lenient.GetString(pending.GetBuffer(), 0, (int)pending.Length);
         pending.SetLength(0);
         return value;
     }
 
-    private static readonly System.Text.UTF8Encoding Utf8Lenient =
+    private static readonly System.Text.UTF8Encoding _utf8Lenient =
         new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
     private ProcessStartInfo BuildStartInfo(GitCommand command)
