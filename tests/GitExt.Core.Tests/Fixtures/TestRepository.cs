@@ -24,15 +24,17 @@ public sealed class TestRepository : IDisposable
     /// <summary>Deponun çalışma dizini.</summary>
     public string Path => _root;
 
+    private static string NewTemporaryDirectory() =>
+        System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "gitext-test-" + Guid.NewGuid().ToString("N")[..12]);
+
     /// <summary>
     /// Boş bir depo oluşturur (<c>git init</c>, hiç commit yok).
     /// </summary>
     public static TestRepository CreateEmpty()
     {
-        string root = System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(),
-            "gitext-test-" + Guid.NewGuid().ToString("N")[..12]);
-
+        string root = NewTemporaryDirectory();
         Directory.CreateDirectory(root);
         TestRepository repository = new(root);
 
@@ -85,6 +87,43 @@ public sealed class TestRepository : IDisposable
     public void Commit(string message)
     {
         Git("commit", "--allow-empty", "-m", message);
+    }
+
+    /// <summary>
+    /// Çalışma ağacı olmayan (bare) bir depo oluşturur.
+    /// </summary>
+    public static TestRepository CreateBare()
+    {
+        string root = NewTemporaryDirectory();
+        Directory.CreateDirectory(root);
+
+        TestRepository repository = new(root);
+        repository.Git("init", "--bare", "--initial-branch=main");
+        return repository;
+    }
+
+    /// <summary>
+    /// Bu depoya bağlı (linked) bir worktree ekler ve onu temsil eden nesneyi döndürür.
+    /// </summary>
+    /// <remarks>
+    /// Dönen nesne <b>sahiplenmez</b>: worktree dizini bu deponun temizliğiyle birlikte
+    /// gitmez, ayrıca elden çıkarılmalıdır.
+    /// </remarks>
+    public TestRepository AddWorkTree(string branchName)
+    {
+        string worktreePath = NewTemporaryDirectory();
+        Git("worktree", "add", "-b", branchName, worktreePath);
+        return new TestRepository(worktreePath);
+    }
+
+    /// <summary>
+    /// Bu depoya submodule olarak başka bir depo ekler.
+    /// </summary>
+    public void AddSubmodule(TestRepository other, string relativePath)
+    {
+        // protocol.file.allow: git 2.38.1'den beri yerel dosya yolundan submodule eklemek
+        // varsayılan olarak yasak (CVE-2022-39253). Testlerde bilinçli olarak açıyoruz.
+        Git("-c", "protocol.file.allow=always", "submodule", "add", "--", other.Path, relativePath);
     }
 
     /// <summary>
