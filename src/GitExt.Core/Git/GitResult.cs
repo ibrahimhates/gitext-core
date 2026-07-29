@@ -57,10 +57,17 @@ public sealed class GitResult
         StandardOutput.Length == 0 ? string.Empty : Utf8Lenient.GetString(StandardOutput);
 
     /// <summary>
-    /// stdout'u NUL (<c>\0</c>) ayracına göre böler.
+    /// stdout'u NUL (<c>\0</c>) ayracına göre böler; <b>boş parçaları atar</b>.
     /// </summary>
     /// <remarks>
-    /// <c>-z</c> bayrağıyla çalışan komutların çıktısı için. Sondaki boş parça atılır.
+    /// Yalnızca her parçanın dolu olduğu bilinen çıktılar için uygundur
+    /// (<c>ls-files -z</c> gibi).
+    /// <para>
+    /// ⚠️ Sabit alanlı kayıtları ayrıştırmak için <b>kullanmayın</b>: boş bir alan
+    /// (örneğin gövdesiz bir commit) atıldığında sonraki tüm alanlar kayar ve veri
+    /// sessizce yanlış olur. O durumda <see cref="SplitStandardOutputAtNulPreservingEmpty"/>
+    /// kullanılmalı.
+    /// </para>
     /// </remarks>
     public string[] SplitStandardOutputAtNul()
     {
@@ -68,6 +75,31 @@ public sealed class GitResult
         return text.Length == 0
             ? []
             : text.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    /// <summary>
+    /// stdout'u NUL ayracına göre böler; <b>boş parçaları korur</b>.
+    /// </summary>
+    /// <remarks>
+    /// Sabit alanlı kayıtların hizasını korumak için gereklidir. Yalnızca akışın en sonundaki
+    /// ayraçtan doğan boş parça atılır — <c>git log -z</c> son kaydın ardına da NUL koyar.
+    /// </remarks>
+    public string[] SplitStandardOutputAtNulPreservingEmpty()
+    {
+        string text = GetStandardOutputText();
+
+        if (text.Length == 0)
+        {
+            return [];
+        }
+
+        // Sondaki ayraç yapay bir boş parça üretir; onu at, diğer boşları koru.
+        if (text[^1] == '\0')
+        {
+            text = text[..^1];
+        }
+
+        return text.Split('\0');
     }
 
     private static readonly UTF8Encoding Utf8Lenient = new(

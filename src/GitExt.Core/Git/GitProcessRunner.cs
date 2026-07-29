@@ -68,13 +68,142 @@ public sealed class GitProcessRunner : IGitProcessRunner
         }
     }
 
-    private async Task<GitResult> ExecuteAsync(GitCommand command, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<string> StreamNulSeparatedAsync(
+        GitCommand command,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        using CancellationTokenSource timeoutSource = new(command.Timeout);
+        using CancellationTokenSource linkedSource =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
+
+        CancellationToken token = linkedSource.Token;
+        long startedAt = Stopwatch.GetTimestamp();
+
+        using Process process = new() { StartInfo = BuildStartInfo(command) };
+
+        if (!process.Start())
+        {
+            throw new GitNotFoundException($"git süreci başlatılamadı: {_executablePath}");
+        }
+
+        // stderr paralel olarak boşaltılmalı; aksi halde boru dolduğunda süreç bloke olur
+        // ve akış asla ilerlemez.
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync(token);
+        Task stdinTask = WriteStandardInputAsync(process, command, token);
+
+        try
+        {
+            await foreach (string token_ in ReadNulSeparatedAsync(process, token).ConfigureAwait(false))
+            {
+                yield return token_;
+            }
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                TryKill(process);
+            }
+        }
+
+        await stdinTask.ConfigureAwait(false);
+        string standardError = await stderrTask.ConfigureAwait(false);
+        await process.WaitForExitAsync(token).ConfigureAwait(false);
+
+        GitResult result = new(
+            command,
+            process.ExitCode,
+            [],
+            standardError,
+            Stopwatch.GetElapsedTime(startedAt));
+
+        _commandLog.Record(result);
+
+        if (!result.IsSuccess)
+        {
+            GitFailureKind kind = GitFailureClassifier.Classify(standardError);
+
+            throw new GitException(
+                kind,
+                GitFailureClassifier.Describe(kind),
+                command.ToDisplayString(),
+                process.ExitCode,
+                standardError);
+        }
+    }
+
+    /// <summary>
+    /// stdout'u okurken NUL sınırlarında parçalara ayırır.
+    /// </summary>
+    /// <remarks>
+    /// UTF-8 çok baytlı karakterler okuma sınırına denk gelebileceği için, çözümleme
+    /// bayt düzeyinde biriktirilip parça tamamlandığında yapılır.
+    /// </remarks>
+    private static async IAsyncEnumerable<string> ReadNulSeparatedAsync(
+        Process process,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken cancellationToken)
+    {
+        Stream stdout = process.StandardOutput.BaseStream;
+
+        byte[] buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(16 * 1024);
+        using MemoryStream pending = new();
+
+        try
+        {
+            int read;
+            while ((read = await stdout.ReadAsync(buffer.AsMemory(), cancellationToken)
+                       .ConfigureAwait(false)) > 0)
+            {
+                int start = 0;
+
+                for (int i = 0; i < read; i++)
+                {
+                    if (buffer[i] != 0)
+                    {
+                        continue;
+                    }
+
+                    pending.Write(buffer, start, i - start);
+                    yield return DecodeAndReset(pending);
+                    start = i + 1;
+                }
+
+                pending.Write(buffer, start, read - start);
+            }
+
+            // Akışın sonunda kalan veri: git son kaydın ardına da NUL koyduğu için bu
+            // normalde boştur. Boş değilse gerçek bir parçadır, atlanmamalı.
+            if (pending.Length > 0)
+            {
+                yield return DecodeAndReset(pending);
+            }
+        }
+        finally
+        {
+            System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static string DecodeAndReset(MemoryStream pending)
+    {
+        string value = Utf8Lenient.GetString(pending.GetBuffer(), 0, (int)pending.Length);
+        pending.SetLength(0);
+        return value;
+    }
+
+    private static readonly System.Text.UTF8Encoding Utf8Lenient =
+        new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
+
+    private ProcessStartInfo BuildStartInfo(GitCommand command)
     {
         ProcessStartInfo startInfo = new()
         {
             FileName = _executablePath,
             WorkingDirectory = command.WorkingDirectory,
-            // Kabuk yorumlaması YOK — kullanıcı verisi asla komut satırı olarak ayrıştırılmaz.
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
@@ -93,10 +222,15 @@ public sealed class GitProcessRunner : IGitProcessRunner
         }
 
         GitEnvironment.Apply(startInfo, command.IsReadOnly);
+        return startInfo;
+    }
 
+    private async Task<GitResult> ExecuteAsync(GitCommand command, CancellationToken cancellationToken)
+    {
+        // Kabuk yorumlaması YOK — kullanıcı verisi asla komut satırı olarak ayrıştırılmaz.
         long startedAt = Stopwatch.GetTimestamp();
 
-        using Process process = new() { StartInfo = startInfo };
+        using Process process = new() { StartInfo = BuildStartInfo(command) };
 
         if (!process.Start())
         {

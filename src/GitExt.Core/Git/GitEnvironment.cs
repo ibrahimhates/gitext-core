@@ -64,5 +64,13 @@ internal static class GitEnvironment
         // kendi arayüzümüzde göstereceğiz; ham hâlleri stderr'i gürültüye boğuyor.
         yield return "-c";
         yield return "advice.detachedHead=false";
+
+        // Commit mesajlarını her zaman UTF-8 olarak al.
+        // git, nesnede saklanan kodlamadan (encoding satırı) bu ayara dönüştürür; ölçüldü:
+        // ISO-8859-9 saklanmış bir mesaj ham nesnede 0xFC, log çıktısında 0xC3 0xBC geliyor.
+        // Varsayılan zaten UTF-8 ama kullanıcı .gitconfig'inde değiştirebilir — o durumda
+        // ayrıştırıcılarımız sessizce bozulurdu. Açıkça zorluyoruz.
+        yield return "-c";
+        yield return "i18n.logOutputEncoding=UTF-8";
     }
 }
