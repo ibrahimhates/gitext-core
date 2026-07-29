@@ -1,0 +1,163 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GitExt.UI.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="900" d:DesignHeight="220"
+             x:Class="GitExt.UI.Views.CommitDetailsView"
+             x:DataType="vm:CommitDetailsViewModel">
+
+    <UserControl.Styles>
+        <StyleInclude Source="avares://GitExt.UI/Styles/RefBadgeStyles.axaml" />
+
+        <!-- Alan etiketleri: sabit genişlik, değerler hizalansın. -->
+        <Style Selector="TextBlock.label">
+            <Setter Property="Width" Value="70" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+
+        <Style Selector="TextBlock.value">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- Orijinal saat dilimi ikincil bilgi: yerel saatin gölgesinde dursun. -->
+        <Style Selector="TextBlock.secondary">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer>
+        <StackPanel Margin="10,8" Spacing="6" IsVisible="{Binding HasCommit}">
+
+            <TextBlock Text="{Binding Subject}"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap" />
+
+            <!-- Ref rozetleri: listedeki satırla aynı stiller (P03-T12). -->
+            <ItemsControl ItemsSource="{Binding Badges}" IsVisible="{Binding HasBadges}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:RefBadge">
+                        <Border Classes="badge"
+                                Margin="0,0,4,0"
+                                Classes.head="{Binding IsHead}"
+                                Classes.local="{Binding IsLocalBranch}"
+                                Classes.remote="{Binding IsRemoteBranch}"
+                                Classes.tag="{Binding IsTag}"
+                                Classes.current="{Binding IsCurrent}">
+                            <TextBlock Text="{Binding Text}" FontSize="10" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Tam SHA seçilebilir olmalı: kullanıcı kopyalayıp başka yerde kullanır. -->
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="label" Text="SHA" />
+                <SelectableTextBlock Text="{Binding FullId}"
+                                     FontFamily="{DynamicResource ContentControlThemeFontFamily}"
+                                     FontSize="12" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Classes="label" Text="Yazar" />
+                <StackPanel Spacing="1">
+                    <SelectableTextBlock Text="{Binding AuthorText}" FontSize="12" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="secondary" Text="{Binding AuthorDate}" />
+                        <TextBlock Classes="secondary"
+                                   Text="{Binding AuthorOriginalDate, StringFormat='(yazarın saatiyle {0})'}"
+                                   IsVisible="{Binding AuthorOriginalDate, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <!--
+                Kaydeden yalnızca yazardan FARKLIYSA gösterilir. Aynı olduğunda göstermek,
+                %95 durumda iki özdeş satır demek; farklı olduğunda ise (rebase, cherry-pick,
+                yama) bu fark önemli bilgidir.
+            -->
+            <StackPanel Orientation="Horizontal" Spacing="6"
+                        IsVisible="{Binding CommitterDiffersFromAuthor}">
+                <TextBlock Classes="label" Text="Kaydeden" />
+                <StackPanel Spacing="1">
+                    <SelectableTextBlock Text="{Binding CommitterText}" FontSize="12" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="secondary" Text="{Binding CommitterDate}" />
+                        <TextBlock Classes="secondary"
+                                   Text="{Binding CommitterOriginalDate, StringFormat='(kendi saatiyle {0})'}"
+                                   IsVisible="{Binding CommitterOriginalDate, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasParents}">
+                <TextBlock Classes="label" Text="Ebeveyn" />
+                <ItemsControl ItemsSource="{Binding Parents}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:ParentLink">
+                            <Button Content="{Binding Text}"
+                                    Command="{Binding Command}"
+                                    CommandParameter="{Binding Id}"
+                                    Padding="4,0"
+                                    Margin="0,0,4,0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    FontFamily="{DynamicResource ContentControlThemeFontFamily}"
+                                    FontSize="12"
+                                    Foreground="{DynamicResource SystemAccentColorDark1}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="6"
+                        IsVisible="{Binding SignatureText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Classes="label" Text="İmza" />
+                <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding SignatureText}"
+                               FontSize="12"
+                               Classes.trusted="{Binding SignatureIsTrusted}"
+                               Classes.problem="{Binding SignatureIsProblem}">
+                        <TextBlock.Styles>
+                            <Style Selector="TextBlock.trusted">
+                                <Setter Property="Foreground" Value="#1E7A33" />
+                            </Style>
+                            <Style Selector="TextBlock.problem">
+                                <Setter Property="Foreground" Value="#B3261E" />
+                            </Style>
+                        </TextBlock.Styles>
+                    </TextBlock>
+
+                    <TextBlock Classes="secondary"
+                               Text="{Binding SignatureDetail}"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding SignatureDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Gövde tek boşlukla sıkıştırılmadan, git'teki haliyle gösterilir. -->
+            <SelectableTextBlock Text="{Binding Body}"
+                                 IsVisible="{Binding HasBody}"
+                                 FontFamily="{DynamicResource ContentControlThemeFontFamily}"
+                                 FontSize="12"
+                                 TextWrapping="Wrap"
+                                 Margin="0,4,0,0" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

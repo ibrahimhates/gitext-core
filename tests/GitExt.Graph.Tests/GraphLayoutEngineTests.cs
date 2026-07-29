@@ -215,8 +215,42 @@ public class GraphLayoutEngineTests
     }
 
     [Fact]
-    public void Es_zamanli_seritler_farkli_renk_alir()
+    public void Ayni_satirda_gorunen_seritler_farkli_renk_alir()
     {
+        // Anlamlı özellik: bir satırda AYNI ANDA görünen şeritlerin renkleri ayırt edilebilir
+        // olmalı. "İlk üç satır üç farklı renk" gibi bir beklenti yanlıştı — şerit geri
+        // kazanıldığında rengin de yeniden kullanılması doğru davranış (git de böyle yapıyor).
+        IReadOnlyList<GraphRow> rows = Layout(
+            """
+            F: D E
+            E: C
+            D: B
+            C: A
+            B: A
+            A:
+            """);
+
+        foreach (GraphRow row in rows)
+        {
+            int[] colorsInRow = [.. row.Edges.Select(e => e.ColorIndex).Append(row.ColorIndex)];
+
+            // Aynı şeride ait kenarlar aynı rengi paylaşabilir; farklı şeritler paylaşmamalı.
+            var byLane = row.Edges
+                .GroupBy(e => e.ToLane)
+                .Select(g => (Lane: g.Key, Color: g.First().ColorIndex))
+                .ToList();
+
+            byLane.Select(x => x.Color).Distinct().Count()
+                .ShouldBe(byLane.Count, $"'{row.Commit.Id}' satırında iki şerit aynı rengi paylaşıyor");
+        }
+    }
+
+    [Fact]
+    public void Ayni_tabandan_acilan_dallar_serit_paylasir()
+    {
+        // GERÇEK VERİDEN ÇIKTI: aynı tabandan açılmış konu dalları (ör. birden fazla
+        // dependabot dalı) her biri kendi şeridini tabana kadar tutarsa grafik gereksiz
+        // genişler. git de bu durumda şeridi yeniden kullanıyor — doğrulandı.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             D: A
@@ -225,8 +259,8 @@ public class GraphLayoutEngineTests
             A:
             """);
 
-        // Üç dal ucu aynı anda görünür; renkleri ayırt edilebilir olmalı.
-        rows.Take(3).Select(r => r.ColorIndex).Distinct().Count().ShouldBe(3);
+        // Üç dal ucu var ama hepsi hemen A'ya bağlandığı için iki şerit yetmeli.
+        rows.Max(r => r.LaneCount).ShouldBeLessThanOrEqualTo(2);
     }
 
     [Fact]

@@ -153,6 +153,38 @@ public class RefReaderTests
     }
 
     [Fact]
+    public async Task Sembolik_uzak_ref_isaret_ettigi_dali_bildirir()
+    {
+        // origin/HEAD klonlanan her depoda bulunur ve uzağın varsayılan dalına işaret eder.
+        // UI bunu ayrı bir dal sanarsa aynı commit'te iki özdeş rozet gösterir.
+        using TestRepository remote = TestRepository.CreateBare();
+        using TestRepository local = TestRepository.CreateWithSingleCommit();
+
+        local.Git("remote", "add", "origin", remote.Path);
+        local.Git("push", "-q", "origin", "main");
+        local.Git("remote", "set-head", "origin", "main");
+
+        RefReader reader = await CreateReaderAsync();
+
+        RepositoryRefs refs = await reader.ReadAsync(local.Path, Ct);
+
+        BranchInfo head = refs.RemoteBranches
+            .Single(b => b.Ref.FullName == "refs/remotes/origin/HEAD");
+
+        head.Ref.IsSymbolic.ShouldBeTrue();
+        head.Ref.SymbolicTarget.ShouldBe("refs/remotes/origin/main");
+
+        // ÖLÇÜLDÜ: kısa adı "origin/HEAD" DEĞİL, sadece "origin". git bu ref'i tıpkı
+        // refs/heads/main → main gibi kısaltıyor. Elenmezse kullanıcı origin/main'in
+        // yanında "origin" yazan anlamsız bir rozet görürdü.
+        head.Name.ShouldBe("origin");
+
+        // Sıradan dalda alan boş kalmalı — dolu gelirse eleme mantığı yanlış dalı gizler.
+        refs.RemoteBranches.Single(b => b.Name == "origin/main").Ref.IsSymbolic.ShouldBeFalse();
+        refs.LocalBranches.Single(b => b.Name == "main").Ref.IsSymbolic.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task Upstream_i_olmayan_dal_null_upstream_dondurur()
     {
         using TestRepository repository = TestRepository.CreateWithSingleCommit();

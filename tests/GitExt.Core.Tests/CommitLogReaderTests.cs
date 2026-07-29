@@ -435,4 +435,33 @@ public class CommitLogReaderTests
 
         commits.ShouldHaveSingleItem().Subject.ShouldBe("tuhaf yol");
     }
+
+    [Fact]
+    public async Task Yazarin_orijinal_saat_dilimi_korunur()
+    {
+        // Detay paneli tarihi hem yerel hem ORİJİNAL saat diliminde gösteriyor (P03-T15).
+        // Bu ancak ofset ayrıştırmada kaybolmazsa mümkün; DateTimeStyles yanlış seçilirse
+        // (AssumeLocal / AdjustToUniversal) ofset sessizce yerele çevrilir ve panel
+        // "yazarın saatiyle" yanlış bir değer gösterir.
+        using TestRepository repository = TestRepository.CreateEmpty();
+
+        repository.GitWithEnvironment(
+            new Dictionary<string, string>
+            {
+                ["GIT_AUTHOR_DATE"] = "2021-03-04T05:06:07+09:00",
+                ["GIT_COMMITTER_DATE"] = "2021-03-04T05:06:07-05:00",
+            },
+            "commit", "--allow-empty", "-m", "saat dilimi");
+
+        CommitLogReader reader = await CreateReaderAsync();
+
+        CommitInfo commit = (await reader.ReadAsync(repository.Path, new CommitLogQuery(), Ct)).Single();
+
+        commit.Author.When.Offset.ShouldBe(TimeSpan.FromHours(9));
+        commit.Committer.When.Offset.ShouldBe(TimeSpan.FromHours(-5));
+
+        // Ofset korunsa bile mutlak an doğru olmalı.
+        commit.Author.When.ToUniversalTime()
+            .ShouldBe(new DateTimeOffset(2021, 3, 3, 20, 6, 7, TimeSpan.Zero));
+    }
 }

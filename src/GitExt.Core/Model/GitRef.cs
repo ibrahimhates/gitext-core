@@ -52,6 +52,24 @@ public sealed record GitRef
     /// </summary>
     public bool IsAnnotatedTag { get; init; }
 
+    /// <summary>
+    /// Bu ref sembolikse işaret ettiği ref'in tam adı; değilse <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Pratikteki tek yaygın örnek <c>refs/remotes/&lt;uzak&gt;/HEAD</c>: klonlanan her depoda
+    /// bulunur ve uzağın varsayılan dalına (<c>refs/remotes/origin/main</c>) işaret eder.
+    /// Ayrı bir dalmış gibi gösterilirse kullanıcı aynı commit'te iki özdeş rozet görür.
+    /// </para>
+    /// <para>
+    /// <c>%(symref)</c> alanından okunur; sembolik olmayan ref'lerde <b>boş</b> gelir (ölçüldü).
+    /// </para>
+    /// </remarks>
+    public string? SymbolicTarget { get; init; }
+
+    /// <summary>Başka bir ref'e işaret eden sembolik ref mi?</summary>
+    public bool IsSymbolic => SymbolicTarget is not null;
+
     public override string ToString() => ShortName;
 
     /// <summary>Tam ada bakarak türü belirler.</summary>

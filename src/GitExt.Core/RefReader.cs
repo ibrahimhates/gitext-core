@@ -45,9 +45,9 @@ public sealed class RefReader : IRefReader
     /// </remarks>
     private const string RefFormat =
         "%(refname)%00%(refname:short)%00%(objecttype)%00%(objectname)%00%(*objectname)"
-        + "%00%(HEAD)%00%(upstream:short)%00%(upstream:track)%00%(subject)";
+        + "%00%(HEAD)%00%(upstream:short)%00%(upstream:track)%00%(symref)%00%(subject)";
 
-    private const int RefFieldCount = 9;
+    private const int RefFieldCount = 10;
 
     public async Task<RepositoryRefs> ReadAsync(
         string workingDirectory,
@@ -90,7 +90,7 @@ public sealed class RefReader : IRefReader
                     break;
 
                 case GitRefKind.Tag:
-                    tags.Add(new TagInfo { Ref = reference, Subject = fields[8] });
+                    tags.Add(new TagInfo { Ref = reference, Subject = fields[9] });
                     break;
 
                 default:
@@ -124,6 +124,9 @@ public sealed class RefReader : IRefReader
             ? dereferenced
             : objectId;
 
+        // %(symref) yalnızca sembolik ref'lerde dolu; normal dalda BOŞ dize (ölçüldü).
+        string symref = fields[8];
+
         return new GitRef
         {
             FullName = fullName,
@@ -132,6 +135,7 @@ public sealed class RefReader : IRefReader
             ObjectId = objectId,
             TargetCommit = target,
             IsAnnotatedTag = isAnnotatedTag,
+            SymbolicTarget = string.IsNullOrEmpty(symref) ? null : symref,
         };
     }
 

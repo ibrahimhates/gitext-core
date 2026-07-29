@@ -19,6 +19,12 @@
       Bu mantığı public API'ye açmak, yalnızca test için genişletilmiş bir yüzey demek olurdu.
     -->
     <InternalsVisibleTo Include="GitExt.Core.Tests" />
+    <!--
+      ViewModel testleri sahte veri kurarken RepositoryLocation üretmek zorunda.
+      Yapıcısı bilinçli olarak internal: örneğinin varlığı "bu yol gerçekten bir depo"
+      kanıtıdır ve rastgele üretilmemeli. Public yapmak yerine testlere açılıyor.
+    -->
+    <InternalsVisibleTo Include="GitExt.UI.Tests" />
   </ItemGroup>
 
 </Project>

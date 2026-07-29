@@ -3,33 +3,92 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:GitExt.UI.ViewModels"
+        xmlns:views="using:GitExt.UI.Views"
         mc:Ignorable="d"
-        d:DesignWidth="800" d:DesignHeight="500"
+        d:DesignWidth="1000" d:DesignHeight="600"
         x:Class="GitExt.UI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="gitext-core"
-        Width="800" Height="500"
-        MinWidth="480" MinHeight="320"
-        WindowStartupLocation="CenterScreen">
+        Width="1000" Height="600"
+        MinWidth="640" MinHeight="400"
+        WindowStartupLocation="CenterScreen"
+        DragDrop.AllowDrop="True">
 
-    <StackPanel HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Spacing="12">
+    <Grid RowDefinitions="Auto,*">
 
-        <!-- Metin binding ile gelir, code-behind'dan değil (P01-T13). -->
-        <TextBlock Text="{Binding Greeting}"
-                   FontSize="42"
-                   FontWeight="SemiBold"
-                   HorizontalAlignment="Center" />
+        <Border Grid.Row="0"
+                Padding="10,7"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
 
-        <TextBlock Text="{Binding Subtitle}"
-                   FontSize="14"
-                   Opacity="0.7"
-                   TextWrapping="Wrap"
-                   MaxWidth="480"
-                   TextAlignment="Center"
-                   HorizontalAlignment="Center" />
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Subtitle}"
+                           FontSize="12"
+                           Opacity="0.75"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
 
-    </StackPanel>
+                <!--
+                    Yükleme göstergesi ve iptal (P03-T17). Çok büyük bir depoda kullanıcı
+                    yanlış klasörü açtığını fark edebilir; bitmesini beklemek zorunda kalmamalı.
+                -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Commits.LoadedCount, StringFormat='{}{0} commit yüklendi…'}"
+                           IsVisible="{Binding Commits.IsLoading}"
+                           FontSize="12"
+                           Opacity="0.7"
+                           VerticalAlignment="Center"
+                           Margin="8,0" />
 
+                <Button Grid.Column="2"
+                        Content="İptal"
+                        Command="{Binding CancelLoadingCommand}"
+                        IsVisible="{Binding Commits.IsLoading}"
+                        FontSize="11"
+                        Padding="8,2" />
+            </Grid>
+        </Border>
+
+        <!-- Depo açılmadıysa karşılama ekranı; boş pencere göstermek yerine yol gösterilir. -->
+        <views:WelcomeView Grid.Row="1" IsVisible="{Binding ShowWelcome}" />
+
+        <!--
+            Liste üstte, detay altta — GitExtensions'ın yerleşimi. Ayırıcı sürüklenebilir;
+            detay paneli sabit yükseklikte olsaydı uzun commit mesajları okunamazdı.
+        -->
+        <Grid Grid.Row="1"
+              RowDefinitions="*,Auto,Auto"
+              IsVisible="{Binding !ShowWelcome}">
+
+            <views:CommitListView Grid.Row="0" DataContext="{Binding Commits}" />
+
+            <!-- Depo açık ama hiç commit yok: yeni `git init`. Boş ekran değil, açıklama. -->
+            <Border Grid.Row="0"
+                    IsVisible="{Binding Commits.IsEmptyRepository}"
+                    Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+                    <TextBlock Text="Bu depoda henüz commit yok."
+                               FontSize="14"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="İlk commit atıldığında geçmiş burada görünecek."
+                               FontSize="12"
+                               Opacity="0.65"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <GridSplitter Grid.Row="1"
+                          Height="4"
+                          ResizeDirection="Rows"
+                          Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                          IsVisible="{Binding Commits.Details.HasCommit}" />
+
+            <views:CommitDetailsView Grid.Row="2"
+                                     DataContext="{Binding Commits.Details}"
+                                     Height="200"
+                                     MinHeight="80"
+                                     IsVisible="{Binding HasCommit}" />
+        </Grid>
+    </Grid>
 </Window>

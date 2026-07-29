@@ -45,7 +45,15 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             MainWindow window = _services.GetRequiredService<MainWindow>();
-            window.DataContext = _services.GetRequiredService<MainWindowViewModel>();
+            MainWindowViewModel viewModel = _services.GetRequiredService<MainWindowViewModel>();
+            window.DataContext = viewModel;
+
+            // Komut satırında bir yol verildiyse o açılır ve açılamazsa hata gösterilir.
+            // Verilmediyse çalışma dizini SESSİZCE denenir; depo değilse karşılama ekranı
+            // açılır (masaüstünden başlatıldığında çalışma dizini rastgele bir yerdir).
+            string? path = desktop.Args?.FirstOrDefault(a => !a.StartsWith("--", StringComparison.Ordinal));
+
+            _ = viewModel.StartAsync(path);
 
             if (Environment.GetEnvironmentVariable(StartupTraceVariable) == "1")
             {

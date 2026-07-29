@@ -1,0 +1,67 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Ref rozeti stilleri (P03-T12). Hem commit listesi hem detay paneli kullanıyor;
+        iki yerde kopyalamak, birinde değişip diğerinde unutulmak demekti.
+
+        Renkler AÇIK tema için seçildi — varsayılan tema açık (GitExtensions kimliği).
+        Faz 08'de tema kaynak sözlüğüne taşınacak ve koyu tema için ayrı değerler alacak.
+    -->
+
+    <Style Selector="Border.badge">
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Padding" Value="5,1" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="#EEEEEE" />
+        <Setter Property="BorderBrush" Value="#CCCCCC" />
+    </Style>
+
+    <Style Selector="Border.badge > TextBlock">
+        <Setter Property="Foreground" Value="#333333" />
+    </Style>
+
+    <!-- Yerel dal: mavi -->
+    <Style Selector="Border.badge.local">
+        <Setter Property="Background" Value="#DCEBF9" />
+        <Setter Property="BorderBrush" Value="#8FB8DC" />
+    </Style>
+    <Style Selector="Border.badge.local > TextBlock">
+        <Setter Property="Foreground" Value="#12395C" />
+    </Style>
+
+    <!-- Uzak dal: mor, daha soluk (yerel olandan ayrışsın) -->
+    <Style Selector="Border.badge.remote">
+        <Setter Property="Background" Value="#EDE7F6" />
+        <Setter Property="BorderBrush" Value="#B9A7DA" />
+    </Style>
+    <Style Selector="Border.badge.remote > TextBlock">
+        <Setter Property="Foreground" Value="#3B2A63" />
+    </Style>
+
+    <!-- Tag: sarı/amber -->
+    <Style Selector="Border.badge.tag">
+        <Setter Property="Background" Value="#FCF0D0" />
+        <Setter Property="BorderBrush" Value="#E0C169" />
+    </Style>
+    <Style Selector="Border.badge.tag > TextBlock">
+        <Setter Property="Foreground" Value="#5C4409" />
+    </Style>
+
+    <!-- HEAD (detached): kırmızı, dikkat çekici -->
+    <Style Selector="Border.badge.head">
+        <Setter Property="Background" Value="#FBE0DE" />
+        <Setter Property="BorderBrush" Value="#E39D98" />
+    </Style>
+    <Style Selector="Border.badge.head > TextBlock">
+        <Setter Property="Foreground" Value="#6E1F1A" />
+    </Style>
+
+    <!-- Checkout edilmiş dal: kalın yazı — nerede olduğun bir bakışta belli olsun -->
+    <Style Selector="Border.badge.current > TextBlock">
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.badge.current">
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+</Styles>

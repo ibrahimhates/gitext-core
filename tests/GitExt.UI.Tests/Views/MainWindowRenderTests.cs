@@ -22,7 +22,15 @@ public class MainWindowRenderTests
     [AvaloniaFact]
     public void Pencere_cizilir_ve_metin_render_edilir()
     {
-        MainWindow window = new() { DataContext = new MainWindowViewModel() };
+        MainWindow window = new()
+        {
+            DataContext = new MainWindowViewModel(new CommitListViewModel(
+                new Fakes.FakeRepositoryLocator(),
+                new Fakes.FakeCommitLogReader(),
+                new Fakes.FakeRefReader(),
+                new Fakes.FakeCommitSignatureReader()),
+                new Fakes.FakeRecentRepositoryStore()),
+        };
         window.Show();
 
         using Bitmap frame = window.CaptureRenderedFrame()

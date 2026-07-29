@@ -190,6 +190,26 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
+    /// İmzalama anahtarını güvenilir kabul edilenler listesine ekler.
+    /// </summary>
+    /// <remarks>
+    /// <b>ÖLÇÜLDÜ:</b> bu yapılmadan git, imzalı bir commit için <c>%G?</c> alanında
+    /// <c>N</c> — yani "imzasız" — döndürür ve yalnızca stderr'e hata yazar. Yani
+    /// <see cref="TryEnableSshSigning"/> tek başına "geçerli imza" senaryosunu üretmez.
+    /// </remarks>
+    public void TrustSigningKey()
+    {
+        string keyPath = System.IO.Path.Combine(_root, "imza-anahtari");
+        string allowedSigners = System.IO.Path.Combine(_root, "allowed-signers");
+
+        File.WriteAllText(
+            allowedSigners,
+            $"tests@gitext-core.invalid {File.ReadAllText(keyPath + ".pub").Trim()}\n");
+
+        Git("config", "--local", "gpg.ssh.allowedSignersFile", allowedSigners);
+    }
+
+    /// <summary>
     /// Depoya bir hook kurar.
     /// </summary>
     /// <param name="name">Hook adı, örn. <c>pre-commit</c>.</param>

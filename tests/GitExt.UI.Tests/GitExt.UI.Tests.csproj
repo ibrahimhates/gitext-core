@@ -20,6 +20,13 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/GitExt.UI/GitExt.UI.csproj" />
+
+    <!--
+      Composition root'u test edebilmek için. Eksik bir DI kaydı uygulamayı AÇILMAZ hale
+      getirir ama derlemeyi kırmaz; bu referans olmadan o hata ancak elle çalıştırınca
+      görülürdü.
+    -->
+    <ProjectReference Include="../../src/GitExt.Desktop/GitExt.Desktop.csproj" />
   </ItemGroup>
 
 </Project>

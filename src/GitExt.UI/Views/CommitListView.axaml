@@ -1,0 +1,155 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GitExt.UI.ViewModels"
+             xmlns:controls="using:GitExt.UI.Controls"
+             mc:Ignorable="d"
+             d:DesignWidth="900" d:DesignHeight="500"
+             x:Class="GitExt.UI.Views.CommitListView"
+             x:DataType="vm:CommitListViewModel"
+             Loaded="OnViewLoaded">
+
+    <!--
+        P03-T09 kararı: sanallaştırılmış ListBox + grafik sütunu için özel çizim.
+        Seçim, klavye gezinme ve erişilebilirlik ListBox'tan geliyor; yalnızca şerit/düğüm/kenar
+        özel çiziliyor (XAML'de değişken sayıda çizgi üretmek pahalı ve hantal olurdu).
+    -->
+
+    <UserControl.Styles>
+        <StyleInclude Source="avares://GitExt.UI/Styles/RefBadgeStyles.axaml" />
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Arama, hata ve yükleme durumu -->
+        <StackPanel Grid.Row="0" Margin="8,6" Spacing="4">
+
+            <!--
+                SHA ile atlama (P03-T14). Yalnızca SHA öneki aranır; mesaj/yazar araması
+                ayrı bir görevdir (P07-T21) ve burada karıştırılmıyor.
+            -->
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Grid.Column="0"
+                         Name="ShaSearchBox"
+                         Text="{Binding SearchText}"
+                         PlaceholderText="SHA ile atla (Ctrl+F)"
+                         FontSize="12" />
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding SearchStatus}"
+                           IsVisible="{Binding SearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           Margin="8,0,0,0" />
+            </Grid>
+
+            <TextBlock Text="{Binding ErrorMessage}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                       TextWrapping="Wrap" />
+
+            <ProgressBar IsIndeterminate="True"
+                         Height="2"
+                         IsVisible="{Binding IsLoading}" />
+        </StackPanel>
+
+        <!--
+            SelectedIndex bağlanıyor, SelectedItem değil: seçimin tek doğruluk kaynağı
+            indekstir (bkz. CommitListViewModel.SelectedIndex).
+        -->
+        <ListBox Grid.Row="1"
+                 Name="CommitList"
+                 ItemsSource="{Binding Rows}"
+                 SelectedIndex="{Binding SelectedIndex}"
+                 SelectionMode="Multiple"
+                 Background="Transparent"
+                 BorderThickness="0">
+
+            <ListBox.Styles>
+                <!-- Satırlar dar ve sabit yükseklikte: sanallaştırma bundan faydalanıyor. -->
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="MinHeight" Value="22" />
+                </Style>
+            </ListBox.Styles>
+
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="vm:CommitRowViewModel">
+                    <Grid Height="22"
+                          ColumnDefinitions="Auto,70,*,Auto,140,120">
+
+                        <!-- Grafik sütunu — tek özel çizim yapan parça -->
+                        <controls:CommitGraphCell Grid.Column="0"
+                                                  Row="{Binding GraphRow}"
+                                                  MinWidth="28"
+                                                  Margin="4,0,8,0" />
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding ShortId}"
+                                   FontFamily="{DynamicResource ContentControlThemeFontFamily}"
+                                   FontSize="12"
+                                   Opacity="0.65"
+                                   VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding Subject}"
+                                   FontSize="12"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+
+                        <!--
+                            Ref rozetleri, TÜRE GÖRE ayrı stillerde (P03-T12).
+                            Tür bilgisi git'in %D alanından değil for-each-ref'ten geliyor;
+                            %D yerel ve uzak dalı ayırt etmiyor (ölçüldü).
+                        -->
+                        <ItemsControl Grid.Column="3"
+                                      ItemsSource="{Binding Badges}"
+                                      IsVisible="{Binding HasBadges}"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,8,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:RefBadge">
+                                    <!--
+                                        Stil, türe göre CSS benzeri sınıflarla seçiliyor.
+                                        Sınıflar bağlanabilir olduğu için her tür kendi
+                                        rengini UserControl.Styles'tan alıyor.
+                                    -->
+                                    <Border Classes="badge"
+                                            Classes.head="{Binding IsHead}"
+                                            Classes.local="{Binding IsLocalBranch}"
+                                            Classes.remote="{Binding IsRemoteBranch}"
+                                            Classes.tag="{Binding IsTag}"
+                                            Classes.current="{Binding IsCurrent}">
+                                        <TextBlock Text="{Binding Text}" FontSize="10" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Grid.Column="4"
+                                   Text="{Binding AuthorName}"
+                                   FontSize="12"
+                                   Opacity="0.75"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+
+                        <TextBlock Grid.Column="5"
+                                   Text="{Binding DateText}"
+                                   FontSize="12"
+                                   Opacity="0.65"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>

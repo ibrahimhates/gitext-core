@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GitExt.UI.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="700" d:DesignHeight="450"
+             x:Class="GitExt.UI.Views.WelcomeView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <!--
+        Depo açılmadığında görünen ekran (P03-T16). Boş bir pencere yerine kullanıcıya
+        ne yapabileceğini söyler: klasör seç, son açılanlardan birine dön, ya da sürükle-bırak.
+    -->
+
+    <UserControl.Styles>
+        <!-- Klasörü artık var olmayan girdi soluk görünür ama listede kalır. -->
+        <Style Selector="Button.missing">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer>
+        <StackPanel MaxWidth="560"
+                    Margin="24"
+                    Spacing="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="gitext-core" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Text="Başlamak için bir Git deposu açın."
+                           FontSize="13"
+                           Opacity="0.7" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Name="OpenFolderButton"
+                        Content="Klasör aç…"
+                        Click="OnOpenFolderClick"
+                        Padding="14,6" />
+
+                <TextBlock Text="veya bir klasörü pencereye sürükleyin"
+                           FontSize="12"
+                           Opacity="0.6"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Açma başarısız olduysa sebebi burada; karşılama ekranından ayrılmadan görünür. -->
+            <Border IsVisible="{Binding Commits.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Background="#FBE0DE"
+                    BorderBrush="#E39D98"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10,7">
+                <TextBlock Text="{Binding Commits.ErrorMessage}"
+                           FontSize="12"
+                           Foreground="#6E1F1A"
+                           TextWrapping="Wrap" />
+            </Border>
+
+            <StackPanel Spacing="6" IsVisible="{Binding HasRecentRepositories}">
+                <TextBlock Text="Son açılanlar" FontSize="12" Opacity="0.6" />
+
+                <ItemsControl ItemsSource="{Binding RecentRepositories}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:RecentRepositoryItem">
+                            <Button Command="{Binding OpenCommand}"
+                                    CommandParameter="{Binding Path}"
+                                    Classes.missing="{Binding !Exists}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="6,4"
+                                    Margin="0,0,0,2">
+                                <StackPanel Spacing="1">
+                                    <TextBlock Text="{Binding Name}" FontSize="13" />
+
+                                    <!--
+                                        Kayıp klasör silinmiyor, soluk gösteriliyor: bağlı
+                                        olmayan bir disk listeyi budamak için sebep değil.
+                                    -->
+                                    <TextBlock Text="{Binding Path}"
+                                               FontSize="11"
+                                               Opacity="0.55"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

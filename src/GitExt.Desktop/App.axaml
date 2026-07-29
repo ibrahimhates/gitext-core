@@ -1,9 +1,16 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="GitExt.Desktop.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Light">
 
-    <!-- "Default" sistem temasını takip eder. Tam tema altyapısı Faz 08'de (P08-T07). -->
+    <!--
+        Varsayılan AÇIK tema — GitExtensions'ın görsel kimliği bu ve hedef kitle oradan geliyor.
+        Sistem koyu temada olsa bile varsayılan açıktır; "sistemi takip et" bilinçli bir
+        tercih olacak, varsayılan değil.
+
+        GEÇİCİ: burada sabitlenmiş durumda. Üç durumlu ayar (Açık / Koyu / Sistemi takip et)
+        ve ayar dosyasında saklanması Faz 08'de gelecek — bkz. plans/08 → P08-T07, P08-T08.
+    -->
 
     <Application.Styles>
         <FluentTheme />

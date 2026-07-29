@@ -103,15 +103,41 @@ public sealed class GraphLayoutEngine
         }
         else
         {
-            _lanes[lane] = new LaneSlot(commit.Parents[0], color);
+            // İlk ebeveyn BAŞKA bir şeritte zaten bekleniyorsa, bu şerit burada biter ve
+            // kenar oraya diyagonal olarak bağlanır.
+            //
+            // GERÇEK VERİDEN ÇIKTI: aynı tabandan açılmış birden fazla konu dalı
+            // (ör. üç dependabot dalı, hepsinin ebeveyni `init`) aksi halde her biri kendi
+            // şeridini tabana kadar rezerve eder ve grafik gereksiz genişler.
+            // Kendi depomuzda 4 şerit çıkıyordu; git'in kendi grafiği 2 ile yetiniyor.
+            //
+            // "Düz şerit" kuralını bozmuyor: dal burada gerçekten birleşiyor.
+            int existingFirst = FindReservedLanes(commit.Parents[0]).FirstOrDefault(-1);
 
-            edges.Add(new GraphEdge
+            if (existingFirst >= 0 && existingFirst != lane)
             {
-                FromLane = lane,
-                ToLane = lane,
-                Target = commit.Parents[0],
-                ColorIndex = color,
-            });
+                edges.Add(new GraphEdge
+                {
+                    FromLane = lane,
+                    ToLane = existingFirst,
+                    Target = commit.Parents[0],
+                    ColorIndex = _lanes[existingFirst]!.Value.ColorIndex,
+                });
+
+                _lanes[lane] = null;
+            }
+            else
+            {
+                _lanes[lane] = new LaneSlot(commit.Parents[0], color);
+
+                edges.Add(new GraphEdge
+                {
+                    FromLane = lane,
+                    ToLane = lane,
+                    Target = commit.Parents[0],
+                    ColorIndex = color,
+                });
+            }
 
             // Ek ebeveynler (merge): her biri yeni bir şerit alır.
             for (int i = 1; i < commit.Parents.Count; i++)
