@@ -14,8 +14,18 @@ internal static class Program
     // Avalonia başlatılmadan önce hiçbir Avalonia API'si veya SynchronizationContext'e
     // bağımlı kod çalıştırılmamalıdır.
     [STAThread]
-    public static void Main(string[] args) =>
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static int Main(string[] args)
+    {
+        // Teşhis modu: arayüz açmadan çekirdek katmanı bir depoya karşı çalıştırır.
+        // Avalonia hiç başlatılmaz, bu yüzden masaüstü oturumu gerektirmez.
+        if (args.Contains(HeadlessDiagnostics.Flag, StringComparer.Ordinal))
+        {
+            return HeadlessDiagnostics.RunAsync(args, CancellationToken.None)
+                .GetAwaiter().GetResult();
+        }
+
+        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     // Avalonia görsel tasarımcısı da bu metodu kullanır; imzası değiştirilmemeli.
     public static AppBuilder BuildAvaloniaApp()
