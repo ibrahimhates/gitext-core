@@ -15,6 +15,7 @@ build rather than by code review.
 | [0004](./0004-mvvm-and-di.md) | MVVM and dependency injection | CommunityToolkit.Mvvm + Microsoft.Extensions.DI | Accepted |
 | [0005](./0005-licensing.md) | Licensing | GPL-3.0-or-later | Accepted |
 | [0006](./0006-versioning-and-dependencies.md) | Versioning and dependencies | SemVer + Central Package Management + committed lock files | Accepted |
+| [0007](./0007-commit-graph-layout.md) | Commit graph layout | Straight-branch lanes, fed by `--topo-order` | Accepted |
 
 ## Decisions enforced by the build
 
