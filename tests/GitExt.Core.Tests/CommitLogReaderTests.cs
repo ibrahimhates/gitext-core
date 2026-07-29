@@ -353,6 +353,66 @@ public class CommitLogReaderTests
     }
 
     [Fact]
+    public async Task Carpik_tarihli_depoda_cocuk_her_zaman_ebeveynden_once_gelir()
+    {
+        // ADR-0007'nin değişmezi. Grafik yerleşimi tek geçişli ileri tarama yapıyor;
+        // bir ebeveyn çocuğundan önce gelirse kenar YUKARI bakar ve grafik bozulur.
+        //
+        // git log'un varsayılan (tarih) sırası bu garantiyi VERMEZ — ölçüldü.
+        // Aşağıdaki depo tam olarak o durumu üretiyor: yan dalın tarihi merge base'inden eski.
+        using TestRepository repository = TestRepository.CreateEmpty();
+        repository.WriteFile("a.txt", "a\n");
+        repository.Git("add", "a.txt");
+
+        repository.CommitAtDate("base", "2020-01-01T00:00:00");
+        repository.Git("checkout", "-q", "-b", "yan");
+        repository.CommitAtDate("yan-cok-eski", "2010-01-01T00:00:00");
+        repository.Git("checkout", "-q", "main");
+        repository.CommitAtDate("main-yeni", "2022-01-01T00:00:00");
+        repository.Git("merge", "--no-ff", "-m", "birlestirme", "yan");
+
+        CommitLogReader reader = await CreateReaderAsync();
+
+        IReadOnlyList<CommitInfo> commits = await reader.ReadAsync(
+            repository.Path, new CommitLogQuery { IncludeAllRefs = true }, Ct);
+
+        Dictionary<CommitId, int> position = [];
+        for (int i = 0; i < commits.Count; i++)
+        {
+            position[commits[i].Id] = i;
+        }
+
+        foreach (CommitInfo commit in commits)
+        {
+            foreach (CommitId parent in commit.Parents)
+            {
+                if (position.TryGetValue(parent, out int parentIndex))
+                {
+                    parentIndex.ShouldBeGreaterThan(
+                        position[commit.Id],
+                        $"'{parent.ToShortString()}' ebeveyni, çocuğu '{commit.Id.ToShortString()}' "
+                        + "commit'inden ÖNCE geldi — topolojik sıra ihlali (ADR-0007).");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Topolojik_sira_kapatilabilir()
+    {
+        // Sıranın önemsiz olduğu durumlarda (tek dosya geçmişi gibi) maliyetten kaçınmak için.
+        using TestRepository repository = TestRepository.CreateWithSingleCommit();
+        repository.Git("commit", "--allow-empty", "-m", "ikinci");
+
+        CommitLogReader reader = await CreateReaderAsync();
+
+        IReadOnlyList<CommitInfo> commits = await reader.ReadAsync(
+            repository.Path, new CommitLogQuery { TopologicalOrder = false }, Ct);
+
+        commits.Count.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task Bosluklu_ve_unicode_yollar_filtrede_calisir()
     {
         const string awkward = "belgeler/çalışma günlüğü.md";

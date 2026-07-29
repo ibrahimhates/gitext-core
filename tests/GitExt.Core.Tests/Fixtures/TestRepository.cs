@@ -90,6 +90,29 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
+    /// Belirtilen tarihle commit atar.
+    /// </summary>
+    /// <param name="message">Commit mesajı.</param>
+    /// <param name="isoDate">ISO-8601 tarih, örn. <c>2020-01-01T00:00:00</c>.</param>
+    /// <remarks>
+    /// Çarpık tarihli geçmişleri (rebase, içe aktarma, saat kayması) simüle etmek için.
+    /// Tarih hem yazar hem kaydeden için ayarlanır — git sıralamada <b>kaydeden</b> tarihini
+    /// kullanır, yalnızca yazar tarihini ayarlamak yetmez.
+    /// </remarks>
+    public void CommitAtDate(string message, string isoDate)
+    {
+        // git sıralamada KAYDEDEN tarihini kullanır. `--date` yalnızca yazar tarihini
+        // ayarladığı için tek başına yetmez; kaydeden tarihi ortam değişkeniyle verilir.
+        GitWithEnvironment(
+            new Dictionary<string, string>
+            {
+                ["GIT_AUTHOR_DATE"] = isoDate,
+                ["GIT_COMMITTER_DATE"] = isoDate,
+            },
+            "commit", "--allow-empty", "-m", message);
+    }
+
+    /// <summary>
     /// Çalışma ağacı olmayan (bare) bir depo oluşturur.
     /// </summary>
     public static TestRepository CreateBare()
@@ -203,7 +226,15 @@ public sealed class TestRepository : IDisposable
     /// kullanmaz — test ettiğimiz şeyi fixture kurmak için kullanmak, ikisinin aynı hatayı
     /// paylaşması durumunda testi işe yaramaz hale getirir.
     /// </remarks>
-    public string Git(params string[] arguments)
+    public string Git(params string[] arguments) =>
+        GitWithEnvironment(null, arguments);
+
+    /// <summary>
+    /// Ek ortam değişkenleriyle bir <c>git</c> komutu çalıştırır.
+    /// </summary>
+    public string GitWithEnvironment(
+        IReadOnlyDictionary<string, string>? environment,
+        params string[] arguments)
     {
         ProcessStartInfo startInfo = new()
         {
@@ -226,6 +257,14 @@ public sealed class TestRepository : IDisposable
         // Kullanıcının ~/.gitconfig'i testleri etkilemesin (hook'lar, template'ler, imzalama).
         startInfo.Environment["HOME"] = _root;
         startInfo.Environment["XDG_CONFIG_HOME"] = _root;
+
+        if (environment is not null)
+        {
+            foreach ((string key, string value) in environment)
+            {
+                startInfo.Environment[key] = value;
+            }
+        }
 
         using Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("git süreci başlatılamadı.");
