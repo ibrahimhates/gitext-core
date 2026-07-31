@@ -59,6 +59,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IStatusReader, StatusReader>();
         services.AddSingleton<IObjectReader, ObjectReader>();
 
+        // Commit mesajı yardımcıları (P05-T13). Taslak deposu depo başına git dizinini
+        // önbelleğe aldığı için singleton; her istekte yenisi üretmek her taslak kaydında
+        // fazladan bir `git rev-parse` demek olurdu.
+        services.AddSingleton<IGitConfigReader, GitConfigReader>();
+        services.AddSingleton<ICommitMessageReader, CommitMessageReader>();
+        services.AddSingleton<ICommitMessageStore, CommitMessageStore>();
+
         services.AddSingleton<CommitListViewModel>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();

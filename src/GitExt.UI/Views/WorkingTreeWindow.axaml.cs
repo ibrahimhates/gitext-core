@@ -17,6 +17,17 @@ public partial class WorkingTreeWindow : Window
     public WorkingTreeWindow()
     {
         InitializeComponent();
+
+        // 🔑 Taslak, pencere kapanırken KESİN olarak yazılıyor (P05-T13). Gecikmeli kayıt
+        // (750 ms) henüz çalışmamış olabilir ve kullanıcının en son yazdığı satır — yani
+        // tam da bırakıp gittiği yer — kaybolurdu.
+        Closing += (_, _) =>
+        {
+            if (DataContext is WorkingTreeViewModel model)
+            {
+                _ = model.Message.FlushDraftAsync();
+            }
+        };
     }
 
     /// <summary>Commit ekranını sahibinin üstünde <b>modal</b> açar.</summary>

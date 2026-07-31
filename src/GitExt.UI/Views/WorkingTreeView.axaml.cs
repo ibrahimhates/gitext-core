@@ -79,6 +79,15 @@ public partial class WorkingTreeView : UserControl
 
         bool control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
 
+        // 🔴 Metin kutusundayken liste kısayolları ÇALIŞMAMALI. Tünelleme fazında
+        // yakaladığımız için `Space` tuşu commit mesajına boşluk yazmak yerine dosya
+        // stage'lerdi — mesaj yazan kullanıcı farkında olmadan index'i değiştirirdi.
+        // Ctrl+Enter bilinçli istisna: commit kısayolu zaten mesaj kutusundan verilir.
+        if (e.Source is TextBox && !(control && e.Key == Key.Enter))
+        {
+            return;
+        }
+
         switch (e.Key)
         {
             case Key.Space when control:
@@ -90,6 +99,14 @@ public partial class WorkingTreeView : UserControl
                 Run(model.IsStagedListActive
                     ? model.UnstageSelectedAsync()
                     : model.StageSelectedAsync());
+                e.Handled = true;
+                break;
+
+            case Key.Enter when control:
+                // 🔴 ÖLÇÜLDÜ (P05-T12): `AcceptsReturn` açık bir `TextBox` Ctrl+Enter'ı da
+                // düz Enter gibi işleyip SATIR SONU EKLİYOR. Tünelleme fazında yakalanıp
+                // `Handled` işaretlenmezse commit atılırken mesaja bir de boş satır girerdi.
+                Run(model.CommitAsync());
                 e.Handled = true;
                 break;
 
@@ -172,5 +189,81 @@ public partial class WorkingTreeView : UserControl
         list.ScrollIntoView(list.SelectedIndex);
 
         return container.Focus();
+    }
+
+    // ---- P05-T12: commit paneli ----
+
+    private void OnCommitClick(object? sender, RoutedEventArgs e) => Run(ViewModel?.CommitAsync());
+
+    // ---- P05-T13: mesaj yardımcıları ----
+
+    /// <summary>
+    /// Geçmiş menüsü açılırken mesajları okur ve öğeleri kurar.
+    /// </summary>
+    /// <remarks>
+    /// Öğeler <c>ItemsSource</c> ile bağlanmıyor: <see cref="MenuFlyout"/> içinde sabit
+    /// öğeler (<i>yalnızca benim mesajlarım</i> + ayraç) ile veriye bağlı öğeler bir arada
+    /// duruyor ve tek bir <c>ItemsSource</c> ikisini birden veremiyor. Sabit öğeler
+    /// <b>korunuyor</b>, geçmiş satırları her açılışta yenileniyor.
+    /// </remarks>
+    private async void OnMessageHistoryOpening(object? sender, EventArgs e)
+    {
+        if (ViewModel is not { } model)
+        {
+            return;
+        }
+
+        // Flyout içindeki adlar kod arkasında ALAN OLARAK ÜRETİLMİYOR (ayrı ad kapsamı);
+        // menüye düğmenin kendisi üzerinden erişiliyor.
+        if (MessageHistoryButton.Flyout is not MenuFlyout flyout)
+        {
+            return;
+        }
+
+        await model.Message.LoadRecentAsync().ConfigureAwait(true);
+
+        RebuildHistoryMenu(flyout, model.Message);
+    }
+
+    private static void RebuildHistoryMenu(MenuFlyout flyout, CommitMessageViewModel message)
+    {
+        List<object> items = [.. flyout.Items.OfType<object>()];
+
+        // Ayraçtan sonrası geçmiş; her açılışta baştan kuruluyor.
+        int separator = items.FindIndex(item => item is Separator);
+
+        if (separator >= 0 && items.Count > separator + 1)
+        {
+            items.RemoveRange(separator + 1, items.Count - separator - 1);
+        }
+
+        foreach (CommitMessageHistoryItem entry in message.RecentMessages)
+        {
+            items.Add(new MenuItem
+            {
+                Header = entry.Label,
+                Command = entry.ApplyCommand,
+                CommandParameter = entry,
+
+                // Tam mesaj ipucunda: menüde yalnızca ilk satır görünüyor, kullanıcı gövdesi
+                // olan bir mesajı seçmeden önce ne aldığını görebilmeli.
+                [ToolTip.TipProperty] = entry.Message,
+            });
+        }
+
+        flyout.Items.Clear();
+
+        foreach (object item in items)
+        {
+            flyout.Items.Add(item);
+        }
+    }
+
+    private void OnApplyTemplateClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel is { } model)
+        {
+            _ = model.Message.ApplyTemplateAsync();
+        }
     }
 }

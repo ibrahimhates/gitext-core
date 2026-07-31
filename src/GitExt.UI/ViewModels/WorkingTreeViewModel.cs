@@ -92,6 +92,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
 {
     private readonly IStatusReader _statusReader;
     private readonly IStagingWriter _staging;
+    private readonly ICommitWriter _commitWriter;
 
     private CancellationTokenSource? _refreshing;
 
@@ -109,14 +110,21 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     public WorkingTreeViewModel(
         IStatusReader statusReader,
         IStagingWriter staging,
-        DiffViewModel diff)
+        ICommitWriter commitWriter,
+        DiffViewModel diff,
+        ICommitMessageReader? messageReader = null,
+        ICommitMessageStore? messageStore = null)
     {
         ArgumentNullException.ThrowIfNull(statusReader);
         ArgumentNullException.ThrowIfNull(staging);
+        ArgumentNullException.ThrowIfNull(commitWriter);
         ArgumentNullException.ThrowIfNull(diff);
 
         _statusReader = statusReader;
         _staging = staging;
+        _commitWriter = commitWriter;
+
+        Message = new CommitMessageViewModel(messageReader, messageStore);
 
         Diff = diff;
 
@@ -127,6 +135,9 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
 
         // Kısmi staging yalnızca burada anlamlı; diff bileşeni bunu dışarıdan alıyor.
         Diff.StagingHost = this;
+
+        // Mesaj boşalıp dolunca commit düğmesinin durumu değişiyor.
+        Message.PropertyChanged += (_, _) => OnPropertyChanged(nameof(CanCommit));
     }
 
     /// <inheritdoc />
@@ -194,6 +205,8 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     [ObservableProperty]
     public partial bool IsBusy { get; private set; }
 
+    partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(CanCommit));
+
     [ObservableProperty]
     public partial string? ErrorMessage { get; private set; }
 
@@ -207,6 +220,88 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     /// <summary>Hiç değişiklik yok mu?</summary>
     [ObservableProperty]
     public partial bool IsClean { get; private set; }
+
+    /// <summary>Commit mesajı kutusu (P05-T12) ve yardımcıları (P05-T13).</summary>
+    public CommitMessageViewModel Message { get; }
+
+    /// <summary>Son commit'in üzerine yaz (<c>--amend</c>).</summary>
+    /// <remarks>
+    /// ⚠️ Yayınlanmış bir commit'te geçmişi yeniden yazar; uyarı P05-T15'te gelecek.
+    /// </remarks>
+    [ObservableProperty]
+    public partial bool Amend { get; set; }
+
+    /// <summary>
+    /// Commit oluşturulabilir mi?
+    /// </summary>
+    /// <remarks>
+    /// Bileşik koşul XAML'de değil <b>burada</b> (P04-T10 kararı). Mesaj boşken commit
+    /// düğmesini açık bırakmak, git'in reddedeceği bir işlemi sunmak olurdu — boş mesaj
+    /// çıkış 1 veriyor (P05-T06'da ölçüldü).
+    /// </remarks>
+    public bool CanCommit => !IsBusy && !Message.IsEmpty && (HasStagedChanges || Amend);
+
+    /// <summary>Commit sonrası gösterilecek çıktı; yoksa <see langword="null"/> (P05-T07).</summary>
+    [ObservableProperty]
+    public partial GitOutputViewModel? CommitOutput { get; set; }
+
+    partial void OnAmendChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanCommit));
+
+        // Amend işaretlenince düzeltilecek mesajı görmek gerekiyor: kutu boşken HEAD'in
+        // mesajı yükleniyor (GitExtensions'ta da koşul bu). Dolu kutuya dokunulmuyor —
+        // kullanıcı yeni bir mesaj yazmaya başladıysa amend'i işaretlemek onu silmemeli.
+        if (value)
+        {
+            _ = Message.LoadHeadMessageAsync();
+        }
+    }
+
+    /// <summary>
+    /// Stage'lenmiş değişikliklerden commit oluşturur.
+    /// </summary>
+    /// <remarks>
+    /// Başarıda mesaj <b>temizleniyor</b>: aynı metinle ikinci bir commit atmak neredeyse her
+    /// zaman kazadır. Hook çıktısı veya mesaj değişikliği varsa
+    /// <see cref="CommitOutput"/> doluyor (P05-T07).
+    /// </remarks>
+    public async Task CommitAsync(CancellationToken cancellationToken = default)
+    {
+        if (WorkingDirectory is not { Length: > 0 } directory || !CanCommit)
+        {
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            ErrorMessage = null;
+            ErrorDetails = null;
+            CommitOutput = null;
+
+            CommitResult result = await _commitWriter
+                .CommitAsync(directory, Message.Text, new CommitOptions { Amend = Amend }, cancellationToken)
+                .ConfigureAwait(true);
+
+            // Kutu ve TASLAK birlikte temizleniyor: commit'lenen metin diskte kalsaydı ekran
+            // bir daha açıldığında geri gelir ve ikinci bir commit'e davet ederdi (P05-T13).
+            await Message.OnCommittedAsync(cancellationToken).ConfigureAwait(true);
+            Amend = false;
+
+            // Gösterilecek bir şey varsa: hook konuştu ya da mesaj değişti.
+            CommitOutput = result.NeedsReporting ? GitOutputViewModel.ForCommit(result) : null;
+        }
+        catch (GitException ex)
+        {
+            ErrorMessage = ex.Message;
+            ErrorDetails = GitOutputViewModel.ForFailure(ex);
+            IsBusy = false;
+            return;
+        }
+
+        await RefreshAsync(cancellationToken).ConfigureAwait(true);
+    }
 
     /// <summary>Etkin listedeki seçili satır.</summary>
     public WorkingTreeFileRow? SelectedRow =>
@@ -280,6 +375,10 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     public async Task OpenAsync(string? workingDirectory, CancellationToken cancellationToken = default)
     {
         WorkingDirectory = workingDirectory;
+
+        // Taslak, git'in hazırladığı mesaj (merge/cherry-pick) ve şablon durumu burada
+        // yükleniyor; kutu doluysa hiçbiri üzerine yazmıyor (P05-T13).
+        await Message.OpenAsync(workingDirectory, cancellationToken).ConfigureAwait(true);
 
         if (string.IsNullOrEmpty(workingDirectory))
         {
@@ -357,6 +456,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             IsClean = Unstaged.Count == 0 && Staged.Count == 0;
 
             OnPropertyChanged(nameof(HasStagedChanges));
+            OnPropertyChanged(nameof(CanCommit));
 
             // Seçim aynı indekste kalsa bile ARDINDAKİ dosya değişmiş olabilir; diff
             // yenilenmezse kullanıcı başka bir dosyanın içeriğine bakar.

@@ -7,6 +7,7 @@ using Avalonia.VisualTree;
 using GitExt.Core.Model;
 using GitExt.UI.Tests.Fakes;
 using GitExt.UI.ViewModels;
+using GitExt.UI.Controls;
 using GitExt.UI.Views;
 
 namespace GitExt.UI.Tests.Views;
@@ -33,13 +34,23 @@ public class WorkingTreeLayoutTests
     /// (<c>ConfigureAwait(true)</c>) ve <c>GetAwaiter().GetResult()</c> ile beklemek
     /// headless testte <b>kilitlenme</b> üretiyor (ölçüldü — test takımı hiç bitmedi).
     /// </remarks>
+    private static Task<(Window Window, WorkingTreeView View)> ShowAsync(
+        params FileStatus[] entries) =>
+        ShowAsync(null, entries);
+
     private static async Task<(Window Window, WorkingTreeView View)> ShowAsync(
+        FakeCommitMessageReader? messages,
         params FileStatus[] entries)
     {
         FakeStatusReader status = new(entries);
 
         WorkingTreeViewModel model = new(
-            status, new FakeStagingWriter(status), new DiffViewModel(new FakeDiffReader()));
+            status,
+            new FakeStagingWriter(status),
+            new FakeCommitWriter(status),
+            new DiffViewModel(new FakeDiffReader()),
+            messages,
+            new FakeCommitMessageStore());
 
         await model.OpenAsync("/tmp/depo");
 
@@ -161,6 +172,168 @@ public class WorkingTreeLayoutTests
 
         ratio.ShouldBeInRange(0.35, 0.50);
 
+        window.Close();
+    }
+
+    // ---- P05-T12: commit paneli ----
+
+    [AvaloniaFact]
+    public async Task Diff_USTTE_commit_mesaji_ALTTA()
+    {
+        // FormCommit: splitRight.Panel1 = SelectedDiff, Panel2 = commit mesajı.
+        (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
+
+        DiffView diff = view.GetVisualDescendants().OfType<DiffView>().Single();
+        Rect message = BoundsIn(window, view.GetControl<TextBox>("MessageBox"));
+
+        BoundsIn(window, diff).Bottom.ShouldBeLessThanOrEqualTo(message.Y);
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Commit_dugmeleri_SOLDA_mesaj_kutusu_SAGDA()
+    {
+        // `tableLayoutPanel1`: sol sütun `flowCommitButtons`, sağ sütun `Message`.
+        (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
+
+        Rect commit = BoundsIn(window, view.GetControl<Button>("CommitButton"));
+        Rect message = BoundsIn(window, view.GetControl<TextBox>("MessageBox"));
+
+        commit.Right.ShouldBeLessThanOrEqualTo(message.X);
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Commit_dugmeleri_GitExtensions_sirasinda()
+    {
+        // `flowCommitButtons`: Commit · Commit&Push · StageInSuperproject · Amend ·
+        // [ResetAuthor · ResetSoft] · StashStaged · ResetAll · ResetUnstaged.
+        // Uygulanmamış olanlar devre dışı ama YERİNDE (§ 9).
+        (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
+
+        double Top(string name) => BoundsIn(
+            window,
+            view.GetVisualDescendants().OfType<Control>().First(c => c.Name == name)).Y;
+
+        Top("CommitButton").ShouldBeLessThan(Top("CommitAndPushButton"));
+        Top("CommitAndPushButton").ShouldBeLessThan(Top("StageInSuperprojectBox"));
+        Top("StageInSuperprojectBox").ShouldBeLessThan(Top("AmendBox"));
+        Top("AmendBox").ShouldBeLessThan(Top("StashStagedButton"));
+        Top("StashStagedButton").ShouldBeLessThan(Top("ResetAllButton"));
+        Top("ResetAllButton").ShouldBeLessThan(Top("ResetUnstagedButton"));
+
+        view.GetControl<Button>("CommitAndPushButton").IsEnabled.ShouldBeFalse();
+        view.GetControl<Button>("ResetAllButton").IsEnabled.ShouldBeFalse();
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Elli_ve_yetmis_iki_kilavuzu_gercekten_CIZILIYOR()
+    {
+        // P04-T09'un dersi: bağlama sessizce hiçbir şey çizmeyebilir. Kılavuz çizilmezse
+        // kullanıcı sınırı göremez ve özellik hiç yokmuş gibi olur.
+        (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
+
+        ColumnGuides guides = view.GetControl<ColumnGuides>("MessageGuides");
+
+        guides.IsEffectivelyVisible.ShouldBeTrue();
+        guides.Columns.ShouldBe([50, 72]);
+        guides.Bounds.Width.ShouldBeGreaterThan(0);
+
+        window.Close();
+    }
+
+    // ---- P05-T13: mesaj yardımcıları araç çubuğu ----
+
+    [AvaloniaFact]
+    public async Task Mesaj_araci_cubugu_GitExtensions_sirasinda()
+    {
+        // `toolbarCommit` sırası: commit message ▾ · options ▾ · templates ▾ · create branch.
+        // Uygulanmamış olanlar (Seçenekler, Dal oluştur) devre dışı ama YERİNDE (§ 9);
+        // sonradan araya sokmak sırayı bozar ve kas hafızasını kırar.
+        (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
+
+        double Left(string name) => BoundsIn(
+            window,
+            view.GetVisualDescendants().OfType<Control>().First(c => c.Name == name)).X;
+
+        Left("MessageHistoryButton").ShouldBeLessThan(Left("CommitOptionsButton"));
+        Left("CommitOptionsButton").ShouldBeLessThan(Left("CommitTemplatesButton"));
+        Left("CommitTemplatesButton").ShouldBeLessThan(Left("CreateBranchButton"));
+
+        // P05-T13'te açılan ikisi çalışır, ikisi hâlâ devre dışı.
+        view.GetControl<Button>("MessageHistoryButton").IsEnabled.ShouldBeTrue();
+        view.GetControl<Button>("CommitTemplatesButton").IsEnabled.ShouldBeTrue();
+        view.GetControl<Button>("CommitOptionsButton").IsEnabled.ShouldBeFalse();
+        view.GetControl<Button>("CreateBranchButton").IsEnabled.ShouldBeFalse();
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Gecmis_menusu_GERCEKTEN_ogeler_ciziyor()
+    {
+        // 🔑 Fazın tekrar eden dersi: ViewModel testi yeşilken menü ekranda BOŞ olabilir
+        // (P04-T09'daki boş hunk başlıkları, P03'teki `IsVisible` bağlaması). Burada
+        // doğrulanan şey koleksiyonun dolması değil, menünün öğe ÜRETMESİ.
+        FakeCommitMessageReader reader = new();
+        reader.Recent.AddRange(["ikinci konu", "ilk konu"]);
+
+        (Window window, WorkingTreeView view) = await ShowAsync(reader, Unstaged("a.txt"));
+
+        Button historyButton = view.GetControl<Button>("MessageHistoryButton");
+        MenuFlyout flyout = historyButton.Flyout.ShouldBeOfType<MenuFlyout>();
+
+        flyout.ShowAt(historyButton);
+        Dispatcher.UIThread.RunJobs();
+
+        // Menü asenkron dolduğu için (git okuması) bir tur daha gerekiyor.
+        await Task.Delay(50);
+        Dispatcher.UIThread.RunJobs();
+
+        List<string> headers =
+        [
+            .. flyout.Items.OfType<MenuItem>().Select(item => item.Header?.ToString() ?? string.Empty),
+        ];
+
+        headers.ShouldContain("ikinci konu");
+        headers.ShouldContain("ilk konu");
+
+        // Sabit öğe (filtre) korunuyor — geçmiş satırları onun üzerine yazmamalı.
+        headers.ShouldContain("Yalnızca benim mesajlarım");
+
+        flyout.Hide();
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Sablon_menusu_ayarsizken_de_NEDENINI_soyluyor()
+    {
+        // Boş bir menü, kullanıcıya "burada bir şey olmalıydı" dedirtir. Şablon yoksa
+        // sebebi yazıyor; bozuksa yolu yazıyor (git'in kendisi de o durumda commit'i
+        // reddediyor — ölçüldü).
+        //
+        // ⚠️ ÖLÇÜLDÜ: menü AÇILMADAN bakmak yanıltıcı. Flyout kapalıyken içindeki öğeler
+        // görsel ağaçta değil, `DataContext` akmıyor ve `IsEnabled` bağlaması hiç
+        // değerlendirilmemiş varsayılanında (true) duruyor. Doğrulanacak şey kullanıcının
+        // gördüğü durum, yani menü açıkken.
+        (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
+
+        Button templatesButton = view.GetControl<Button>("CommitTemplatesButton");
+        MenuFlyout flyout = templatesButton.Flyout.ShouldBeOfType<MenuFlyout>();
+
+        flyout.ShowAt(templatesButton);
+        Dispatcher.UIThread.RunJobs();
+
+        MenuItem item = flyout.Items.OfType<MenuItem>().First(menuItem => menuItem.Name == "TemplateItem");
+
+        item.Header?.ToString().ShouldBe("commit.template ayarlı değil");
+        item.IsEnabled.ShouldBeFalse();
+
+        flyout.Hide();
         window.Close();
     }
 }

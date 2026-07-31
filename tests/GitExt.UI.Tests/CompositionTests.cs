@@ -51,6 +51,21 @@ public class CompositionTests
         provider.GetRequiredService<GitExt.UI.ViewModels.MainWindowViewModel>()
             .CreateWorkingTree()
             .ShouldNotBeNull();
+
+        // 🔴 Mesaj yardımcıları (P05-T13) OPSİYONEL parametre olarak geçiyor: kayıt eksik
+        // olsaydı DI sessizce `null` verir, derleme geçer, testlerin çoğu geçer — ve
+        // kullanıcının taslağı hiç kaydedilmezdi. Sessiz devre dışı kalma, çalışmayan
+        // özellikten daha kötü.
+        provider.GetRequiredService<GitExt.Core.Git.IGitConfigReader>().ShouldNotBeNull();
+        provider.GetRequiredService<GitExt.Core.ICommitMessageReader>().ShouldNotBeNull();
+
+        // Taslak deposu SINGLETON olmalı: git dizinini depo başına önbelleğe alıyor,
+        // her istekte yenisi üretilseydi her tuş vuruşunda fazladan bir `git rev-parse`
+        // çalışırdı.
+        GitExt.Core.ICommitMessageStore store =
+            provider.GetRequiredService<GitExt.Core.ICommitMessageStore>();
+
+        store.ShouldBeSameAs(provider.GetRequiredService<GitExt.Core.ICommitMessageStore>());
     }
 
     // Pencere oluşturmak Avalonia platformu gerektiriyor; bu yüzden [AvaloniaFact].

@@ -56,7 +56,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private readonly IStatusReader? _statusReader;
     private readonly IStagingWriter? _staging;
+    private readonly ICommitWriter? _commitWriter;
     private readonly IDiffReader? _diffReader;
+    private readonly ICommitMessageReader? _messageReader;
+    private readonly ICommitMessageStore? _messageStore;
 
     /// <summary>
     /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
@@ -72,12 +75,18 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </remarks>
     public WorkingTreeViewModel? CreateWorkingTree()
     {
-        if (_statusReader is null || _staging is null || _diffReader is null)
+        if (_statusReader is null || _staging is null || _commitWriter is null || _diffReader is null)
         {
             return null;
         }
 
-        return new WorkingTreeViewModel(_statusReader, _staging, new DiffViewModel(_diffReader));
+        return new WorkingTreeViewModel(
+            _statusReader,
+            _staging,
+            _commitWriter,
+            new DiffViewModel(_diffReader),
+            _messageReader,
+            _messageStore);
     }
 
     public MainWindowViewModel(
@@ -85,14 +94,20 @@ public partial class MainWindowViewModel : ViewModelBase
         IRecentRepositoryStore recentStore,
         IStatusReader? statusReader = null,
         IStagingWriter? staging = null,
-        IDiffReader? diffReader = null)
+        ICommitWriter? commitWriter = null,
+        IDiffReader? diffReader = null,
+        ICommitMessageReader? messageReader = null,
+        ICommitMessageStore? messageStore = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
         ArgumentNullException.ThrowIfNull(recentStore);
 
         _statusReader = statusReader;
         _staging = staging;
+        _commitWriter = commitWriter;
         _diffReader = diffReader;
+        _messageReader = messageReader;
+        _messageStore = messageStore;
 
         Commits = commits;
         _recentStore = recentStore;

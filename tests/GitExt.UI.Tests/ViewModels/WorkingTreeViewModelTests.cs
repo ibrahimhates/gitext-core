@@ -22,18 +22,21 @@ public class WorkingTreeViewModelTests
     private sealed record Harness(
         WorkingTreeViewModel Model,
         FakeStatusReader Status,
-        FakeStagingWriter Staging);
+        FakeStagingWriter Staging,
+        FakeCommitWriter Commits);
 
     private static async Task<Harness> CreateAsync(params FileStatus[] entries)
     {
         FakeStatusReader status = new(entries);
         FakeStagingWriter staging = new(status);
+        FakeCommitWriter commits = new(status);
 
-        WorkingTreeViewModel model = new(status, staging, new DiffViewModel(new FakeDiffReader()));
+        WorkingTreeViewModel model = new(
+            status, staging, commits, new DiffViewModel(new FakeDiffReader()));
 
         await model.OpenAsync("/tmp/depo");
 
-        return new Harness(model, status, staging);
+        return new Harness(model, status, staging, commits);
     }
 
     [AvaloniaFact]
@@ -196,7 +199,10 @@ public class WorkingTreeViewModelTests
                 standardError: "fatal: bozuk index"));
 
         WorkingTreeViewModel model = new(
-            status, new FakeStagingWriter(status), new DiffViewModel(new FakeDiffReader()));
+            status,
+            new FakeStagingWriter(status),
+            new FakeCommitWriter(status),
+            new DiffViewModel(new FakeDiffReader()));
 
         await model.OpenAsync("/tmp/depo");
 

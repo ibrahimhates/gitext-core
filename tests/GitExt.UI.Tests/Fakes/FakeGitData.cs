@@ -508,3 +508,178 @@ public sealed class FakeStagingWriter : IStagingWriter
         IReadOnlyList<RepositoryPath> paths,
         CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
+
+/// <summary>
+/// Sahte commit yazıcısı — <c>git</c>'e dokunmadan commit akışını test etmek için.
+/// </summary>
+public sealed class FakeCommitWriter : ICommitWriter
+{
+    private readonly FakeStatusReader? _status;
+
+    public FakeCommitWriter(FakeStatusReader? status = null)
+    {
+        _status = status;
+    }
+
+    public List<string> Messages { get; } = [];
+
+    public List<CommitOptions> Options { get; } = [];
+
+    public Exception? Failure { get; set; }
+
+    /// <summary>Sonuçta döndürülecek çıktı (hook çıktısı benzetimi).</summary>
+    public string Output { get; set; } = string.Empty;
+
+    /// <summary>Hook mesajı değiştirmiş gibi davranır.</summary>
+    public string? RewrittenMessage { get; set; }
+
+    public Task<CommitResult> CommitAsync(
+        string workingDirectory,
+        string message,
+        CommitOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException<CommitResult>(Failure);
+        }
+
+        Messages.Add(message);
+        Options.Add(options ?? CommitOptions.Default);
+
+        // Commit edilen dosyalar çalışma dizininden düşer.
+        _status?.Entries.Clear();
+
+        return Task.FromResult(new CommitResult
+        {
+            Id = CommitId.Parse(new string('c', 40)),
+            Message = RewrittenMessage ?? message,
+            RequestedMessage = message,
+            Output = Output,
+        });
+    }
+}
+
+/// <summary>
+/// P05-T13 — sahte commit mesajı okuyucusu (geçmiş, HEAD mesajı, şablon).
+/// </summary>
+public sealed class FakeCommitMessageReader : ICommitMessageReader
+{
+    /// <summary>En yeniden eskiye sıralı mesajlar.</summary>
+    public List<string> Recent { get; } = [];
+
+    /// <summary>"Yalnızca benim" filtresiyle dönecek mesajlar; boşsa <see cref="Recent"/>.</summary>
+    public List<string> Mine { get; } = [];
+
+    public string? HeadMessage { get; set; }
+
+    public CommitTemplate? Template { get; set; }
+
+    public string CommentCharacter { get; set; } = "#";
+
+    /// <summary>Kaç kez geçmiş okundu — menü açılmadan okunmadığını doğrulamak için.</summary>
+    public int RecentReadCount { get; private set; }
+
+    public bool LastOnlyCurrentUser { get; private set; }
+
+    public Exception? Failure { get; set; }
+
+    public Task<IReadOnlyList<string>> ReadRecentAsync(
+        string workingDirectory,
+        int count,
+        bool onlyCurrentUser = false,
+        CancellationToken cancellationToken = default)
+    {
+        RecentReadCount++;
+        LastOnlyCurrentUser = onlyCurrentUser;
+
+        if (Failure is not null)
+        {
+            return Task.FromException<IReadOnlyList<string>>(Failure);
+        }
+
+        List<string> source = onlyCurrentUser && Mine.Count > 0 ? Mine : Recent;
+
+        return Task.FromResult<IReadOnlyList<string>>([.. source.Take(count)]);
+    }
+
+    public Task<string?> ReadHeadMessageAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default) =>
+        Failure is not null
+            ? Task.FromException<string?>(Failure)
+            : Task.FromResult(HeadMessage);
+
+    public Task<CommitTemplate?> ReadTemplateAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Template);
+
+    public Task<string> ReadCommentCharacterAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(CommentCharacter);
+}
+
+/// <summary>
+/// P05-T13 — sahte taslak deposu.
+/// </summary>
+/// <remarks>
+/// Depo yolu başına ayrı tutuluyor: gerçek deponun worktree başına ayrı davranışı
+/// (<c>CommitMessageTests</c>'te gerçek git ile doğrulandı) burada da karşılığını bulsun.
+/// </remarks>
+public sealed class FakeCommitMessageStore : ICommitMessageStore
+{
+    public Dictionary<string, string> Drafts { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>git'in hazırladığı mesaj (merge/cherry-pick) — taslaktan önce gelir.</summary>
+    public string? PendingMessage { get; set; }
+
+    public int SaveCount { get; private set; }
+
+    public int ClearCount { get; private set; }
+
+    public Task<PendingCommitMessage> ReadAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        if (PendingMessage is { Length: > 0 } pending)
+        {
+            return Task.FromResult(new PendingCommitMessage(pending, CommitMessageSource.Pending));
+        }
+
+        return Task.FromResult(
+            Drafts.TryGetValue(workingDirectory, out string? draft) && draft.Length > 0
+                ? new PendingCommitMessage(draft, CommitMessageSource.Draft)
+                : PendingCommitMessage.None);
+    }
+
+    public Task SaveDraftAsync(
+        string workingDirectory,
+        string message,
+        CancellationToken cancellationToken = default)
+    {
+        SaveCount++;
+
+        if (message.Trim().Length == 0)
+        {
+            Drafts.Remove(workingDirectory);
+        }
+        else
+        {
+            Drafts[workingDirectory] = message;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task ClearDraftAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ClearCount++;
+        Drafts.Remove(workingDirectory);
+
+        return Task.CompletedTask;
+    }
+}

@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
              xmlns:views="using:GitExt.UI.Views"
+             xmlns:controls="using:GitExt.UI.Controls"
              mc:Ignorable="d"
              d:DesignWidth="918" d:DesignHeight="622"
              x:Class="GitExt.UI.Views.WorkingTreeView"
@@ -73,6 +74,12 @@
         </Style>
         <Style Selector="TextBlock.status.conflicted">
             <Setter Property="Foreground" Value="#BC4C00" />
+        </Style>
+
+        <!-- Konu sayacı sınırı aşınca uyarı rengine geçiyor; commit'i ENGELLEMİYOR. -->
+        <Style Selector="TextBlock.over">
+            <Setter Property="Foreground" Value="#BC4C00" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
     </UserControl.Styles>
 
@@ -195,9 +202,169 @@
 
         <!-- ================= SAĞ SÜTUN ================= -->
         <!--
-            Üst: seçili dosyanın diff'i. Alt (commit mesajı ve düğmeleri) P05-T12'de
-            gelecek; şimdiden boş bir alan ayırmak yerine diff tüm yüksekliği kullanıyor.
+            `splitRight` (yatay): Panel1 = SelectedDiff, Panel2 = commit mesajı.
+            SplitterDistance 426 / 622 ≈ %68.
         -->
-        <views:DiffView Grid.Column="2" DataContext="{Binding Diff}" />
+        <Grid Grid.Column="2" RowDefinitions="68*,Auto,32*">
+
+            <views:DiffView Grid.Row="0" DataContext="{Binding Diff}" />
+
+            <GridSplitter Grid.Row="1" Height="6" Background="Transparent" />
+
+            <!--
+                `tableLayoutPanel1` (2×2): sol sütun `flowCommitButtons` (otomatik genişlik),
+                sağ sütunda üstte `toolbarCommit`, altta `Message`.
+            -->
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,*" Margin="0,4,0,0">
+
+                <!--
+                    `flowCommitButtons` sırası birebir: Commit · Commit&amp;Push ·
+                    Stage in Superproject · Amend · [Reset author · Reset soft] ·
+                    Stash staged · Reset all changes · Reset unstaged changes.
+                    Uygulanmamış olanlar devre dışı ama YERİNDE (§ 9).
+                -->
+                <StackPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                            Spacing="4"
+                            Margin="0,0,10,0"
+                            MinWidth="150">
+
+                    <Button Name="CommitButton"
+                            Content="Commit"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            IsEnabled="{Binding CanCommit}"
+                            ToolTip.Tip="Ctrl+Enter"
+                            Click="OnCommitClick" />
+
+                    <Button Name="CommitAndPushButton"
+                            Content="Commit &amp; push"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            IsEnabled="False" />
+
+                    <CheckBox Name="StageInSuperprojectBox"
+                              Content="Üst projede stage'le"
+                              FontSize="11"
+                              IsEnabled="False" />
+
+                    <CheckBox Name="AmendBox"
+                              Content="Son commit'i düzelt (amend)"
+                              FontSize="11"
+                              IsChecked="{Binding Amend}" />
+
+                    <StackPanel Margin="12,0,0,0" Spacing="2" IsVisible="{Binding Amend}">
+                        <CheckBox Name="ResetAuthorBox" Content="Yazarı sıfırla" FontSize="11" IsEnabled="False" />
+                        <CheckBox Name="ResetSoftBox" Content="Soft reset" FontSize="11" IsEnabled="False" />
+                    </StackPanel>
+
+                    <Button Name="StashStagedButton" Content="Stage'lenmişi stash'le"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            FontSize="11" IsEnabled="False" />
+
+                    <Button Name="ResetAllButton" Content="Tüm değişiklikleri sıfırla…"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            FontSize="11" IsEnabled="False" />
+
+                    <Button Name="ResetUnstagedButton" Content="Stage'lenmemişleri sıfırla…"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            FontSize="11" IsEnabled="False" />
+                </StackPanel>
+
+                <!--
+                    `toolbarCommit` sırası: commit message ▾ · options ▾ · templates ▾ ·
+                    create branch. Hepsi P05-T13 / Faz 06.
+                -->
+                <StackPanel Grid.Row="0" Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="6"
+                            Margin="0,0,0,4">
+
+                    <!--
+                        Geçmiş menüsü AÇILIRKEN okunuyor (GitExtensions'ta da
+                        `DropDownOpening`): her depo açılışında fazladan bir `git log`
+                        çalıştırmak, kullanıcının hiç açmayacağı bir menünün bedeli olurdu.
+                    -->
+                    <Button Name="MessageHistoryButton" Content="Mesaj ▾" FontSize="11" Padding="8,2">
+                        <Button.Flyout>
+                            <MenuFlyout Opening="OnMessageHistoryOpening">
+                                <MenuItem Header="Yalnızca benim mesajlarım"
+                                          ToggleType="CheckBox"
+                                          IsChecked="{Binding Message.OnlyMyMessages}" />
+                                <Separator />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <Button Name="CommitOptionsButton" Content="Seçenekler ▾" FontSize="11" Padding="8,2" IsEnabled="False" />
+
+                    <Button Name="CommitTemplatesButton" Content="Şablonlar ▾" FontSize="11" Padding="8,2">
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <!--
+                                    Bulunamayan şablon GİZLENMİYOR: git'in kendisi o durumda
+                                    commit'i `fatal: could not read` ile reddediyor, yani
+                                    yapılandırma gerçekten bozuk (ölçüldü).
+                                -->
+                                <MenuItem Name="TemplateItem"
+                                          Header="{Binding Message.TemplateLabel}"
+                                          IsEnabled="{Binding Message.CanApplyTemplate}"
+                                          Click="OnApplyTemplateClick" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button Name="CreateBranchButton" Content="Dal oluştur" FontSize="11" Padding="8,2" IsEnabled="False" />
+
+                    <TextBlock Name="SubjectCounter"
+                               Text="{Binding Message.SubjectCounter}"
+                               Classes.over="{Binding Message.IsSubjectTooLong}"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0" />
+                </StackPanel>
+
+                <!--
+                    Mesaj kutusu + 50/72 kılavuzu. Kılavuz kutunun ARKASINDA çiziliyor;
+                    metnin üstüne çizmek imleci ve seçimi gölgelerdi.
+                -->
+                <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
+
+                    <Border Grid.Row="0"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+
+                        <Panel>
+                            <controls:ColumnGuides Name="MessageGuides"
+                                                   Columns="{Binding Message.GuideColumnsForBinding}"
+                                                   Stroke="#D0D7DE"
+                                                   TextOffset="5"
+                                                   TextElement.FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                                   TextElement.FontSize="12" />
+
+                            <TextBox Name="MessageBox"
+                                     Text="{Binding Message.Text}"
+                                     AcceptsReturn="True"
+                                     AcceptsTab="False"
+                                     TextWrapping="NoWrap"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="4,0"
+                                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                     FontSize="12"
+                                     VerticalContentAlignment="Top"
+                                     PlaceholderText="Commit mesajı (Ctrl+Enter ile commit)" />
+                        </Panel>
+                    </Border>
+
+                    <TextBlock Grid.Row="1"
+                               Name="MessageHint"
+                               Text="{Binding Message.Hint}"
+                               IsVisible="{Binding Message.HasHint}"
+                               Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Margin="2,3,0,0" />
+                </Grid>
+            </Grid>
+        </Grid>
     </Grid>
 </UserControl>
