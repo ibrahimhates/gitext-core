@@ -88,6 +88,19 @@ public partial class DiffView : UserControl
                 e.Handled = true;
                 break;
 
+            case Key.S when control && !inSearchBox:
+                // GitExtensions'ta da stage/unstage kısayolu var (`Command.StageLines` /
+                // `Command.UnstageLines`) ve ikisi birbirini dışlıyor: hangi taraf
+                // görüntüleniyorsa o çalışıyor.
+                _ = model.StageSelectionAsync(SelectedLineIndices());
+                e.Handled = true;
+                break;
+
+            case Key.U when control && !inSearchBox:
+                _ = model.UnstageSelectionAsync(SelectedLineIndices());
+                e.Handled = true;
+                break;
+
             case Key.C when control && !inSearchBox:
                 // Ctrl+Shift+C yamayı önekleriyle kopyalar; düz Ctrl+C yalnızca kodu.
                 _ = CopyAsync(model, shift ? DiffCopyMode.Patch : DiffCopyMode.Code);
@@ -216,5 +229,37 @@ public partial class DiffView : UserControl
         }
 
         return indices;
+    }
+
+    // ---- P05-T10: kısmi staging ve bağlam menüsü ----
+
+    private void OnStageLinesClick(object? sender, RoutedEventArgs e) =>
+        Apply(model => model.StageSelectionAsync(SelectedLineIndices()));
+
+    private void OnUnstageLinesClick(object? sender, RoutedEventArgs e) =>
+        Apply(model => model.UnstageSelectionAsync(SelectedLineIndices()));
+
+    private void OnCopyCodeClick(object? sender, RoutedEventArgs e) => Copy(DiffCopyMode.Code);
+
+    private void OnCopyPatchClick(object? sender, RoutedEventArgs e) => Copy(DiffCopyMode.Patch);
+
+    private void OnCopyNewClick(object? sender, RoutedEventArgs e) => Copy(DiffCopyMode.NewVersion);
+
+    private void OnCopyOldClick(object? sender, RoutedEventArgs e) => Copy(DiffCopyMode.OldVersion);
+
+    private void Copy(DiffCopyMode mode)
+    {
+        if (Model is { } model)
+        {
+            _ = CopyAsync(model, mode);
+        }
+    }
+
+    private void Apply(Func<DiffViewModel, Task> operation)
+    {
+        if (Model is { } model)
+        {
+            _ = operation(model);
+        }
     }
 }

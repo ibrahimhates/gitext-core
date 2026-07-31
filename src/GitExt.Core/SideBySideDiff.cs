@@ -20,6 +20,22 @@ public sealed record SideBySideRow
     /// <summary>Hunk başlığı; içerik satırında <see langword="null"/>.</summary>
     public string? HunkHeader { get; init; }
 
+    /// <summary>
+    /// Satırın ait olduğu hunk'ın indeksi; tek hunk çevrilirken <c>-1</c>.
+    /// </summary>
+    /// <remarks>
+    /// Kısmi staging (P05-T11) yan yana moddaki seçimi <see cref="PatchSelection"/>'a
+    /// çevirirken bunu kullanıyor. Ekrandaki satır sırası yeterli değil: bir yan yana satır
+    /// <b>iki farklı</b> unified satırı taşıyabiliyor.
+    /// </remarks>
+    public int HunkIndex { get; init; } = -1;
+
+    /// <summary>Sol satırın hunk içindeki indeksi; sol taraf boşsa <c>-1</c>.</summary>
+    public int LeftIndex { get; init; } = -1;
+
+    /// <summary>Sağ satırın hunk içindeki indeksi; sağ taraf boşsa <c>-1</c>.</summary>
+    public int RightIndex { get; init; } = -1;
+
     public bool IsHunkHeader => HunkHeader is not null;
 
     public override string ToString() =>
@@ -54,17 +70,19 @@ public static class SideBySideDiff
 
         List<SideBySideRow> rows = [];
 
-        foreach (DiffHunk hunk in diff.Hunks)
+        for (int hunkIndex = 0; hunkIndex < diff.Hunks.Count; hunkIndex++)
         {
-            rows.Add(new SideBySideRow { HunkHeader = hunk.Header });
-            rows.AddRange(Build(hunk));
+            DiffHunk hunk = diff.Hunks[hunkIndex];
+
+            rows.Add(new SideBySideRow { HunkHeader = hunk.Header, HunkIndex = hunkIndex });
+            rows.AddRange(Build(hunk, hunkIndex));
         }
 
         return rows;
     }
 
     /// <summary>Tek bir hunk'ı yan yana yerleşime çevirir (başlık satırı üretilmez).</summary>
-    public static IReadOnlyList<SideBySideRow> Build(DiffHunk hunk)
+    public static IReadOnlyList<SideBySideRow> Build(DiffHunk hunk, int hunkIndex = -1)
     {
         ArgumentNullException.ThrowIfNull(hunk);
 
@@ -81,7 +99,15 @@ public static class SideBySideDiff
             {
                 // Bağlam satırı iki tarafta da aynı; tek nesne yeterli (satır numaralarının
                 // ikisi de üzerinde).
-                rows.Add(new SideBySideRow { Left = line, Right = line });
+                rows.Add(new SideBySideRow
+                {
+                    Left = line,
+                    Right = line,
+                    HunkIndex = hunkIndex,
+                    LeftIndex = index,
+                    RightIndex = index,
+                });
+
                 index++;
                 continue;
             }
@@ -108,7 +134,8 @@ public static class SideBySideDiff
                 removedStart,
                 addedStart - removedStart,
                 addedStart,
-                index - addedStart);
+                index - addedStart,
+                hunkIndex);
         }
 
         return rows;
@@ -129,19 +156,20 @@ public static class SideBySideDiff
         int removedStart,
         int removedCount,
         int addedStart,
-        int addedCount)
+        int addedCount,
+        int hunkIndex)
     {
         if (removedCount == 0 || addedCount == 0)
         {
             // Tek taraflı blok: karşısı boş kalır.
             for (int i = 0; i < removedCount; i++)
             {
-                rows.Add(new SideBySideRow { Left = lines[removedStart + i] });
+                rows.Add(Left(lines, removedStart + i, hunkIndex));
             }
 
             for (int i = 0; i < addedCount; i++)
             {
-                rows.Add(new SideBySideRow { Right = lines[addedStart + i] });
+                rows.Add(Right(lines, addedStart + i, hunkIndex));
             }
 
             return;
@@ -170,18 +198,21 @@ public static class SideBySideDiff
             // Çiftten önce kalan eşsiz satırlar: önce silinenler, sonra eklenenler.
             while (nextRemoved < pairedRemoved)
             {
-                rows.Add(new SideBySideRow { Left = lines[removedStart + nextRemoved++] });
+                rows.Add(Left(lines, removedStart + nextRemoved++, hunkIndex));
             }
 
             while (nextAdded < pairedAdded)
             {
-                rows.Add(new SideBySideRow { Right = lines[addedStart + nextAdded++] });
+                rows.Add(Right(lines, addedStart + nextAdded++, hunkIndex));
             }
 
             rows.Add(new SideBySideRow
             {
                 Left = lines[removedStart + pairedRemoved],
                 Right = lines[addedStart + pairedAdded],
+                HunkIndex = hunkIndex,
+                LeftIndex = removedStart + pairedRemoved,
+                RightIndex = addedStart + pairedAdded,
             });
 
             nextRemoved = pairedRemoved + 1;
@@ -190,12 +221,18 @@ public static class SideBySideDiff
 
         while (nextRemoved < removedCount)
         {
-            rows.Add(new SideBySideRow { Left = lines[removedStart + nextRemoved++] });
+            rows.Add(Left(lines, removedStart + nextRemoved++, hunkIndex));
         }
 
         while (nextAdded < addedCount)
         {
-            rows.Add(new SideBySideRow { Right = lines[addedStart + nextAdded++] });
+            rows.Add(Right(lines, addedStart + nextAdded++, hunkIndex));
         }
     }
+
+    private static SideBySideRow Left(IReadOnlyList<DiffLine> lines, int index, int hunkIndex) =>
+        new() { Left = lines[index], HunkIndex = hunkIndex, LeftIndex = index };
+
+    private static SideBySideRow Right(IReadOnlyList<DiffLine> lines, int index, int hunkIndex) =>
+        new() { Right = lines[index], HunkIndex = hunkIndex, RightIndex = index };
 }

@@ -51,6 +51,25 @@
             Satır arka planları. Renkler AÇIK tema için; Faz 08'de tema kaynak sözlüğüne
             taşınacak (rozetlerle aynı gerekçe).
         -->
+        <!--
+            🔴 ÖLÇÜLDÜ (P05-T11): satır arka planı `ListBoxItem`'ın seçim vurgusunu TAMAMEN
+            örtüyordu — seçim yalnızca bağlam satırlarında görünüyor, eklenen/silinen
+            satırlarda hiç görünmüyordu. Kullanıcının kısmi staging için seçtiği satırlar
+            tam da onlar; seçimi göremeyen kullanıcı yanlış satırları stage'ler ve git bunu
+            kabul eder (yama geçerlidir, içerik sessizce yanlış olur — P05-T04'ün bulgusu).
+
+            Çözüm satırın KENDİ çerçevesi: sol kenarda kalın vurgu + ince üst/alt çizgi.
+            Kenarlık her satırda AYNI kalınlıkta (seçilmemişken saydam) — yoksa seçim
+            değiştikçe satır yüksekliği oynar ve liste zıplar.
+        -->
+        <Style Selector="Border.line">
+            <Setter Property="BorderThickness" Value="3,1,0,1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.line">
+            <Setter Property="BorderBrush" Value="#0969DA" />
+        </Style>
+
         <Style Selector="Border.line.added">
             <Setter Property="Background" Value="#E6FFEC" />
         </Style>
@@ -366,6 +385,42 @@
                      SelectionMode="Multiple"
                      Background="Transparent"
                      BorderThickness="0">
+
+                <!--
+                    DIFF BAĞLAM MENÜSÜ ═ öğe sırası GitExtensions'ın `FileViewer`
+                    `contextMenu`'sünden birebir alındı (P05-T10):
+
+                      stage selected lines · unstage selected lines · reset selected lines ·
+                      copy · copy patch · copy new version · copy old version · ayraç ·
+                      gösterim seçenekleri…
+
+                    ⚠️ Stage ve unstage BİRBİRİNİ DIŞLIYOR: GitExtensions'ta stage yalnızca
+                    çalışma ağacı tarafında, unstage yalnızca index tarafında görünüyor.
+                    Uygulanmamış komutlar kaldırılmıyor, devre dışı duruyor (§ 9).
+                -->
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Name="StageLinesMenuItem"
+                                  Header="Seçili satırları _stage'le"
+                                  IsEnabled="{Binding CanStageSelection}"
+                                  Click="OnStageLinesClick" />
+
+                        <MenuItem Name="UnstageLinesMenuItem"
+                                  Header="Seçili satırları _geri al"
+                                  IsEnabled="{Binding CanUnstageSelection}"
+                                  Click="OnUnstageLinesClick" />
+
+                        <MenuItem Name="ResetLinesMenuItem"
+                                  Header="Seçili satırları sıfırla…"
+                                  IsEnabled="False" />
+
+                        <MenuItem Header="_Kopyala" Click="OnCopyCodeClick" />
+                        <MenuItem Header="_Yama olarak kopyala" Click="OnCopyPatchClick" />
+                        <MenuItem Header="Yeni sürümü kopyala" Click="OnCopyNewClick" />
+                        <MenuItem Header="Eski sürümü kopyala" Click="OnCopyOldClick" />
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+
 
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">

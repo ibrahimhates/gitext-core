@@ -283,4 +283,52 @@ public class GitExtensionsLayoutTests
         model.ShowWelcome.ShouldBeTrue();
         model.Commits.Rows.ShouldBeEmpty();
     }
+
+    [AvaloniaFact]
+    public async Task Diff_baglam_menusu_GitExtensions_sirasinda()
+    {
+        // GitExtensions `FileViewer.Designer.cs` → `contextMenu.Items.AddRange`:
+        //   stageSelectedLines · unstageSelectedLines · resetSelectedLines ·
+        //   copy · copyPatch · copyNewVersion · copyOldVersion · ayraç · gösterim seçenekleri
+        //
+        // Gösterim seçenekleri bizde araç çubuğunda (P04-T13); menünün ilk yedi öğesi
+        // birebir aynı sırada.
+        DiffViewModel model = new(new FakeDiffReader());
+
+        DiffView view = new() { DataContext = model };
+
+        Window window = new()
+        {
+            Width = 900,
+            Height = 500,
+            WindowDecorations = WindowDecorations.None,
+            Content = view,
+        };
+
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        ListBox lines = view.GetControl<ListBox>("DiffLines");
+
+        ContextMenu menu = lines.ContextMenu.ShouldNotBeNull();
+
+        Headers(menu).ShouldBe(
+        [
+            "Seçili satırları _stage'le",
+            "Seçili satırları _geri al",
+            "Seçili satırları sıfırla…",
+            "_Kopyala",
+            "_Yama olarak kopyala",
+            "Yeni sürümü kopyala",
+            "Eski sürümü kopyala",
+        ]);
+
+        // ⚠️ Uygulanmamış komut KALDIRILMIYOR, devre dışı duruyor (§ 9): sonradan araya
+        // sokmak sırayı bozar. "Sıfırla" P05-T15'te onay akışıyla gelecek.
+        menu.Items.OfType<MenuItem>().ElementAt(2).IsEnabled.ShouldBeFalse();
+
+        window.Close();
+
+        await Task.CompletedTask;
+    }
 }

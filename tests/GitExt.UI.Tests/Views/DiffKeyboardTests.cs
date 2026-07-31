@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GitExt.Core;
 using GitExt.Core.Model;
 using GitExt.UI.Tests.Fakes;
 using GitExt.UI.ViewModels;
@@ -262,6 +263,59 @@ public class DiffKeyboardTests
         harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
 
         harness.ViewModel.CurrentLineIndex.ShouldBe(-1);
+
+        harness.Window.Close();
+    }
+
+    // ---- P05-T11: klavyeyle aralık seçimi ----
+
+    [AvaloniaFact]
+    public async Task Shift_ok_ile_satir_ARALIGI_secilir()
+    {
+        // Kısmi staging seçime dayanıyor; fareye zorunlu kalmak akışı kesiyor.
+        // `Shift+↑↓` `ListBox`'ın kendi davranışı — ama `SelectionMode="Multiple"`
+        // tek başına yetmiyor, `Toggle` modunda Shift aralık seçmez. Bu test onu sabitliyor.
+        Harness harness = await CreateAsync();
+
+        ListBox lines = harness.View.GetControl<ListBox>("DiffLines");
+
+        lines.SelectedIndex = 1;
+        lines.ContainerFromIndex(1)!.Focus();
+        Dispatcher.UIThread.RunJobs();
+
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Shift);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Shift);
+        Dispatcher.UIThread.RunJobs();
+
+        lines.SelectedItems!.Count.ShouldBe(3);
+
+        harness.Window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Secilen_aralik_kismi_stagingde_KULLANILIR()
+    {
+        // Ekrandaki seçim ile stage'lenecek satırlar aynı olmalı; ayrışırsa kullanıcı
+        // gördüğünden başka bir şeyi stage'ler ve git bunu kabul eder.
+        Harness harness = await CreateAsync();
+
+        ListBox lines = harness.View.GetControl<ListBox>("DiffLines");
+
+        lines.SelectedIndex = 2;
+        lines.ContainerFromIndex(2)!.Focus();
+        Dispatcher.UIThread.RunJobs();
+
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Shift);
+        Dispatcher.UIThread.RunJobs();
+
+        int[] selected = [.. lines.SelectedItems!.Cast<object>()
+            .Select(item => lines.Items.IndexOf(item))];
+
+        selected.Length.ShouldBe(2);
+
+        PatchSelection selection = harness.ViewModel.BuildSelection(selected).ShouldNotBeNull();
+
+        selection.Count.ShouldBe(2);
 
         harness.Window.Close();
     }

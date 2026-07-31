@@ -88,7 +88,7 @@ public sealed class WorkingTreeFileRow
 /// § 9 kuralı gereği yerleşim kazandı.
 /// </para>
 /// </remarks>
-public sealed partial class WorkingTreeViewModel : ViewModelBase
+public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagingHost
 {
     private readonly IStatusReader _statusReader;
     private readonly IStagingWriter _staging;
@@ -124,6 +124,42 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase
         // Aynı listeyi iki kez göstermek, kullanıcıya hangisinin seçim kaynağı olduğunu
         // sordururdu.
         Diff.ShowFileList = false;
+
+        // Kısmi staging yalnızca burada anlamlı; diff bileşeni bunu dışarıdan alıyor.
+        Diff.StagingHost = this;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// İki komut birbirini dışlıyor — GitExtensions'ta da öyle: <c>stageSelectedLines</c>
+    /// yalnızca çalışma ağacı tarafında, <c>unstageSelectedLines</c> yalnızca index tarafında
+    /// görünüyor.
+    /// </remarks>
+    bool IPartialStagingHost.CanStage => SelectedRow is { IsStagedSide: false };
+
+    /// <inheritdoc />
+    bool IPartialStagingHost.CanUnstage => SelectedRow is { IsStagedSide: true };
+
+    /// <inheritdoc />
+    async Task IPartialStagingHost.ApplyAsync(FileDiff diff, PatchSelection selection, bool stage)
+    {
+        if (WorkingDirectory is not { Length: > 0 } directory)
+        {
+            return;
+        }
+
+        // Kodlama diff'in okunduğu kodlama olmalı: yama git'in çalışma ağacındaki baytlarla
+        // karşılaştırdığı metin (P05-T04'te iki tur hata yapılmıştı).
+        if (stage)
+        {
+            await _staging.StagePartialAsync(directory, diff, selection).ConfigureAwait(true);
+        }
+        else
+        {
+            await _staging.UnstagePartialAsync(directory, diff, selection).ConfigureAwait(true);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
     }
 
     /// <summary>Seçili dosyanın diff'i — sağ paneldeki bileşen.</summary>
@@ -206,6 +242,9 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase
     private void OnSelectionChanged()
     {
         OnPropertyChanged(nameof(SelectedRow));
+
+        // Seçim taraf değiştirdiyse hangi kısmi staging komutunun açık olduğu da değişti.
+        Diff.NotifyStagingAvailabilityChanged();
 
         _ = ShowSelectedDiffAsync();
     }

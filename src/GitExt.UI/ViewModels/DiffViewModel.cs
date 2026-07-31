@@ -99,10 +99,11 @@ public sealed class DiffLineRow
     /// <see cref="Segments"/> üzerinden çiziyor, boş bırakılırsa başlık metni ekranda
     /// hiç görünmez (gerçek depo render'ında bu şekilde yakalandı).
     /// </remarks>
-    public static DiffLineRow ForHunk(DiffHunk hunk) =>
+    public static DiffLineRow ForHunk(DiffHunk hunk, int hunkIndex = -1) =>
         new(hunk.Header, DiffLineKind.Context)
         {
             IsHunkHeader = true,
+            HunkIndex = hunkIndex,
             Segments = [new DiffSegment(DiffLineKind.Context, hunk.Header)],
         };
 
@@ -112,7 +113,13 @@ public sealed class DiffLineRow
     /// Gösterim ayarları (sekme genişliği, boşluk gösterimi). Model içeriği
     /// <b>değişmez</b> — yalnızca ekranda görünen dönüşür.
     /// </param>
-    public static DiffLineRow ForLine(DiffLine line, DiffTextOptions? text = null)
+    /// <param name="hunkIndex">Satırın ait olduğu hunk'ın indeksi.</param>
+    /// <param name="lineIndex">Satırın hunk içindeki indeksi.</param>
+    public static DiffLineRow ForLine(
+        DiffLine line,
+        DiffTextOptions? text = null,
+        int hunkIndex = -1,
+        int lineIndex = -1)
     {
         text ??= DiffTextOptions.Default;
 
@@ -121,6 +128,8 @@ public sealed class DiffLineRow
         return new DiffLineRow(DiffTextFormatter.Format(raw, text), line.Kind)
         {
             RawText = raw,
+            HunkIndex = hunkIndex,
+            LineIndex = lineIndex,
             OldLineNumber = line.OldLineNumber?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             NewLineNumber = line.NewLineNumber?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             EndsWithoutNewline = line.EndsWithoutNewline,
@@ -155,6 +164,19 @@ public sealed class DiffLineRow
     public DiffLineKind Kind { get; }
 
     public bool IsHunkHeader { get; private init; }
+
+    /// <summary>
+    /// Satırın ait olduğu hunk'ın indeksi; bilinmiyorsa <c>-1</c>.
+    /// </summary>
+    /// <remarks>
+    /// Kısmi staging (P05-T10) seçili satırları <see cref="PatchSelection"/>'a çevirirken
+    /// bunu kullanıyor. Ekrandaki satır sırası <b>yeterli değil</b>: hunk başlıkları da
+    /// listede duruyor ve indeksleri kaydırıyor.
+    /// </remarks>
+    public int HunkIndex { get; private init; } = -1;
+
+    /// <summary>Satırın hunk içindeki indeksi; başlık ve dolgu satırlarında <c>-1</c>.</summary>
+    public int LineIndex { get; private init; } = -1;
 
     public bool IsFiller { get; private init; }
 
@@ -249,16 +271,25 @@ public sealed class SideBySideLineRow
         Right = right;
     }
 
-    public static SideBySideLineRow ForHunk(string header) =>
-        new(DiffLineRow.Filler, DiffLineRow.Filler) { IsHunkHeader = true, Header = header };
+    public static SideBySideLineRow ForHunk(string header, int hunkIndex = -1) =>
+        new(DiffLineRow.Filler, DiffLineRow.Filler)
+        {
+            IsHunkHeader = true,
+            Header = header,
+            HunkIndex = hunkIndex,
+        };
 
     public static SideBySideLineRow ForRow(SideBySideRow row, DiffTextOptions? text = null)
     {
         ArgumentNullException.ThrowIfNull(row);
 
         return new SideBySideLineRow(
-            row.Left is null ? DiffLineRow.Filler : DiffLineRow.ForLine(row.Left, text),
-            row.Right is null ? DiffLineRow.Filler : DiffLineRow.ForLine(row.Right, text));
+            row.Left is null
+                ? DiffLineRow.Filler
+                : DiffLineRow.ForLine(row.Left, text, row.HunkIndex, row.LeftIndex),
+            row.Right is null
+                ? DiffLineRow.Filler
+                : DiffLineRow.ForLine(row.Right, text, row.HunkIndex, row.RightIndex));
     }
 
     public DiffLineRow Left { get; }
@@ -266,6 +297,19 @@ public sealed class SideBySideLineRow
     public DiffLineRow Right { get; }
 
     public bool IsHunkHeader { get; private init; }
+
+    /// <summary>
+    /// Satırın ait olduğu hunk'ın indeksi; bilinmiyorsa <c>-1</c>.
+    /// </summary>
+    /// <remarks>
+    /// Kısmi staging (P05-T10) seçili satırları <see cref="PatchSelection"/>'a çevirirken
+    /// bunu kullanıyor. Ekrandaki satır sırası <b>yeterli değil</b>: hunk başlıkları da
+    /// listede duruyor ve indeksleri kaydırıyor.
+    /// </remarks>
+    public int HunkIndex { get; private init; } = -1;
+
+    /// <summary>Satırın hunk içindeki indeksi; başlık ve dolgu satırlarında <c>-1</c>.</summary>
+    public int LineIndex { get; private init; } = -1;
 
     public string Header { get; private init; } = string.Empty;
 
@@ -352,6 +396,10 @@ public sealed partial class DiffViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(ShowUnifiedLines));
         OnPropertyChanged(nameof(ShowSideLines));
+
+        // Mod değişince duraklanan satır sıfırlanıyor; komutların kapsamı da değişti.
+        OnPropertyChanged(nameof(CanStageSelection));
+        OnPropertyChanged(nameof(CanUnstageSelection));
     }
 
     /// <summary>Seçili dosyada gösterilecek içerik var mı?</summary>
@@ -432,7 +480,7 @@ public sealed partial class DiffViewModel : ViewModelBase
 
             SideLines.AddRange(SideBySideDiff.Build(diff).Select(row =>
                 row.IsHunkHeader
-                    ? SideBySideLineRow.ForHunk(row.HunkHeader!)
+                    ? SideBySideLineRow.ForHunk(row.HunkHeader!, row.HunkIndex)
                     : SideBySideLineRow.ForRow(row, text)));
         }
         else
@@ -440,13 +488,15 @@ public sealed partial class DiffViewModel : ViewModelBase
             DiffTextOptions text = TextOptions;
             List<DiffLineRow> rows = [];
 
-            foreach (DiffHunk hunk in diff.Hunks)
+            for (int hunkIndex = 0; hunkIndex < diff.Hunks.Count; hunkIndex++)
             {
-                rows.Add(DiffLineRow.ForHunk(hunk));
+                DiffHunk hunk = diff.Hunks[hunkIndex];
 
-                foreach (DiffLine line in hunk.Lines)
+                rows.Add(DiffLineRow.ForHunk(hunk, hunkIndex));
+
+                for (int lineIndex = 0; lineIndex < hunk.Lines.Count; lineIndex++)
                 {
-                    rows.Add(DiffLineRow.ForLine(line, text));
+                    rows.Add(DiffLineRow.ForLine(hunk.Lines[lineIndex], text, hunkIndex, lineIndex));
                 }
             }
 
@@ -1148,6 +1198,207 @@ public sealed partial class DiffViewModel : ViewModelBase
         }
 
         return false;
+    }
+
+    // ---- P05-T10: kısmi staging ----
+
+    /// <summary>
+    /// Kısmi staging'i gerçekleştirecek taraf; yoksa eylemler kapalı.
+    /// </summary>
+    /// <remarks>
+    /// Bileşen <b>bağımsız</b> kalıyor (P04-T08 kararı): commit geçmişinde ve karşılaştırma
+    /// penceresinde staging anlamsız, orada bu alan <see langword="null"/> ve menü öğeleri
+    /// devre dışı görünüyor.
+    /// </remarks>
+    public IPartialStagingHost? StagingHost
+    {
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged(nameof(CanStageSelection));
+            OnPropertyChanged(nameof(CanUnstageSelection));
+        }
+    }
+
+    /// <summary>
+    /// "Seçili satırları stage'le" kullanılabilir mi?
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions'ta da iki komut <b>birbirini dışlıyor</b>:
+    /// <c>stageSelectedLines</c> yalnızca çalışma ağacı tarafında, <c>unstageSelectedLines</c>
+    /// yalnızca index tarafında görünüyor (<c>FileViewer.cs</c>). Aynı anda ikisini birden
+    /// sunmak, kullanıcıya bulunduğu tarafta anlamsız bir eylem göstermek olurdu.
+    /// <para>
+    /// Yan yana modda da geçerli (P05-T11): satırlar hunk ve satır indeksini taşıdığı için
+    /// seçim orada da kesin olarak çevrilebiliyor.
+    /// </para>
+    /// </remarks>
+    public bool CanStageSelection => StagingHost?.CanStage == true;
+
+    /// <summary>"Seçili satırları geri al" kullanılabilir mi?</summary>
+    public bool CanUnstageSelection => StagingHost?.CanUnstage == true;
+
+    /// <summary>
+    /// Seçili satırlardan bir yama seçimi kurar.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Hunk başlığı seçiliyse o hunk'ın tamamı seçilir.</b> Ayrı bir "bu hunk'ı stage'le"
+    /// komutu yok — GitExtensions'ta da yok; orada da tek komut var ve kapsamı seçime
+    /// bakıyor. Başlık satırı zaten "bu hunk" demenin doğal yolu.
+    /// </para>
+    /// <para>
+    /// Hiç satır seçili değilse <b>duraklanan satır</b> kullanılır; o da yoksa seçim boş
+    /// döner ve çağıran hiçbir şey yapmaz — "hiçbir şey seçmeden stage'le" sessizce tüm
+    /// dosyayı stage'lemek olurdu.
+    /// </para>
+    /// </remarks>
+    public PatchSelection? BuildSelection(IReadOnlyList<int>? selectedRowIndices)
+    {
+        if (SelectedFile?.Diff is not { } diff)
+        {
+            return null;
+        }
+
+        IReadOnlyList<int> indices = selectedRowIndices is { Count: > 0 }
+            ? selectedRowIndices
+            : CurrentLineIndex >= 0 ? [CurrentLineIndex] : [];
+
+        if (indices.Count == 0)
+        {
+            return null;
+        }
+
+        HashSet<(int Hunk, int Line)> lines = [];
+
+        // Sınır AKTİF listeye göre: yan yana modda `Lines` boş, birleşik modda `SideLines`.
+        int count = ShowSideBySide ? SideLines.Count : Lines.Count;
+
+        foreach (int index in indices)
+        {
+            if (index < 0 || index >= count)
+            {
+                continue;
+            }
+
+            if (ShowSideBySide)
+            {
+                SideBySideLineRow side = SideLines[index];
+
+                if (side.IsHunkHeader)
+                {
+                    AddWholeHunk(diff, side.HunkIndex, lines);
+                    continue;
+                }
+
+                // ⚠️ Bir yan yana satır İKİ farklı unified satırı taşıyabiliyor (solda
+                // silinen, sağda onun yerine eklenen). İkisi de seçime girmeli — yalnızca
+                // birini almak, kullanıcının gördüğü çiftin yarısını stage'lemek olurdu.
+                Add(side.Left, lines);
+                Add(side.Right, lines);
+                continue;
+            }
+
+            DiffLineRow row = Lines[index];
+
+            if (row.IsHunkHeader)
+            {
+                AddWholeHunk(diff, row.HunkIndex, lines);
+                continue;
+            }
+
+            Add(row, lines);
+        }
+
+        return lines.Count == 0 ? null : PatchSelection.Lines(lines);
+    }
+
+    /// <summary>
+    /// Satır bir değişiklik satırıysa seçime ekler.
+    /// </summary>
+    /// <remarks>
+    /// Bağlam satırları yamaya kendiliğinden giriyor; "seçildi" saymak, kullanıcının
+    /// seçmediği bir değişikliği de almak olurdu. Dolgu satırının karşılığı hiç yok.
+    /// </remarks>
+    private static void Add(DiffLineRow row, HashSet<(int Hunk, int Line)> lines)
+    {
+        if (row.IsHunkHeader || row.IsFiller)
+        {
+            return;
+        }
+
+        if (row.Kind is DiffLineKind.Added or DiffLineKind.Removed
+            && row.HunkIndex >= 0
+            && row.LineIndex >= 0)
+        {
+            lines.Add((row.HunkIndex, row.LineIndex));
+        }
+    }
+
+    private static void AddWholeHunk(
+        FileDiff diff,
+        int hunkIndex,
+        HashSet<(int Hunk, int Line)> lines)
+    {
+        if (hunkIndex < 0 || hunkIndex >= diff.Hunks.Count)
+        {
+            return;
+        }
+
+        DiffHunk hunk = diff.Hunks[hunkIndex];
+
+        for (int line = 0; line < hunk.Lines.Count; line++)
+        {
+            if (hunk.Lines[line].Kind != DiffLineKind.Context)
+            {
+                lines.Add((hunkIndex, line));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Kısmi staging komutlarının kullanılabilirliğinin değiştiğini bildirir.
+    /// </summary>
+    /// <remarks>
+    /// Kullanılabilirlik <see cref="StagingHost"/>'un durumundan geliyor ve o durum dışarıda
+    /// değişiyor (kullanıcı öbür listeye geçti); bileşen bunu kendiliğinden göremez.
+    /// </remarks>
+    public void NotifyStagingAvailabilityChanged()
+    {
+        OnPropertyChanged(nameof(CanStageSelection));
+        OnPropertyChanged(nameof(CanUnstageSelection));
+    }
+
+    /// <summary>Seçili satırları stage'ler.</summary>
+    public Task StageSelectionAsync(IReadOnlyList<int>? selectedRowIndices = null) =>
+        ApplySelectionAsync(selectedRowIndices, stage: true);
+
+    /// <summary>Seçili satırları index'ten geri alır.</summary>
+    public Task UnstageSelectionAsync(IReadOnlyList<int>? selectedRowIndices = null) =>
+        ApplySelectionAsync(selectedRowIndices, stage: false);
+
+    private async Task ApplySelectionAsync(IReadOnlyList<int>? selectedRowIndices, bool stage)
+    {
+        if (StagingHost is not { } host
+            || SelectedFile?.Diff is not { } diff
+            || BuildSelection(selectedRowIndices) is not { } selection)
+        {
+            return;
+        }
+
+        try
+        {
+            ErrorMessage = null;
+
+            await host.ApplyAsync(diff, selection, stage).ConfigureAwait(true);
+        }
+        catch (GitException ex)
+        {
+            // `git apply` sayı/bağlam hatalarını REDDEDİYOR (P05-T04'te ölçüldü); mesaj
+            // kullanıcıya ulaşmalı, yoksa "tıkladım ama bir şey olmadı" durumu oluşur.
+            ErrorMessage = ex.Message;
+        }
     }
 
     /// <summary>Görünümü boşaltır — depo kapanınca dışarıdan da çağrılıyor.</summary>
