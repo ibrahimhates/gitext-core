@@ -1,0 +1,499 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GitExt.UI.ViewModels"
+             xmlns:model="using:GitExt.Core.Model"
+             xmlns:controls="using:GitExt.UI.Controls"
+             mc:Ignorable="d"
+             d:DesignWidth="700" d:DesignHeight="300"
+             x:Class="GitExt.UI.Views.DiffView"
+             x:DataType="vm:DiffViewModel">
+
+    <!--
+        Bu görünüm BAĞIMSIZ: ana pencereyi veya commit listesini tanımaz. Aynı bileşen hem
+        ana penceredeki panelde hem P04-T16'daki karşılaştırma penceresinde kullanılacak
+        (karar GitExtensions'a bakılarak verildi — orada da gömülü diff alanı ve ayrıca
+        modeless açılan bir karşılaştırma penceresi var).
+    -->
+
+    <UserControl.Styles>
+        <!-- Durum harfi: git'in ham çıktısındaki harflerle aynı, renkle desteklenmiş. -->
+        <Style Selector="TextBlock.status">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="#6B6B6B" />
+        </Style>
+        <Style Selector="TextBlock.status.added">
+            <Setter Property="Foreground" Value="#1E7A33" />
+        </Style>
+        <Style Selector="TextBlock.status.deleted">
+            <Setter Property="Foreground" Value="#B3261E" />
+        </Style>
+        <Style Selector="TextBlock.status.renamed">
+            <Setter Property="Foreground" Value="#5B4BB5" />
+        </Style>
+
+        <Style Selector="TextBlock.added-count">
+            <Setter Property="Foreground" Value="#1E7A33" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.removed-count">
+            <Setter Property="Foreground" Value="#B3261E" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!--
+            Satır arka planları. Renkler AÇIK tema için; Faz 08'de tema kaynak sözlüğüne
+            taşınacak (rozetlerle aynı gerekçe).
+        -->
+        <Style Selector="Border.line.added">
+            <Setter Property="Background" Value="#E6FFEC" />
+        </Style>
+        <Style Selector="Border.line.removed">
+            <Setter Property="Background" Value="#FFEBE9" />
+        </Style>
+        <Style Selector="Border.line.hunk">
+            <Setter Property="Background" Value="#EEF2F7" />
+        </Style>
+
+        <!--
+            Satır İÇİ vurgulama artık `DiffTextPresenter` içinde `Run.Background` ile
+            çiziliyor (satır kaydırma yatay panelde çalışmadığı için). Renkler orada;
+            buradaki satır arka planlarıyla uyumlu tutulmalı.
+        -->
+
+        <!--
+            Dolgu: yan yana görünümde karşılığı olmayan taraf. Boş bir bağlam satırından
+            AYRI boyanıyor — aksi hâlde kullanıcı olmayan bir satırı var sanar.
+        -->
+        <Style Selector="Border.line.filler">
+            <Setter Property="Background" Value="#E9E9EF" />
+        </Style>
+
+        <Style Selector="TextBlock.gutter">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="TextAlignment" Value="Right" />
+            <Setter Property="Padding" Value="0,0,6,0" />
+            <!-- Satır sarıldığında numara ÜSTTE kalmalı; ortalanırsa satırın ortasına kayar. -->
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+
+        <!--
+            Kod satırları MONOSPACE olmalı; önceki hâli tema yazı tipiydi (orantılı) ve kod
+            hizalanmıyordu. Zincir platform başına farklı çözülür: Linux'ta `monospace`
+            fontconfig takma adı (bu makinede Noto Sans Mono'ya çözülüyor), Windows'ta
+            Consolas, macOS'ta Menlo.
+            ⚠️ Headless testte doğrulanamaz: orada tüm yazı tipi adları tek bir yedeğe
+            düşüyor (dört farklı ad da aynı genişliği verdi). Gerçek pencerede kontrol edildi.
+        -->
+        <Style Selector="TextBlock.code">
+            <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+
+        <!--
+            Satır kaydırma tek bir sınıfla açılıyor. `TextWrapping` KALITSAL DEĞİL, bu yüzden
+            şablondaki her metne tek tek bağlamak yerine seçici kullanılıyor; punto ise
+            kalıtsal olduğu için kök öğede bir kez veriliyor.
+        -->
+        <Style Selector="Grid.wrap TextBlock.code">
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style Selector="TextBlock.dim">
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*"
+          Classes.wrap="{Binding WordWrap}"
+          TextElement.FontSize="{Binding FontSize}">
+
+        <!-- Araç çubuğu: filtre + görünüm geçişi -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="6,4">
+            <TextBox Grid.Column="0"
+                     Text="{Binding Filter}"
+                     PlaceholderText="Dosya filtrele"
+                     FontSize="12" />
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="6,0,0,0">
+                <ToggleButton IsChecked="{Binding ShowAsTree}"
+                              Content="Ağaç"
+                              FontSize="11"
+                              Padding="8,2"
+                              ToolTip.Tip="Ağaç ve düz liste görünümü arasında geçiş" />
+
+                <ToggleButton IsChecked="{Binding ShowSideBySide}"
+                              Content="Yan yana"
+                              FontSize="11"
+                              Padding="8,2"
+                              ToolTip.Tip="Birleşik (unified) ve yan yana diff görünümü arasında geçiş" />
+
+                <!--
+                    Görsel ayarlar (P04-T13). Araç çubuğunu şişirmemek için açılır panelde;
+                    hepsi az kullanılan ama gerektiğinde şart olan ayarlar.
+                    ⚠️ Şu an yalnızca oturum boyunca yaşıyorlar — kalıcı saklama ayarlar
+                    altyapısına bağlı (`P08-T14`).
+                -->
+                <Button Content="Görünüm" FontSize="11" Padding="8,2">
+                    <Button.Flyout>
+                        <Flyout Placement="Bottom">
+                            <StackPanel Spacing="8" Width="220">
+                                <CheckBox IsChecked="{Binding ShowWhitespace}"
+                                          Content="Boşlukları göster"
+                                          FontSize="12"
+                                          ToolTip.Tip="Boşluk · ve sekme » olarak gösterilir" />
+
+                                <CheckBox IsChecked="{Binding WordWrap}"
+                                          Content="Satırları kaydır"
+                                          FontSize="12" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Sekme genişliği"
+                                               FontSize="12"
+                                               VerticalAlignment="Center" />
+                                    <NumericUpDown Value="{Binding TabWidth}"
+                                                   Minimum="1"
+                                                   Maximum="16"
+                                                   Increment="1"
+                                                   FormatString="0"
+                                                   FontSize="12"
+                                                   Width="90" />
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="Punto"
+                                               FontSize="12"
+                                               VerticalAlignment="Center" />
+                                    <NumericUpDown Value="{Binding FontSize}"
+                                                   Minimum="8"
+                                                   Maximum="28"
+                                                   Increment="1"
+                                                   FormatString="0"
+                                                   FontSize="12"
+                                                   Width="90" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!--
+                    Diff İÇİNDE arama (P04-T12). Dosya filtresinden ayrı: biri hangi dosyaların
+                    listeleneceğini, diğeri seçili dosyada nereye gidileceğini belirler.
+                -->
+                <TextBox Name="LineSearch"
+                         Text="{Binding LineSearchText}"
+                         PlaceholderText="Diff içinde ara (Ctrl+F)"
+                         Width="200"
+                         FontSize="12"
+                         ToolTip.Tip="Enter / F3 sonraki, Shift+Enter / Shift+F3 önceki" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Yükleme / hata / boş durumları -->
+        <ProgressBar Grid.Row="0"
+                     IsIndeterminate="True"
+                     Height="2"
+                     VerticalAlignment="Bottom"
+                     IsVisible="{Binding IsLoading}" />
+
+        <TextBlock Grid.Row="1"
+                   ZIndex="1"
+                   Text="{Binding ErrorMessage}"
+                   IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                   TextWrapping="Wrap"
+                   Margin="8"
+                   VerticalAlignment="Top" />
+
+        <!-- Arama sonuç vermediyse sessiz kalınmaz (P04-T12). -->
+        <TextBlock Grid.Row="0"
+                   Text="{Binding LineSearchStatus}"
+                   IsVisible="{Binding LineSearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                   FontSize="11"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Bottom"
+                   Margin="0,0,8,-14"
+                   ZIndex="1" />
+
+        <TextBlock Grid.Row="1"
+                   Text="Bu commit hiçbir dosyayı değiştirmemiş."
+                   IsVisible="{Binding IsEmpty}"
+                   Opacity="0.65"
+                   FontSize="12"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+
+        <!-- Alt alan: dosya listesi solda, seçili dosyanın diff'i sağda. -->
+        <!--
+            Dosya listesi sütunu gizlenebiliyor (P05-T09): çalışma dizini görünümünde liste
+            solda, ayrı bir bileşende. Genişlik `Auto` olunca gizli sütun yer kaplamıyor.
+        -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
+
+        <!-- Düz liste -->
+        <ListBox Grid.Column="0"
+                 Name="FileList"
+                 Width="260"
+                 ItemsSource="{Binding Files}"
+                 SelectedIndex="{Binding SelectedIndex}"
+                 IsVisible="{Binding ShowFlatFileList}"
+                 Background="Transparent"
+                 BorderThickness="0">
+
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="4,1" />
+                    <Setter Property="MinHeight" Value="22" />
+                </Style>
+            </ListBox.Styles>
+
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="vm:FileChangeRow">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="20">
+                        <TextBlock Grid.Column="0"
+                                   Classes="status"
+                                   Classes.added="{Binding IsAdded}"
+                                   Classes.deleted="{Binding IsDeleted}"
+                                   Classes.renamed="{Binding IsRenamed}"
+                                   Text="{Binding StatusLetter}" />
+
+                        <!-- Düz listede TAM yol gösterilir; ağaç görünümü klasörü ayırır. -->
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Path}"
+                                   FontSize="12"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"
+                                   ToolTip.Tip="{Binding RenamedFrom}" />
+
+                        <!-- Binary ve çok büyük dosyalarda sayı yerine etiket. -->
+                        <TextBlock Grid.Column="2"
+                                   Classes="dim"
+                                   Text="ikili"
+                                   IsVisible="{Binding IsBinary}"
+                                   Margin="6,0" />
+
+                        <TextBlock Grid.Column="2"
+                                   Classes="dim"
+                                   Text="çok büyük"
+                                   IsVisible="{Binding IsTooLarge}"
+                                   Margin="6,0" />
+
+                        <!--
+                            Sağdaki boşluk kaydırma çubuğu içindir: onsuz "−12" sayısının
+                            son karakteri çubuğun altında kalıyordu (render'da görüldü).
+                        -->
+                        <StackPanel Grid.Column="3"
+                                    Orientation="Horizontal"
+                                    Spacing="6"
+                                    IsVisible="{Binding HasLineCounts}"
+                                    Margin="6,0,10,0">
+                            <TextBlock Classes="added-count"
+                                       Text="{Binding AddedLines, StringFormat='+{0}'}" />
+                            <TextBlock Classes="removed-count"
+                                       Text="{Binding RemovedLines, StringFormat='−{0}'}" />
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Ağaç -->
+        <TreeView Grid.Column="0"
+                  Name="FileTree"
+                  Width="260"
+                  ItemsSource="{Binding Tree}"
+                  IsVisible="{Binding ShowTreeFileList}"
+                  Background="Transparent"
+                  BorderThickness="0">
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate DataType="vm:FileTreeNode" ItemsSource="{Binding Children}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Height="20">
+                        <TextBlock Grid.Column="0"
+                                   Classes="status"
+                                   Classes.added="{Binding File.IsAdded, FallbackValue=False}"
+                                   Classes.deleted="{Binding File.IsDeleted, FallbackValue=False}"
+                                   Classes.renamed="{Binding File.IsRenamed, FallbackValue=False}"
+                                   Text="{Binding File.StatusLetter, FallbackValue=''}"
+                                   IsVisible="{Binding !IsFolder}" />
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center" />
+
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    Spacing="6"
+                                    IsVisible="{Binding File.HasLineCounts, FallbackValue=False}"
+                                    Margin="8,0,0,0">
+                            <TextBlock Classes="added-count"
+                                       Text="{Binding File.AddedLines, StringFormat='+{0}'}" />
+                            <TextBlock Classes="removed-count"
+                                       Text="{Binding File.RemovedLines, StringFormat='−{0}'}" />
+                        </StackPanel>
+                    </Grid>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+
+            <GridSplitter Grid.Column="1"
+                          IsVisible="{Binding ShowFileList}"
+                          Width="4"
+                          ResizeDirection="Columns"
+                          Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+
+            <!--
+                Unified diff. SANALLAŞTIRILMIŞ ListBox: hunk başlıkları ve içerik satırları
+                tek düz listede akıyor. Gruplanmış bir yapı satır başına kontrol yaratmak
+                demek olurdu (Faz 03'te commit listesinde aynı gerekçe).
+            -->
+            <ListBox Grid.Column="2"
+                     Name="DiffLines"
+                     ItemsSource="{Binding Lines}"
+                     IsVisible="{Binding ShowUnifiedLines}"
+                     SelectionMode="Multiple"
+                     Background="Transparent"
+                     BorderThickness="0">
+
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="MinHeight" Value="18" />
+                    </Style>
+                </ListBox.Styles>
+
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="vm:DiffLineRow">
+                        <Border Classes="line"
+                                Classes.added="{Binding IsAdded}"
+                                Classes.removed="{Binding IsRemoved}"
+                                Classes.hunk="{Binding IsHunkHeader}">
+                            <!-- Yükseklik SABİT DEĞİL: satır kaydırma açıkken satır büyüyebilmeli. -->
+                            <Grid ColumnDefinitions="Auto,Auto,*" MinHeight="18">
+                                <TextBlock Grid.Column="0"
+                                           Classes="gutter"
+                                           Text="{Binding OldLineNumber}" />
+
+                                <TextBlock Grid.Column="1"
+                                           Classes="gutter"
+                                           Text="{Binding NewLineNumber}" />
+
+                                <!--
+                                    Satır her zaman PARÇALAR üzerinden çiziliyor; satır içi
+                                    fark hesaplanmamışsa tek parça geliyor.
+                                    ⚠️ Parçalar TEK bir TextBlock içinde `Run` olarak çiziliyor:
+                                    yatay StackPanel'de satır kaydırma ÇALIŞMIYOR (ölçüldü).
+                                -->
+                                <TextBlock Grid.Column="2"
+                                           Classes="code"
+                                           controls:DiffTextPresenter.Segments="{Binding Segments}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!--
+                Yan yana diff (P04-T10). **Tek** sanallaştırılmış liste, satır başına iki
+                sütun — iki ayrı listeyi senkronize kaydırmak yerine bu seçildi: senkron
+                kaydırma problemi böylece hiç oluşmuyor ve iki tarafın satırları yapısal
+                olarak aynı hizada kalıyor.
+
+                Hizalama `SideBySideDiff` (çekirdek katman) tarafından üretiliyor ve satır
+                içi vurgulamayla AYNI eşlemeyi kullanıyor.
+            -->
+            <ListBox Grid.Column="2"
+                     Name="SideDiffLines"
+                     ItemsSource="{Binding SideLines}"
+                     IsVisible="{Binding ShowSideLines}"
+                     SelectionMode="Multiple"
+                     Background="Transparent"
+                     BorderThickness="0">
+
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="MinHeight" Value="18" />
+                    </Style>
+                </ListBox.Styles>
+
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="vm:SideBySideLineRow">
+                        <Grid ColumnDefinitions="*,1,*" MinHeight="18">
+
+                            <!-- Hunk başlığı iki sütunu birden kaplar. -->
+                            <Border Grid.Column="0" Grid.ColumnSpan="3"
+                                    Classes="line hunk"
+                                    IsVisible="{Binding IsHunkHeader}">
+                                <TextBlock Classes="code"
+                                           Text="{Binding Header}"
+                                           Margin="6,0,0,0" />
+                            </Border>
+
+                            <!-- Sol: eski hâl -->
+                            <Border Grid.Column="0"
+                                    Classes="line"
+                                    Classes.removed="{Binding Left.IsRemoved}"
+                                    Classes.filler="{Binding Left.IsFiller}"
+                                    IsVisible="{Binding !IsHunkHeader}">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <TextBlock Grid.Column="0"
+                                               Classes="gutter"
+                                               Text="{Binding Left.OldLineNumber}" />
+
+                                    <TextBlock Grid.Column="1"
+                                               Classes="code"
+                                               controls:DiffTextPresenter.Segments="{Binding Left.Segments}" />
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Column="1"
+                                    Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                                    IsVisible="{Binding !IsHunkHeader}" />
+
+                            <!-- Sağ: yeni hâl -->
+                            <Border Grid.Column="2"
+                                    Classes="line"
+                                    Classes.added="{Binding Right.IsAdded}"
+                                    Classes.filler="{Binding Right.IsFiller}"
+                                    IsVisible="{Binding !IsHunkHeader}">
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <TextBlock Grid.Column="0"
+                                               Classes="gutter"
+                                               Text="{Binding Right.NewLineNumber}" />
+
+                                    <TextBlock Grid.Column="1"
+                                               Classes="code"
+                                               controls:DiffTextPresenter.Segments="{Binding Right.Segments}" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- İçerik yoksa NEDEN olmadığı yazılır; boş alan bırakmak hata gibi görünür. -->
+            <TextBlock Grid.Column="2"
+                       Text="{Binding ContentNotice}"
+                       IsVisible="{Binding ContentNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Opacity="0.65"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Margin="12"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+        </Grid>
+    </Grid>
+</UserControl>

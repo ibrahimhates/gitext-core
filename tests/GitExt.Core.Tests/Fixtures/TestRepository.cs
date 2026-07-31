@@ -250,11 +250,66 @@ public sealed class TestRepository : IDisposable
         GitWithEnvironment(null, arguments);
 
     /// <summary>
+    /// Bir <c>git</c> komutunu çalıştırıp çıktısını <b>kayıpsız</b> döndürür.
+    /// </summary>
+    /// <remarks>
+    /// Her bayt bire bir bir karaktere karşılık gelir. <c>DiffParser</c> girdisini bu biçimde
+    /// bekliyor: diff çıktısı tek bir kodlamada değil, satır içerikleri dosyanın kendi
+    /// baytları (bkz. <c>GitResult.GetStandardOutputLossless</c>).
+    /// </remarks>
+    public string GitLossless(params string[] arguments) =>
+        System.Text.Encoding.Latin1.GetString(
+            System.Text.Encoding.UTF8.GetBytes(GitWithEnvironment(null, arguments)));
+
+    /// <summary>
+    /// Bir <c>git</c> komutu çalıştırır ve <b>başarısızlıkta fırlatmaz</b>.
+    /// </summary>
+    /// <remarks>
+    /// Kilit çakışması gibi <i>beklenen</i> hataları ölçen testler için (P05-T01):
+    /// <see cref="Git"/> fırlattığı için orada kullanılamaz.
+    /// </remarks>
+    public (int ExitCode, string Error) TryGit(params string[] arguments)
+    {
+        ProcessStartInfo startInfo = CreateStartInfo(null, arguments);
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("git süreci başlatılamadı.");
+
+        _ = process.StandardOutput.ReadToEnd();
+        string stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        return (process.ExitCode, stderr);
+    }
+
+    /// <summary>
     /// Ek ortam değişkenleriyle bir <c>git</c> komutu çalıştırır.
     /// </summary>
     public string GitWithEnvironment(
         IReadOnlyDictionary<string, string>? environment,
         params string[] arguments)
+    {
+        ProcessStartInfo startInfo = CreateStartInfo(environment, arguments);
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("git süreci başlatılamadı.");
+
+        string stdout = process.StandardOutput.ReadToEnd();
+        string stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Fixture komutu başarısız: git {string.Join(' ', arguments)}{Environment.NewLine}{stderr}");
+        }
+
+        return stdout;
+    }
+
+    private ProcessStartInfo CreateStartInfo(
+        IReadOnlyDictionary<string, string>? environment,
+        string[] arguments)
     {
         ProcessStartInfo startInfo = new()
         {
@@ -286,20 +341,7 @@ public sealed class TestRepository : IDisposable
             }
         }
 
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("git süreci başlatılamadı.");
-
-        string stdout = process.StandardOutput.ReadToEnd();
-        string stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (process.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"Fixture komutu başarısız: git {string.Join(' ', arguments)}{Environment.NewLine}{stderr}");
-        }
-
-        return stdout;
+        return startInfo;
     }
 
     public void Dispose()

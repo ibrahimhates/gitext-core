@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using GitExt.UI.ViewModels;
@@ -6,7 +7,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Ana pencere. Sürükle-bırak ile depo açma burada bağlanır (P03-T16).
+/// Ana pencere. Sürükle-bırak ile depo açma (P03-T16) ve ana menü (P08-T26) burada bağlanır.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -16,6 +17,44 @@ public partial class MainWindow : Window
 
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
+    }
+
+    /// <summary>
+    /// Menüden depo açma. Karşılama ekranındakiyle aynı akış.
+    /// </summary>
+    /// <remarks>
+    /// Klasör seçici kod arkasında: <c>IStorageProvider</c> pencereye bağlıdır ve
+    /// ViewModel'ın pencereyi tanıması katman kuralını bozardı.
+    /// </remarks>
+    private async void OnOpenClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions { Title = "Git deposu aç", AllowMultiple = false });
+
+        if (folders.Count == 0)
+        {
+            return;
+        }
+
+        string? path = folders[0].TryGetLocalPath();
+
+        if (!string.IsNullOrEmpty(path))
+        {
+            await viewModel.OpenRepositoryAsync(path);
+        }
+    }
+
+    private void OnExitClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
+
+    private void OnAboutClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        // Tam "Hakkında" penceresi Faz 08'in işi (P08-T21); şimdilik sürüm bilgisi başlıkta.
+        Title = $"gitext-core — {typeof(MainWindow).Assembly.GetName().Version}";
     }
 
     private static void OnDragOver(object? sender, DragEventArgs e)
@@ -52,5 +91,26 @@ public partial class MainWindow : Window
         {
             await viewModel.TryOpenDroppedAsync(paths);
         }
+    }
+
+    /// <summary>
+    /// Commit ekranını açar (P05-T09).
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions'taki yeri: <i>Commands → Commit</i>, menünün <b>ilk</b> öğesi
+    /// (<c>commandsToolStripMenuItem.DropDownItems</c>). Modal açılıyor; kapanınca commit
+    /// listesi yenileniyor çünkü bu ekranda yeni bir commit oluşmuş olabilir.
+    /// </remarks>
+    private async void OnCommitClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel model
+            || model.CreateWorkingTree() is not { } workingTree)
+        {
+            return;
+        }
+
+        await workingTree.OpenAsync(model.Commits.Repository?.WorkingDirectory);
+        await WorkingTreeWindow.Open(workingTree, this);
+        await model.RefreshAsync();
     }
 }

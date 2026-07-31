@@ -241,19 +241,32 @@ public sealed class GitProcessRunner : IGitProcessRunner
         {
             // stdout ve stderr AYNI ANDA okunmalı. Biri dolup bloke olursa süreç yazamaz ve
             // asla bitmez — büyük çıktılarda klasik deadlock. Bu yüzden üç iş paralel yürür.
-            Task<byte[]> stdoutTask = ReadAllBytesAsync(process, cancellationToken);
+            Task<(byte[] Bytes, bool Truncated)> stdoutTask =
+                ReadAllBytesAsync(process, command.MaximumOutputBytes, cancellationToken);
+
             Task<string> stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
             Task stdinTask = WriteStandardInputAsync(process, command, cancellationToken);
 
             await Task.WhenAll(stdoutTask, stderrTask, stdinTask).ConfigureAwait(false);
+
+            (byte[] bytes, bool truncated) = await stdoutTask.ConfigureAwait(false);
+
+            if (truncated)
+            {
+                // Çıktıyı okumayı bıraktık; süreç yazmaya çalışırken bloke kalır. Beklemek
+                // yerine öldürülmeli, aksi halde `WaitForExitAsync` asla dönmez.
+                TryKill(process);
+            }
+
             await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
             return new GitResult(
                 command,
                 process.ExitCode,
-                await stdoutTask.ConfigureAwait(false),
+                bytes,
                 await stderrTask.ConfigureAwait(false),
-                Stopwatch.GetElapsedTime(startedAt));
+                Stopwatch.GetElapsedTime(startedAt),
+                truncated);
         }
         catch (OperationCanceledException)
         {
@@ -272,11 +285,47 @@ public sealed class GitProcessRunner : IGitProcessRunner
     /// dosya adları geçerli UTF-8 olmayabilir ve <c>git show</c> binary içerik döndürebilir.
     /// Metne çevirme kararı çağıranın olmalı.
     /// </remarks>
-    private static async Task<byte[]> ReadAllBytesAsync(Process process, CancellationToken cancellationToken)
+    private static async Task<(byte[] Bytes, bool Truncated)> ReadAllBytesAsync(
+        Process process,
+        long? maximumBytes,
+        CancellationToken cancellationToken)
     {
+        Stream stream = process.StandardOutput.BaseStream;
+
+        if (maximumBytes is not { } limit)
+        {
+            using MemoryStream all = new();
+            await stream.CopyToAsync(all, cancellationToken).ConfigureAwait(false);
+            return (all.ToArray(), false);
+        }
+
         using MemoryStream buffer = new();
-        await process.StandardOutput.BaseStream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
-        return buffer.ToArray();
+        byte[] chunk = System.Buffers.ArrayPool<byte>.Shared.Rent(64 * 1024);
+
+        try
+        {
+            int read;
+
+            while ((read = await stream.ReadAsync(chunk.AsMemory(), cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                buffer.Write(chunk, 0, read);
+
+                if (buffer.Length <= limit)
+                {
+                    continue;
+                }
+
+                // Sınır aşıldı: okumayı bırak. Süreç çağıran tarafından sonlandırılacak;
+                // okumaya devam etmek tam da kaçınmak istediğimiz belleği tüketmek olurdu.
+                return (buffer.ToArray(), true);
+            }
+        }
+        finally
+        {
+            System.Buffers.ArrayPool<byte>.Shared.Return(chunk);
+        }
+
+        return (buffer.ToArray(), false);
     }
 
     private static async Task WriteStandardInputAsync(

@@ -55,18 +55,51 @@ public sealed class CommitGraphCell : Control
     public static readonly StyledProperty<IReadOnlyList<Color>?> PaletteProperty =
         AvaloniaProperty.Register<CommitGraphCell, IReadOnlyList<Color>?>(nameof(Palette));
 
+    /// <summary>
+    /// Görünen ilk şeridin indeksi — grafik penceresinin yatay konumu (P03-T21).
+    /// </summary>
+    /// <remarks>
+    /// Tüm satırlar aynı değeri kullanır, aksi halde şeritler satırdan satıra kayar.
+    /// </remarks>
+    public static readonly StyledProperty<int> FirstLaneProperty =
+        AvaloniaProperty.Register<CommitGraphCell, int>(nameof(FirstLane));
+
+    /// <summary>
+    /// Aynı anda gösterilen şerit sayısı (P03-T21).
+    /// </summary>
+    /// <remarks>
+    /// <b>ÖLÇÜLDÜ:</b> gerçek depolarda şerit sayısı medyanda ~120 (git/git, Linux). Sütunu
+    /// şerit sayısı kadar genişletmek diğer tüm sütunları ekran dışına itiyordu. Sabit bir
+    /// pencere hem hizayı hem okunabilirliği sağlıyor; pencere seçili commit'i takip ediyor.
+    /// </remarks>
+    public static readonly StyledProperty<int> VisibleLanesProperty =
+        AvaloniaProperty.Register<CommitGraphCell, int>(nameof(VisibleLanes), 12);
+
     static CommitGraphCell()
     {
         AffectsRender<CommitGraphCell>(
-            RowProperty, LaneWidthProperty, NodeRadiusProperty, LineThicknessProperty, PaletteProperty);
+            RowProperty, LaneWidthProperty, NodeRadiusProperty, LineThicknessProperty,
+            PaletteProperty, FirstLaneProperty, VisibleLanesProperty);
 
-        AffectsMeasure<CommitGraphCell>(RowProperty, LaneWidthProperty);
+        AffectsMeasure<CommitGraphCell>(LaneWidthProperty, VisibleLanesProperty);
     }
 
     public double LaneWidth
     {
         get => GetValue(LaneWidthProperty);
         set => SetValue(LaneWidthProperty, value);
+    }
+
+    public int FirstLane
+    {
+        get => GetValue(FirstLaneProperty);
+        set => SetValue(FirstLaneProperty, value);
+    }
+
+    public int VisibleLanes
+    {
+        get => GetValue(VisibleLanesProperty);
+        set => SetValue(VisibleLanesProperty, value);
     }
 
     public double NodeRadius
@@ -126,9 +159,9 @@ public sealed class CommitGraphCell : Control
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        // Genişlik, bu satırdaki şerit sayısı kadar. Yükseklik satırın kendisinden gelir.
-        int lanes = Row?.LaneCount ?? 1;
-        return new Size(Math.Max(lanes, 1) * LaneWidth, 0);
+        // Genişlik SATIRA DEĞİL pencereye bağlı: her satır aynı genişlikte olmalı, yoksa
+        // sütunlar satırdan satıra kayar ve SHA/konu hizası bozulur (P03-T21'de ölçüldü).
+        return new Size(Math.Max(VisibleLanes, 1) * LaneWidth, 0);
     }
 
     public override void Render(DrawingContext context)
@@ -145,27 +178,89 @@ public sealed class CommitGraphCell : Control
         double laneWidth = LaneWidth;
         double thickness = LineThickness;
 
+        int first = FirstLane;
+        int last = first + Math.Max(VisibleLanes, 1) - 1;
+
         // Kenarlar önce: düğüm üstlerine çizilsin.
         foreach (GraphEdge edge in row.Edges)
         {
+            // Tamamen pencerenin dışındaki kenar hiç çizilmez. Bir ucu içeride olan kenar
+            // çizilir ve kırpma (ClipToBounds) kenarı kutuda tutar — böylece kullanıcı
+            // şeridin dışarı doğru gittiğini görür.
+            if ((edge.FromLane < first && edge.ToLane < first)
+                || (edge.FromLane > last && edge.ToLane > last))
+            {
+                continue;
+            }
+
             IPen pen = GetPen(palette[edge.ColorIndex % palette.Count], thickness);
 
-            double x1 = (edge.FromLane * laneWidth) + (laneWidth / 2);
-            double x2 = (edge.ToLane * laneWidth) + (laneWidth / 2);
+            double x1 = LaneCenter(edge.FromLane, first, laneWidth);
+            double x2 = LaneCenter(edge.ToLane, first, laneWidth);
 
             // Kenar bu satırın ortasından başlar ve bir sonraki satırın ortasına uzanır.
             // Alt sınır satırın altı olduğu için bir sonraki satırın çizgisiyle birleşir.
             context.DrawLine(pen, new Point(x1, centerY), new Point(x2, centerY + height));
         }
 
-        // Düğüm.
-        context.DrawEllipse(
-            GetBrush(palette[row.ColorIndex % palette.Count]),
-            null,
-            new Point((row.Lane * laneWidth) + (laneWidth / 2), centerY),
-            NodeRadius,
-            NodeRadius);
+        if (row.Lane >= first && row.Lane <= last)
+        {
+            context.DrawEllipse(
+                GetBrush(palette[row.ColorIndex % palette.Count]),
+                null,
+                new Point(LaneCenter(row.Lane, first, laneWidth), centerY),
+                NodeRadius,
+                NodeRadius);
+        }
+
+        DrawOverflowMarkers(context, row, first, last, laneWidth, centerY);
     }
+
+    private static double LaneCenter(int lane, int firstLane, double laneWidth) =>
+        ((lane - firstLane) * laneWidth) + (laneWidth / 2);
+
+    /// <summary>
+    /// Pencerenin solunda veya sağında gizli şerit varsa kenara işaret koyar.
+    /// </summary>
+    /// <remarks>
+    /// Gizli şeridi sessizce yutmak, kullanıcıya grafiğin tamamını gördüğünü düşündürür.
+    /// İşaret küçük ve nötr renkli: veri değil, "burada devam ediyor" bilgisi.
+    /// </remarks>
+    private void DrawOverflowMarkers(
+        DrawingContext context,
+        GraphRow row,
+        int first,
+        int last,
+        double laneWidth,
+        double centerY)
+    {
+        bool hiddenLeft = first > 0;
+        bool hiddenRight = row.LaneCount > last + 1;
+
+        if (!hiddenLeft && !hiddenRight)
+        {
+            return;
+        }
+
+        IPen marker = GetPen(_overflowColor, 1);
+        double inset = laneWidth / 4;
+
+        if (hiddenLeft)
+        {
+            context.DrawLine(marker, new Point(inset, centerY - 3), new Point(0, centerY));
+            context.DrawLine(marker, new Point(0, centerY), new Point(inset, centerY + 3));
+        }
+
+        if (hiddenRight)
+        {
+            double right = Bounds.Width;
+            context.DrawLine(marker, new Point(right - inset, centerY - 3), new Point(right, centerY));
+            context.DrawLine(marker, new Point(right, centerY), new Point(right - inset, centerY + 3));
+        }
+    }
+
+    /// <summary>Taşma işaretinin rengi — şerit paletiyle karışmasın diye nötr.</summary>
+    private static readonly Color _overflowColor = Color.FromRgb(0x90, 0x90, 0x90);
 
     private static IPen GetPen(Color color, double thickness)
     {

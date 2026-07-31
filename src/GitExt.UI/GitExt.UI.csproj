@@ -22,4 +22,13 @@
     <ProjectReference Include="../GitExt.Graph/GitExt.Graph.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      Görünümlerin test kancaları (örn. CommitListView.ComparisonRequested) testlere açık
+      ama public API'nin parçası değil: pencere açmayı headless ortamda saymak güvenilir
+      olmadığı için tuş → komut bağlantısı bu olay üzerinden doğrulanıyor.
+    -->
+    <InternalsVisibleTo Include="GitExt.UI.Tests" />
+  </ItemGroup>
+
 </Project>

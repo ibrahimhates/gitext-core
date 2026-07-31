@@ -28,7 +28,7 @@ public class RepositoryOpenFlowTests
                 new FakeRepositoryLocator(locateFailure),
                 new FakeCommitLogReader(FakeGitData.LinearHistory(commitCount)),
                 new FakeRefReader(),
-                new FakeCommitSignatureReader()),
+                new FakeCommitSignatureReader(),new FakeDiffReader()),
             recent ?? new FakeRecentRepositoryStore());
 
     [AvaloniaFact]
@@ -204,7 +204,7 @@ public class RepositoryOpenFlowTests
             new FailingAfterFirstLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(3)),
             new FakeRefReader(),
-            new FakeCommitSignatureReader());
+            new FakeCommitSignatureReader(),new FakeDiffReader());
 
         MainWindowViewModel viewModel = new(commits, new FakeRecentRepositoryStore());
 

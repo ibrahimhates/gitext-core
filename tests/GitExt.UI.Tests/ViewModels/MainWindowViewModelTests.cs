@@ -21,7 +21,7 @@ public class MainWindowViewModelTests
             new FakeRepositoryLocator(locateFailure),
             new FakeCommitLogReader(FakeGitData.LinearHistory(commitCount)),
             new FakeRefReader(),
-            new FakeCommitSignatureReader()),
+            new FakeCommitSignatureReader(),new FakeDiffReader()),
             new FakeRecentRepositoryStore());
 
     [AvaloniaFact]

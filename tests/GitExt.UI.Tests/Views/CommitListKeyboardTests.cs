@@ -70,7 +70,7 @@ public class CommitListKeyboardTests
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(commits ?? FakeGitData.LinearHistory(RowCount)),
             new FakeRefReader(),
-            new FakeCommitSignatureReader());
+            new FakeCommitSignatureReader(),new FakeDiffReader());
 
         await viewModel.OpenAsync("/tmp/depo");
 
@@ -196,7 +196,7 @@ public class CommitListKeyboardTests
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(RowCount)),
             new FakeRefReader(),
-            new FakeCommitSignatureReader());
+            new FakeCommitSignatureReader(),new FakeDiffReader());
 
         CommitListView view = new() { DataContext = viewModel };
         Window window = new() { Width = 900, Height = 300, Content = view };
@@ -229,7 +229,7 @@ public class CommitListKeyboardTests
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(RowCount)),
             new FakeRefReader(),
-            new FakeCommitSignatureReader());
+            new FakeCommitSignatureReader(),new FakeDiffReader());
 
         CommitListView view = new() { DataContext = viewModel };
         Window window = new() { Width = 900, Height = 300, Content = view };

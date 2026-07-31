@@ -46,7 +46,7 @@ public class CommitListViewRenderTests
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(commitCount)),
             new FakeRefReader(refs),
-            new FakeCommitSignatureReader());
+            new FakeCommitSignatureReader(),new FakeDiffReader());
 
         await viewModel.OpenAsync("/tmp/depo");
 

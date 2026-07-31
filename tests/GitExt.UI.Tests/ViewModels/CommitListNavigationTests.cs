@@ -21,7 +21,7 @@ public class CommitListNavigationTests
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(commitCount)),
             new FakeRefReader(),
-            new FakeCommitSignatureReader());
+            new FakeCommitSignatureReader(),new FakeDiffReader());
 
         await viewModel.OpenAsync("/tmp/depo");
         return viewModel;
@@ -174,7 +174,7 @@ public class CommitListNavigationTests
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(commits),
             new FakeRefReader(),
-            new FakeCommitSignatureReader());
+            new FakeCommitSignatureReader(),new FakeDiffReader());
 
         await viewModel.OpenAsync("/tmp/depo");
 

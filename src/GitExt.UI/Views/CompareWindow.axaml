@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        xmlns:views="using:GitExt.UI.Views"
+        mc:Ignorable="d"
+        d:DesignWidth="1000" d:DesignHeight="600"
+        x:Class="GitExt.UI.Views.CompareWindow"
+        x:DataType="vm:CompareViewModel"
+        Title="{Binding Title}"
+        Width="1000" Height="600"
+        MinWidth="600" MinHeight="360"
+        WindowStartupLocation="CenterOwner">
+
+    <!--
+        Karşılaştırma penceresi MODELESS ve aynı anda birden fazla açılabilir; kullanıcının
+        asıl ihtiyacı buydu — tek gömülü panel iki değişikliği yan yana koymayı imkânsız
+        kılıyordu. GitExtensions'ta da `FormDiff` `Show()` ile açılıyor.
+
+        İçerik `DiffView`: P04-T08'de bilinçli olarak bağımsız yazıldı, ikinci kez
+        yazılmıyor.
+    -->
+
+    <Grid RowDefinitions="Auto,*">
+
+        <Border Grid.Row="0"
+                Padding="10,7"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding FromRevision}"
+                               FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+
+                    <TextBlock Text="↔" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+
+                    <TextBlock Text="{Binding ToRevision}"
+                               IsVisible="{Binding ToRevision, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+
+                    <!-- Çalışma ağacı karşılaştırmasında sağ taraf bir revizyon değil. -->
+                    <TextBlock Text="çalışma ağacı"
+                               IsVisible="{Binding !!!ToRevision.Length}"
+                               FontSize="12"
+                               Opacity="0.75"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Name="RefreshButton"
+                        Content="Yenile"
+                        FontSize="11"
+                        Padding="8,2"
+                        ToolTip.Tip="Karşılaştırmayı yeniden oku (F5)" />
+            </Grid>
+        </Border>
+
+        <views:DiffView Grid.Row="1" DataContext="{Binding Diff}" />
+    </Grid>
+</Window>

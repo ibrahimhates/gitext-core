@@ -33,6 +33,24 @@ public class CompositionTests
 
         provider.GetRequiredService<MainWindowViewModel>().ShouldNotBeNull();
         provider.GetRequiredService<CommitListViewModel>().ShouldNotBeNull();
+
+        // Yazma kuyruğu (P05-T01) SINGLETON olmalı: her istekte yenisi üretilseydi kilit
+        // hiçbir şeyi korumaz, serileştirme sessizce devre dışı kalırdı.
+        GitExt.Core.Git.IGitWriteQueue queue = provider.GetRequiredService<GitExt.Core.Git.IGitWriteQueue>();
+        queue.ShouldBeSameAs(provider.GetRequiredService<GitExt.Core.Git.IGitWriteQueue>());
+
+        // Yazma yolu (P05-T03) çözümlenebilmeli; eksik kayıt derlemeyi kırmaz, uygulama
+        // yalnızca ilk stage denemesinde çökerdi.
+        provider.GetRequiredService<GitExt.Core.Git.IGitWriter>().ShouldNotBeNull();
+        provider.GetRequiredService<GitExt.Core.IStagingWriter>().ShouldNotBeNull();
+        provider.GetRequiredService<GitExt.Core.ICommitWriter>().ShouldNotBeNull();
+        provider.GetRequiredService<GitExt.Core.IWorkingTreeWriter>().ShouldNotBeNull();
+
+        // Commit ekranı (P05-T09) MainWindowViewModel üzerinden kuruluyor; bağımlılıkları
+        // kayıtlı değilse fabrika sessizce `null` döner ve menü öğesi hiçbir şey yapmaz.
+        provider.GetRequiredService<GitExt.UI.ViewModels.MainWindowViewModel>()
+            .CreateWorkingTree()
+            .ShouldNotBeNull();
     }
 
     // Pencere oluşturmak Avalonia platformu gerektiriyor; bu yüzden [AvaloniaFact].

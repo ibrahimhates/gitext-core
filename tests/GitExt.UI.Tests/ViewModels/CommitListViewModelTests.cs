@@ -26,7 +26,7 @@ public class CommitListViewModelTests
             new FakeRepositoryLocator(locateFailure),
             new FakeCommitLogReader(commits, logFailure),
             new FakeRefReader(refs, refFailure),
-            new FakeCommitSignatureReader());
+            new FakeCommitSignatureReader(),new FakeDiffReader());
 
     [AvaloniaFact]
     public async Task Depo_acilinca_satirlar_yuklenir()

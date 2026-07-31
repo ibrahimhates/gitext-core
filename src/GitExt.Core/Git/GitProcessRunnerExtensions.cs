@@ -76,7 +76,17 @@ internal static class GitFailureClassifier
             return GitFailureKind.NotARepository;
         }
 
-        if (ContainsAny(text, "index.lock", "Another git process seems to be running"))
+        // ÖLÇÜLDÜ (P05-T02): kilit çakışmasının iki farklı mesaj biçimi var —
+        //   index:  fatal: Unable to create '…/index.lock': File exists.
+        //   ref:    fatal: cannot lock ref 'HEAD': Unable to create '…/main.lock': File exists.
+        // İkincisinde "index.lock" GEÇMİYOR, ama git her ikisine de
+        // "Another git process seems to be running…" satırını ekliyor; bu yüzden aşağıdaki
+        // iki kalıp yetiyor. (Ref kilidi için ayrıca "cannot lock ref" kalıbı denendi ve
+        // GEREKSİZ olduğu görüldü — test onsuz da geçiyor.)
+        if (ContainsAny(
+                text,
+                "index.lock",
+                "Another git process seems to be running"))
         {
             return GitFailureKind.IndexLocked;
         }
@@ -141,7 +151,9 @@ internal static class GitFailureClassifier
             + "veya erişim belirtecinizi kontrol edin.",
         GitFailureKind.NetworkFailure => "Uzak depoya ulaşılamadı. Ağ bağlantınızı kontrol edin.",
         GitFailureKind.IndexLocked =>
-            "Depo kilitli (index.lock). Başka bir Git süreci çalışıyor olabilir.",
+            "Depo kilitli. Başka bir Git süreci çalışıyor olabilir; birkaç saniye sonra "
+            + "tekrar deneyin. Kilit uzun süredir duruyorsa çökmüş bir süreçten kalmış "
+            + "olabilir.",
         GitFailureKind.Conflict => "İşlem çakışma (conflict) nedeniyle durdu.",
         GitFailureKind.UnknownRevision => "Belirtilen revizyon veya dal bulunamadı.",
         GitFailureKind.DirtyWorkingTree =>

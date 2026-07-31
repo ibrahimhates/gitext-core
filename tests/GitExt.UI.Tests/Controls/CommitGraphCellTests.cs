@@ -151,10 +151,13 @@ public class CommitGraphCellTests
     }
 
     [AvaloniaFact]
-    public void Genislik_serit_sayisiyla_olculur()
+    public void Genislik_serit_sayisindan_BAGIMSIZ_penceredendir()
     {
-        // İki şeritli bir satır, tek şeritliden geniş ölçülmeli.
-        CommitGraphCell single = new() { Row = FirstRow("A:"), LaneWidth = 14 };
+        // P03-T21: genişlik satırın şerit sayısına bağlanamaz. Gerçek depolarda satırların
+        // yarısı ~120 şerit içeriyor; sütun buna göre büyüyünce ~2200 px oluyor ve
+        // SHA/konu/yazar/tarih ekran dışına itiliyordu (P03-T18'de ölçüldü). Ayrıca her
+        // satır farklı genişlikte olunca sütunlar hizasını kaybediyordu.
+        CommitGraphCell single = new() { Row = FirstRow("A:"), LaneWidth = 14, VisibleLanes = 12 };
         CommitGraphCell multi = new()
         {
             Row = RowAt(
@@ -165,12 +168,24 @@ public class CommitGraphCellTests
                 A:
                 """, 0),
             LaneWidth = 14,
+            VisibleLanes = 12,
         };
 
         single.Measure(Size.Infinity);
         multi.Measure(Size.Infinity);
 
-        multi.DesiredSize.Width.ShouldBeGreaterThan(single.DesiredSize.Width);
+        multi.DesiredSize.Width.ShouldBe(single.DesiredSize.Width);
+        single.DesiredSize.Width.ShouldBe(12 * 14);
+    }
+
+    [AvaloniaFact]
+    public void Pencere_boyutu_genisligi_belirler()
+    {
+        CommitGraphCell cell = new() { Row = FirstRow("A:"), LaneWidth = 10, VisibleLanes = 5 };
+
+        cell.Measure(Size.Infinity);
+
+        cell.DesiredSize.Width.ShouldBe(50);
     }
 
     [AvaloniaFact]

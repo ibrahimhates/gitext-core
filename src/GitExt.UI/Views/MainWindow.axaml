@@ -14,9 +14,106 @@
         WindowStartupLocation="CenterScreen"
         DragDrop.AllowDrop="True">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
 
-        <Border Grid.Row="0"
+        <!--
+            ANA MENÜ — sıra ve öğe adları GitExtensions'tan alındı (P08-T26):
+            Start · Dashboard · Repository · Commands · Tools · Help.
+            (Plugins ve "Repository hosts" bizde yok.)
+
+            ⚠️ Henüz uygulanmamış komutlar KALDIRILMIYOR, `IsEnabled="False"` ile yerinde
+            duruyor. Kullanıcının kuralı: GitExtensions'a alışkın biri aynı öğeyi aynı yerde
+            bulmalı; sonradan araya sokmak sırayı bozar.
+        -->
+        <Menu Grid.Row="0" Name="MainMenu">
+
+            <MenuItem Header="_Başlangıç">
+                <MenuItem Name="MenuCreateRepository" Header="Yeni depo oluştur…" IsEnabled="False" />
+                <MenuItem Name="MenuOpen" Header="_Aç…" Click="OnOpenClick" />
+                <MenuItem Name="MenuClone" Header="Depo k_lonla…" IsEnabled="False" />
+                <Separator />
+                <MenuItem Name="MenuRecentRepositories"
+                          Header="Son _depolar"
+                          ItemsSource="{Binding RecentRepositories}">
+                    <MenuItem.ItemTemplate>
+                        <DataTemplate DataType="vm:RecentRepositoryItem">
+                            <TextBlock Text="{Binding Path}" />
+                        </DataTemplate>
+                    </MenuItem.ItemTemplate>
+                    <MenuItem.Styles>
+                        <Style Selector="MenuItem > MenuItem" x:DataType="vm:RecentRepositoryItem">
+                            <Setter Property="Command" Value="{Binding OpenCommand}" />
+                            <Setter Property="CommandParameter" Value="{Binding Path}" />
+                        </Style>
+                    </MenuItem.Styles>
+                </MenuItem>
+                <Separator />
+                <MenuItem Name="MenuExit" Header="Çı_kış" Click="OnExitClick" />
+            </MenuItem>
+
+            <MenuItem Header="_Pano">
+                <MenuItem Name="MenuDashboardRefresh"
+                          Header="_Yenile"
+                          Command="{Binding RefreshCommand}" />
+            </MenuItem>
+
+            <MenuItem Header="_Depo" IsEnabled="{Binding HasRepository}">
+                <MenuItem Name="MenuRepositoryRefresh"
+                          Header="_Yenile"
+                          InputGesture="F5"
+                          Command="{Binding RefreshCommand}" />
+                <MenuItem Name="MenuFileExplorer" Header="Dosya _gezgini" IsEnabled="False" />
+                <Separator />
+                <MenuItem Name="MenuRemotes" Header="Uzak _depolar…" IsEnabled="False" />
+                <Separator />
+                <MenuItem Name="MenuSubmodules" Header="Alt modülleri yö_net…" IsEnabled="False" />
+                <MenuItem Name="MenuWorktrees" Header="Ça_lışma ağaçlarını yönet…" IsEnabled="False" />
+                <Separator />
+                <MenuItem Name="MenuEditGitignore" Header=".git_ignore düzenle" IsEnabled="False" />
+                <MenuItem Name="MenuRepositorySettings" Header="Depo aya_rları…" IsEnabled="False" />
+                <Separator />
+                <MenuItem Name="MenuCloseRepository"
+                          Header="_Kapat (panoya dön)"
+                          Command="{Binding CloseRepositoryCommand}" />
+            </MenuItem>
+
+            <MenuItem Header="_Komutlar" IsEnabled="{Binding HasRepository}">
+                <!-- Faz 05 -->
+                <MenuItem Name="MenuCommit" Header="_Commit…" Click="OnCommitClick" />
+                <MenuItem Name="MenuUndoLastCommit" Header="Son commit'i _geri al…" IsEnabled="False" />
+                <!-- Faz 06 -->
+                <MenuItem Name="MenuPull" Header="Pull_/Fetch…" IsEnabled="False" />
+                <MenuItem Name="MenuPush" Header="_Push…" IsEnabled="False" />
+                <Separator />
+                <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" IsEnabled="False" />
+                <MenuItem Name="MenuResetChanges" Header="Değişiklikleri sıfı_rla…" IsEnabled="False" />
+                <Separator />
+                <MenuItem Name="MenuCreateBranch" Header="_Dal oluştur…" IsEnabled="False" />
+                <MenuItem Name="MenuDeleteBranch" Header="Da_l sil…" IsEnabled="False" />
+                <MenuItem Name="MenuCheckoutBranch" Header="Dala geç (chec_kout)…" IsEnabled="False" />
+                <MenuItem Name="MenuMerge" Header="Dalları _birleştir…" IsEnabled="False" />
+                <MenuItem Name="MenuRebase" Header="R_ebase…" IsEnabled="False" />
+                <Separator />
+                <MenuItem Name="MenuCreateTag" Header="Etiket oluş_tur…" IsEnabled="False" />
+                <MenuItem Name="MenuDeleteTag" Header="Etiket si_l…" IsEnabled="False" />
+                <Separator />
+                <!-- Faz 07 -->
+                <MenuItem Name="MenuCherryPick" Header="Cherr_y pick…" IsEnabled="False" />
+                <MenuItem Name="MenuCheckoutRevision" Header="Revizyona geç…" IsEnabled="False" />
+                <MenuItem Name="MenuBisect" Header="B_isect…" IsEnabled="False" />
+                <MenuItem Name="MenuReflog" Header="Reflo_g'u göster…" IsEnabled="False" />
+            </MenuItem>
+
+            <MenuItem Header="_Araçlar">
+                <MenuItem Name="MenuSettings" Header="Aya_rlar…" IsEnabled="False" />
+            </MenuItem>
+
+            <MenuItem Header="_Yardım">
+                <MenuItem Name="MenuAbout" Header="_Hakkında" Click="OnAboutClick" />
+            </MenuItem>
+        </Menu>
+
+        <Border Grid.Row="1"
                 Padding="10,7"
                 BorderThickness="0,0,0,1"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
@@ -51,13 +148,13 @@
         </Border>
 
         <!-- Depo açılmadıysa karşılama ekranı; boş pencere göstermek yerine yol gösterilir. -->
-        <views:WelcomeView Grid.Row="1" IsVisible="{Binding ShowWelcome}" />
+        <views:WelcomeView Grid.Row="2" IsVisible="{Binding ShowWelcome}" />
 
         <!--
             Liste üstte, detay altta — GitExtensions'ın yerleşimi. Ayırıcı sürüklenebilir;
             detay paneli sabit yükseklikte olsaydı uzun commit mesajları okunamazdı.
         -->
-        <Grid Grid.Row="1"
+        <Grid Grid.Row="2"
               RowDefinitions="*,Auto,Auto"
               IsVisible="{Binding !ShowWelcome}">
 
@@ -84,11 +181,25 @@
                           Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
                           IsVisible="{Binding Commits.Details.HasCommit}" />
 
-            <views:CommitDetailsView Grid.Row="2"
-                                     DataContext="{Binding Commits.Details}"
-                                     Height="200"
-                                     MinHeight="80"
-                                     IsVisible="{Binding HasCommit}" />
+            <!--
+                Alt alan sekmeli: detay ve değişen dosyalar. GitExtensions'ın yerleşimi de
+                böyle (grid üstte, altta sekmeli alan). Diff bileşeni bağımsız olduğu için
+                aynısı P04-T16'nın ayrı penceresinde de kullanılacak.
+            -->
+            <TabControl Grid.Row="2"
+                        Height="220"
+                        MinHeight="80"
+                        Padding="0"
+                        IsVisible="{Binding Commits.Details.HasCommit}">
+
+                <TabItem Header="Detay" FontSize="12">
+                    <views:CommitDetailsView DataContext="{Binding Commits.Details}" />
+                </TabItem>
+
+                <TabItem Header="Değişiklikler" FontSize="12">
+                    <views:DiffView DataContext="{Binding Commits.Diff}" />
+                </TabItem>
+            </TabControl>
         </Grid>
     </Grid>
 </Window>

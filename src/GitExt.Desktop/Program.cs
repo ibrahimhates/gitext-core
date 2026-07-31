@@ -24,6 +24,14 @@ internal static class Program
                 .GetAwaiter().GetResult();
         }
 
+        // Ölçüm modu: commit grafiği hattını bir depoya karşı çalıştırıp süre ve bellek
+        // raporlar (P03-T18). Arayüz açılmaz.
+        if (args.Contains(GraphBenchmark.Flag, StringComparer.Ordinal))
+        {
+            return GraphBenchmark.RunAsync(args, CancellationToken.None)
+                .GetAwaiter().GetResult();
+        }
+
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

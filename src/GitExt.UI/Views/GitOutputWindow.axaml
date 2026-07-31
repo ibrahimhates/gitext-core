@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        xmlns:views="using:GitExt.UI.Views"
+        mc:Ignorable="d"
+        d:DesignWidth="700" d:DesignHeight="420"
+        x:Class="GitExt.UI.Views.GitOutputWindow"
+        x:DataType="vm:GitOutputViewModel"
+        Title="{Binding Title}"
+        Width="700" Height="420"
+        MinWidth="420" MinHeight="240"
+        WindowStartupLocation="CenterOwner">
+
+    <!--
+        Pencere MODELESS (`Show()`): kullanıcı hook çıktısını açık tutup koda dönebilmeli —
+        "hangi dosyada hata vardı" sorusunun cevabı orada. `ShowDialog` olsaydı çıktıyı
+        okumak için önce kapatmak gerekirdi. P04-T16'daki karşılaştırma penceresiyle aynı
+        gerekçe.
+    -->
+
+    <Grid RowDefinitions="*,Auto" Margin="12">
+
+        <views:GitOutputView Grid.Row="0" />
+
+        <Button Grid.Row="1"
+                Name="CloseButton"
+                Content="Kapat"
+                HorizontalAlignment="Right"
+                IsCancel="True"
+                Margin="0,10,0,0"
+                Click="OnCloseClick" />
+    </Grid>
+</Window>

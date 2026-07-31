@@ -90,8 +90,16 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
             return false;
         }
 
-        // Windows'tan gelmiş olabilir; normalleştir.
-        string normalized = value.Replace('\\', '/').Trim('/');
+        // Windows'tan gelmiş olabilir; ayracı normalleştir.
+        //
+        // 🔴 Yalnızca Windows'ta (P05-T08'de ölçüldü): Linux'ta `\` dosya adında GEÇERLİ bir
+        // karakterdir ve git onu olduğu gibi bildirir. Her platformda çevirmek,
+        // `ters\slash.txt` adlı bir dosyayı `ters/slash.txt` yapıp yolu SESSİZCE yanlış
+        // gösteriyordu — `.gitignore`'a eklemek hiçbir işe yaramıyordu çünkü üretilen desen
+        // var olmayan bir alt dizini işaret ediyordu.
+        string normalized = OperatingSystem.IsWindows()
+            ? value.Replace('\\', '/').Trim('/')
+            : value.Trim('/');
 
         if (normalized.Length == 0)
         {

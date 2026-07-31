@@ -1,9 +1,12 @@
+using System.Globalization;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GitExt.Core.Model;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -144,6 +147,14 @@ public partial class CommitListView : UserControl
             return;
         }
 
+        // Ctrl+D: seçili commit'leri karşılaştır (P04-T16).
+        if (e.Key is Key.D && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            OpenComparison(viewModel, e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+            e.Handled = true;
+            return;
+        }
+
         // Arama kutusunda yazarken gezinme tuşları kutuya ait: PgDn ile metin içinde
         // gezinmek isteyen kullanıcının listesi kaymamalı.
         if (ShaSearchBox.IsFocused)
@@ -249,6 +260,153 @@ public partial class CommitListView : UserControl
         {
             CommitList.ScrollIntoView(index);
         }
+    }
+
+    // ---- Bağlam menüsü (P08-T27) ----
+
+    /// <summary>
+    /// Seçili commit'ten metin kopyalar.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions'ın "Copy to clipboard" alt menüsündeki alanların karşılığı:
+    /// hash · mesaj · yazar · tarih · dal adı.
+    /// </remarks>
+    private async void CopyAsync(Func<CommitRowViewModel, string?> select)
+    {
+        if (ViewModel?.SelectedRow is not { } row)
+        {
+            return;
+        }
+
+        string? text = select(row);
+
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+        {
+            await clipboard.SetTextAsync(text);
+        }
+    }
+
+    private void OnCopyHashClick(object? sender, RoutedEventArgs e) =>
+        CopyAsync(row => row.Commit.Id.Value);
+
+    private void OnCopyMessageClick(object? sender, RoutedEventArgs e) =>
+        CopyAsync(row => string.IsNullOrEmpty(row.Commit.Body)
+            ? row.Commit.Subject
+            : row.Commit.Subject + "\n\n" + row.Commit.Body);
+
+    private void OnCopyAuthorClick(object? sender, RoutedEventArgs e) =>
+        CopyAsync(row => $"{row.Commit.Author.Name} <{row.Commit.Author.Email}>");
+
+    private void OnCopyDateClick(object? sender, RoutedEventArgs e) =>
+        CopyAsync(row => row.Commit.Author.When.ToString("O", CultureInfo.InvariantCulture));
+
+    /// <summary>Satırdaki dal rozetlerinin adlarını kopyalar.</summary>
+    private void OnCopyBranchClick(object? sender, RoutedEventArgs e) =>
+        CopyAsync(row => string.Join('\n', row.Badges
+            .Where(badge => badge.Kind is RefBadgeKind.LocalBranch or RefBadgeKind.RemoteBranch)
+            .Select(badge => badge.Text)));
+
+    private void OnCompareSelectedClick(object? sender, RoutedEventArgs e) => RequestComparison(againstHead: false);
+
+    private void OnCompareHeadClick(object? sender, RoutedEventArgs e) => RequestComparison(againstHead: true);
+
+    /// <summary>Çalışma ağacıyla karşılaştırma: seçim tek satıra indirgeniyor.</summary>
+    private void OnCompareWorkingTreeClick(object? sender, RoutedEventArgs e)
+    {
+        CommitList.SelectedItems?.Clear();
+        RequestComparison(againstHead: false);
+    }
+
+    private void RequestComparison(bool againstHead)
+    {
+        if (ViewModel is { } viewModel)
+        {
+            OpenComparison(viewModel, againstHead);
+        }
+    }
+
+    private void OnGoToParentClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel?.GoToParent() == true)
+        {
+            FocusSelectedRow();
+        }
+    }
+
+    private void OnGoToChildClick(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel?.GoToChild() == true)
+        {
+            FocusSelectedRow();
+        }
+    }
+
+    /// <summary>
+    /// Karşılaştırma penceresini açar (P04-T16).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Kaynak seçimi: <b>iki satır seçiliyse</b> o ikisi karşılaştırılır (P03-T14'te açılan
+    /// çoklu seçimin ilk tüketicisi), tek satır seçiliyse commit ile <b>çalışma ağacı</b>.
+    /// <c>Shift</c> basılıysa tek seçimde de commit ↔ <c>HEAD</c> karşılaştırılır.
+    /// </para>
+    /// <para>
+    /// Pencere <b>modeless</b>: <c>Show()</c> ile açılıyor ve aynı anda birden fazla
+    /// olabiliyor. Kullanıcının itirazı tam da buydu — tek gömülü panel iki değişikliği
+    /// yan yana koymayı imkânsız kılıyordu.
+    /// </para>
+    /// </remarks>
+    /// <summary>
+    /// Karşılaştırma istendiğinde, pencere açılmadan hemen önce tetiklenir.
+    /// </summary>
+    /// <remarks>
+    /// Testler için: pencerenin gerçekten açıldığını headless ortamda saymak güvenilir değil,
+    /// ama <b>tuşun doğru revizyonlarla doğru komuta bağlandığı</b> buradan doğrulanabiliyor.
+    /// </remarks>
+    internal event EventHandler<CompareViewModel>? ComparisonRequested;
+
+    private void OpenComparison(CommitListViewModel viewModel, bool againstHead)
+    {
+        CompareViewModel? compare = viewModel.CreateComparison();
+
+        if (compare is null)
+        {
+            return;
+        }
+
+        List<CommitId> selected = [.. CommitList.SelectedItems?
+            .OfType<CommitRowViewModel>()
+            .Select(row => row.Commit.Id) ?? []];
+
+        Task loading;
+
+        if (selected.Count >= 2)
+        {
+            // Liste en yeniden eskiye sıralı; kullanıcı "eskiden yeniye" bir fark bekler.
+            loading = compare.CompareAsync(selected[^1], selected[0]);
+        }
+        else if (viewModel.SelectedRow is { } row)
+        {
+            loading = againstHead
+                ? compare.CompareAsync(row.Commit.Id.Value, "HEAD")
+                : compare.CompareWithWorkingTreeAsync(row.Commit.Id.Value);
+        }
+        else
+        {
+            return;
+        }
+
+        _ = loading;
+
+        ComparisonRequested?.Invoke(this, compare);
+
+        new CompareWindow { DataContext = compare }
+            .ShowOwnedBy(TopLevel.GetTopLevel(this) as Window);
     }
 
     /// <summary>

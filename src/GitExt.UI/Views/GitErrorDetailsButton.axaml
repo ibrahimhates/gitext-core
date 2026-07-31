@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="120" d:DesignHeight="30"
+             x:Class="GitExt.UI.Views.GitErrorDetailsButton">
+
+    <!--
+        P05-T07 — hata şeridinin yanındaki "Ayrıntılar".
+
+        Ayrı bir kontrol, çünkü aynı hata İKİ farklı yerde gösteriliyor: depo açıkken
+        `CommitListView`'daki şerit, depo hiç açılamadıysa `WelcomeView`'daki kutu. İkincisi
+        **en sık** hata yolu ("bu klasör bir Git deposu değil") — düğmeyi yalnızca birine
+        koymak, kullanıcının git'in asıl çıktısını tam da en çok ihtiyaç duyduğu anda
+        görememesi demekti.
+
+        Şeridin görünümü iki yerde bilinçli olarak farklı (biri kutu, biri satır); paylaşılan
+        olan **davranış**, o yüzden yalnızca düğme ortak.
+    -->
+
+    <Button Name="DetailsButton"
+            Content="Ayrıntılar"
+            FontSize="11"
+            Padding="8,2"
+            Click="OnClick" />
+</UserControl>

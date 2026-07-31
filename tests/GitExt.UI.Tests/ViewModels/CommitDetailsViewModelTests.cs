@@ -209,12 +209,10 @@ public class CommitDetailsViewModelTests
             details.Show(Row(Commit()), "/tmp/depo");
         }
 
-        // Gecikme dolmadan hepsi iptal edildiği için hiç okuma yapılmamalı.
-        reader.ReadCallCount.ShouldBe(0);
-
         await WaitForSignatureAsync(details);
 
-        // Yalnızca son seçim okunur.
+        // Anlamlı özellik: 20 hızlı seçim tek bir okuma üretmeli. ("Şu anda 0 okuma var"
+        // demek zamanlamaya bağlı ve yük altında kırılgan olurdu.)
         reader.ReadCallCount.ShouldBe(1);
     }
 

@@ -1,0 +1,203 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GitExt.UI.ViewModels"
+             xmlns:views="using:GitExt.UI.Views"
+             mc:Ignorable="d"
+             d:DesignWidth="918" d:DesignHeight="622"
+             x:Class="GitExt.UI.Views.WorkingTreeView"
+             x:DataType="vm:WorkingTreeViewModel"
+             Loaded="OnViewLoaded">
+
+    <!--
+        YERLEŞİM GitExtensions'ın `FormCommit`'inden BİREBİR alındı (CLAUDE.md § 9).
+        Kaynak: src/app/GitUI/CommandsDialogs/FormCommit.Designer.cs
+
+          splitMain  (dikey)   : Panel1 = sol sütun            │ Panel2 = sağ sütun
+                                 SplitterDistance = 397 / 918  → sol ≈ %43
+          splitLeft  (yatay)   : Panel1 = Unstaged (üst)
+                                 Panel2 = toolbarStaged + Staged (alt)
+                                 SplitterDistance = 274 / 622  → üst ≈ %44
+          splitRight (yatay)   : Panel1 = SelectedDiff (üst)
+                                 Panel2 = commit mesajı (alt, P05-T12)
+                                 SplitterDistance = 426 / 622  → üst ≈ %68
+
+        Araç çubuğu (`toolbarStaged`) iki listenin ARASINDA duruyor ve öğeleri iki yana
+        hizalı: unstage eylemleri solda, stage eylemleri sağda (`ToolStripItemAlignment.Right`).
+        Yönler listelerin konumuyla uyumlu — "Stage" yukarıdaki listeden aşağıdakine taşıyor.
+
+        ⚠️ AYRI BİR "untracked" BÖLÜMÜ YOK: GitExtensions'ta takip edilmeyen dosyalar
+        Unstaged listesinde duruyor. Plan üç bölüm öngörüyordu; § 9 kuralı gereği yerleşim
+        kazandı (ayrıntı: WorkingTreeViewModel).
+    -->
+
+    <UserControl.Resources>
+        <!--
+            Satır biçimi P04-T08'deki değişen dosyalar listesiyle AYNI: git'in kendi durum
+            harfi + yol. Kullanıcı harfleri zaten biliyor; iki listede iki ayrı gösterim
+            kurmak gereksiz bir alfabe olurdu.
+        -->
+        <DataTemplate x:Key="WorkingTreeFileTemplate" DataType="vm:WorkingTreeFileRow">
+            <Grid ColumnDefinitions="Auto,*" Height="20">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusLetter}"
+                           Classes="status"
+                           Classes.added="{Binding IsAdded}"
+                           Classes.deleted="{Binding IsDeleted}"
+                           Classes.conflicted="{Binding IsConflicted}"
+                           Width="16"
+                           FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                           FontSize="12"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Path}"
+                           FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           Margin="4,0,0,0" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.status">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+        <Style Selector="TextBlock.status.added">
+            <Setter Property="Foreground" Value="#1A7F37" />
+        </Style>
+        <Style Selector="TextBlock.status.deleted">
+            <Setter Property="Foreground" Value="#CF222E" />
+        </Style>
+        <Style Selector="TextBlock.status.conflicted">
+            <Setter Property="Foreground" Value="#BC4C00" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="43*,Auto,57*" Margin="6">
+
+        <!-- ================= SOL SÜTUN ================= -->
+        <Grid Grid.Column="0" RowDefinitions="44*,Auto,56*">
+
+            <!-- ═══ Üst: Unstaged ═══ -->
+            <Grid Grid.Row="0" RowDefinitions="Auto,*">
+
+                <TextBlock Grid.Row="0"
+                           Name="UnstagedCaption"
+                           Text="{Binding Unstaged.Count, StringFormat='Unstaged changes ({0})'}"
+                           FontWeight="SemiBold"
+                           FontSize="12"
+                           Margin="2,0,0,4" />
+
+                <Border Grid.Row="1"
+                        BorderThickness="1"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+
+                    <ListBox Name="UnstagedList"
+                             ItemsSource="{Binding Unstaged}"
+                             SelectedIndex="{Binding SelectedUnstagedIndex}"
+                             ItemTemplate="{StaticResource WorkingTreeFileTemplate}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             GotFocus="OnUnstagedFocused" />
+                </Border>
+            </Grid>
+
+            <!-- ═══ Orta: stage/unstage araç çubuğu ═══ -->
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,6">
+
+                <!-- Sol grup: staged listesinden geri alma -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                    <Button Name="UnstageAllButton"
+                            Content="⏫"
+                            ToolTip.Tip="Tümünü geri al"
+                            FontSize="11"
+                            Padding="8,3"
+                            Click="OnUnstageAllClick" />
+
+                    <Border Width="1"
+                            Margin="2,2"
+                            Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+
+                    <Button Name="UnstageButton"
+                            Content="⬆ Geri al"
+                            ToolTip.Tip="Seçili dosyayı geri al"
+                            FontSize="11"
+                            Padding="8,3"
+                            Click="OnUnstageClick" />
+                </StackPanel>
+
+                <!-- Sağ grup: unstaged listesinden stage'leme -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                    <Button Name="StageButton"
+                            Content="⬇ Stage"
+                            ToolTip.Tip="Seçili dosyayı stage'le"
+                            FontSize="11"
+                            Padding="8,3"
+                            Click="OnStageClick" />
+
+                    <Border Width="1"
+                            Margin="2,2"
+                            Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+
+                    <Button Name="StageAllButton"
+                            Content="⏬"
+                            ToolTip.Tip="Tümünü stage'le"
+                            FontSize="11"
+                            Padding="8,3"
+                            Click="OnStageAllClick" />
+                </StackPanel>
+            </Grid>
+
+            <!-- ═══ Alt: Staged ═══ -->
+            <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto">
+
+                <TextBlock Grid.Row="0"
+                           Name="StagedCaption"
+                           Text="{Binding Staged.Count, StringFormat='Staged changes ({0})'}"
+                           FontWeight="SemiBold"
+                           FontSize="12"
+                           Margin="2,0,0,4" />
+
+                <Border Grid.Row="1"
+                        BorderThickness="1"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+
+                    <ListBox Name="StagedList"
+                             ItemsSource="{Binding Staged}"
+                             SelectedIndex="{Binding SelectedStagedIndex}"
+                             ItemTemplate="{StaticResource WorkingTreeFileTemplate}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             GotFocus="OnStagedFocused" />
+                </Border>
+
+                <!-- Hata şeridi + git'in tam çıktısı (P05-T07) -->
+                <StackPanel Grid.Row="2"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            Margin="0,6,0,0"
+                            IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+
+                    <views:GitErrorDetailsButton Details="{Binding ErrorDetails}" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <GridSplitter Grid.Column="1" Width="6" Background="Transparent" />
+
+        <!-- ================= SAĞ SÜTUN ================= -->
+        <!--
+            Üst: seçili dosyanın diff'i. Alt (commit mesajı ve düğmeleri) P05-T12'de
+            gelecek; şimdiden boş bir alan ayırmak yerine diff tüm yüksekliği kullanıyor.
+        -->
+        <views:DiffView Grid.Column="2" DataContext="{Binding Diff}" />
+    </Grid>
+</UserControl>

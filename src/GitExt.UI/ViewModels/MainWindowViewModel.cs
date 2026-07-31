@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitExt.Core;
 using GitExt.UI.Storage;
 
 namespace GitExt.UI.ViewModels;
@@ -53,10 +54,45 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IRecentRepositoryStore _recentStore;
 
-    public MainWindowViewModel(CommitListViewModel commits, IRecentRepositoryStore recentStore)
+    private readonly IStatusReader? _statusReader;
+    private readonly IStagingWriter? _staging;
+    private readonly IDiffReader? _diffReader;
+
+    /// <summary>
+    /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions'ta bu ekran <c>FormCommit</c> ve <c>ShowDialog</c> ile <b>modal</b>
+    /// açılıyor (<c>GitUICommands.StartCommitDialog</c>); yerleşim gibi açılış biçimi de
+    /// takip ediliyor (CLAUDE.md § 9).
+    /// <para>
+    /// Pencereyi <b>açmak</b> görünümün işi; burası yalnızca ne gösterileceğini kuruyor
+    /// (P04-T16'daki karşılaştırma penceresiyle aynı desen).
+    /// </para>
+    /// </remarks>
+    public WorkingTreeViewModel? CreateWorkingTree()
+    {
+        if (_statusReader is null || _staging is null || _diffReader is null)
+        {
+            return null;
+        }
+
+        return new WorkingTreeViewModel(_statusReader, _staging, new DiffViewModel(_diffReader));
+    }
+
+    public MainWindowViewModel(
+        CommitListViewModel commits,
+        IRecentRepositoryStore recentStore,
+        IStatusReader? statusReader = null,
+        IStagingWriter? staging = null,
+        IDiffReader? diffReader = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
         ArgumentNullException.ThrowIfNull(recentStore);
+
+        _statusReader = statusReader;
+        _staging = staging;
+        _diffReader = diffReader;
 
         Commits = commits;
         _recentStore = recentStore;
@@ -71,6 +107,11 @@ public partial class MainWindowViewModel : ViewModelBase
             });
 
         CancelLoadingCommand = new AsyncRelayCommand(Commits.CancelLoadingAsync);
+
+        // Menü komutları (P08-T26). GitExtensions'ta "Refresh" hem Dashboard hem Repository
+        // menüsünde var; "Close (go to Dashboard)" Repository menüsünün son öğesi.
+        RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        CloseRepositoryCommand = new RelayCommand(CloseRepository);
 
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
@@ -104,6 +145,43 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand OpenRecentCommand { get; }
 
     public ICommand CancelLoadingCommand { get; }
+
+    /// <summary>Açık depoyu yeniden okur (P08-T26).</summary>
+    public ICommand RefreshCommand { get; }
+
+    /// <summary>Depoyu kapatıp karşılama ekranına döner (P08-T26).</summary>
+    public ICommand CloseRepositoryCommand { get; }
+
+    /// <summary>Bir depo açık mı? Menü öğelerinin etkinliği buna bağlı.</summary>
+    public bool HasRepository => Commits.Repository is not null;
+
+    /// <summary>
+    /// Açık depoyu baştan okur.
+    /// </summary>
+    /// <remarks>
+    /// Yol yeniden veriliyor: <c>git</c> durumu dışarıdan değişmiş olabilir (komut satırında
+    /// commit atılması gibi), bu yüzden önbelleğe güvenilmiyor.
+    /// </remarks>
+    public async Task RefreshAsync(CancellationToken cancellationToken = default)
+    {
+        string? path = Commits.Repository?.WorkingDirectory;
+
+        if (!string.IsNullOrEmpty(path))
+        {
+            await OpenRepositoryAsync(path, cancellationToken).ConfigureAwait(true);
+        }
+    }
+
+    /// <summary>Depoyu kapatır; karşılama ekranı geri gelir.</summary>
+    public void CloseRepository()
+    {
+        Commits.Close();
+
+        Subtitle = "Depo açılmadı.";
+
+        OnPropertyChanged(nameof(ShowWelcome));
+        OnPropertyChanged(nameof(HasRepository));
+    }
 
     [ObservableProperty]
     public partial string Subtitle { get; set; } = "Depo açılmadı.";
@@ -219,6 +297,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             // Hata mesajı temizleniyor: kullanıcı bu klasörü açmayı istemedi.
             Commits.ErrorMessage = null;
+            Commits.ErrorDetails = null;
             Subtitle = "Depo açılmadı.";
         }
 

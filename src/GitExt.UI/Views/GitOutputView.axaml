@@ -1,0 +1,100 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GitExt.UI.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="700" d:DesignHeight="400"
+             x:Class="GitExt.UI.Views.GitOutputView"
+             x:DataType="vm:GitOutputViewModel">
+
+    <!--
+        P05-T07 — git komutunun TAM çıktısı.
+
+        Çıktı MONOSPACE: hook'lar sütun hizalı tablo ve kod parçası yazıyor (linter çıktısı
+        en yaygın örnek). P04-T13'te ölçülmüştü — orantılı yazı tipiyle hiza bozuluyor.
+        ⚠️ Yazı tipi seçimi headless testte doğrulanamıyor (tüm aile adları tek yedeğe
+        düşüyor); gerçek pencerede kontrol edilmeli.
+    -->
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
+
+        <TextBlock Grid.Row="0"
+                   Text="{Binding Summary}"
+                   TextWrapping="Wrap"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,6" />
+
+        <SelectableTextBlock Grid.Row="1"
+                             Text="{Binding CommandLine}"
+                             IsVisible="{Binding HasCommandLine}"
+                             FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                             FontSize="11"
+                             Opacity="0.75"
+                             TextWrapping="Wrap"
+                             Margin="0,0,0,4" />
+
+        <TextBlock Grid.Row="2"
+                   Text="{Binding ExitCodeText}"
+                   IsVisible="{Binding HasExitCode}"
+                   FontSize="11"
+                   Opacity="0.75"
+                   Margin="0,0,0,6" />
+
+        <TextBlock Grid.Row="3"
+                   Text="{Binding TruncationNotice}"
+                   IsVisible="{Binding HasTruncationNotice}"
+                   Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                   FontSize="11"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,6" />
+
+        <!--
+            Hook mesajı değiştirdiyse commit'e GİREN mesaj gösteriliyor. Kullanıcının yazdığı
+            metinle kaydedilen metin farklıysa bunu ancak `git log` açıp fark ederdi.
+        -->
+        <StackPanel Grid.Row="4"
+                    IsVisible="{Binding HasFinalMessage}"
+                    Margin="0,0,0,8">
+
+            <TextBlock Text="Kaydedilen mesaj"
+                       FontSize="11"
+                       Opacity="0.75"
+                       Margin="0,0,0,3" />
+
+            <Border BorderThickness="1"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+
+                <SelectableTextBlock Name="FinalMessageText"
+                                     Text="{Binding FinalMessage}"
+                                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                     FontSize="12"
+                                     Padding="8"
+                                     TextWrapping="Wrap" />
+            </Border>
+        </StackPanel>
+
+        <Border Grid.Row="5"
+                IsVisible="{Binding HasOutput}"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+
+                <!--
+                    Seçilebilir: kullanıcının ilk yapacağı şey hook çıktısını kopyalayıp
+                    aramak. Salt okunur bir TextBlock bunu imkânsız kılardı.
+                -->
+                <SelectableTextBlock Name="OutputText"
+                                     Text="{Binding Output}"
+                                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                     FontSize="12"
+                                     Padding="8"
+                                     TextWrapping="NoWrap" />
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

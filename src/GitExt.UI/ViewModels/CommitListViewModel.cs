@@ -38,6 +38,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
     private readonly IRepositoryLocator _locator;
     private readonly ICommitLogReader _logReader;
     private readonly IRefReader _refReader;
+    private readonly IDiffReader _diffReader;
 
     /// <summary>
     /// Commit kimliğinden satır indeksine eşleme — ebeveyne atlama ve SHA ile bulma için.
@@ -55,24 +56,54 @@ public sealed partial class CommitListViewModel : ViewModelBase
         IRepositoryLocator locator,
         ICommitLogReader logReader,
         IRefReader refReader,
-        ICommitSignatureReader signatureReader)
+        ICommitSignatureReader signatureReader,
+        IDiffReader diffReader)
     {
         ArgumentNullException.ThrowIfNull(locator);
         ArgumentNullException.ThrowIfNull(logReader);
         ArgumentNullException.ThrowIfNull(refReader);
         ArgumentNullException.ThrowIfNull(signatureReader);
+        ArgumentNullException.ThrowIfNull(diffReader);
 
         _locator = locator;
         _logReader = logReader;
         _refReader = refReader;
+        _diffReader = diffReader;
 
         // Detay panelindeki ebeveyn bağlantıları listeye geri gezinir; bağımlılık tek yönlü
         // kalsın diye panele tüm ViewModel değil yalnızca bu geri çağrı veriliyor.
         Details = new CommitDetailsViewModel(signatureReader, TryGoToCommit);
+
+        // Diff bileşeni BAĞIMSIZ: burayı tanımıyor, yalnızca "şunu göster" deniyor.
+        // Aynı bileşen P04-T16'daki karşılaştırma penceresinde de kullanılacak.
+        Diff = new DiffViewModel(diffReader);
     }
 
     /// <summary>Seçili commit'in detay paneli (P03-T15).</summary>
     public CommitDetailsViewModel Details { get; }
+
+    /// <summary>
+    /// Bir karşılaştırma penceresi için yeni ViewModel üretir (P04-T16).
+    /// </summary>
+    /// <remarks>
+    /// <b>Her pencere kendi ViewModel'ine sahip</b> — pencereler modeless ve aynı anda
+    /// birden fazla açılabiliyor, paylaşılan bir örnek olsaydı biri diğerinin içeriğini
+    /// değiştirirdi.
+    /// <para>
+    /// Pencereyi <b>açmak</b> görünümün işi; burası yalnızca ne gösterileceğini kuruyor.
+    /// </para>
+    /// </remarks>
+    public CompareViewModel? CreateComparison()
+    {
+        string? workingDirectory = Repository?.WorkingDirectory;
+
+        return string.IsNullOrEmpty(workingDirectory)
+            ? null
+            : new CompareViewModel(_diffReader, workingDirectory);
+    }
+
+    /// <summary>Seçili commit'in değişen dosyaları (P04-T08).</summary>
+    public DiffViewModel Diff { get; }
 
     /// <summary>Yüklenmiş satırlar.</summary>
     public AvaloniaList<CommitRowViewModel> Rows { get; } = [];
@@ -96,8 +127,81 @@ public sealed partial class CommitListViewModel : ViewModelBase
     partial void OnSelectedIndexChanged(int value)
     {
         OnPropertyChanged(nameof(SelectedRow));
+        EnsureLaneVisible(SelectedRow?.GraphRow.Lane);
         Details.Show(SelectedRow, Repository?.WorkingDirectory);
+
+        // Gecikme ve iptal DiffViewModel içinde; hızlı gezinmede git çalıştırılmıyor.
+        _ = Diff.ShowCommitAsync(
+            Repository?.WorkingDirectory,
+            SelectedRow?.Commit.Id ?? default,
+            SelectedRow?.Subject);
     }
+
+    /// <summary>
+    /// Grafik penceresini, verilen şerit görünür olacak şekilde kaydırır (P03-T21).
+    /// </summary>
+    /// <remarks>
+    /// Seçili commit'in düğümü daima görünmeli — aksi halde kullanıcı seçtiği satırın
+    /// grafikte nerede olduğunu göremez. Pencere yalnızca <b>gerektiğinde</b> kayar;
+    /// her seçimde ortalamak grafiği sürekli zıplatırdı.
+    /// </remarks>
+    internal void EnsureLaneVisible(int? lane)
+    {
+        if (lane is not { } target || target < 0)
+        {
+            return;
+        }
+
+        int window = Math.Max(VisibleLanes, 1);
+
+        if (target < FirstVisibleLane)
+        {
+            FirstVisibleLane = target;
+        }
+        else if (target > FirstVisibleLane + window - 1)
+        {
+            FirstVisibleLane = target - window + 1;
+        }
+    }
+
+    /// <summary>
+    /// Grafik penceresinde aynı anda gösterilen şerit sayısı (P03-T21).
+    /// </summary>
+    /// <remarks>
+    /// <b>ÖLÇÜLDÜ:</b> gerçek depolarda şerit sayısı medyanda ~120 (git/git 118, Linux 120)
+    /// ve düğümler bu şeritlere yayılıyor — 16 şeritlik bir sınır Linux'ta düğümlerin yalnızca
+    /// %24'ünü gösterirdi. Yani sabit bir "kes at" sınırı işe yaramaz; sütun sabit genişlikte
+    /// kalıp <see cref="FirstVisibleLane"/> ile <b>kayan bir pencere</b> gösteriyor.
+    /// </remarks>
+    public const int DefaultVisibleLanes = 12;
+
+    /// <summary>
+    /// Grafik penceresinin soldaki ilk şeridi.
+    /// </summary>
+    /// <remarks>
+    /// Tüm satırlar aynı değeri kullanır; satır başına hesaplansaydı şeritler satırdan satıra
+    /// kayar ve grafik okunamaz olurdu. Seçim değiştikçe pencere seçili commit'i içerecek
+    /// şekilde kaydırılır.
+    /// </remarks>
+    [ObservableProperty]
+    public partial int FirstVisibleLane { get; private set; }
+
+    /// <summary>Grafik penceresinin üst sınırı.</summary>
+    [ObservableProperty]
+    public partial int MaxVisibleLanes { get; set; } = DefaultVisibleLanes;
+
+    /// <summary>
+    /// Sütunun gerçekten kullandığı şerit sayısı.
+    /// </summary>
+    /// <remarks>
+    /// Üst sınırla deponun gerçek genişliğinin küçüğü. Dar bir depoda 12 şeritlik sabit
+    /// sütun boşuna yer kaplardı; geniş depoda ise sınır devreye girer. Değer <b>tüm
+    /// satırlarda ortak</b> olduğu için sütunlar hizasını korur.
+    /// </remarks>
+    [ObservableProperty]
+    public partial int VisibleLanes { get; private set; } = 1;
+
+    private int _widestRow = 1;
 
     [ObservableProperty]
     public partial bool IsLoading { get; set; }
@@ -160,6 +264,16 @@ public sealed partial class CommitListViewModel : ViewModelBase
     [ObservableProperty]
     public partial string? ErrorMessage { get; set; }
 
+    /// <summary>
+    /// Hatanın <b>tam</b> git çıktısı; yalnızca <see cref="GitException"/> için dolu (P05-T07).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ErrorMessage"/> sınıflandırılmış <b>özet</b>tir ("Git komutu başarısız
+    /// oldu.") ve tek başına teşhis ettirmez — git'in asıl söylediği burada.
+    /// </remarks>
+    [ObservableProperty]
+    public partial GitOutputViewModel? ErrorDetails { get; set; }
+
     /// <summary>Açık deponun konumu; henüz açılmadıysa <see langword="null"/>.</summary>
     [ObservableProperty]
     public partial RepositoryLocation? Repository { get; set; }
@@ -171,6 +285,35 @@ public sealed partial class CommitListViewModel : ViewModelBase
     /// Önceki yükleme çalışıyorsa iptal edilir — kullanıcı hızlıca başka bir depo açtığında
     /// iki akışın aynı listeye yazmasını önler.
     /// </remarks>
+    /// <summary>
+    /// Açık depoyu kapatır ve listeyi boşaltır (P08-T26).
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions'ta karşılığı <i>Repository → Close (go to Dashboard)</i>. Yükleme
+    /// sürüyorsa iptal ediliyor: kapatıldıktan sonra gelen satırların listeyi yeniden
+    /// doldurması kullanıcıya deponun kapanmadığını düşündürürdü.
+    /// </remarks>
+    public void Close()
+    {
+        _loading?.Cancel();
+
+        Rows.Clear();
+        _rowIndex.Clear();
+        SelectedIndex = -1;
+        FirstVisibleLane = 0;
+        _widestRow = 1;
+        VisibleLanes = 1;
+        LoadedCount = 0;
+        IsEmptyRepository = false;
+        ErrorMessage = null;
+        ErrorDetails = null;
+        IsLoading = false;
+        Repository = null;
+
+        Details.Show(null, null);
+        Diff.Clear();
+    }
+
     public async Task OpenAsync(string path, CancellationToken cancellationToken = default)
     {
         await CancelLoadingCoreAsync().ConfigureAwait(true);
@@ -181,9 +324,13 @@ public sealed partial class CommitListViewModel : ViewModelBase
         Rows.Clear();
         _rowIndex.Clear();
         SelectedIndex = -1;
+        FirstVisibleLane = 0;
+        _widestRow = 1;
+        VisibleLanes = 1;
         LoadedCount = 0;
         IsEmptyRepository = false;
         ErrorMessage = null;
+        ErrorDetails = null;
 
         // Önceki depo unutulur: açılış başarısız olursa ekranda satırı kalmamış bir deponun
         // yolu durmamalı — kullanıcı hâlâ onun açık olduğunu sanır.
@@ -214,6 +361,12 @@ public sealed partial class CommitListViewModel : ViewModelBase
                                        or GitVersionTooOldException or DirectoryNotFoundException)
         {
             ErrorMessage = ex.Message;
+
+            // Özet tek başına yetmez: git'in asıl çıktısı (ve varsa hook'un söyledikleri)
+            // ancak burada görünür hale geliyor.
+            ErrorDetails = ex is GitException gitException
+                ? GitOutputViewModel.ForFailure(gitException)
+                : null;
         }
         finally
         {
@@ -474,6 +627,18 @@ public sealed partial class CommitListViewModel : ViewModelBase
 
                 Rows.AddRange(items);
                 LoadedCount = Rows.Count;
+
+                // Sütun genişliği yükleme sürerken büyüyebilir ama üst sınıra hızla doyar;
+                // bu yüzden yalnızca değer gerçekten değişince bildirim yayınlanır.
+                foreach (CommitRowViewModel item in items)
+                {
+                    if (item.GraphRow.LaneCount > _widestRow)
+                    {
+                        _widestRow = item.GraphRow.LaneCount;
+                    }
+                }
+
+                VisibleLanes = Math.Clamp(_widestRow, 1, MaxVisibleLanes);
 
                 // İlk parti gelince en yeni commit seçilir: boş bir detay paneliyle
                 // karşılaşmak yerine kullanıcı doğrudan bir şey görür. Yalnızca SEÇİM

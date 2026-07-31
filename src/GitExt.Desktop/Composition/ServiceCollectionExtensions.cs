@@ -22,6 +22,10 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddGitExtServices(this IServiceCollection services)
     {
+        // Eski kod sayfaları (windows-1254, Shift-JIS…) kullanılabilir olsun; kullanıcının
+        // dosyaları UTF-8 olmayabilir (P04-T07).
+        TextEncodings.EnsureRegistered();
+
         services.AddLogging();
 
         // git çalıştırılabiliri bir kez bulunur ve doğrulanır (ADR-0002).
@@ -35,10 +39,22 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<GitExecutable>(),
             provider.GetRequiredService<IGitCommandLog>()));
 
+        // Yazma işlemleri depo başına serileştirilir (P05-T01). Singleton olması ŞART:
+        // her istekte yeni kuyruk üretilseydi kilit hiçbir şeyi korumazdı.
+        services.AddSingleton<IGitWriteQueue, GitWriteQueue>();
+
+        // Yazma yolunun tek girişi: serileştirme + kilit yeniden denemesi burada birleşiyor
+        // (P05-T03). Yazan her servis bunu kullanmalı, runner'ı doğrudan çağırmamalı.
+        services.AddSingleton<IGitWriter, GitWriter>();
+        services.AddSingleton<IStagingWriter, StagingWriter>();
+        services.AddSingleton<ICommitWriter, CommitWriter>();
+        services.AddSingleton<IWorkingTreeWriter, WorkingTreeWriter>();
+
         services.AddSingleton<IRepositoryLocator, RepositoryLocator>();
         services.AddSingleton<ICommitLogReader, CommitLogReader>();
         services.AddSingleton<IRefReader, RefReader>();
         services.AddSingleton<ICommitSignatureReader, CommitSignatureReader>();
+        services.AddSingleton<IDiffReader, DiffReader>();
         services.AddSingleton<IRecentRepositoryStore>(_ => new RecentRepositoryStore());
         services.AddSingleton<IStatusReader, StatusReader>();
         services.AddSingleton<IObjectReader, ObjectReader>();

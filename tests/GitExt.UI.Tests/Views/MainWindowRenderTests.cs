@@ -28,7 +28,7 @@ public class MainWindowRenderTests
                 new Fakes.FakeRepositoryLocator(),
                 new Fakes.FakeCommitLogReader(),
                 new Fakes.FakeRefReader(),
-                new Fakes.FakeCommitSignatureReader()),
+                new Fakes.FakeCommitSignatureReader(),new Fakes.FakeDiffReader()),
                 new Fakes.FakeRecentRepositoryStore()),
         };
         window.Show();

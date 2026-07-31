@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
              xmlns:controls="using:GitExt.UI.Controls"
+             xmlns:views="using:GitExt.UI.Views"
              mc:Ignorable="d"
              d:DesignWidth="900" d:DesignHeight="500"
              x:Class="GitExt.UI.Views.CommitListView"
@@ -45,10 +46,21 @@
                            Margin="8,0,0,0" />
             </Grid>
 
-            <TextBlock Text="{Binding ErrorMessage}"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
-                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
-                       TextWrapping="Wrap" />
+            <!--
+                Özet + "Ayrıntılar" (P05-T07). Özet sınıflandırılmış tek cümledir; git'in
+                asıl çıktısı ayrı pencerede. Buton yalnızca gösterilecek çıktı varsa görünür.
+            -->
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8"
+                        IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+
+                <TextBlock Text="{Binding ErrorMessage}"
+                           Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+
+                <views:GitErrorDetailsButton Details="{Binding ErrorDetails}" />
+            </StackPanel>
 
             <ProgressBar IsIndeterminate="True"
                          Height="2"
@@ -75,16 +87,112 @@
                 </Style>
             </ListBox.Styles>
 
+            <!--
+                COMMIT BAĞLAM MENÜSÜ — öğe sırası GitExtensions'ın `RevisionGridControl`
+                `mainContextMenu`'sünden birebir alındı (P08-T27):
+
+                  bisect · ayraç · copy to clipboard · ayraç · stash ·
+                  ayraç · checkout branch / push / merge / rebase / reset current ·
+                  ayraç · reset changes / commit / create branch / reset other /
+                          rename / delete branch ·
+                  ayraç · create tag / delete tag ·
+                  ayraç · checkout this commit / revert / cherry pick / archive / advanced ·
+                  ayraç · compare · ayraç · navigate / view …
+
+                ⚠️ Uygulanmamış komutlar KALDIRILMIYOR, devre dışı duruyor: kullanıcı
+                GitExtensions'taki yeri kas hafızasıyla arıyor, sonradan araya sokmak sırayı
+                bozar. Bisect Faz 07, stash/branch/tag Faz 05-06.
+            -->
+            <ListBox.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Revizyonu bozuk işaretle" IsEnabled="False" />
+                    <MenuItem Header="Revizyonu sağlam işaretle" IsEnabled="False" />
+                    <MenuItem Header="Revizyonu atla" IsEnabled="False" />
+                    <Separator />
+
+                    <!-- GitExtensions'ta bu alt menü dinamik: dallar/etiketler + sabit alanlar -->
+                    <MenuItem Header="Panoya _kopyala">
+                        <MenuItem Header="Commit hash" Click="OnCopyHashClick" />
+                        <MenuItem Header="Mesaj" Click="OnCopyMessageClick" />
+                        <MenuItem Header="Yazar" Click="OnCopyAuthorClick" />
+                        <MenuItem Header="Tarih" Click="OnCopyDateClick" />
+                        <Separator />
+                        <MenuItem Header="Dal adı" Click="OnCopyBranchClick" />
+                    </MenuItem>
+                    <Separator />
+
+                    <MenuItem Header="Stash'i uygula" IsEnabled="False" />
+                    <MenuItem Header="Stash'i pop'la" IsEnabled="False" />
+                    <MenuItem Header="Stash'i sil…" IsEnabled="False" />
+                    <Separator />
+
+                    <MenuItem Header="Dala geç (chec_kout)…" IsEnabled="False" />
+                    <MenuItem Header="Dalı pus_hla…" IsEnabled="False" />
+                    <MenuItem Header="Mevcut dala _birleştir…" IsEnabled="False" />
+                    <MenuItem Header="Mevcut dalı buna _rebase et" IsEnabled="False" />
+                    <MenuItem Header="Mevcut dalı buraya sıfırla…" IsEnabled="False" />
+                    <Separator />
+
+                    <MenuItem Header="Değişiklikleri sıfırla" IsEnabled="False" />
+                    <MenuItem Header="_Commit" IsEnabled="False" />
+                    <MenuItem Header="Burada yeni dal oluştur…" IsEnabled="False" />
+                    <MenuItem Header="Başka bir dalı buraya sıfırla…" IsEnabled="False" />
+                    <MenuItem Header="Dalı yeniden adlandır…" IsEnabled="False" />
+                    <MenuItem Header="Dalı sil…" IsEnabled="False" />
+                    <Separator />
+
+                    <MenuItem Header="Burada yeni etiket oluştur…" IsEnabled="False" />
+                    <MenuItem Header="Etiketi sil…" IsEnabled="False" />
+                    <Separator />
+
+                    <MenuItem Header="Bu commit'e geç…" IsEnabled="False" />
+                    <MenuItem Header="Bu commit'i geri al…" IsEnabled="False" />
+                    <MenuItem Header="Bu commit'i cherry pick'le…" IsEnabled="False" />
+                    <MenuItem Header="Bu commit'i arşivle…" IsEnabled="False" />
+                    <Separator />
+
+                    <!-- Faz 04'te geldi: çalışan tek grup. -->
+                    <MenuItem Header="Karşılaştı_r">
+                        <MenuItem Header="Seçili iki commit'i karşılaştır"
+                                  InputGesture="Ctrl+D"
+                                  Click="OnCompareSelectedClick" />
+                        <MenuItem Header="Çalışma ağacıyla karşılaştır"
+                                  Click="OnCompareWorkingTreeClick" />
+                        <MenuItem Header="HEAD ile karşılaştır"
+                                  InputGesture="Ctrl+Shift+D"
+                                  Click="OnCompareHeadClick" />
+                    </MenuItem>
+                    <Separator />
+
+                    <MenuItem Header="_Git">
+                        <MenuItem Header="Ebeveyne" InputGesture="Alt+Down" Click="OnGoToParentClick" />
+                        <MenuItem Header="Çocuğa" InputGesture="Alt+Up" Click="OnGoToChildClick" />
+                    </MenuItem>
+                </ContextMenu>
+            </ListBox.ContextMenu>
+
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="vm:CommitRowViewModel">
                     <Grid Height="22"
                           ColumnDefinitions="Auto,70,*,Auto,140,120">
 
                         <!-- Grafik sütunu — tek özel çizim yapan parça -->
-                        <controls:CommitGraphCell Grid.Column="0"
-                                                  Row="{Binding GraphRow}"
-                                                  MinWidth="28"
-                                                  Margin="4,0,8,0" />
+                        <!--
+                            Grafik sütunu SABİT genişlikte ve tüm satırlar aynı şerit
+                            penceresini gösterir (P03-T21). Genişliği satır başına şerit
+                            sayısına bağlamak, gerçek depolarda sütunu ~2200 px yapıp
+                            diğer tüm sütunları ekran dışına itiyordu (P03-T18'de ölçüldü).
+
+                            Pencere seçili commit'i takip eder; iki yana taşan şeritler
+                            kenardaki işaretlerle bildirilir.
+                        -->
+                        <controls:CommitGraphCell
+                            Grid.Column="0"
+                            Row="{Binding GraphRow}"
+                            ClipToBounds="True"
+                            Margin="4,0,8,0"
+                            FirstLane="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).FirstVisibleLane}"
+                            VisibleLanes="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).VisibleLanes}" />
 
                         <TextBlock Grid.Column="1"
                                    Text="{Binding ShortId}"

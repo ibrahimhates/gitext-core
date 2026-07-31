@@ -138,6 +138,69 @@ public sealed class FakeCommitSignatureReader : ICommitSignatureReader
 }
 
 /// <summary>
+/// ViewModel testleri için sahte diff okuyucusu.
+/// </summary>
+public sealed class FakeDiffReader : IDiffReader
+{
+    private readonly IReadOnlyList<FileDiff> _diffs;
+    private readonly Exception? _failure;
+
+    public int ReadCallCount { get; private set; }
+
+    public FakeDiffReader(IReadOnlyList<FileDiff>? diffs = null, Exception? failure = null)
+    {
+        _diffs = diffs ?? [];
+        _failure = failure;
+    }
+
+    public Task<IReadOnlyList<FileDiff>> ReadCommitAsync(
+        string workingDirectory,
+        CommitId commit,
+        DiffOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ReadCallCount++;
+
+        return _failure is not null
+            ? Task.FromException<IReadOnlyList<FileDiff>>(_failure)
+            : Task.FromResult(_diffs);
+    }
+
+    public Task<IReadOnlyList<FileDiff>> ReadBetweenAsync(
+        string workingDirectory,
+        string fromRevision,
+        string toRevision,
+        DiffOptions? options = null,
+        CancellationToken cancellationToken = default) =>
+        ReadCommitAsync(workingDirectory, default, options, cancellationToken);
+
+    public Task<IReadOnlyList<FileDiff>> ReadAgainstWorkingTreeAsync(
+        string workingDirectory,
+        string revision,
+        DiffOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ReadCallCount++;
+
+        return _failure is not null
+            ? Task.FromException<IReadOnlyList<FileDiff>>(_failure)
+            : Task.FromResult(_diffs);
+    }
+
+    public Task<IReadOnlyList<FileDiff>> ReadUnstagedAsync(
+        string workingDirectory,
+        DiffOptions? options = null,
+        CancellationToken cancellationToken = default) =>
+        ReadCommitAsync(workingDirectory, default, options, cancellationToken);
+
+    public Task<IReadOnlyList<FileDiff>> ReadStagedAsync(
+        string workingDirectory,
+        DiffOptions? options = null,
+        CancellationToken cancellationToken = default) =>
+        ReadCommitAsync(workingDirectory, default, options, cancellationToken);
+}
+
+/// <summary>
 /// Bellekte tutan sahte "son açılanlar" deposu — disk dokunmadan ViewModel testi için.
 /// </summary>
 public sealed class FakeRecentRepositoryStore : IRecentRepositoryStore
@@ -210,6 +273,27 @@ public static class FakeGitData
             Subject = subject,
             Body = string.Empty,
             Refs = refs ?? [],
+        };
+
+    /// <summary>Test için dosya diff'i üretir.</summary>
+    public static FileDiff Diff(
+        string path,
+        FileChangeKind change = FileChangeKind.Modified,
+        int? added = 1,
+        int? removed = 1,
+        bool binary = false,
+        bool tooLarge = false,
+        string? oldPath = null) =>
+        new()
+        {
+            Path = RepositoryPath.Parse(path),
+            OldPath = oldPath is null ? null : RepositoryPath.Parse(oldPath),
+            Change = change,
+            StatAdded = binary ? null : added,
+            StatRemoved = binary ? null : removed,
+            IsBinary = binary,
+            IsTooLarge = tooLarge,
+            Hunks = [],
         };
 
     /// <summary>Sıra numarasından deterministik, geçerli bir SHA üretir.</summary>
@@ -307,4 +391,120 @@ public static class FakeGitData
             ObjectId = CommitId.Parse(targetSha),
             TargetCommit = CommitId.Parse(targetSha),
         };
+}
+
+/// <summary>
+/// Bellekte çalışan sahte durum okuyucu — <c>git</c>'e dokunmadan ViewModel testi için.
+/// </summary>
+/// <remarks>
+/// Stage/unstage işlemleri <see cref="FakeStagingWriter"/> ile bu nesnenin durumunu
+/// değiştiriyor; böylece "stage'ledikten sonra liste ne oluyor" gerçekten test edilebiliyor.
+/// </remarks>
+public sealed class FakeStatusReader : IStatusReader
+{
+    private readonly List<FileStatus> _entries;
+    private readonly Exception? _failure;
+
+    public FakeStatusReader(IEnumerable<FileStatus>? entries = null, Exception? failure = null)
+    {
+        _entries = [.. entries ?? []];
+        _failure = failure;
+    }
+
+    public int ReadCallCount { get; private set; }
+
+    public IList<FileStatus> Entries => _entries;
+
+    public Task<WorkingTreeStatus> ReadAsync(
+        string workingDirectory,
+        bool includeIgnored = false,
+        CancellationToken cancellationToken = default)
+    {
+        ReadCallCount++;
+
+        if (_failure is not null)
+        {
+            return Task.FromException<WorkingTreeStatus>(_failure);
+        }
+
+        return Task.FromResult(new WorkingTreeStatus
+        {
+            BranchName = "main",
+            Entries = [.. _entries],
+        });
+    }
+}
+
+/// <summary>
+/// Sahte staging yazıcısı: <see cref="FakeStatusReader"/>'ın girdilerini yerinde taşır.
+/// </summary>
+public sealed class FakeStagingWriter : IStagingWriter
+{
+    private readonly FakeStatusReader _status;
+
+    public FakeStagingWriter(FakeStatusReader status)
+    {
+        _status = status;
+    }
+
+    public List<string> Calls { get; } = [];
+
+    public Task StageAsync(
+        string workingDirectory,
+        IReadOnlyList<RepositoryPath> paths,
+        CancellationToken cancellationToken = default)
+    {
+        Calls.Add($"stage:{string.Join(',', paths)}");
+
+        Move(paths, toStaged: true);
+        return Task.CompletedTask;
+    }
+
+    public Task UnstageAsync(
+        string workingDirectory,
+        IReadOnlyList<RepositoryPath> paths,
+        CancellationToken cancellationToken = default)
+    {
+        Calls.Add($"unstage:{string.Join(',', paths)}");
+
+        Move(paths, toStaged: false);
+        return Task.CompletedTask;
+    }
+
+    private void Move(IReadOnlyList<RepositoryPath> paths, bool toStaged)
+    {
+        foreach (RepositoryPath path in paths)
+        {
+            for (int i = 0; i < _status.Entries.Count; i++)
+            {
+                if (_status.Entries[i].Path != path)
+                {
+                    continue;
+                }
+
+                _status.Entries[i] = toStaged
+                    ? new FileStatus { Path = path, StagedChange = FileChangeKind.Modified }
+                    : new FileStatus { Path = path, UnstagedChange = FileChangeKind.Modified };
+            }
+        }
+    }
+
+    public Task StagePartialAsync(
+        string workingDirectory,
+        FileDiff diff,
+        PatchSelection selection,
+        System.Text.Encoding? contentEncoding = null,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task UnstagePartialAsync(
+        string workingDirectory,
+        FileDiff diff,
+        PatchSelection selection,
+        System.Text.Encoding? contentEncoding = null,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task UntrackAsync(
+        string workingDirectory,
+        IReadOnlyList<RepositoryPath> paths,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

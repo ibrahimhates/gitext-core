@@ -45,12 +45,6 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
 
     private const int SchemaVersion = 1;
 
-    private static readonly JsonSerializerOptions _serializerOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
-
     private readonly string _filePath;
 
     public RecentRepositoryStore(string? filePath = null)
@@ -156,7 +150,7 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
             await using FileStream stream = File.OpenRead(_filePath);
 
             return await JsonSerializer
-                .DeserializeAsync<RecentFile>(stream, _serializerOptions, cancellationToken)
+                .DeserializeAsync(stream, RecentJsonContext.Default.RecentFile, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
@@ -177,7 +171,7 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
             await using FileStream stream = File.Create(_filePath);
 
             await JsonSerializer
-                .SerializeAsync(stream, file, _serializerOptions, cancellationToken)
+                .SerializeAsync(stream, file, RecentJsonContext.Default.RecentFile, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -187,12 +181,29 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
         }
     }
 
-    private sealed class RecentFile
-    {
-        [JsonPropertyName("version")]
-        public int Version { get; set; }
-
-        [JsonPropertyName("repositories")]
-        public IReadOnlyList<string> Repositories { get; set; } = [];
-    }
 }
+
+/// <summary>
+/// Son açılanlar dosyasının şeması.
+/// </summary>
+internal sealed class RecentFile
+{
+    [JsonPropertyName("version")]
+    public int Version { get; set; }
+
+    [JsonPropertyName("repositories")]
+    public IReadOnlyList<string> Repositories { get; set; } = [];
+}
+
+/// <summary>
+/// <see cref="RecentFile"/> için kaynak üretimli seri hale getirme bağlamı.
+/// </summary>
+/// <remarks>
+/// <b>Yansımalı <c>JsonSerializer</c> aşırı yüklemeleri kullanılamaz:</b> trimming'i bozuyorlar
+/// (IL2026) ve <c>PublishTrimmed</c> ile yayın <b>derlenmiyor</b>. Bu, ölçülerek bulundu —
+/// P03-T16'da eklenen yansımalı çağrılar yayını kırdı ama derleme ve testler yeşil kaldığı için
+/// ancak `dotnet publish` denenince görüldü.
+/// </remarks>
+[JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(RecentFile))]
+internal sealed partial class RecentJsonContext : JsonSerializerContext;

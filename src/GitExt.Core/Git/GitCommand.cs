@@ -55,6 +55,23 @@ public sealed record GitCommand
     public IReadOnlyCollection<int> SuccessExitCodes { get; init; } = [0];
 
     /// <summary>
+    /// stdout için üst sınır; aşılırsa okuma durdurulur ve süreç sonlandırılır.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see langword="null"/> ise sınır yok. Güvenlik valfi olarak var: <c>git diff</c>
+    /// tek bir commit için <b>yüzlerce megabayt</b> yama üretebiliyor (ölçüldü: tamamı
+    /// değişen 12,7 MB'lık bir dosya 23 MB yama veriyor) ve bunu belleğe almak uygulamayı
+    /// öldürür.
+    /// </para>
+    /// <para>
+    /// Sınır aşıldığında sonuç <see cref="GitResult.OutputTruncated"/> ile işaretlenir;
+    /// çağıran kısmi çıktıyı <b>ayrıştırmamalı</b>, farklı bir strateji seçmelidir.
+    /// </para>
+    /// </remarks>
+    public long? MaximumOutputBytes { get; init; }
+
+    /// <summary>
     /// Kısa yol: çalışma dizini ve argümanlarla komut oluşturur.
     /// </summary>
     public static GitCommand Create(string workingDirectory, params string[] arguments) =>

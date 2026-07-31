@@ -3,14 +3,20 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
+             xmlns:views="using:GitExt.UI.Views"
              mc:Ignorable="d"
-             d:DesignWidth="700" d:DesignHeight="450"
+             d:DesignWidth="900" d:DesignHeight="500"
              x:Class="GitExt.UI.Views.WelcomeView"
              x:DataType="vm:MainWindowViewModel">
 
     <!--
-        Depo açılmadığında görünen ekran (P03-T16). Boş bir pencere yerine kullanıcıya
-        ne yapabileceğini söyler: klasör seç, son açılanlardan birine dön, ya da sürükle-bırak.
+        Karşılama ekranı — YERLEŞİM GitExtensions'ın `Dashboard`'ından alındı (P08-T25):
+        solda sabit genişlikte bir panel, üstte "Start" bağlantıları
+        (Create new repository · Open repository · Clone repository), altta "Contribute";
+        ortada/sağda son açılan depoların listesi.
+
+        Kullanıcının kuralı: görsel birebir aynı olmak zorunda değil ama BUTONLARIN YERİ
+        aynı olmalı — GitExtensions'a alışkın bir kullanıcı aynı yere bakabilmeli.
     -->
 
     <UserControl.Styles>
@@ -18,50 +24,138 @@
         <Style Selector="Button.missing">
             <Setter Property="Opacity" Value="0.45" />
         </Style>
+
+        <!-- Sol paneldeki bağlantılar: düz metin gibi görünen düğmeler. -->
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4,5" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <Style Selector="Button.link:disabled">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.8" />
+            <Setter Property="Margin" Value="4,0,0,6" />
+        </Style>
     </UserControl.Styles>
 
-    <ScrollViewer>
-        <StackPanel MaxWidth="560"
-                    Margin="24"
-                    Spacing="18"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
+    <Grid ColumnDefinitions="230,*">
 
-            <StackPanel Spacing="4">
-                <TextBlock Text="gitext-core" FontSize="22" FontWeight="SemiBold" />
-                <TextBlock Text="Başlamak için bir Git deposu açın."
-                           FontSize="13"
-                           Opacity="0.7" />
-            </StackPanel>
+        <!-- SOL PANEL — GitExtensions'ta `pnlLeft` -->
+        <Border Grid.Column="0"
+                BorderThickness="0,0,1,0"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
 
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Name="OpenFolderButton"
-                        Content="Klasör aç…"
-                        Click="OnOpenFolderClick"
-                        Padding="14,6" />
+            <Grid RowDefinitions="Auto,*,Auto" Margin="16,18">
 
-                <TextBlock Text="veya bir klasörü pencereye sürükleyin"
-                           FontSize="12"
-                           Opacity="0.6"
-                           VerticalAlignment="Center" />
-            </StackPanel>
+                <!-- Logo alanı (`pnlLogo`) -->
+                <StackPanel Grid.Row="0" Spacing="2" Margin="4,0,0,18">
+                    <TextBlock Text="gitext-core" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock Text="Git Extensions Core" FontSize="11" Opacity="0.55" />
+                </StackPanel>
 
-            <!-- Açma başarısız olduysa sebebi burada; karşılama ekranından ayrılmadan görünür. -->
-            <Border IsVisible="{Binding Commits.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                <!-- Start bağlantıları (`flpnlStart`) — GitExtensions'taki sırayla -->
+                <StackPanel Grid.Row="1" Spacing="2">
+                    <TextBlock Text="Başlangıç" Classes="section" />
+
+                    <!--
+                        Henüz uygulanmamış komutlar KALDIRILMIYOR, devre dışı bırakılıyor:
+                        sırayı bozmak, sonradan araya sokmaktan daha kötü (kas hafızası).
+                        Depo oluşturma ve klonlama Faz 06'da geliyor.
+                    -->
+                    <Button Name="CreateRepositoryButton"
+                            Classes="link"
+                            Content="Yeni depo oluştur"
+                            IsEnabled="False"
+                            ToolTip.Tip="Faz 06'da gelecek" />
+
+                    <Button Name="OpenFolderButton"
+                            Classes="link"
+                            Content="Depo aç"
+                            Click="OnOpenFolderClick" />
+
+                    <Button Name="CloneRepositoryButton"
+                            Classes="link"
+                            Content="Depo klonla"
+                            IsEnabled="False"
+                            ToolTip.Tip="Faz 06'da gelecek" />
+
+                    <TextBlock Text="…veya bir klasörü pencereye sürükleyin"
+                               FontSize="11"
+                               Opacity="0.5"
+                               TextWrapping="Wrap"
+                               Margin="4,10,0,0" />
+                </StackPanel>
+
+                <!-- Contribute (`flpnlContribute`) — altta sabit -->
+                <StackPanel Grid.Row="2" Spacing="2">
+                    <TextBlock Text="Katkı" Classes="section" />
+
+                    <Button Name="DevelopButton"
+                            Classes="link"
+                            Content="Geliştir"
+                            Click="OnDevelopClick" />
+
+                    <Button Name="IssuesButton"
+                            Classes="link"
+                            Content="Sorun bildir"
+                            Click="OnIssuesClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- SAĞ/ORTA — son açılan depolar (`userRepositoriesList`) -->
+        <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" Margin="20,18">
+
+            <TextBlock Grid.Row="0"
+                       Text="Son açılan depolar"
+                       Classes="section" />
+
+            <!-- Açma başarısız olduysa sebebi burada; ekrandan ayrılmadan görünür. -->
+            <Border Grid.Row="1"
+                    IsVisible="{Binding Commits.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Background="#FBE0DE"
                     BorderBrush="#E39D98"
                     BorderThickness="1"
                     CornerRadius="4"
-                    Padding="10,7">
-                <TextBlock Text="{Binding Commits.ErrorMessage}"
-                           FontSize="12"
-                           Foreground="#6E1F1A"
-                           TextWrapping="Wrap" />
+                    Padding="10,7"
+                    Margin="0,0,0,10">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Commits.ErrorMessage}"
+                               FontSize="12"
+                               Foreground="#6E1F1A"
+                               TextWrapping="Wrap" />
+
+                    <!--
+                        P05-T07 — git'in asıl çıktısı. Bu, en SIK hata yolu ("bu klasör bir
+                        Git deposu değil"); özet tek başına teşhis ettirmiyor.
+                    -->
+                    <views:GitErrorDetailsButton Details="{Binding Commits.ErrorDetails}"
+                                                 HorizontalAlignment="Left" />
+                </StackPanel>
             </Border>
 
-            <StackPanel Spacing="6" IsVisible="{Binding HasRecentRepositories}">
-                <TextBlock Text="Son açılanlar" FontSize="12" Opacity="0.6" />
+            <!--
+                ⚠️ `IsVisible="{Binding …Count}"` Avalonia'da sessizce çalışmıyor (Faz 03'te
+                ölçüldü); ayrı bir bool özellik kullanılıyor.
+            -->
+            <TextBlock Grid.Row="2"
+                       Text="Henüz depo açılmadı. Soldaki “Depo aç” ile başlayın."
+                       IsVisible="{Binding !HasRecentRepositories}"
+                       FontSize="12"
+                       Opacity="0.55"
+                       Margin="4,6,0,0" />
 
+            <ScrollViewer Grid.Row="2" IsVisible="{Binding HasRecentRepositories}">
                 <ItemsControl ItemsSource="{Binding RecentRepositories}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:RecentRepositoryItem">
@@ -72,7 +166,7 @@
                                     HorizontalContentAlignment="Left"
                                     Background="Transparent"
                                     BorderThickness="0"
-                                    Padding="6,4"
+                                    Padding="8,6"
                                     Margin="0,0,0,2">
                                 <StackPanel Spacing="1">
                                     <TextBlock Text="{Binding Name}" FontSize="13" />
@@ -86,12 +180,11 @@
                                                Opacity="0.55"
                                                TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </StackPanel>
-        </StackPanel>
-    </ScrollViewer>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
 </UserControl>

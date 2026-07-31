@@ -30,7 +30,7 @@ public class WelcomeViewRenderTests
                     "git rev-parse", 128, "fatal: not a git repository")),
                 new FakeCommitLogReader(),
                 new FakeRefReader(),
-                new FakeCommitSignatureReader()),
+                new FakeCommitSignatureReader(),new FakeDiffReader()),
             new FakeRecentRepositoryStore(recent));
 
     private static MainWindow Show(MainWindowViewModel viewModel)
@@ -107,7 +107,7 @@ public class WelcomeViewRenderTests
                 new FakeRepositoryLocator(),
                 new FakeCommitLogReader(),
                 new FakeRefReader(),
-                new FakeCommitSignatureReader()),
+                new FakeCommitSignatureReader(),new FakeDiffReader()),
             new FakeRecentRepositoryStore());
 
         MainWindow window = Show(viewModel);
@@ -121,6 +121,52 @@ public class WelcomeViewRenderTests
                 && t.Text?.Contains("henüz commit yok", StringComparison.Ordinal) == true);
 
         messageShown.ShouldBeTrue();
+
+        window.Close();
+    }
+    [AvaloniaFact]
+    public async Task Depo_acilamadiginda_AYRINTILAR_dugmesi_gorunur()
+    {
+        // P05-T07 — "bu klasör bir Git deposu değil" EN SIK hata yolu ve depo açılamadığı
+        // için ekranda commit listesi değil karşılama ekranı var. Düğme yalnızca commit
+        // listesine konsaydı git'in asıl çıktısı tam da en çok gerekli olduğu anda
+        // görünmezdi.
+        MainWindowViewModel viewModel = Create();
+        MainWindow window = Show(viewModel);
+
+        await viewModel.StartAsync("/tmp/depo-degil");
+        Dispatcher.UIThread.RunJobs();
+
+        GitErrorDetailsButton button = window.GetVisualDescendants()
+            .OfType<GitErrorDetailsButton>()
+            .Single();
+
+        button.IsEffectivelyVisible.ShouldBeTrue();
+        button.Details.ShouldNotBeNull().Output.ShouldContain("fatal: not a git repository");
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Hata_yokken_AYRINTILAR_dugmesi_GORUNMEZ()
+    {
+        // Karşı kanıt: düğme her zaman görünseydi yukarıdaki test hiçbir şey kanıtlamazdı.
+        MainWindowViewModel viewModel = new(
+            new CommitListViewModel(
+                new FakeRepositoryLocator(),
+                new FakeCommitLogReader(),
+                new FakeRefReader(),
+                new FakeCommitSignatureReader(),
+                new FakeDiffReader()),
+            new FakeRecentRepositoryStore());
+
+        MainWindow window = Show(viewModel);
+        Dispatcher.UIThread.RunJobs();
+
+        window.GetVisualDescendants()
+            .OfType<GitErrorDetailsButton>()
+            .All(b => !b.IsEffectivelyVisible)
+            .ShouldBeTrue();
 
         window.Close();
     }

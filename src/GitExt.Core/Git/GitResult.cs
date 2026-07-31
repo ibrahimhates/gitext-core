@@ -17,14 +17,25 @@ public sealed class GitResult
         int exitCode,
         byte[] standardOutput,
         string standardError,
-        TimeSpan duration)
+        TimeSpan duration,
+        bool outputTruncated = false)
     {
         Command = command;
         ExitCode = exitCode;
         StandardOutput = standardOutput;
         StandardError = standardError;
         Duration = duration;
+        OutputTruncated = outputTruncated;
     }
+
+    /// <summary>
+    /// Çıktı <see cref="GitCommand.MaximumOutputBytes"/> sınırına takıldı mı?
+    /// </summary>
+    /// <remarks>
+    /// <see langword="true"/> ise <see cref="StandardOutput"/> <b>yarım</b>; ayrıştırılırsa
+    /// sessizce eksik veri üretir. Çağıran bu durumu ayrıca ele almalıdır.
+    /// </remarks>
+    public bool OutputTruncated { get; }
 
     /// <summary>Çalıştırılan komut.</summary>
     public GitCommand Command { get; }
@@ -55,6 +66,26 @@ public sealed class GitResult
     /// </remarks>
     public string GetStandardOutputText() =>
         StandardOutput.Length == 0 ? string.Empty : _utf8Lenient.GetString(StandardOutput);
+
+    /// <summary>
+    /// stdout'u <b>kayıpsız</b> metne çevirir: her bayt bire bir bir karaktere karşılık gelir.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>git diff</c> çıktısı <b>tek bir kodlamada değil</b>: başlıklar ve işaretler ASCII
+    /// iken satır içerikleri <b>dosyanın kendi baytları</b>. UTF-8 olarak çözmek, UTF-8
+    /// olmayan bir dosyanın içeriğini <b>sessizce bozar</b> (ölçüldü: Latin-5 bir dosyada
+    /// <c>0xFC</c> baytları U+FFFD oluyor).
+    /// </para>
+    /// <para>
+    /// Latin-1 ile çözmek her baytı korur; yapı ASCII olduğu için ayrıştırma etkilenmez ve
+    /// içerik daha sonra doğru kodlamayla <b>yeniden çözülebilir</b>. Bu yaklaşım
+    /// GitExtensions'ın <c>PatchProcessor</c>'ından alındı: orada da çıktı kayıpsız okunup
+    /// başlıklar ile içerik <b>ayrı ayrı</b> yeniden kodlanıyor.
+    /// </para>
+    /// </remarks>
+    public string GetStandardOutputLossless() =>
+        StandardOutput.Length == 0 ? string.Empty : Encoding.Latin1.GetString(StandardOutput);
 
     /// <summary>
     /// stdout'u NUL (<c>\0</c>) ayracına göre böler; <b>boş parçaları atar</b>.

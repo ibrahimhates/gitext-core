@@ -13,13 +13,20 @@ public class RepositoryPathTests
     }
 
     [Fact]
-    public void Ters_egik_cizgi_normallestirilir()
+    public void Ters_egik_cizgi_YALNIZCA_Windowsta_normallestirilir()
     {
-        // Windows'tan gelen bir yol git'e ters eğik çizgiyle verilirse git onu
-        // dosya adının parçası sanar ve dosya "bulunamaz".
+        // Windows'tan gelen bir yol git'e ters eğik çizgiyle verilirse git onu dosya adının
+        // parçası sanar ve dosya "bulunamaz" — orada çevirmek şart.
+        //
+        // 🔴 Ama Linux'ta `\` dosya adında GEÇERLİ bir karakter (P05-T08'de ölçüldü) ve git
+        // onu olduğu gibi bildiriyor. Her platformda çevirmek `ters\slash.txt` adlı bir
+        // dosyanın yolunu SESSİZCE `ters/slash.txt` yapıyordu.
         RepositoryPath path = RepositoryPath.Parse(@"src\GitExt.Core\Program.cs");
 
-        path.Value.ShouldBe("src/GitExt.Core/Program.cs");
+        path.Value.ShouldBe(
+            OperatingSystem.IsWindows()
+                ? "src/GitExt.Core/Program.cs"
+                : @"src\GitExt.Core\Program.cs");
     }
 
     [Fact]
