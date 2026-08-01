@@ -13,7 +13,7 @@
 
   <!-- Sürüm grupları: tek yerden yükseltmek için -->
   <PropertyGroup>
-    <AvaloniaVersion>12.1.0</AvaloniaVersion>
+    <AvaloniaVersion>12.1.1</AvaloniaVersion>
     <MicrosoftExtensionsVersion>10.0.10</MicrosoftExtensionsVersion>
     <XunitVersion>3.2.2</XunitVersion>
   </PropertyGroup>
