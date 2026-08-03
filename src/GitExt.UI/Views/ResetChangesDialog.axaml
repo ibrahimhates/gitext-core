@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExt.UI.Views.ResetChangesDialog"
+        Title="Değişiklikleri sıfırla"
+        Width="520"
+        SizeToContent="Height"
+        MinHeight="240"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        Yerleşim GitExtensions `FormResetChanges.Designer.cs`'ten (§ 9):
+        txtMessage → lblDeleteHint → cbDeleteNewFilesAndDirectories → [btnCancel][btnReset].
+        Eklenen tek şey ETKİLENECEK DOSYA LİSTESİ: "emin misiniz?" sorusu neyin gideceğini
+        söylemeden sorulduğunda kullanıcıyı düşünmeye değil tıklamaya yönlendirir (P05-T08
+        bu önizlemeyi T15'e devretmişti).
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <TextBlock Name="MessageText"
+                   Text="Değişiklikleri sıfırlamak istediğinize emin misiniz?"
+                   TextWrapping="Wrap"
+                   FontWeight="SemiBold" />
+
+        <TextBlock Name="HintText"
+                   Text="Bu işlem commit edilmemiş tüm çalışmayı siler."
+                   TextWrapping="Wrap"
+                   Opacity="0.8" />
+
+        <Border BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                CornerRadius="3"
+                Padding="6"
+                MaxHeight="180">
+            <ScrollViewer>
+                <ItemsControl Name="AffectedList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <CheckBox Name="DeleteUntrackedBox"
+                  Content="Yeni dosyaları ve/veya dizinleri de sil" />
+
+        <CheckBox Name="DoNotAskAgainBox"
+                  Content="Bu oturumda bir daha sorma"
+                  FontSize="11" />
+
+        <TextBlock Name="BackupNote"
+                   Text="Silinen içerik yedeklenir; işlemden sonra geri alabilirsiniz."
+                   TextWrapping="Wrap"
+                   FontSize="11"
+                   Opacity="0.75" />
+
+        <!-- flowLayoutPanel1 sırası: btnCancel, btnReset. -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Name="CancelButton" Content="İptal" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="ResetButton" Content="Sıfırla" MinWidth="90" IsDefault="True" Click="OnResetClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>
