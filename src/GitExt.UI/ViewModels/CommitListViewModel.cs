@@ -120,6 +120,9 @@ public sealed partial class CommitListViewModel : ViewModelBase
     [ObservableProperty]
     public partial int SelectedIndex { get; set; } = -1;
 
+    /// <summary>Son okunan ref durumu; okunamadıysa <see langword="null"/> (P06-T04).</summary>
+    public RepositoryRefs? Refs { get; private set; }
+
     /// <summary>Seçili satır; seçim yoksa <see langword="null"/>.</summary>
     public CommitRowViewModel? SelectedRow =>
         SelectedIndex >= 0 && SelectedIndex < Rows.Count ? Rows[SelectedIndex] : null;
@@ -545,10 +548,16 @@ public sealed partial class CommitListViewModel : ViewModelBase
                 .ReadAsync(workingDirectory, token)
                 .ConfigureAwait(true);
 
+            // HEAD durumu ayrıca saklanıyor: ayrık HEAD şeridi (P06-T04) bunu okuyor ve
+            // ikinci bir `symbolic-ref` çağrısı yapmanın anlamı yok.
+            Refs = refs;
+
             return RefBadgeIndex.Build(refs);
         }
         catch (GitException)
         {
+            Refs = null;
+
             return RefBadgeIndex.Empty;
         }
     }

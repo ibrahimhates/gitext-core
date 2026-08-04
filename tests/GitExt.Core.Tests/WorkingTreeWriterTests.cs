@@ -20,6 +20,7 @@ public class WorkingTreeWriterTests
         TestRepository Repository,
         WorkingTreeWriter Writer,
         StagingWriter Staging,
+        DiffReader Diff,
         GitWriteQueue Queue) : IDisposable
     {
         public void Dispose()
@@ -57,6 +58,7 @@ public class WorkingTreeWriterTests
             repository,
             new WorkingTreeWriter(writer, runner),
             new StagingWriter(writer, runner),
+            new DiffReader(runner),
             queue);
     }
 
@@ -185,6 +187,293 @@ public class WorkingTreeWriterTests
             harness.Path, Paths("yeni.txt"), userConfirmed: true, Ct);
 
         harness.Exists("yeni.txt").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Silinen_takip_edilmeyen_dosyanin_icerigi_YEDEKLENIR()
+    {
+        // 🔴 P05-T15'in gerekçesi, ölçümle: `git clean` ile silinen bir dosyanın nesne
+        // veritabanında hiçbir izi kalmıyor — `git fsck --lost-found` bile bulmuyor.
+        // Bu, deponun tek gerçekten geri döndürülemez işlemiydi. Oysa takip edilmeyen
+        // dosyalar tipik olarak henüz commit edilmemiş YENİ KAYNAK DOSYALAR: bu deponun
+        // kendisinde `git clean -dn` çıktısı, o sırada yazılmakta olan dosyaları
+        // listeliyordu.
+        using Harness harness = await CreateAsync();
+        harness.Repository.WriteFile("yeni-kaynak.cs", "çok değerli emek\n");
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DeleteUntrackedAsync(
+            harness.Path, Paths("yeni-kaynak.cs"), userConfirmed: true, Ct);
+
+        harness.Exists("yeni-kaynak.cs").ShouldBeFalse();
+
+        backups.Count.ShouldBe(1);
+        backups[0].Path.Value.ShouldBe("yeni-kaynak.cs");
+
+        // Yedek gerçekten okunabilmeli; kimlik döndürüp içeriği kaybetmek işe yaramaz.
+        harness.Repository.Git("cat-file", "-p", backups[0].BlobId)
+            .ShouldContain("çok değerli emek");
+    }
+
+    [Fact]
+    public async Task Yedek_normal_gc_ile_KAYBOLMUYOR()
+    {
+        // ⚠️ ÖLÇÜLDÜ — T08'in "garanti değil" notu doğru ama fazla karamsardı: yedeğe
+        // hiçbir ref işaret etmiyor, ama `git gc` onu SİLMİYOR (dangling nesneler
+        // varsayılan `gc.pruneExpire=2.weeks` boyunca korunuyor). Silen şey yalnızca
+        // `gc --prune=now`. Kullanıcıya söylenen kurtarma yolu bu yüzden gerçekçi.
+        using Harness harness = await CreateAsync();
+        harness.Repository.WriteFile("gidecek.txt", "kurtarılacak içerik\n");
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DeleteUntrackedAsync(
+            harness.Path, Paths("gidecek.txt"), userConfirmed: true, Ct);
+
+        harness.Repository.Git("gc", "--quiet");
+
+        harness.Repository.Git("cat-file", "-p", backups[0].BlobId)
+            .ShouldContain("kurtarılacak içerik");
+    }
+
+    [Fact]
+    public async Task Secili_satirlar_geri_alinir_INDEX_korunur()
+    {
+        // 🔴 ÖLÇÜLDÜ: `git apply --reverse` (--cached OLMADAN) yamayı yalnızca çalışma
+        // ağacına uyguluyor; dosyanın stage'lenmiş sürümü olduğu gibi kalıyor. `--cached`
+        // eklenseydi kullanıcı "şu satırı geri al" derken index'ini de değiştirmiş olurdu.
+        using Harness harness = await CreateAsync();
+        harness.Repository.WriteFile("a.txt", "bir\niki\nuc\n");
+        harness.Repository.Git("add", "a.txt");
+        harness.Repository.Commit("temel");
+
+        harness.Repository.WriteFile("a.txt", "BIR\niki\nUC\n");
+        harness.Repository.Git("add", "a.txt");
+        harness.Repository.WriteFile("a.txt", "BIR\niki\nUCUC\n");
+
+        FileDiff diff = (await harness.Diff.ReadUnstagedAsync(harness.Path, cancellationToken: Ct))
+            .Single();
+
+        // Tüm hunk'ı seç: dosyada tek bir değişiklik var, ölçülmek istenen şey index'in
+        // korunması.
+        PatchSelection selection = PatchSelection.All(diff);
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DiscardPartialAsync(
+            harness.Path, diff, selection, userConfirmed: true, cancellationToken: Ct);
+
+        backups.Count.ShouldBe(1);
+
+        // Çalışma ağacı yamadan önceki hâle dönmeli…
+        harness.Read("a.txt").ShouldBe("BIR\niki\nUC\n");
+
+        // …index'e ise DOKUNULMAMALI. ⚠️ Tam eşitlik şart: "UC içeriyor mu" diye bakmak
+        // "UCUC" ile de geçerdi (P04-T09'un dersi: baktığın yer, doğruladığın şeyin
+        // yeri olmalı).
+        harness.Repository.Git("show", ":a.txt").ShouldBe("BIR\niki\nUC\n");
+    }
+
+    [Fact]
+    public async Task Kismi_geri_alma_eol_crlf_altinda_SATIR_SONLARINI_bozmuyor()
+    {
+        // P05-T17 ölçümü: yama `git diff`ten geldiği için LF, çalışma ağacındaki dosya ise
+        // CRLF. `git apply` (worktree yolu) aynı filtreleri kendisi uyguladığı için yama
+        // tutuyor ve CRLF korunuyor. Tutmasaydı belirti sessiz değil `patch does not apply`
+        // olurdu — ama geri alma kullanıcının emeğini silen bir işlem, bunun testsiz
+        // varsayıma bırakılacak yeri yok.
+        using Harness harness = await CreateAsync();
+        string path = System.IO.Path.Combine(harness.Path, "c.txt");
+
+        harness.Repository.WriteFile(".gitattributes", "* text=auto eol=crlf\n");
+        File.WriteAllBytes(path, "bir\r\niki\r\nuc\r\n"u8.ToArray());
+        harness.Repository.Git("add", "-A");
+        harness.Repository.Commit("temel");
+
+        File.WriteAllBytes(path, "bir\r\nIKI\r\nuc\r\n"u8.ToArray());
+
+        FileDiff diff = (await harness.Diff.ReadUnstagedAsync(harness.Path, cancellationToken: Ct))
+            .Single();
+
+        await harness.Writer.DiscardPartialAsync(
+            harness.Path, diff, PatchSelection.All(diff), userConfirmed: true, cancellationToken: Ct);
+
+        File.ReadAllBytes(path).ShouldBe("bir\r\niki\r\nuc\r\n"u8.ToArray());
+    }
+
+    [Fact]
+    public async Task Kismi_geri_almada_onay_ZORUNLU()
+    {
+        using Harness harness = await CreateAsync();
+        harness.Repository.WriteFile("a.txt", "bir\n");
+        harness.Repository.Git("add", "a.txt");
+        harness.Repository.Commit("temel");
+        harness.Repository.WriteFile("a.txt", "BIR\n");
+
+        FileDiff diff = (await harness.Diff.ReadUnstagedAsync(harness.Path, cancellationToken: Ct))
+            .Single();
+
+        PatchSelection selection = PatchSelection.All(diff);
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            harness.Writer.DiscardPartialAsync(
+                harness.Path, diff, selection, userConfirmed: false, cancellationToken: Ct));
+    }
+
+    [Fact]
+    public async Task Yedek_geri_yazilabiliyor()
+    {
+        // Yedek almak tek başına güvenlik ağı değil: kullanıcıya blob kimliği verip
+        // `git cat-file` yazmasını beklemek panik anında işe yaramaz.
+        using Harness harness = await CreateAsync();
+        harness.Repository.WriteFile("alt/dizin/yeni.cs", "geri gelmeli\n");
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DeleteUntrackedAsync(
+            harness.Path, Paths("alt/dizin/yeni.cs"), userConfirmed: true, Ct);
+
+        harness.Exists("alt/dizin/yeni.cs").ShouldBeFalse();
+
+        IReadOnlyList<DiscardBackup> restored =
+            await harness.Writer.RestoreBackupsAsync(harness.Path, backups, Ct);
+
+        restored.Count.ShouldBe(1);
+
+        // Dizin de silinmişti (`clean -d`); geri yazma onu yeniden oluşturmalı.
+        (await File.ReadAllTextAsync(
+            Path.Combine(harness.Path, "alt/dizin/yeni.cs"), Ct))
+            .ShouldBe("geri gelmeli\n");
+    }
+
+    [Fact]
+    public async Task Yedek_IKILI_dosyada_da_BIREBIR()
+    {
+        using Harness harness = await CreateAsync();
+
+        byte[] content = new byte[8192];
+        Random.Shared.NextBytes(content);
+        await File.WriteAllBytesAsync(Path.Combine(harness.Path, "resim.bin"), content, Ct);
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DeleteUntrackedAsync(
+            harness.Path, Paths("resim.bin"), userConfirmed: true, Ct);
+
+        await harness.Writer.RestoreBackupsAsync(harness.Path, backups, Ct);
+
+        (await File.ReadAllBytesAsync(Path.Combine(harness.Path, "resim.bin"), Ct))
+            .ShouldBe(content);
+    }
+
+    [Fact]
+    public async Task Yedek_CRLF_donusumune_ugramaz()
+    {
+        // 🔴 ÖLÇÜLDÜ: `--no-filters` olmadan `.gitattributes`'ta `text=auto` varken git
+        // yedeği yazarken CRLF'i LF'e çeviriyor — geri yazımda kullanıcının satır sonları
+        // sessizce değişirdi. Kurtarma vaadi veren bir yedeğin içeriği değiştirmesi,
+        // hiç yedek almamaktan daha kötü: kullanıcı kurtardığını sanır.
+        using Harness harness = await CreateAsync();
+        harness.Repository.WriteFile(".gitattributes", "* text=auto\n");
+        harness.Repository.Git("add", ".gitattributes");
+        harness.Repository.Commit("attributes");
+
+        byte[] crlf = "birinci\r\nikinci\r\n"u8.ToArray();
+        await File.WriteAllBytesAsync(Path.Combine(harness.Path, "crlf.txt"), crlf, Ct);
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DeleteUntrackedAsync(
+            harness.Path, Paths("crlf.txt"), userConfirmed: true, Ct);
+
+        await harness.Writer.RestoreBackupsAsync(harness.Path, backups, Ct);
+
+        (await File.ReadAllBytesAsync(Path.Combine(harness.Path, "crlf.txt"), Ct))
+            .ShouldBe(crlf);
+    }
+
+    [Fact]
+    public async Task Yedek_CLEAN_FILTRESINDEN_etkilenmez()
+    {
+        // 🔴 ÖLÇÜLDÜ ve en tehlikelisi: özel bir clean filtresi (Git LFS'in çalışma biçimi)
+        // varken filtresiz yazılmayan yedeğe dosyanın kendisi değil FİLTRENİN ÇIKTISI
+        // giriyor — ölçümde `GIZLI parola` içeriği yedekte `*** parola` oldu.
+        using Harness harness = await CreateAsync();
+
+        harness.Repository.Git("config", "filter.maskele.clean", "sed s/GIZLI/***/");
+        harness.Repository.WriteFile(".gitattributes", "*.gizli filter=maskele\n");
+        harness.Repository.Git("add", ".gitattributes");
+        harness.Repository.Commit("filtre");
+
+        harness.Repository.WriteFile("kasa.gizli", "GIZLI parola\n");
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DeleteUntrackedAsync(
+            harness.Path, Paths("kasa.gizli"), userConfirmed: true, Ct);
+
+        await harness.Writer.RestoreBackupsAsync(harness.Path, backups, Ct);
+
+        (await File.ReadAllTextAsync(Path.Combine(harness.Path, "kasa.gizli"), Ct))
+            .ShouldBe("GIZLI parola\n");
+    }
+
+    [Fact]
+    public async Task COK_dosyali_ikili_kurtarma_her_dosyayi_DOGRU_esliyor()
+    {
+        // `cat-file --batch` akışı tek bir bayt dizisi: içerikler arka arkaya geliyor ve
+        // sınırları yalnızca başlıktaki BOYUT belirliyor. Ayrıştırıcı bir bayt kayarsa
+        // dosyalar birbirinin içeriğiyle "kurtarılır" ve bu sessiz bir veri kaybıdır —
+        // tam da P05-T15'in engellemek için var olduğu şey. Farklı boyutlarda ve ayraç
+        // baytları (\n) içeren ikili içerikle sınanıyor.
+        using Harness harness = await CreateAsync();
+
+        Dictionary<string, byte[]> contents = [];
+
+        for (int i = 1; i <= 5; i++)
+        {
+            byte[] data = new byte[i * 1000];
+            Random.Shared.NextBytes(data);
+
+            // Satır sonu baytları bilinçli: ayraç arayan bir ayrıştırıcı burada kırılır.
+            data[i * 10] = (byte)'\n';
+            data[^1] = (byte)'\n';
+
+            contents[$"ikili{i}.bin"] = data;
+            await File.WriteAllBytesAsync(Path.Combine(harness.Path, $"ikili{i}.bin"), data, Ct);
+        }
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DeleteUntrackedAsync(
+            harness.Path, Paths([.. contents.Keys]), userConfirmed: true, Ct);
+
+        backups.Count.ShouldBe(5);
+
+        IReadOnlyList<DiscardBackup> restored =
+            await harness.Writer.RestoreBackupsAsync(harness.Path, backups, Ct);
+
+        restored.Count.ShouldBe(5);
+
+        foreach ((string name, byte[] expected) in contents)
+        {
+            (await File.ReadAllBytesAsync(Path.Combine(harness.Path, name), Ct))
+                .ShouldBe(expected, $"{name} yanlış içerikle kurtarıldı");
+        }
+    }
+
+    [Fact]
+    public async Task Budanmis_yedek_digerlerini_ENGELLEMEZ()
+    {
+        // `gc --prune=now` yedeği anında siliyor (ölçüldü). Kısmi kurtarma, hiç
+        // kurtarmamaktan iyidir; tek bir kayıp nesne diğerlerini düşürmemeli.
+        using Harness harness = await CreateAsync();
+        harness.Repository.WriteFile("duran.txt", "bu kurtarılmalı\n");
+
+        IReadOnlyList<DiscardBackup> backups = await harness.Writer.DeleteUntrackedAsync(
+            harness.Path, Paths("duran.txt"), userConfirmed: true, Ct);
+
+        List<DiscardBackup> withMissing =
+        [
+            new DiscardBackup
+            {
+                Path = RepositoryPath.Parse("kayip.txt"),
+                BlobId = "0000000000000000000000000000000000000000",
+            },
+            .. backups,
+        ];
+
+        IReadOnlyList<DiscardBackup> restored =
+            await harness.Writer.RestoreBackupsAsync(harness.Path, withMissing, Ct);
+
+        restored.Count.ShouldBe(1);
+        harness.Exists("duran.txt").ShouldBeTrue();
+        harness.Exists("kayip.txt").ShouldBeFalse();
     }
 
     [Fact]

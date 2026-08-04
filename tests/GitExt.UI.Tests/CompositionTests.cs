@@ -45,6 +45,8 @@ public class CompositionTests
         provider.GetRequiredService<GitExt.Core.IStagingWriter>().ShouldNotBeNull();
         provider.GetRequiredService<GitExt.Core.ICommitWriter>().ShouldNotBeNull();
         provider.GetRequiredService<GitExt.Core.IWorkingTreeWriter>().ShouldNotBeNull();
+        provider.GetRequiredService<GitExt.Core.IBranchWriter>().ShouldNotBeNull();
+        provider.GetRequiredService<GitExt.Core.IInProgressOperationReader>().ShouldNotBeNull();
 
         // Commit ekranı (P05-T09) MainWindowViewModel üzerinden kuruluyor; bağımlılıkları
         // kayıtlı değilse fabrika sessizce `null` döner ve menü öğesi hiçbir şey yapmaz.
@@ -66,6 +68,14 @@ public class CompositionTests
             provider.GetRequiredService<GitExt.Core.ICommitMessageStore>();
 
         store.ShouldBeSameAs(provider.GetRequiredService<GitExt.Core.ICommitMessageStore>());
+
+        // 🔴 İzleyici (P05-T14) de SINGLETON olmalı: her istekte yenisi üretilseydi her biri
+        // depo ağacındaki HER DİZİN için ayrı bir `inotify` izlemesi tutardı (ölçüm: 11.512
+        // dizinlik ağaçta 11.512 izleme) ve örnek sınırına (bu makinede 1024) çarpardı.
+        GitExt.Core.IRepositoryWatcher watcher =
+            provider.GetRequiredService<GitExt.Core.IRepositoryWatcher>();
+
+        watcher.ShouldBeSameAs(provider.GetRequiredService<GitExt.Core.IRepositoryWatcher>());
     }
 
     // Pencere oluşturmak Avalonia platformu gerektiriyor; bu yüzden [AvaloniaFact].

@@ -1,4 +1,5 @@
 using Avalonia.Collections;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GitExt.Core;
 using GitExt.Core.Git;
@@ -88,11 +89,29 @@ public sealed class WorkingTreeFileRow
 /// § 9 kuralı gereği yerleşim kazandı.
 /// </para>
 /// </remarks>
-public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagingHost
+public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagingHost, IDisposable
 {
     private readonly IStatusReader _statusReader;
     private readonly IStagingWriter _staging;
     private readonly ICommitWriter _commitWriter;
+    private readonly IRepositoryWatcher? _watcher;
+    private readonly IWorkingTreeWriter? _workingTreeWriter;
+
+    /// <summary>
+    /// Kullanıcı "bir daha sorma" dedi mi?
+    /// </summary>
+    /// <remarks>
+    /// 🔑 <b>Bilinçli olarak OTURUM İÇİ</b> — diske yazılmıyor. Kalıcı olsaydı kullanıcı
+    /// aylar sonra, o kutuyu işaretlediğini çoktan unutmuşken hiç uyarılmadan veri
+    /// kaybederdi. Asıl şikâyet olan "art arda on dosya sıfırlıyorum, her seferinde
+    /// soruyor" durumunu oturum içi bastırma zaten çözüyor.
+    /// </remarks>
+    private bool _suppressResetPrompt;
+
+    /// <summary>
+    /// Son sıfırlamanın yedekleri; "geri al" bunları kullanıyor.
+    /// </summary>
+    private readonly List<DiscardBackup> _lastResetBackups = [];
 
     private CancellationTokenSource? _refreshing;
 
@@ -113,7 +132,9 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         ICommitWriter commitWriter,
         DiffViewModel diff,
         ICommitMessageReader? messageReader = null,
-        ICommitMessageStore? messageStore = null)
+        ICommitMessageStore? messageStore = null,
+        IRepositoryWatcher? watcher = null,
+        IWorkingTreeWriter? workingTreeWriter = null)
     {
         ArgumentNullException.ThrowIfNull(statusReader);
         ArgumentNullException.ThrowIfNull(staging);
@@ -123,6 +144,13 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         _statusReader = statusReader;
         _staging = staging;
         _commitWriter = commitWriter;
+        _watcher = watcher;
+        _workingTreeWriter = workingTreeWriter;
+
+        if (_watcher is not null)
+        {
+            _watcher.Changed += OnRepositoryChanged;
+        }
 
         Message = new CommitMessageViewModel(messageReader, messageStore);
 
@@ -163,12 +191,93 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         // karşılaştırdığı metin (P05-T04'te iki tur hata yapılmıştı).
         if (stage)
         {
-            await _staging.StagePartialAsync(directory, diff, selection).ConfigureAwait(true);
+            await _staging
+                .StagePartialAsync(directory, diff, selection, Diff.ContentEncoding)
+                .ConfigureAwait(true);
         }
         else
         {
-            await _staging.UnstagePartialAsync(directory, diff, selection).ConfigureAwait(true);
+            await _staging
+                .UnstagePartialAsync(directory, diff, selection, Diff.ContentEncoding)
+                .ConfigureAwait(true);
         }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Commit'te hook doğrulaması atlansın mı (P05-T15)?
+    /// </summary>
+    /// <remarks>
+    /// ⚠️ <b>ÖLÇÜLDÜ (P05-T07):</b> bu bayrak "hook'ları atla" DEĞİL — yalnızca
+    /// <c>pre-commit</c> ve <c>commit-msg</c> atlanıyor; <c>prepare-commit-msg</c> ve
+    /// <c>post-commit</c> çalışmaya devam ediyor, yani mesaj hâlâ değişebilir.
+    /// <para>
+    /// Onay diyaloğu <b>yok</b>: atlanan hook veri kaybettirmiyor, oluşan commit reflog'da
+    /// duruyor ve geri alınabiliyor (P05-T15'te ölçüldü). Diyalog yalnızca geri
+    /// getirilemeyen işlemler için var.
+    /// </para>
+    /// </remarks>
+    [ObservableProperty]
+    public partial bool SkipHooks { get; set; }
+
+    /// <summary>
+    /// Yıkıcı işlemler için onay soran taraf (P05-T15).
+    /// </summary>
+    /// <remarks>
+    /// Ctor yerine <b>özellik</b>: onay diyaloğu sahip bir pencere istiyor, ViewModel ise
+    /// pencereden önce kuruluyor. Aynı desen <see cref="DiffViewModel.StagingHost"/>'ta da
+    /// kullanıldı (P05-T10).
+    /// <para>
+    /// Atanmamışsa sıfırlama komutları <b>hiçbir şey yapmaz</b>: onaysız yıkıcı işlem
+    /// çalıştırmaktansa hiç çalıştırmamak yeğdir.
+    /// </para>
+    /// </remarks>
+    public IDestructiveActionConfirmer? Confirmer { get; set; }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Diff panelinden gelen <b>yıkıcı</b> istek: dosya listesindeki sıfırlamayla aynı
+    /// güvenlik ağından geçiyor — onay, yedek, geri alma şeridi. Farkı yalnızca kapsamı.
+    /// </remarks>
+    async Task IPartialStagingHost.DiscardAsync(FileDiff diff, PatchSelection selection)
+    {
+        if (WorkingDirectory is not { Length: > 0 } directory
+            || _workingTreeWriter is null
+            || Confirmer is null)
+        {
+            return;
+        }
+
+        ResetChangesDecision? decision = await RequestResetAsync(new ResetChangesRequest
+        {
+            ModifiedPaths = [diff.Path],
+            UntrackedPaths = [],
+
+            // Yama yalnızca çalışma ağacına uygulanıyor; index'e dokunulmuyor (ölçüldü).
+            IncludesStaged = false,
+            CanSuppress = true,
+        }).ConfigureAwait(true);
+
+        if (decision is null)
+        {
+            return;
+        }
+
+        IReadOnlyList<DiscardBackup> backups = await _workingTreeWriter
+            .DiscardPartialAsync(
+                directory,
+                diff,
+                selection,
+                userConfirmed: true,
+                Diff.ContentEncoding)
+            .ConfigureAwait(true);
+
+        RecordReset(
+            backups,
+            backups.Count == 0
+                ? "Seçili satırlar geri alındı."
+                : $"Seçili satırlar geri alındı. {diff.Path.Name} yedeklendi.");
 
         await RefreshAsync().ConfigureAwait(true);
     }
@@ -281,7 +390,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             CommitOutput = null;
 
             CommitResult result = await _commitWriter
-                .CommitAsync(directory, Message.Text, new CommitOptions { Amend = Amend }, cancellationToken)
+                .CommitAsync(directory, Message.Text, new CommitOptions { Amend = Amend, SkipHooks = SkipHooks }, cancellationToken)
                 .ConfigureAwait(true);
 
             // Kutu ve TASLAK birlikte temizleniyor: commit'lenen metin diskte kalsaydı ekran
@@ -390,6 +499,43 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         }
 
         await RefreshAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// İzleyici bir değişiklik bildirdiğinde çalışır (P05-T14).
+    /// </summary>
+    /// <remarks>
+    /// Olay <b>zamanlayıcı iş parçacığında</b> geliyor; koleksiyonlara ancak UI iş
+    /// parçacığında dokunulabilir.
+    /// </remarks>
+    private void OnRepositoryChanged(object? sender, RepositoryChangedEventArgs e) =>
+        Dispatcher.UIThread.Post(() => _ = AutoRefreshAsync());
+
+    /// <summary>
+    /// Dışarıdan gelen değişiklik sonrası kendiliğinden tazeler.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Yazılan commit mesajına <b>dokunmaz</b>: tazeleme yalnızca dosya listelerini ve diff'i
+    /// yeniler. Kullanıcının yazdığı metni bir arka plan olayının silmesi kabul edilemez
+    /// (P05-T13'ün değişmezi).
+    /// </para>
+    /// <para>
+    /// <b>Askıya alma şart:</b> ölçümde <c>git status</c> bir depoda ilk çalıştığında
+    /// index'i yeniden yazıyor — yani tazelemenin kendisi yeni bir tazeleme olayı
+    /// doğurabiliyor. Askı bu zinciri kesiyor.
+    /// </para>
+    /// </remarks>
+    private async Task AutoRefreshAsync()
+    {
+        if (IsBusy || WorkingDirectory is not { Length: > 0 })
+        {
+            return;
+        }
+
+        using IDisposable? suspension = _watcher?.Suspend();
+
+        await RefreshAsync().ConfigureAwait(true);
     }
 
     /// <summary>
@@ -504,6 +650,219 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         return index < 0 ? 0 : Math.Min(index, count - 1);
     }
 
+    /// <summary>
+    /// Değişiklikleri sıfırlar — <b>yıkıcı</b> (P05-T15).
+    /// </summary>
+    /// <param name="scope">
+    /// <see cref="DiscardScope.UnstagedOnly"/> yalnızca çalışma ağacını,
+    /// <see cref="DiscardScope.All"/> stage'lenmiş içeriği de atar.
+    /// </param>
+    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <remarks>
+    /// <para>
+    /// GitExtensions'ta karşılığı <c>FormCommit</c>'teki *Reset all changes* /
+    /// *Reset unstaged changes* düğmeleri; onlar da <c>FormResetChanges</c> ile
+    /// soruyor ve "yeni dosyaları da sil" seçeneğini aynı diyalogda sunuyor (§ 9).
+    /// </para>
+    /// <para>
+    /// 🔑 <b>Onay atlanabilir, güvenlik ağı atlanamaz.</b> Kullanıcı "bir daha sorma"
+    /// dese bile içerik her zaman yedekleniyor ve işlem sonrası geri alma sunuluyor.
+    /// </para>
+    /// </remarks>
+    public async Task ResetChangesAsync(
+        DiscardScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        if (WorkingDirectory is not { Length: > 0 } directory
+            || _workingTreeWriter is null
+            || Confirmer is null
+            || IsBusy)
+        {
+            return;
+        }
+
+        List<RepositoryPath> modified = [];
+        List<RepositoryPath> untracked = [];
+
+        foreach (WorkingTreeFileRow row in Unstaged)
+        {
+            (row.IsUntracked ? untracked : modified).Add(row.Path);
+        }
+
+        if (scope == DiscardScope.All)
+        {
+            // Stage'lenmiş dosyalar da HEAD'e dönecek; kullanıcıya sayısı söylenmeli.
+            foreach (WorkingTreeFileRow row in Staged)
+            {
+                if (!modified.Contains(row.Path))
+                {
+                    modified.Add(row.Path);
+                }
+            }
+        }
+
+        if (modified.Count == 0 && untracked.Count == 0)
+        {
+            return;
+        }
+
+        ResetChangesDecision? decision = await RequestResetAsync(new ResetChangesRequest
+        {
+            ModifiedPaths = modified,
+            UntrackedPaths = untracked,
+            IncludesStaged = scope == DiscardScope.All,
+
+            // Her iki yol da yedekleniyor (P05-T15), yani bastırma güvenli.
+            CanSuppress = true,
+        }).ConfigureAwait(true);
+
+        if (decision is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            ErrorMessage = null;
+            ErrorDetails = null;
+
+            List<DiscardBackup> backups = [];
+
+            if (modified.Count > 0)
+            {
+                backups.AddRange(await _workingTreeWriter
+                    .DiscardChangesAsync(directory, modified, scope, userConfirmed: true, cancellationToken)
+                    .ConfigureAwait(true));
+            }
+
+            if (decision.DeleteUntracked && untracked.Count > 0)
+            {
+                backups.AddRange(await _workingTreeWriter
+                    .DeleteUntrackedAsync(directory, untracked, userConfirmed: true, cancellationToken)
+                    .ConfigureAwait(true));
+            }
+
+            IsBusy = false;
+            await RefreshAsync(cancellationToken).ConfigureAwait(true);
+
+            RecordReset(
+                backups,
+                backups.Count == 0
+                    ? "Değişiklikler sıfırlandı."
+                    : $"Değişiklikler sıfırlandı. {backups.Count} dosyanın içeriği yedeklendi.");
+        }
+        catch (GitException ex)
+        {
+            ErrorMessage = ex.Message;
+            ErrorDetails = GitOutputViewModel.ForFailure(ex);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Yıkıcı bir işlem için onay ister ve "bir daha sorma" seçimini uygular (P05-T15).
+    /// </summary>
+    /// <returns>
+    /// Kullanıcının kararı; iptal edildiyse <see langword="null"/>.
+    /// </returns>
+    /// <remarks>
+    /// Dosya listesinden ve diff panelinden gelen iki yıkıcı yol da buradan geçiyor:
+    /// bastırma kuralı tek yerde durmazsa, ikinci yolun onu uygulamayı unutması sessiz
+    /// bir davranış farkı olurdu.
+    /// </remarks>
+    private async Task<ResetChangesDecision?> RequestResetAsync(ResetChangesRequest request)
+    {
+        if (_suppressResetPrompt)
+        {
+            return new ResetChangesDecision { Confirmed = true };
+        }
+
+        ResetChangesDecision decision =
+            await Confirmer!.ConfirmResetAsync(request).ConfigureAwait(true);
+
+        if (!decision.Confirmed)
+        {
+            return null;
+        }
+
+        if (decision.DoNotAskAgain)
+        {
+            _suppressResetPrompt = true;
+        }
+
+        return decision;
+    }
+
+    /// <summary>
+    /// Yıkıcı bir işlemin yedeklerini ve özetini kaydeder; şerit bunlardan besleniyor.
+    /// </summary>
+    private void RecordReset(IReadOnlyList<DiscardBackup> backups, string notice)
+    {
+        _lastResetBackups.Clear();
+        _lastResetBackups.AddRange(backups);
+
+        ResetNotice = notice;
+
+        OnPropertyChanged(nameof(CanUndoReset));
+    }
+
+    /// <summary>
+    /// Son sıfırlamanın özeti; şerit olarak gösteriliyor. Yoksa <see langword="null"/>.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? ResetNotice { get; private set; }
+
+    /// <summary>Son sıfırlama geri alınabilir mi?</summary>
+    public bool CanUndoReset => _lastResetBackups.Count > 0;
+
+    /// <summary>
+    /// Son sıfırlamayı geri alır (P05-T15).
+    /// </summary>
+    /// <remarks>
+    /// 🔑 Güvenlik ağının asıl değeri burada: kullanıcıya blob kimliği verip
+    /// <c>git cat-file</c> yazmasını beklemek panik anında işe yaramaz. Yedeği olmayan bir
+    /// işlem için bu komut hiç görünmüyor.
+    /// </remarks>
+    public async Task UndoResetAsync(CancellationToken cancellationToken = default)
+    {
+        if (WorkingDirectory is not { Length: > 0 } directory
+            || _workingTreeWriter is null
+            || _lastResetBackups.Count == 0)
+        {
+            return;
+        }
+
+        IReadOnlyList<DiscardBackup> backups = [.. _lastResetBackups];
+
+        IReadOnlyList<DiscardBackup> restored = await _workingTreeWriter
+            .RestoreBackupsAsync(directory, backups, cancellationToken)
+            .ConfigureAwait(true);
+
+        // Yedekler tüketildi: aynı geri almayı ikinci kez sunmak anlamsız. Kısmi kurtarma
+        // ise sessizce "başarılı" gösterilmemeli — yedeği budanmış dosyalar
+        // (`gc --prune=now`) geri gelmez ve kullanıcı bunu bilmeli.
+        RecordReset(
+            [],
+            restored.Count == backups.Count
+                ? $"{restored.Count} dosya geri yüklendi."
+                : $"{restored.Count}/{backups.Count} dosya geri yüklendi; "
+                  + "kalanların yedeği nesne veritabanında yok.");
+
+        await RefreshAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Şeridi kapatır.</summary>
+    public void ClearResetNotice()
+    {
+        _lastResetBackups.Clear();
+        ResetNotice = null;
+        OnPropertyChanged(nameof(CanUndoReset));
+    }
+
     /// <summary>Seçili stage'lenmemiş dosyayı stage'ler.</summary>
     public Task StageSelectedAsync(CancellationToken cancellationToken = default) =>
         RunAsync(
@@ -565,5 +924,25 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         }
 
         await RefreshAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// İzleyici aboneliğini bırakır (P05-T14).
+    /// </summary>
+    /// <remarks>
+    /// İzleyici <b>uygulama ömrü boyunca yaşayan</b> tek bir nesne; commit penceresi ise
+    /// açılıp kapanıyor. Abonelik bırakılmazsa kapatılmış her pencere olayları almaya devam
+    /// eder ve kapalı bir ekran için <c>git status</c> çalıştırılır.
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_watcher is not null)
+        {
+            _watcher.Changed -= OnRepositoryChanged;
+        }
+
+        _refreshing?.Cancel();
+        _refreshing?.Dispose();
+        _refreshing = null;
     }
 }

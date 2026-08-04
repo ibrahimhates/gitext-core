@@ -311,6 +311,55 @@ public partial class CommitListView : UserControl
             .Where(badge => badge.Kind is RefBadgeKind.LocalBranch or RefBadgeKind.RemoteBranch)
             .Select(badge => badge.Text)));
 
+    /// <summary>
+    /// "Burada yeni dal oluştur…" (P06-T01).
+    /// </summary>
+    /// <remarks>
+    /// Komut ana pencerenin ViewModel'ında; bu görünüm yalnızca commit listesini tanıyor.
+    /// Bağlamayla ulaşmak yerine tepe pencereden okunuyor — bağlam menüsü görsel ağaçta
+    /// ayrı bir ad kapsamında ve kapalıyken bağlamaları hiç değerlendirilmiyor (P05-T13'te
+    /// ölçüldü). Başlangıç noktası olarak seçili commit ViewModel tarafında okunuyor.
+    /// </remarks>
+    private async void OnCreateBranchClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.CreateBranchCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnRenameBranchClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.RenameBranchCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnDeleteBranchClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.DeleteBranchCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// "Dala geç" / "Bu commit'e geç" (P06-T02).
+    /// </summary>
+    /// <remarks>
+    /// İki menü öğesi de aynı komutu çağırıyor: hangisinin olacağını seçili commit'te
+    /// yerel bir dal olup olmaması belirliyor ve sonuç <b>diyalogda yazılı</b>.
+    /// GitExtensions'ta iki ayrı öğe olduğu için ikisi de yerinde duruyor (§ 9).
+    /// </remarks>
+    private async void OnCheckoutClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.CheckoutCommand.ExecuteAsync(null);
+        }
+    }
+
     private void OnCompareSelectedClick(object? sender, RoutedEventArgs e) => RequestComparison(againstHead: false);
 
     private void OnCompareHeadClick(object? sender, RoutedEventArgs e) => RequestComparison(againstHead: true);

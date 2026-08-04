@@ -323,9 +323,11 @@ public class GitExtensionsLayoutTests
             "Eski sürümü kopyala",
         ]);
 
-        // ⚠️ Uygulanmamış komut KALDIRILMIYOR, devre dışı duruyor (§ 9): sonradan araya
-        // sokmak sırayı bozar. "Sıfırla" P05-T15'te onay akışıyla gelecek.
-        menu.Items.OfType<MenuItem>().ElementAt(2).IsEnabled.ShouldBeFalse();
+        // ⚠️ Burada kullanılabilirlik SINANMIYOR, yalnızca sıra. Menü açılmadan bağlamalar
+        // değerlendirilmiyor ve `IsEnabled` değerlendirilmemiş varsayılanında (true) kalıyor
+        // — P05-T13'te ölçülen tuzak. Üç eylemin kullanılabilirliği, kaynağı olan
+        // `IPartialStagingHost` üzerinden `PartialStagingTests` içinde test ediliyor.
+        // "Sıfırla" P05-T15'te açıldı; sıradaki yeri değişmedi (§ 9).
 
         window.Close();
 

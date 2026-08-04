@@ -126,7 +126,7 @@
                     <MenuItem Header="Stash'i sil…" IsEnabled="False" />
                     <Separator />
 
-                    <MenuItem Header="Dala geç (chec_kout)…" IsEnabled="False" />
+                    <MenuItem Header="Dala geç (chec_kout)…" Click="OnCheckoutClick" />
                     <MenuItem Header="Dalı pus_hla…" IsEnabled="False" />
                     <MenuItem Header="Mevcut dala _birleştir…" IsEnabled="False" />
                     <MenuItem Header="Mevcut dalı buna _rebase et" IsEnabled="False" />
@@ -135,17 +135,17 @@
 
                     <MenuItem Header="Değişiklikleri sıfırla" IsEnabled="False" />
                     <MenuItem Header="_Commit" IsEnabled="False" />
-                    <MenuItem Header="Burada yeni dal oluştur…" IsEnabled="False" />
+                    <MenuItem Header="Burada yeni dal oluştur…" Click="OnCreateBranchClick" />
                     <MenuItem Header="Başka bir dalı buraya sıfırla…" IsEnabled="False" />
-                    <MenuItem Header="Dalı yeniden adlandır…" IsEnabled="False" />
-                    <MenuItem Header="Dalı sil…" IsEnabled="False" />
+                    <MenuItem Header="Dalı yeniden adlandır…" Click="OnRenameBranchClick" />
+                    <MenuItem Header="Dalı sil…" Click="OnDeleteBranchClick" />
                     <Separator />
 
                     <MenuItem Header="Burada yeni etiket oluştur…" IsEnabled="False" />
                     <MenuItem Header="Etiketi sil…" IsEnabled="False" />
                     <Separator />
 
-                    <MenuItem Header="Bu commit'e geç…" IsEnabled="False" />
+                    <MenuItem Header="Bu commit'e geç…" Click="OnCheckoutClick" />
                     <MenuItem Header="Bu commit'i geri al…" IsEnabled="False" />
                     <MenuItem Header="Bu commit'i cherry pick'le…" IsEnabled="False" />
                     <MenuItem Header="Bu commit'i arşivle…" IsEnabled="False" />

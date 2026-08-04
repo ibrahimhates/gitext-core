@@ -257,9 +257,32 @@ public sealed class TestRepository : IDisposable
     /// bekliyor: diff çıktısı tek bir kodlamada değil, satır içerikleri dosyanın kendi
     /// baytları (bkz. <c>GitResult.GetStandardOutputLossless</c>).
     /// </remarks>
-    public string GitLossless(params string[] arguments) =>
-        System.Text.Encoding.Latin1.GetString(
-            System.Text.Encoding.UTF8.GetBytes(GitWithEnvironment(null, arguments)));
+    public string GitLossless(params string[] arguments)
+    {
+        ProcessStartInfo startInfo = CreateStartInfo(null, arguments);
+
+        // 🔴 P05-T16'da yakalandı. Önceki hâli çıktıyı önce UTF-8 ile string'e çeviriyordu;
+        // ASCII olmayan her bayt orada U+FFFD'ye dönüşüyor ve Latin1'e geri çevirmek onu
+        // ONARMIYOR. Yani "lossless" adına rağmen Latin-5 içerikli bir çıktı sessizce
+        // bozuluyordu — testin ölçüm aracı bozuk olduğu için doğru kod hatalı görünüyordu.
+        // Çözüm çıktının BAŞTAN Latin1 ile okunması: bayt ↔ karakter birebir.
+        startInfo.StandardOutputEncoding = System.Text.Encoding.Latin1;
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("git süreci başlatılamadı.");
+
+        string stdout = process.StandardOutput.ReadToEnd();
+        string stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"git {string.Join(' ', arguments)} başarısız (çıkış {process.ExitCode}): {stderr}");
+        }
+
+        return stdout;
+    }
 
     /// <summary>
     /// Bir <c>git</c> komutu çalıştırır ve <b>başarısızlıkta fırlatmaz</b>.

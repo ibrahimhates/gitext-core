@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExt.UI.Views.RenameBranchDialog"
+        Title="Dalı yeniden adlandır"
+        Width="480"
+        SizeToContent="Height"
+        MinHeight="180"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        Yerleşim GitExtensions `FormRenameBranch.Designer.cs`'ten (§ 9):
+        label1 "New name" + kutu, düğme "Rename".
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <StackPanel Spacing="4">
+            <TextBlock Name="CurrentNameLabel" Text="Mevcut ad" />
+            <TextBox Name="CurrentNameText" IsReadOnly="True" IsTabStop="False" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Yeni ad" />
+            <TextBox Name="NewNameTextBox" />
+            <TextBlock Name="ValidationText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="False"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Name="CancelButton" Content="İptal" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="RenameButton" Content="Yeniden adlandır" MinWidth="90" IsDefault="True" Click="OnRenameClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -239,6 +239,10 @@ public partial class DiffView : UserControl
     private void OnUnstageLinesClick(object? sender, RoutedEventArgs e) =>
         Apply(model => model.UnstageSelectionAsync(SelectedLineIndices()));
 
+    // P05-T15: yıkıcı — onay ve yedek WorkingTreeViewModel tarafında.
+    private void OnResetLinesClick(object? sender, RoutedEventArgs e) =>
+        Apply(model => model.DiscardSelectionAsync(SelectedLineIndices()));
+
     private void OnCopyCodeClick(object? sender, RoutedEventArgs e) => Copy(DiffCopyMode.Code);
 
     private void OnCopyPatchClick(object? sender, RoutedEventArgs e) => Copy(DiffCopyMode.Patch);

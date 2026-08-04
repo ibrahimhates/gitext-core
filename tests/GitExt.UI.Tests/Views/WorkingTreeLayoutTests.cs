@@ -225,7 +225,10 @@ public class WorkingTreeLayoutTests
         Top("ResetAllButton").ShouldBeLessThan(Top("ResetUnstagedButton"));
 
         view.GetControl<Button>("CommitAndPushButton").IsEnabled.ShouldBeFalse();
-        view.GetControl<Button>("ResetAllButton").IsEnabled.ShouldBeFalse();
+
+        // P05-T15'te açıldılar; sıradaki yerleri değişmedi.
+        view.GetControl<Button>("ResetAllButton").IsEnabled.ShouldBeTrue();
+        view.GetControl<Button>("ResetUnstagedButton").IsEnabled.ShouldBeTrue();
 
         window.Close();
     }
@@ -264,10 +267,10 @@ public class WorkingTreeLayoutTests
         Left("CommitOptionsButton").ShouldBeLessThan(Left("CommitTemplatesButton"));
         Left("CommitTemplatesButton").ShouldBeLessThan(Left("CreateBranchButton"));
 
-        // P05-T13'te açılan ikisi çalışır, ikisi hâlâ devre dışı.
+        // P05-T13'te ikisi, P05-T15'te "Seçenekler" açıldı; "Dal oluştur" Faz 06'da.
         view.GetControl<Button>("MessageHistoryButton").IsEnabled.ShouldBeTrue();
         view.GetControl<Button>("CommitTemplatesButton").IsEnabled.ShouldBeTrue();
-        view.GetControl<Button>("CommitOptionsButton").IsEnabled.ShouldBeFalse();
+        view.GetControl<Button>("CommitOptionsButton").IsEnabled.ShouldBeTrue();
         view.GetControl<Button>("CreateBranchButton").IsEnabled.ShouldBeFalse();
 
         window.Close();

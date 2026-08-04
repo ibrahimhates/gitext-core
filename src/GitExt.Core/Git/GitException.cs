@@ -36,6 +36,23 @@ public enum GitFailureKind
 
     /// <summary>Süreç zaman aşımına uğradı ve öldürüldü.</summary>
     Timeout,
+
+    /// <summary>Aynı adda bir dal zaten var (P06-T01).</summary>
+    BranchAlreadyExists,
+
+    /// <summary>
+    /// Ref adı mevcut bir ref'le dizin/dosya çakışması yaratıyor (P06-T01).
+    /// </summary>
+    /// <remarks>
+    /// <b>ÖLÇÜLDÜ — iki yönlü:</b> <c>feature</c> dalı varken <c>feature/x</c> oluşturulamıyor
+    /// (<c>refs/heads/feature</c> bir <b>dosya</b>, altına dizin açılamaz) ve simetrik olarak
+    /// <c>kap/alt</c> varken <c>kap</c> oluşturulamıyor. Ad kurallarına <b>tamamen uygun</b>
+    /// bir ad olduğu için doğrulamadan geçiyor; yalnızca git söyleyebiliyor.
+    /// </remarks>
+    RefNameConflict,
+
+    /// <summary>Depoda hiç commit yok; işlem bir başlangıç noktası bulamıyor (P06-T01).</summary>
+    UnbornHead,
 }
 
 /// <summary>

@@ -88,9 +88,12 @@
                 <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" IsEnabled="False" />
                 <MenuItem Name="MenuResetChanges" Header="Değişiklikleri sıfı_rla…" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuCreateBranch" Header="_Dal oluştur…" IsEnabled="False" />
-                <MenuItem Name="MenuDeleteBranch" Header="Da_l sil…" IsEnabled="False" />
-                <MenuItem Name="MenuCheckoutBranch" Header="Dala geç (chec_kout)…" IsEnabled="False" />
+                <MenuItem Name="MenuCreateBranch" Header="_Dal oluştur…"
+                          Command="{Binding CreateBranchCommand}" />
+                <MenuItem Name="MenuDeleteBranch" Header="Da_l sil…"
+                          Command="{Binding DeleteBranchCommand}" />
+                <MenuItem Name="MenuCheckoutBranch" Header="Dala geç (chec_kout)…"
+                          Command="{Binding CheckoutCommand}" />
                 <MenuItem Name="MenuMerge" Header="Dalları _birleştir…" IsEnabled="False" />
                 <MenuItem Name="MenuRebase" Header="R_ebase…" IsEnabled="False" />
                 <Separator />
@@ -145,6 +148,92 @@
                         FontSize="11"
                         Padding="8,2" />
             </Grid>
+        </Border>
+
+        <!--
+            Dal işlemi şeridi (P06-T01). Modal bir "tamam" kutusu yerine şerit — P05-T15'teki
+            sıfırlama şeridiyle aynı gerekçe: işlemden SONRA gösterilen diyalog yalnızca
+            kapatılmayı bekleyen bir engeldir. Hata da buraya yazılıyor; ham stderr değil,
+            sınıflandırılmış mesaj.
+        -->
+        <Border Grid.Row="2"
+                Name="BranchNoticeBar"
+                VerticalAlignment="Top"
+                IsVisible="{Binding BranchNotice, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                CornerRadius="3"
+                Padding="8,5"
+                Margin="10,6"
+                ZIndex="10">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Name="BranchNoticeText"
+                           Text="{Binding BranchNotice}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           FontSize="12" />
+
+                <Button Grid.Column="1"
+                        Name="DismissBranchNoticeButton"
+                        Content="✕"
+                        FontSize="12"
+                        Margin="4,0,0,0"
+                        Click="OnDismissBranchNoticeClick" />
+            </Grid>
+        </Border>
+
+        <!--
+            Ayrık HEAD ve süren işlem şeritleri (P06-T04). İkisi birbirini DIŞLIYOR:
+            ölçüldü, rebase ve bisect sırasında HEAD gerçekten ayrık; iki şeridi birden
+            göstermek kullanıcıya "hem ayrıksın hem rebase'desin" demek olurdu ve
+            "buradan dal oluştur" orada yapılması gereken şey değil.
+        -->
+        <Border Grid.Row="2"
+                Name="DetachedBanner"
+                VerticalAlignment="Top"
+                IsVisible="{Binding ShowDetachedBanner}"
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                CornerRadius="3"
+                Padding="8,5"
+                Margin="10,6"
+                ZIndex="9">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Name="DetachedText"
+                           Text="Ayrık HEAD: bir dalın üzerinde değilsiniz. Buradan atacağınız commit'ler hiçbir dalda görünmez."
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           FontSize="12" />
+
+                <Button Grid.Column="1"
+                        Name="DetachedCreateBranchButton"
+                        Content="Buradan dal oluştur…"
+                        FontSize="12"
+                        Margin="8,0,0,0"
+                        Command="{Binding CreateBranchCommand}" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Name="OperationBanner"
+                VerticalAlignment="Top"
+                IsVisible="{Binding ShowOperationBanner}"
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                CornerRadius="3"
+                Padding="8,5"
+                Margin="10,6"
+                ZIndex="9">
+            <TextBlock Name="OperationText"
+                       Text="{Binding OperationText}"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"
+                       FontSize="12" />
         </Border>
 
         <!-- Depo açılmadıysa karşılama ekranı; boş pencere göstermek yerine yol gösterilir. -->

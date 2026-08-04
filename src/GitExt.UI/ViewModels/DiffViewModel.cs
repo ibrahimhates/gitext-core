@@ -400,6 +400,7 @@ public sealed partial class DiffViewModel : ViewModelBase
         // Mod değişince duraklanan satır sıfırlanıyor; komutların kapsamı da değişti.
         OnPropertyChanged(nameof(CanStageSelection));
         OnPropertyChanged(nameof(CanUnstageSelection));
+        OnPropertyChanged(nameof(CanDiscardSelection));
     }
 
     /// <summary>Seçili dosyada gösterilecek içerik var mı?</summary>
@@ -761,7 +762,14 @@ public sealed partial class DiffViewModel : ViewModelBase
             // ek `git` süreci yok (P04-T05).
             IReadOnlyList<FileDiff> diffs = await read(
                     _reader,
-                    options ?? new DiffOptions { WordLevel = true },
+                    options ?? new DiffOptions
+                    {
+                        WordLevel = true,
+
+                        // Yazma yolu da bu kodlamayı kullanıyor; ikisi ayrışırsa üretilen
+                        // yama dosyanın baytlarına uymaz ve git reddeder (P05-T16).
+                        ContentEncoding = ContentEncoding,
+                    },
                     token)
                 .ConfigureAwait(true);
 
@@ -1240,6 +1248,38 @@ public sealed partial class DiffViewModel : ViewModelBase
     public bool CanUnstageSelection => StagingHost?.CanUnstage == true;
 
     /// <summary>
+    /// Diff içeriğinin okunacağı ve yamanın yazılacağı kodlama (P05-T16).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 <b>Okuma ve yazma AYNI kodlamayı kullanmak zorunda.</b> P05-T16'da gerçek bir
+    /// depoda ölçüldü: Latin-5 içerikli bir dosyada diff UTF-8 varsayılanıyla okunup yama
+    /// UTF-8 ile yazılınca <c>git apply</c> yamayı <b>reddediyor</b>
+    /// (<c>patch does not apply</c>) — çünkü UTF-8 çözümü ham baytları geri getirmiyor.
+    /// Kodlama uçtan uca geçirildiğinde işlem başarılı ve index'e doğru baytlar giriyor.
+    /// </para>
+    /// <para>
+    /// Yanlış içerik <b>sessizce</b> yazılmıyor: git yamayı reddediyor. Bu, P05-T04'teki
+    /// "<c>--recount</c> kullanma" kararının karşılığı — git'in doğrulaması açık bırakıldığı
+    /// için hata görünür oluyor.
+    /// </para>
+    /// <para>
+    /// Varsayılan (<see langword="null"/>) UTF-8. Kullanıcıya kodlama seçtirmek ayarlar
+    /// altyapısına bağlı (<b>P08-T14</b>); burada altyapı hazır.
+    /// </para>
+    /// </remarks>
+    public System.Text.Encoding? ContentEncoding { get; set; }
+
+    /// <summary>
+    /// Seçili satırlar çalışma ağacından atılabilir mi (P05-T15)?
+    /// </summary>
+    /// <remarks>
+    /// Yalnızca çalışma ağacı tarafında anlamlı: index tarafında "sıfırla" zaten
+    /// <i>unstage</i> demek olurdu ve iki komut aynı şeyi yapardı.
+    /// </remarks>
+    public bool CanDiscardSelection => StagingHost?.CanStage == true;
+
+    /// <summary>
     /// Seçili satırlardan bir yama seçimi kurar.
     /// </summary>
     /// <remarks>
@@ -1368,6 +1408,7 @@ public sealed partial class DiffViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CanStageSelection));
         OnPropertyChanged(nameof(CanUnstageSelection));
+        OnPropertyChanged(nameof(CanDiscardSelection));
     }
 
     /// <summary>Seçili satırları stage'ler.</summary>
@@ -1377,6 +1418,30 @@ public sealed partial class DiffViewModel : ViewModelBase
     /// <summary>Seçili satırları index'ten geri alır.</summary>
     public Task UnstageSelectionAsync(IReadOnlyList<int>? selectedRowIndices = null) =>
         ApplySelectionAsync(selectedRowIndices, stage: false);
+
+    /// <summary>
+    /// Seçili satırlardaki değişiklikleri çalışma ağacından atar (P05-T15) — <b>yıkıcı</b>.
+    /// </summary>
+    public async Task DiscardSelectionAsync(IReadOnlyList<int>? selectedRowIndices = null)
+    {
+        if (StagingHost is not { } host
+            || SelectedFile?.Diff is not { } diff
+            || BuildSelection(selectedRowIndices) is not { } selection)
+        {
+            return;
+        }
+
+        try
+        {
+            ErrorMessage = null;
+
+            await host.DiscardAsync(diff, selection).ConfigureAwait(true);
+        }
+        catch (GitException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
 
     private async Task ApplySelectionAsync(IReadOnlyList<int>? selectedRowIndices, bool stage)
     {

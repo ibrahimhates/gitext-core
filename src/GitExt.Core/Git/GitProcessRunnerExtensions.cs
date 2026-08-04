@@ -118,12 +118,31 @@ internal static class GitFailureClassifier
             return GitFailureKind.Conflict;
         }
 
+        // ⚠️ Sıra önemli: aşağıdaki iki kalıp "cannot lock ref" içerebiliyor ama yukarıdaki
+        // kilit kontrolü yalnızca "index.lock" / "Another git process…" arıyor, o yüzden
+        // birbirlerini yemiyorlar (P06-T01'de ölçüldü).
+        if (ContainsAny(text, "already exists"))
+        {
+            return GitFailureKind.BranchAlreadyExists;
+        }
+
+        // ÖLÇÜLDÜ: "cannot lock ref 'refs/heads/feature/x': 'refs/heads/feature' exists;
+        //           cannot create 'refs/heads/feature/x'"
+        if (ContainsAny(text, "cannot create", "is not a valid ref name"))
+        {
+            return GitFailureKind.RefNameConflict;
+        }
+
         if (ContainsAny(
                 text,
                 "unknown revision or path not in the working tree",
                 "bad revision",
                 "ambiguous argument",
-                "not a valid object name"))
+                "not a valid object name",
+
+                // ÖLÇÜLDÜ (P06-T02): `git switch` çözümlenemeyen hedefte bu METNİ
+                // kullanıyor, yukarıdakilerin hiçbirini değil.
+                "invalid reference"))
         {
             return GitFailureKind.UnknownRevision;
         }
@@ -159,6 +178,13 @@ internal static class GitFailureClassifier
         GitFailureKind.DirtyWorkingTree =>
             "Çalışma dizininde kaydedilmemiş değişiklikler var; işlem devam edemedi.",
         GitFailureKind.Timeout => "Komut zaman aşımına uğradı.",
+        GitFailureKind.BranchAlreadyExists => "Bu adda bir dal zaten var.",
+        GitFailureKind.RefNameConflict =>
+            "Bu ad mevcut bir dalla çakışıyor. Git dalları dosya gibi saklar: "
+            + "\"feature\" dalı varken \"feature/x\" oluşturulamaz (ve tersi).",
+        GitFailureKind.UnbornHead =>
+            "Depoda henüz commit yok, dal oluşturulacak bir başlangıç noktası bulunamıyor. "
+            + "Önce ilk commit'i atın.",
         _ => "Git komutu başarısız oldu.",
     };
 

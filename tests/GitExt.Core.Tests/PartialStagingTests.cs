@@ -292,6 +292,37 @@ public class PartialStagingTests
     }
 
     [Fact]
+    public async Task eol_crlf_NORMALLESTIRMESI_aktifken_kismi_stage_calisir()
+    {
+        // Planın 4 numaralı açık sorusu (P05-T17'de ölçüldü). Bir üstteki test CRLF'i
+        // depoda AYNEN saklanıyorken deniyor; buradaki asıl riskli durum: `.gitattributes`
+        // normalleştirme yapıyor, yani çalışma ağacındaki baytlar (CRLF) index'tekiyle
+        // (LF) AYNI DEĞİL. Yama `git diff`ten üretiliyor ve o çıktı normalleştirilmiş
+        // hâlde geliyor — worktree baytlarıyla karşılaştırılsaydı her satır uyuşmazdı.
+        using Harness harness = await CreateAsync();
+        string path = Path.Combine(harness.Repository.Path, "a.txt");
+
+        harness.Repository.WriteFile(".gitattributes", "* text=auto eol=crlf\n");
+        File.WriteAllBytes(path, "bir\r\niki\r\nuc\r\n"u8.ToArray());
+        harness.Repository.Git("add", "-A");
+        harness.Repository.Git("commit", "-m", "ilk");
+
+        File.WriteAllBytes(path, "bir\r\nIKI\r\nuc\r\n"u8.ToArray());
+
+        FileDiff diff = (await harness.UnstagedAsync()).Single();
+
+        await harness.Writer.StagePartialAsync(
+            harness.Repository.Path, diff, PatchSelection.All(diff), cancellationToken: Ct);
+
+        // Index normalleştirilmiş hâli tutar (LF) — CRLF girerse dosya git için
+        // "değişmiş" görünmeye devam eder ve kullanıcı stage'ini temizleyemez.
+        harness.Indexed("a.txt").ShouldBe("bir\nIKI\nuc\n");
+
+        // Çalışma ağacına DOKUNULMAMALI: `eol=crlf` orada CRLF vaat ediyor.
+        File.ReadAllBytes(path).ShouldBe("bir\r\nIKI\r\nuc\r\n"u8.ToArray());
+    }
+
+    [Fact]
     public async Task ASCII_disi_yol_ve_icerik_calisir()
     {
         // Yol tırnaklanmadan veriliyor (ölçüldü: `git apply` ham UTF-8 kabul ediyor).
@@ -399,5 +430,80 @@ public class PartialStagingTests
         {
             File.Delete(patchFile);
         }
+    }
+
+    // ---- P05-T16: kodlama uçtan uca ----
+
+    [Fact]
+    public async Task Latin5_dosyada_kismi_stage_KODLAMA_GECILINCE_calisir()
+    {
+        // 🔴 P05-T16'da gerçek depoda ölçüldü. Zincir: diff kodlamayla OKUNUR → yama
+        // üretilir → aynı kodlamayla YAZILIR. Halkalardan biri kopunca `git apply`
+        // yamayı reddediyor.
+        using Harness harness = await CreateAsync();
+        System.Text.Encoding latin5 = TextEncodings.TryGet("ISO-8859-9").ShouldNotBeNull();
+
+        await File.WriteAllBytesAsync(
+            Path.Combine(harness.Repository.Path, "tr.txt"),
+            latin5.GetBytes("Türkçe birinci\nikinci satır\n"),
+            Ct);
+
+        harness.Repository.Git("add", "-A");
+        harness.Repository.Git("commit", "-m", "ilk");
+
+        await File.WriteAllBytesAsync(
+            Path.Combine(harness.Repository.Path, "tr.txt"),
+            latin5.GetBytes("Türkçe birinci\nikinci satır\nÜÇÜNCÜ satır\n"),
+            Ct);
+
+        FileDiff diff = (await harness.Reader.ReadUnstagedAsync(
+                harness.Repository.Path,
+                new DiffOptions { ContentEncoding = latin5 },
+                Ct))
+            .Single();
+
+        await harness.Writer.StagePartialAsync(
+            harness.Repository.Path, diff, PatchSelection.All(diff), latin5, Ct);
+
+        // Index'e giren baytlar Latin-5 olmalı — string karşılaştırması bunu göstermez.
+        byte[] staged = System.Text.Encoding.Latin1.GetBytes(
+            harness.Repository.GitLossless("show", ":tr.txt"));
+
+        staged.ShouldBe(latin5.GetBytes("Türkçe birinci\nikinci satır\nÜÇÜNCÜ satır\n"));
+    }
+
+    [Fact]
+    public async Task Kodlama_gecilmezse_git_yamayi_REDDEDER_sessizce_bozmaz()
+    {
+        // 🔑 Asıl güvence bu: yanlış kodlamada yanlış içerik stage'lenmiyor, işlem
+        // BAŞARISIZ oluyor. P05-T04'teki "`--recount` kullanma" kararının karşılığı —
+        // git'in doğrulaması açık bırakıldığı için hata görünür kalıyor.
+        using Harness harness = await CreateAsync();
+        System.Text.Encoding latin5 = TextEncodings.TryGet("ISO-8859-9").ShouldNotBeNull();
+
+        await File.WriteAllBytesAsync(
+            Path.Combine(harness.Repository.Path, "tr.txt"),
+            latin5.GetBytes("Türkçe birinci\nikinci\n"),
+            Ct);
+
+        harness.Repository.Git("add", "-A");
+        harness.Repository.Git("commit", "-m", "ilk");
+
+        await File.WriteAllBytesAsync(
+            Path.Combine(harness.Repository.Path, "tr.txt"),
+            latin5.GetBytes("Türkçe birinci\nikinci\nÜÇÜNCÜ\n"),
+            Ct);
+
+        // Kodlama GEÇİLMİYOR: UTF-8 varsayılanı Latin-5 baytları çözemiyor.
+        FileDiff diff = (await harness.Reader.ReadUnstagedAsync(
+                harness.Repository.Path, cancellationToken: Ct))
+            .Single();
+
+        await Should.ThrowAsync<GitException>(() =>
+            harness.Writer.StagePartialAsync(
+                harness.Repository.Path, diff, PatchSelection.All(diff), cancellationToken: Ct));
+
+        // Index bozulmamış olmalı.
+        harness.Repository.Git("diff", "--cached", "--stat").Trim().ShouldBeEmpty();
     }
 }

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using GitExt.Core;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -194,6 +195,20 @@ public partial class WorkingTreeView : UserControl
     // ---- P05-T12: commit paneli ----
 
     private void OnCommitClick(object? sender, RoutedEventArgs e) => Run(ViewModel?.CommitAsync());
+
+    // ---- P05-T15: onay ve güvenlik ağı ----
+
+    private void OnResetAllClick(object? sender, RoutedEventArgs e) =>
+        Run(ViewModel?.ResetChangesAsync(DiscardScope.All));
+
+    private void OnResetUnstagedClick(object? sender, RoutedEventArgs e) =>
+        Run(ViewModel?.ResetChangesAsync(DiscardScope.UnstagedOnly));
+
+    private void OnUndoResetClick(object? sender, RoutedEventArgs e) =>
+        Run(ViewModel?.UndoResetAsync());
+
+    private void OnDismissResetNoticeClick(object? sender, RoutedEventArgs e) =>
+        ViewModel?.ClearResetNotice();
 
     // ---- P05-T13: mesaj yardımcıları ----
 

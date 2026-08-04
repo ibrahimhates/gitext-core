@@ -70,7 +70,57 @@ public sealed class StatusReader : IStatusReader
             },
             cancellationToken).ConfigureAwait(false);
 
-        return Parse(result.SplitStandardOutputAtNulPreservingEmpty());
+        WorkingTreeStatus status = Parse(result.SplitStandardOutputAtNulPreservingEmpty());
+
+        return status.IsDetached
+            ? await DisambiguateDetachedAsync(workingDirectory, status, cancellationToken)
+                .ConfigureAwait(false)
+            : status;
+    }
+
+    /// <summary>
+    /// 🔴 <c>(detached)</c> <b>geçerli bir dal adı</b> — ayrımı git'e sordurur.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>ÖLÇÜLDÜ (P06-T04):</b> <c>git check-ref-format --branch "(detached)"</c> kabul
+    /// ediyor ve <c>git branch "(detached)"</c> gerçekten oluşturuyor. O dalın üzerindeyken
+    /// <c>--porcelain=v2</c> yine <c>&#35; branch.head (detached)</c> yazıyor — yani çıktı
+    /// <b>ayırt edilemiyor</b> ve kullanıcı bir dalın üzerindeyken "ayrık HEAD, commit'leriniz
+    /// kaybolabilir" uyarısı alırdı.
+    /// </para>
+    /// <para>
+    /// Ek çağrı <b>yalnızca</b> değer harfiyen <c>(detached)</c> olduğunda yapılıyor:
+    /// yaygın yolda maliyet sıfır, nadir yolda cevap doğru. <c>symbolic-ref</c> gerçekten
+    /// ayrık HEAD'de çıkış kodu 1 veriyor (<see cref="RefReader"/> de aynı yolu kullanıyor).
+    /// </para>
+    /// </remarks>
+    private async Task<WorkingTreeStatus> DisambiguateDetachedAsync(
+        string workingDirectory,
+        WorkingTreeStatus status,
+        CancellationToken cancellationToken)
+    {
+        GitResult result = await _runner.RunCheckedAsync(
+            new GitCommand
+            {
+                WorkingDirectory = workingDirectory,
+                Arguments = ["symbolic-ref", "-q", "--short", "HEAD"],
+
+                // Ayrık HEAD'de 1 döner; hata değil, cevabın kendisi.
+                SuccessExitCodes = [0, 1],
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (result.ExitCode != 0)
+        {
+            return status;
+        }
+
+        string branch = result.GetStandardOutputText().Trim();
+
+        return branch.Length == 0
+            ? status
+            : status with { IsDetached = false, BranchName = branch };
     }
 
     /// <summary>

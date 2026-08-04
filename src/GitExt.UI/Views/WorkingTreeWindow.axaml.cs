@@ -26,6 +26,11 @@ public partial class WorkingTreeWindow : Window
             if (DataContext is WorkingTreeViewModel model)
             {
                 _ = model.Message.FlushDraftAsync();
+
+                // İzleyici uygulama ömrü boyunca yaşıyor, bu pencere ise kapanıyor:
+                // abonelik bırakılmazsa kapalı bir ekran için `git status` çalışmaya
+                // devam ederdi (P05-T14).
+                model.Dispose();
             }
         };
     }
@@ -36,6 +41,25 @@ public partial class WorkingTreeWindow : Window
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(owner);
 
-        return new WorkingTreeWindow { DataContext = viewModel }.ShowDialog(owner);
+        WorkingTreeWindow window = new() { DataContext = viewModel };
+
+        // Onay diyaloğu bu pencerenin üstünde açılacak; sahip pencere ancak burada belli
+        // oluyor (P05-T15).
+        viewModel.Confirmer = new DialogConfirmer(window);
+
+        return window.ShowDialog(owner);
+    }
+
+    /// <summary>
+    /// Onayı gerçek bir diyalogla soran uygulama (P05-T15).
+    /// </summary>
+    private sealed class DialogConfirmer : IDestructiveActionConfirmer
+    {
+        private readonly Window _owner;
+
+        public DialogConfirmer(Window owner) => _owner = owner;
+
+        public Task<ResetChangesDecision> ConfirmResetAsync(ResetChangesRequest request) =>
+            ResetChangesDialog.ShowAsync(request, _owner);
     }
 }

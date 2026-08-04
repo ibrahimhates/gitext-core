@@ -28,4 +28,14 @@ public interface IPartialStagingHost
     /// <see langword="true"/> ise stage'ler, aksi halde index'ten geri alır.
     /// </param>
     Task ApplyAsync(FileDiff diff, PatchSelection selection, bool stage);
+
+    /// <summary>
+    /// Seçili satırlardaki değişiklikleri <b>çalışma ağacından atar</b> (P05-T15).
+    /// </summary>
+    /// <remarks>
+    /// Stage/unstage'den ayrı bir metot: bu <b>yıkıcı</b> bir işlem, onay istiyor ve
+    /// yedekleniyor. Aynı çağrıya üçüncü bir bayrak olarak eklenseydi, çağıranın onu
+    /// yanlışlıkla geçmesi mümkün olurdu.
+    /// </remarks>
+    Task DiscardAsync(FileDiff diff, PatchSelection selection);
 }

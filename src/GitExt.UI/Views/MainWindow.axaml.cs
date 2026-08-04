@@ -17,6 +17,54 @@ public partial class MainWindow : Window
 
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
+
+        // Diyalog bir sahip pencere istiyor; ViewModel'ın `Window` tanıması katman kuralını
+        // bozardı (P05-T15'teki onay diyaloğuyla aynı desen).
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is MainWindowViewModel model)
+            {
+                model.BranchPrompt = new DialogBranchPrompt(this);
+                model.CheckoutPrompt = new DialogCheckoutPrompt(this);
+                model.BranchEditPrompt = new DialogBranchEditPrompt(this);
+            }
+        };
+    }
+
+    /// <summary>Dal düzenleme diyaloglarını gerçek bir pencereyle gösterir (P06-T03).</summary>
+    private sealed class DialogBranchEditPrompt : IBranchEditPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogBranchEditPrompt(Window owner) => _owner = owner;
+
+        public Task<RenameBranchDecision> RequestRenameAsync(RenameBranchRequest request) =>
+            RenameBranchDialog.ShowAsync(request, _owner);
+
+        public Task<DeleteBranchDecision> RequestDeleteAsync(DeleteBranchRequest request) =>
+            DeleteBranchDialog.ShowAsync(request, _owner);
+    }
+
+    /// <summary>Dala geçme diyaloğunu gerçek bir pencereyle gösterir (P06-T02).</summary>
+    private sealed class DialogCheckoutPrompt : ICheckoutPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogCheckoutPrompt(Window owner) => _owner = owner;
+
+        public Task<CheckoutDecision> RequestAsync(CheckoutRequest request) =>
+            CheckoutBranchDialog.ShowAsync(request, _owner);
+    }
+
+    /// <summary>Dal oluşturma diyaloğunu gerçek bir pencereyle gösterir (P06-T01).</summary>
+    private sealed class DialogBranchPrompt : ICreateBranchPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogBranchPrompt(Window owner) => _owner = owner;
+
+        public Task<CreateBranchDecision> RequestAsync(CreateBranchRequest request) =>
+            CreateBranchDialog.ShowAsync(request, _owner);
     }
 
     /// <summary>
@@ -90,6 +138,14 @@ public partial class MainWindow : Window
         if (paths.Count > 0)
         {
             await viewModel.TryOpenDroppedAsync(paths);
+        }
+    }
+
+    private void OnDismissBranchNoticeClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel model)
+        {
+            model.BranchNotice = null;
         }
     }
 

@@ -83,7 +83,48 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="43*,Auto,57*" Margin="6">
+    <Grid RowDefinitions="Auto,*" Margin="6">
+
+        <!--
+            Sıfırlama şeridi (P05-T15). Modal bir "tamam" kutusu yerine şerit: yıkıcı
+            işlemden SONRA gösterilen bir diyalog yalnızca kapatılmayı bekleyen bir engeldir,
+            oysa asıl gereken GERİ ALMA yolunun bir süre görünür kalması.
+        -->
+        <Border Grid.Row="0"
+                Name="ResetNoticeBar"
+                IsVisible="{Binding ResetNotice, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                CornerRadius="3"
+                Padding="8,5"
+                Margin="0,0,0,6">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Name="ResetNoticeText"
+                           Text="{Binding ResetNotice}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           FontSize="12" />
+
+                <Button Grid.Column="1"
+                        Name="UndoResetButton"
+                        Content="Geri al"
+                        FontSize="12"
+                        Margin="8,0,0,0"
+                        IsVisible="{Binding CanUndoReset}"
+                        Click="OnUndoResetClick" />
+
+                <Button Grid.Column="2"
+                        Name="DismissResetNoticeButton"
+                        Content="✕"
+                        FontSize="12"
+                        Margin="4,0,0,0"
+                        Click="OnDismissResetNoticeClick" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="43*,Auto,57*">
 
         <!-- ================= SOL SÜTUN ================= -->
         <Grid Grid.Column="0" RowDefinitions="44*,Auto,56*">
@@ -263,11 +304,11 @@
 
                     <Button Name="ResetAllButton" Content="Tüm değişiklikleri sıfırla…"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                            FontSize="11" IsEnabled="False" />
+                            FontSize="11" Click="OnResetAllClick" />
 
                     <Button Name="ResetUnstagedButton" Content="Stage'lenmemişleri sıfırla…"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                            FontSize="11" IsEnabled="False" />
+                            FontSize="11" Click="OnResetUnstagedClick" />
                 </StackPanel>
 
                 <!--
@@ -295,7 +336,23 @@
                         </Button.Flyout>
                     </Button>
 
-                    <Button Name="CommitOptionsButton" Content="Seçenekler ▾" FontSize="11" Padding="8,2" IsEnabled="False" />
+                    <Button Name="CommitOptionsButton" Content="Seçenekler ▾" FontSize="11" Padding="8,2">
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <!--
+                                    Hook atlama VERİ KAYBETTİRMİYOR: commit reflog'da
+                                    kalıyor ve geri alınabiliyor (P05-T15'te ölçüldü). Bu
+                                    yüzden diyalog değil onay kutusu — her commit'te modal
+                                    açmak, atlanan şeyin ağırlığını değil sadece kullanıcının
+                                    sabrını sınardı.
+                                -->
+                                <MenuItem Name="SkipHooksItem"
+                                          Header="Hook'ları atla (--no-verify)"
+                                          ToggleType="CheckBox"
+                                          IsChecked="{Binding SkipHooks, Mode=TwoWay}" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
 
                     <Button Name="CommitTemplatesButton" Content="Şablonlar ▾" FontSize="11" Padding="8,2">
                         <Button.Flyout>
@@ -365,6 +422,7 @@
                                Margin="2,3,0,0" />
                 </Grid>
             </Grid>
+        </Grid>
         </Grid>
     </Grid>
 </UserControl>

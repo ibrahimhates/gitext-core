@@ -40,6 +40,17 @@ public class PartialStagingTests
 
             return Failure is null ? Task.CompletedTask : Task.FromException(Failure);
         }
+
+        /// <summary>Kaç kez yıkıcı geri alma istendi (P05-T15)?</summary>
+        public int DiscardCount { get; private set; }
+
+        public Task DiscardAsync(FileDiff diff, PatchSelection selection)
+        {
+            DiscardCount++;
+            LastSelection = selection;
+
+            return Failure is null ? Task.CompletedTask : Task.FromException(Failure);
+        }
     }
 
     private static FileDiff TwoHunks()
@@ -297,5 +308,88 @@ public class PartialStagingTests
         await model.StageSelectionAsync([2]);
 
         model.ErrorMessage.ShouldNotBeNull();
+    }
+
+    [AvaloniaFact]
+    public void Sifirlama_YALNIZCA_calisma_agaci_tarafinda_kullanilabilir()
+    {
+        // P05-T15. Index tarafında "sıfırla" zaten *unstage* demek olurdu; iki komutun
+        // aynı şeyi yapması kullanıcıya hangisinin ne yaptığını sordururdu.
+        DiffViewModel model = new(new FakeDiffReader());
+
+        // Host yokken hiçbir eylem kullanılamaz.
+        model.CanDiscardSelection.ShouldBeFalse();
+
+        RecordingHost worktreeSide = new() { CanStage = true, CanUnstage = false };
+        model.StagingHost = worktreeSide;
+        model.CanDiscardSelection.ShouldBeTrue();
+
+        RecordingHost indexSide = new() { CanStage = false, CanUnstage = true };
+        model.StagingHost = indexSide;
+        model.CanDiscardSelection.ShouldBeFalse();
+    }
+
+    [AvaloniaFact]
+    public async Task Kodlama_okuma_ve_yazma_arasinda_TASINIYOR()
+    {
+        // 🔴 P05-T16'da gerçek depoda ölçülen kusur: diff UTF-8 varsayılanıyla okunup yama
+        // UTF-8 ile yazılınca Latin-5 bir dosyada `git apply` yamayı REDDEDİYOR
+        // (`patch does not apply`). Halkalardan biri koptuğunda özellik çalışmıyor.
+        FakeStatusReader status = new([
+            new FileStatus
+            {
+                Path = RepositoryPath.Parse("tr.txt"),
+                UnstagedChange = FileChangeKind.Modified,
+            },
+        ]);
+
+        FakeStagingWriter staging = new(status);
+        System.Text.Encoding latin5 = System.Text.Encoding.Latin1;
+
+        WorkingTreeViewModel model = new(
+            status,
+            staging,
+            new FakeCommitWriter(status),
+            new DiffViewModel(new FakeDiffReader()));
+
+        model.Diff.ContentEncoding = latin5;
+
+        await model.OpenAsync("/tmp/depo");
+
+        FileDiff diff = TwoHunks();
+
+        await ((IPartialStagingHost)model).ApplyAsync(
+            diff, PatchSelection.Hunks(diff, 0), stage: true);
+
+        staging.LastPartialEncoding.ShouldBeSameAs(latin5);
+    }
+
+    [AvaloniaFact]
+    public async Task Ikili_dosyada_kismi_stage_COKMEZ_ve_hicbir_sey_yapmaz()
+    {
+        // P05-T16'da ölçüm programı tam burada çöktü: ikili dosyada hunk yok, `Hunks[0]`
+        // patlıyor. Arayüzde satır seçimi de olamayacağı için komut sessizce hiçbir şey
+        // yapmalı — ama çökmemeli.
+        FileDiff binary = new()
+        {
+            Path = RepositoryPath.Parse("resim.png"),
+            Change = FileChangeKind.Modified,
+            IsBinary = true,
+            Hunks = [],
+        };
+
+        RecordingHost host = new();
+        DiffViewModel model = new(new FakeDiffReader([binary]))
+        {
+            StagingHost = host,
+        };
+
+        await model.ShowWorkingTreeAsync("/tmp/depo", staged: false);
+
+        await Should.NotThrowAsync(() => model.StageSelectionAsync());
+        await Should.NotThrowAsync(() => model.DiscardSelectionAsync());
+
+        host.CallCount.ShouldBe(0);
+        host.DiscardCount.ShouldBe(0);
     }
 }

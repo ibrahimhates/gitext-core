@@ -412,7 +412,8 @@
 
                         <MenuItem Name="ResetLinesMenuItem"
                                   Header="Seçili satırları sıfırla…"
-                                  IsEnabled="False" />
+                                  IsEnabled="{Binding CanDiscardSelection}"
+                                  Click="OnResetLinesClick" />
 
                         <MenuItem Header="_Kopyala" Click="OnCopyCodeClick" />
                         <MenuItem Header="_Yama olarak kopyala" Click="OnCopyPatchClick" />

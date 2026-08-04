@@ -64,9 +64,10 @@ public sealed record CleanOptions
 /// <c>git cat-file -p &lt;blob&gt;</c> ile okunabiliyor.
 /// <para>
 /// ⚠️ <b>Garanti değil.</b> Bu nesneye hiçbir ref işaret etmiyor; <c>git gc --prune=now</c>
-/// onu <b>anında</b> siliyor (ölçüldü). Varsayılan <c>gc.pruneExpire</c> iki hafta olduğu için
-/// pratikte bir süre duruyor, ama "geri alınabilir" diye sunulamaz — bu yüzden yıkıcı işlem
-/// yine de <b>açık onay</b> istiyor.
+/// onu <b>anında</b> siliyor (ölçüldü). Buna karşılık <b>düz <c>git gc</c> silmiyor</b>
+/// (P05-T15'te ölçüldü): dangling nesneler varsayılan <c>gc.pruneExpire=2.weeks</c> boyunca
+/// korunuyor. Yani yedek gerçek bir kurtarma yolu, ama süresiz değil — yıkıcı işlem yine de
+/// <b>açık onay</b> istiyor.
 /// </para>
 /// </remarks>
 public sealed record DiscardBackup
@@ -126,7 +127,17 @@ public interface IWorkingTreeWriter
     /// <summary>
     /// Takip edilmeyen dosyaları <b>siler</b>.
     /// </summary>
-    Task DeleteUntrackedAsync(
+    /// <returns>
+    /// Silinen içeriğin yedekleri.
+    /// </returns>
+    /// <remarks>
+    /// <b>⚠️ ÖLÇÜLDÜ (P05-T15):</b> <c>git clean</c> ile silinen bir dosyanın nesne
+    /// veritabanında <b>hiçbir izi kalmıyor</b> — <c>git fsck --lost-found</c> bile
+    /// bulmuyor. Bu yüzden içerik silinmeden önce <c>hash-object -w</c> ile yedekleniyor;
+    /// takip edilmeyen dosyalar tipik olarak <b>henüz commit edilmemiş yeni kaynak
+    /// dosyalardır</b> ve kaybı telafi edilemez.
+    /// </remarks>
+    Task<IReadOnlyList<DiscardBackup>> DeleteUntrackedAsync(
         string workingDirectory,
         IReadOnlyList<RepositoryPath> paths,
         bool userConfirmed,
@@ -145,6 +156,69 @@ public interface IWorkingTreeWriter
         string workingDirectory,
         CleanOptions options,
         bool userConfirmed,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bir dosyanın <b>seçili satırlarındaki</b> değişiklikleri geri alır (P05-T15).
+    /// </summary>
+    /// <returns>Atılan içeriğin yedekleri.</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>ÖLÇÜLDÜ:</b> <c>git apply --reverse</c> (yani <c>--cached</c> OLMADAN) yamayı
+    /// yalnızca <b>çalışma ağacına</b> uyguluyor; index'e dokunmuyor. Dosyanın
+    /// stage'lenmiş bir sürümü varsa o olduğu gibi kalıyor — git'in kendi davranışı bu ve
+    /// "şu satırları geri al" komutundan beklenen de bu.
+    /// </para>
+    /// <para>
+    /// Kısmi geri alma da yıkıcı: dosyanın <b>tamamı</b> önceden yedekleniyor, çünkü geri
+    /// alma işlemi dosyayı yamadan önceki hâline döndürmek zorunda.
+    /// </para>
+    /// </remarks>
+    Task<IReadOnlyList<DiscardBackup>> DiscardPartialAsync(
+        string workingDirectory,
+        FileDiff diff,
+        PatchSelection selection,
+        bool userConfirmed,
+        System.Text.Encoding? contentEncoding = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bir yedeği çalışma ağacına geri yazar (P05-T15).
+    /// </summary>
+    /// <returns>Gerçekten geri yazılan yedekler.</returns>
+    /// <remarks>
+    /// <para>
+    /// Yedek almak tek başına güvenlik ağı değil: kullanıcıya blob kimliği verip
+    /// <c>git cat-file</c> yazmasını beklemek, panik anında işe yaramaz. Geri yazma
+    /// <b>uygulamanın sunduğu bir işlem</b> olmalı.
+    /// </para>
+    /// <para>
+    /// İçerik <b>ham baytlarla</b> yazılıyor. Yedek <c>--no-filters</c> ile alındığı için
+    /// blob dosyanın diskteki hâlinin birebir kopyası; yazarken de dönüştürülmemeli.
+    /// </para>
+    /// <para>
+    /// Nesne artık yoksa (<c>gc --prune=now</c>) o yedek <b>sessizce atlanır</b>: kısmi
+    /// kurtarma, hiç kurtarmamaktan iyidir.
+    /// </para>
+    /// </remarks>
+    /// <summary>
+    /// Verilen yolların diskteki hâlini nesne veritabanına yedekler (P06-T02).
+    /// </summary>
+    /// <returns>Diskte bulunan yolların yedekleri; olmayanlar atlanır.</returns>
+    /// <remarks>
+    /// Yıkıcı bir işlemden <b>önce</b> çağrılır. Ayrı bir işlem olarak açıldı çünkü
+    /// dal değiştirme de (<c>switch --discard-changes</c>) aynı güvenlik ağına ihtiyaç
+    /// duyuyor ve <c>--no-filters</c> tuzağının ikinci kez yazılması, ikinci kez
+    /// unutulabilmesi demekti.
+    /// </remarks>
+    Task<IReadOnlyList<DiscardBackup>> BackupPathsAsync(
+        string workingDirectory,
+        IReadOnlyList<RepositoryPath> paths,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DiscardBackup>> RestoreBackupsAsync(
+        string workingDirectory,
+        IReadOnlyList<DiscardBackup> backups,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -227,7 +301,7 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
         return backups;
     }
 
-    public async Task DeleteUntrackedAsync(
+    public async Task<IReadOnlyList<DiscardBackup>> DeleteUntrackedAsync(
         string workingDirectory,
         IReadOnlyList<RepositoryPath> paths,
         bool userConfirmed,
@@ -244,8 +318,18 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
         if (paths.Count == 0)
         {
             // ⚠️ Yolsuz `git clean -f` çalışma ağacının TAMAMINI siler.
-            return;
+            return [];
         }
+
+        // 🔴 P05-T15'te eklendi. ÖLÇÜLDÜ ve tasarımı değiştirdi: `git clean` ile silinen
+        // takip edilmeyen bir dosyanın nesne veritabanında **hiçbir izi yok**
+        // (`fsck --lost-found` bile bulmuyor) — yani bu, deponun tek gerçekten
+        // geri döndürülemez işlemiydi. Oysa takip edilmeyen dosyalar tipik olarak
+        // **henüz commit edilmemiş yeni kaynak dosyalar**: bu deponun kendisinde
+        // `git clean -dn` çıktısı o sırada yazılmakta olan dosyaları listeliyordu.
+        // Yedeklemek ucuz (500 dosya = 110 ms), kaybı telafi edilemez.
+        IReadOnlyList<DiscardBackup> backups =
+            await BackupAsync(workingDirectory, paths, cancellationToken).ConfigureAwait(false);
 
         // `-x`: 🔴 ölçüldü — yok sayılan bir dosyayı `-x` OLMADAN silmeye çalışmak çıkış 0
         // veriyor ve dosya duruyor. Kullanıcı adıyla seçtiği dosyanın silinmesini bekler;
@@ -256,6 +340,8 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
         arguments.AddRange(paths.Select(path => path.Value));
 
         await _writer.RunAsync(workingDirectory, arguments, cancellationToken).ConfigureAwait(false);
+
+        return backups;
     }
 
     public async Task CleanAsync(
@@ -341,6 +427,160 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
         return GitIgnoreOutcome.Added;
     }
 
+    public async Task<IReadOnlyList<DiscardBackup>> DiscardPartialAsync(
+        string workingDirectory,
+        FileDiff diff,
+        PatchSelection selection,
+        bool userConfirmed,
+        System.Text.Encoding? contentEncoding = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
+        ArgumentNullException.ThrowIfNull(diff);
+        ArgumentNullException.ThrowIfNull(selection);
+
+        RequireConfirmation(
+            userConfirmed,
+            "Seçili satırlardaki değişiklikleri geri almak çalışma ağacındaki içeriği siler. "
+            + "İşlem yalnızca kullanıcının açık onayıyla yapılabilir.");
+
+        // Ters uygulanacağı için yama "stage" yönünde üretiliyor: yamayı üretmek ile
+        // uygulamak ayrı kararlar (P05-T04).
+        string? patch = PatchBuilder.Build(diff, selection, PatchDirection.Stage);
+
+        if (patch is null)
+        {
+            // Seçilen bir şey yok.
+            return [];
+        }
+
+        IReadOnlyList<DiscardBackup> backups =
+            await BackupAsync(workingDirectory, [diff.Path], cancellationToken).ConfigureAwait(false);
+
+        // ⚠️ `--cached` YOK: yama yalnızca çalışma ağacına uygulanmalı (ölçüldü).
+        await _writer
+            .RunAsync(
+                workingDirectory,
+                ["apply", "--reverse", "-"],
+                patch,
+                contentEncoding,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return backups;
+    }
+
+    public async Task<IReadOnlyList<DiscardBackup>> RestoreBackupsAsync(
+        string workingDirectory,
+        IReadOnlyList<DiscardBackup> backups,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
+        ArgumentNullException.ThrowIfNull(backups);
+
+        if (backups.Count == 0)
+        {
+            return [];
+        }
+
+        // 🔴 ÖLÇÜLDÜ: yedek başına ayrı `cat-file -p` süreci 200 dosyada **671 ms**,
+        // `--batch` ile tek süreçte **9 ms** (75×). Kurtarma kullanıcının beklediği bir
+        // işlem; büyük bir sıfırlamanın geri alınması saniyeler sürmemeli.
+        StringBuilder request = new();
+
+        foreach (DiscardBackup backup in backups)
+        {
+            request.Append(backup.BlobId).Append('\n');
+        }
+
+        GitResult result = await _runner.RunAsync(
+            new GitCommand
+            {
+                WorkingDirectory = workingDirectory,
+                Arguments = ["cat-file", "--batch"],
+                IsReadOnly = true,
+                StandardInput = System.Text.Encoding.ASCII.GetBytes(request.ToString()),
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        List<DiscardBackup> restored = new(backups.Count);
+        int offset = 0;
+
+        foreach (DiscardBackup backup in backups)
+        {
+            if (!TryReadBatchEntry(result.StandardOutput, ref offset, out ReadOnlyMemory<byte> content))
+            {
+                // Nesne budanmış (`gc --prune=now`) → git `<oid> missing` yazıyor.
+                // Kurtarılamayan bir yedek hata değil; diğerlerine devam edilir.
+                continue;
+            }
+
+            string target = Path.Combine(workingDirectory, backup.Path.Value);
+
+            // Silinen dosyanın dizini de silinmiş olabilir (`clean -d`).
+            string? directory = Path.GetDirectoryName(target);
+
+            if (directory is { Length: > 0 })
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            await File.WriteAllBytesAsync(target, content, cancellationToken).ConfigureAwait(false);
+
+            restored.Add(backup);
+        }
+
+        return restored;
+    }
+
+    /// <summary>
+    /// <c>cat-file --batch</c> akışından sıradaki nesnenin içeriğini okur.
+    /// </summary>
+    /// <remarks>
+    /// Biçim: <c>&lt;oid&gt; &lt;tür&gt; &lt;boyut&gt;\n&lt;içerik&gt;\n</c>, bulunamayan
+    /// nesne için <c>&lt;oid&gt; missing\n</c>. İçerik <b>bayt olarak</b> alınıyor: boyut
+    /// başlıkta yazdığı için ikili veride ayraç aramak gerekmiyor — yedeğin birebir
+    /// olması bu görevin tüm amacı (P05-T15).
+    /// </remarks>
+    /// <returns>Nesne okunduysa <see langword="true"/>; eksikse <see langword="false"/>.</returns>
+    private static bool TryReadBatchEntry(
+        byte[] stream,
+        ref int offset,
+        out ReadOnlyMemory<byte> content)
+    {
+        content = default;
+
+        int lineEnd = Array.IndexOf(stream, (byte)'\n', offset);
+
+        if (lineEnd < 0)
+        {
+            return false;
+        }
+
+        string header = System.Text.Encoding.ASCII.GetString(stream, offset, lineEnd - offset);
+        offset = lineEnd + 1;
+
+        string[] parts = header.Split(' ');
+
+        // `<oid> missing` — üç alan yoksa içerik de yok.
+        if (parts.Length < 3 || !int.TryParse(parts[2], out int size))
+        {
+            return false;
+        }
+
+        if (offset + size > stream.Length)
+        {
+            return false;
+        }
+
+        content = stream.AsMemory(offset, size);
+
+        // İçerikten sonra git bir satır sonu daha yazıyor.
+        offset += size + 1;
+
+        return true;
+    }
+
     /// <summary>
     /// Atılacak içeriği nesne veritabanına yazar.
     /// </summary>
@@ -348,6 +588,12 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
     /// Diskte olmayan yollar (silinmiş dosyalar) atlanır: <c>hash-object</c> onlarda düşer ve
     /// zaten geri alınacak bir içerikleri yoktur.
     /// </remarks>
+    public Task<IReadOnlyList<DiscardBackup>> BackupPathsAsync(
+        string workingDirectory,
+        IReadOnlyList<RepositoryPath> paths,
+        CancellationToken cancellationToken = default) =>
+        BackupAsync(workingDirectory, paths, cancellationToken);
+
     private async Task<IReadOnlyList<DiscardBackup>> BackupAsync(
         string workingDirectory,
         IReadOnlyList<RepositoryPath> paths,
@@ -365,7 +611,16 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
             List<RepositoryPath> batch =
                 [.. existing.Skip(offset).Take(BackupBatchSize)];
 
-            List<string> arguments = ["hash-object", "-w", "--"];
+            // 🔴 `--no-filters` ŞART (P05-T15'te ölçüldü). Onsuz git, yedeği yazarken
+            // "clean" filtrelerini uyguluyor ve yedek **birebir olmuyor**:
+            //   · `.gitattributes`'ta `text=auto` varsa CRLF → LF (geri yazımda satır
+            //     sonları sessizce değişir),
+            //   · özel bir clean filtresi (Git LFS'in çalışma biçimi) varsa yedeğe
+            //     **dosyanın kendisi değil filtrenin çıktısı** girer — ölçümde
+            //     `GIZLI parola` içeriği yedekte `*** parola` oldu.
+            // Kurtarma vaadi veren bir yedeğin içeriği değiştirmesi, hiç yedek almamaktan
+            // daha kötüdür: kullanıcı kurtardığını sanır.
+            List<string> arguments = ["hash-object", "-w", "--no-filters", "--"];
             arguments.AddRange(batch.Select(path => path.Value));
 
             GitResult result = await _runner.RunCheckedAsync(

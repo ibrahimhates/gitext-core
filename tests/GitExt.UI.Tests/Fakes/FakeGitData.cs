@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using GitExt.Core;
 using GitExt.Core.Model;
 using GitExt.UI.Storage;
+using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Tests.Fakes;
 
@@ -413,6 +414,9 @@ public sealed class FakeStatusReader : IStatusReader
 
     public int ReadCallCount { get; private set; }
 
+    /// <summary>Okuma sırasında çalışır; izleme askısını gözlemlemek için (P05-T14).</summary>
+    public Action? OnRead { get; set; }
+
     public IList<FileStatus> Entries => _entries;
 
     public Task<WorkingTreeStatus> ReadAsync(
@@ -421,6 +425,7 @@ public sealed class FakeStatusReader : IStatusReader
         CancellationToken cancellationToken = default)
     {
         ReadCallCount++;
+        OnRead?.Invoke();
 
         if (_failure is not null)
         {
@@ -489,19 +494,30 @@ public sealed class FakeStagingWriter : IStagingWriter
         }
     }
 
+    /// <summary>Kısmi staging'e geçirilen kodlama (P05-T16).</summary>
+    public System.Text.Encoding? LastPartialEncoding { get; private set; }
+
     public Task StagePartialAsync(
         string workingDirectory,
         FileDiff diff,
         PatchSelection selection,
         System.Text.Encoding? contentEncoding = null,
-        CancellationToken cancellationToken = default) => Task.CompletedTask;
+        CancellationToken cancellationToken = default)
+    {
+        LastPartialEncoding = contentEncoding;
+        return Task.CompletedTask;
+    }
 
     public Task UnstagePartialAsync(
         string workingDirectory,
         FileDiff diff,
         PatchSelection selection,
         System.Text.Encoding? contentEncoding = null,
-        CancellationToken cancellationToken = default) => Task.CompletedTask;
+        CancellationToken cancellationToken = default)
+    {
+        LastPartialEncoding = contentEncoding;
+        return Task.CompletedTask;
+    }
 
     public Task UntrackAsync(
         string workingDirectory,
@@ -682,4 +698,439 @@ public sealed class FakeCommitMessageStore : ICommitMessageStore
 
         return Task.CompletedTask;
     }
+}
+
+/// <summary>
+/// Testlerin olayları elle tetikleyebildiği sahte izleyici (P05-T14).
+/// </summary>
+/// <remarks>
+/// Gerçek <see cref="RepositoryWatcher"/> dosya sistemi ve zamanlayıcı bekliyor; ViewModel
+/// tarafında test edilen şey <b>olaya nasıl tepki verildiği</b>, olayın nereden geldiği değil.
+/// </remarks>
+public sealed class FakeRepositoryWatcher : IRepositoryWatcher
+{
+    public event EventHandler<RepositoryChangedEventArgs>? Changed;
+
+    public bool IsRunning { get; private set; }
+
+    public int StartCount { get; private set; }
+
+    public int StopCount { get; private set; }
+
+    public string? WorkingTreeRoot { get; private set; }
+
+    public string? GitDirectory { get; private set; }
+
+    public string? CommonDirectory { get; private set; }
+
+    /// <summary>Şu an askıda mı? Kendi okumalarımızın olay üretmemesi buna bağlı.</summary>
+    public bool IsSuspended => SuspendDepth > 0;
+
+    public int SuspendDepth { get; private set; }
+
+    /// <summary>Askıdayken kaç olay atıldı? Sıfırdan büyükse döngü riski var demektir.</summary>
+    public int SuppressedCount { get; private set; }
+
+    public bool Start(string workingTreeRoot, string gitDirectory, string commonDirectory)
+    {
+        StartCount++;
+        IsRunning = true;
+        WorkingTreeRoot = workingTreeRoot;
+        GitDirectory = gitDirectory;
+        CommonDirectory = commonDirectory;
+        return true;
+    }
+
+    public void Stop()
+    {
+        StopCount++;
+        IsRunning = false;
+    }
+
+    public IDisposable Suspend()
+    {
+        SuspendDepth++;
+        return new Suspension(this);
+    }
+
+    /// <summary>Bir değişiklik olayını tetikler; askıdayken sessizce yutulur.</summary>
+    public void Raise(RepositoryChangeKind kind)
+    {
+        if (IsSuspended)
+        {
+            SuppressedCount++;
+            return;
+        }
+
+        Changed?.Invoke(this, new RepositoryChangedEventArgs(kind));
+    }
+
+    public void Dispose() => Stop();
+
+    private sealed class Suspension : IDisposable
+    {
+        private readonly FakeRepositoryWatcher _owner;
+
+        public Suspension(FakeRepositoryWatcher owner) => _owner = owner;
+
+        public void Dispose() => _owner.SuspendDepth--;
+    }
+}
+
+/// <summary>
+/// Yıkıcı işlemleri kaydeden sahte yazar (P05-T15).
+/// </summary>
+public sealed class FakeWorkingTreeWriter : IWorkingTreeWriter
+{
+    public Task<IReadOnlyList<DiscardBackup>> BackupPathsAsync(
+        string workingDirectory,
+        IReadOnlyList<RepositoryPath> paths,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DiscardBackup>>(
+            [.. paths.Select(path => new DiscardBackup { Path = path, BlobId = "0" })]);
+
+    private readonly FakeStatusReader? _status;
+
+    public FakeWorkingTreeWriter(FakeStatusReader? status = null) => _status = status;
+
+    public List<string> Calls { get; } = [];
+
+    /// <summary>Geri yazılan yollar; "geri al" gerçekten çalıştı mı?</summary>
+    public List<string> Restored { get; } = [];
+
+    /// <summary>Kaç yedeğin nesnesi budanmış sayılsın (kısmi kurtarma senaryosu).</summary>
+    public int PrunedBackupCount { get; set; }
+
+    public Task<IReadOnlyList<DiscardBackup>> DiscardChangesAsync(
+        string workingDirectory,
+        IReadOnlyList<RepositoryPath> paths,
+        DiscardScope scope,
+        bool userConfirmed,
+        CancellationToken cancellationToken = default)
+    {
+        if (!userConfirmed)
+        {
+            throw new InvalidOperationException("onaysız çağrı");
+        }
+
+        Calls.Add($"discard:{scope}:{string.Join(',', paths)}");
+        Remove(paths);
+
+        return Task.FromResult(Backups(paths));
+    }
+
+    public Task<IReadOnlyList<DiscardBackup>> DeleteUntrackedAsync(
+        string workingDirectory,
+        IReadOnlyList<RepositoryPath> paths,
+        bool userConfirmed,
+        CancellationToken cancellationToken = default)
+    {
+        if (!userConfirmed)
+        {
+            throw new InvalidOperationException("onaysız çağrı");
+        }
+
+        Calls.Add($"delete:{string.Join(',', paths)}");
+        Remove(paths);
+
+        return Task.FromResult(Backups(paths));
+    }
+
+    public Task<IReadOnlyList<DiscardBackup>> DiscardPartialAsync(
+        string workingDirectory,
+        FileDiff diff,
+        PatchSelection selection,
+        bool userConfirmed,
+        System.Text.Encoding? contentEncoding = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!userConfirmed)
+        {
+            throw new InvalidOperationException("onaysız çağrı");
+        }
+
+        Calls.Add($"discard-partial:{diff.Path}:{selection.Count}");
+
+        return Task.FromResult(Backups([diff.Path]));
+    }
+
+    public Task CleanAsync(
+        string workingDirectory,
+        CleanOptions options,
+        bool userConfirmed,
+        CancellationToken cancellationToken = default)
+    {
+        Calls.Add("clean");
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<DiscardBackup>> RestoreBackupsAsync(
+        string workingDirectory,
+        IReadOnlyList<DiscardBackup> backups,
+        CancellationToken cancellationToken = default)
+    {
+        Calls.Add($"restore:{backups.Count}");
+
+        List<DiscardBackup> restored = [.. backups.Skip(PrunedBackupCount)];
+        Restored.AddRange(restored.Select(backup => backup.Path.Value));
+
+        return Task.FromResult<IReadOnlyList<DiscardBackup>>(restored);
+    }
+
+    public Task<GitIgnoreOutcome> AddToGitIgnoreAsync(
+        string workingDirectory,
+        RepositoryPath path,
+        string pattern,
+        CancellationToken cancellationToken = default)
+    {
+        Calls.Add($"ignore:{path}");
+        return Task.FromResult(GitIgnoreOutcome.Added);
+    }
+
+    private static IReadOnlyList<DiscardBackup> Backups(IReadOnlyList<RepositoryPath> paths) =>
+        [.. paths.Select(path => new DiscardBackup { Path = path, BlobId = $"blob-{path.Value}" })];
+
+    private void Remove(IReadOnlyList<RepositoryPath> paths)
+    {
+        if (_status is null)
+        {
+            return;
+        }
+
+        foreach (RepositoryPath path in paths)
+        {
+            for (int i = _status.Entries.Count - 1; i >= 0; i--)
+            {
+                if (_status.Entries[i].Path == path)
+                {
+                    _status.Entries.RemoveAt(i);
+                }
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Onayı testin belirlediği sahte onaylayıcı (P05-T15).
+/// </summary>
+public sealed class FakeConfirmer : IDestructiveActionConfirmer
+{
+    private readonly ResetChangesDecision _decision;
+
+    public FakeConfirmer(ResetChangesDecision? decision = null) =>
+        _decision = decision ?? new ResetChangesDecision { Confirmed = true };
+
+    public int AskCount { get; private set; }
+
+    public ResetChangesRequest? LastRequest { get; private set; }
+
+    public Task<ResetChangesDecision> ConfirmResetAsync(ResetChangesRequest request)
+    {
+        AskCount++;
+        LastRequest = request;
+
+        return Task.FromResult(_decision);
+    }
+}
+
+/// <summary>
+/// Dal yazıcısının sahtesi (P06-T01).
+/// </summary>
+public sealed class FakeBranchWriter : IBranchWriter
+{
+    /// <summary>Ayarlanırsa <see cref="CreateAsync"/> bunu fırlatır.</summary>
+    public Exception? Failure { get; set; }
+
+    /// <summary>git'in kurduğu varsayılan upstream.</summary>
+    public string? Upstream { get; set; }
+
+    public List<BranchCreateOptions> Created { get; } = [];
+
+    public Task<BranchCreateResult> CreateAsync(
+        string workingDirectory,
+        BranchCreateOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException<BranchCreateResult>(Failure);
+        }
+
+        Created.Add(options);
+
+        return Task.FromResult(new BranchCreateResult(options.Name, options.Checkout, Upstream));
+    }
+
+    /// <summary>Ayarlanırsa geçiş bu sonucu döndürür.</summary>
+    public BranchSwitchResult? SwitchResult { get; set; }
+
+    public List<BranchSwitchOptions> Switched { get; } = [];
+
+    public Task<BranchSwitchResult> SwitchAsync(
+        string workingDirectory,
+        BranchSwitchOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException<BranchSwitchResult>(Failure);
+        }
+
+        Switched.Add(options);
+
+        return Task.FromResult(
+            SwitchResult ?? new BranchSwitchResult { Target = options.Target });
+    }
+
+    public List<(string Old, string New)> Renamed { get; } = [];
+
+    public Task RenameAsync(
+        string workingDirectory,
+        string oldName,
+        string newName,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
+        Renamed.Add((oldName, newName));
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Zorlanmadan silme denendiğinde bunu fırlatır (iki turlu akış testi).</summary>
+    public BranchNotMergedException? UnmergedFailure { get; set; }
+
+    public string DeletedCommitId { get; set; } = "abcdef1234567890";
+
+    public List<(string Name, bool Force)> Deleted { get; } = [];
+
+    public Task<BranchDeleteResult> DeleteAsync(
+        string workingDirectory,
+        string name,
+        bool force = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException<BranchDeleteResult>(Failure);
+        }
+
+        if (!force && UnmergedFailure is not null)
+        {
+            return Task.FromException<BranchDeleteResult>(UnmergedFailure);
+        }
+
+        Deleted.Add((name, force));
+
+        return Task.FromResult(new BranchDeleteResult
+        {
+            Name = name,
+            LastCommitId = DeletedCommitId,
+            WasUnmerged = force,
+        });
+    }
+}
+
+/// <summary>
+/// Dal oluşturma diyaloğunun sahtesi (P06-T01).
+/// </summary>
+public sealed class FakeBranchPrompt : ICreateBranchPrompt
+{
+    private readonly CreateBranchDecision _decision;
+
+    public FakeBranchPrompt(CreateBranchDecision? decision = null) =>
+        _decision = decision ?? new CreateBranchDecision { Confirmed = true, Name = "yeni" };
+
+    public int AskCount { get; private set; }
+
+    public CreateBranchRequest? LastRequest { get; private set; }
+
+    public Task<CreateBranchDecision> RequestAsync(CreateBranchRequest request)
+    {
+        AskCount++;
+        LastRequest = request;
+
+        return Task.FromResult(_decision);
+    }
+}
+
+/// <summary>
+/// Dala geçme diyaloğunun sahtesi (P06-T02).
+/// </summary>
+public sealed class FakeCheckoutPrompt : ICheckoutPrompt
+{
+    private readonly CheckoutDecision _decision;
+
+    public FakeCheckoutPrompt(CheckoutDecision? decision = null) =>
+        _decision = decision ?? new CheckoutDecision { Confirmed = true };
+
+    public int AskCount { get; private set; }
+
+    public CheckoutRequest? LastRequest { get; private set; }
+
+    public Task<CheckoutDecision> RequestAsync(CheckoutRequest request)
+    {
+        AskCount++;
+        LastRequest = request;
+
+        return Task.FromResult(_decision);
+    }
+}
+
+/// <summary>
+/// Dal düzenleme diyaloglarının sahtesi (P06-T03).
+/// </summary>
+public sealed class FakeBranchEditPrompt : IBranchEditPrompt
+{
+    private readonly RenameBranchDecision _rename;
+    private readonly DeleteBranchDecision _delete;
+
+    public FakeBranchEditPrompt(
+        RenameBranchDecision? rename = null,
+        DeleteBranchDecision? delete = null)
+    {
+        _rename = rename ?? new RenameBranchDecision { Confirmed = true, NewName = "yeniad" };
+        _delete = delete ?? new DeleteBranchDecision { Confirmed = true };
+    }
+
+    /// <summary>İkinci turda (birleştirilmemiş) verilecek karar; yoksa ilki kullanılır.</summary>
+    public DeleteBranchDecision? ForcedDecision { get; set; }
+
+    public List<DeleteBranchRequest> DeleteRequests { get; } = [];
+
+    public RenameBranchRequest? LastRenameRequest { get; private set; }
+
+    public Task<RenameBranchDecision> RequestRenameAsync(RenameBranchRequest request)
+    {
+        LastRenameRequest = request;
+
+        return Task.FromResult(_rename);
+    }
+
+    public Task<DeleteBranchDecision> RequestDeleteAsync(DeleteBranchRequest request)
+    {
+        DeleteRequests.Add(request);
+
+        return Task.FromResult(
+            request.IsUnmerged && ForcedDecision is not null ? ForcedDecision : _delete);
+    }
+}
+
+/// <summary>
+/// Süren işlem okuyucusunun sahtesi (P06-T04).
+/// </summary>
+public sealed class FakeInProgressOperationReader : IInProgressOperationReader
+{
+    private readonly InProgressOperation _operation;
+
+    public FakeInProgressOperationReader(InProgressOperation operation = InProgressOperation.None) =>
+        _operation = operation;
+
+    public Task<InProgressOperation> ReadAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(_operation);
 }

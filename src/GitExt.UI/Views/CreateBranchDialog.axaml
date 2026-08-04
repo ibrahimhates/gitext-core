@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExt.UI.Views.CreateBranchDialog"
+        Title="Dal oluştur"
+        Width="520"
+        SizeToContent="Height"
+        MinHeight="220"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        Yerleşim GitExtensions `FormCreateBranch.Designer.cs`'ten (§ 9). TabIndex sırası:
+          0/1 label1 "Branch name"        + BranchNameTextBox
+          2/3 lblCreateBranch "Create branch at this revision" + commitPicker
+          5   chkCheckoutAfterCreate      (VARSAYILAN İŞARETLİ — GitExtensions'ta da öyle)
+              grpOrphan: chkCreateOrphan + chkClearOrphan
+          cmdOk
+
+        Orphan grubu yerinde ama DEVRE DIŞI (§ 9 kural 2): P06-T01 kapsamında değil,
+        sonradan araya sokmak sırayı bozardı.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Dal adı" />
+            <TextBox Name="BranchNameTextBox" PlaceholderText="ozellik/yeni-sey" />
+            <TextBlock Name="ValidationText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="False"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Name="StartPointLabel" Text="Bu revizyonda dal oluştur" />
+            <!--
+                GitExtensions'ta bu bir commit seçici. Bizde başlangıç noktası çağıran
+                taraftan geliyor (commit listesindeki seçim ya da HEAD), o yüzden salt
+                okunur gösteriliyor; seçici P06-T14'te bağlam menüsüyle birlikte.
+            -->
+            <TextBox Name="StartPointText" IsReadOnly="True" IsTabStop="False" />
+        </StackPanel>
+
+        <CheckBox Name="CheckoutAfterCreateBox"
+                  Content="Oluşturduktan sonra dala geç"
+                  IsChecked="True" />
+
+        <TextBlock Name="DirtyWarning"
+                   FontSize="11"
+                   TextWrapping="Wrap"
+                   IsVisible="False"
+                   Opacity="0.85" />
+
+        <StackPanel Name="OrphanGroup" Spacing="4" IsEnabled="False">
+            <CheckBox Name="CreateOrphanBox" Content="Orphan (ebeveynsiz) dal oluştur" FontSize="11" />
+            <CheckBox Name="ClearOrphanBox" Content="Orphan dalda çalışma ağacını temizle" FontSize="11" Margin="18,0,0,0" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Name="CancelButton" Content="İptal" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="CreateButton" Content="Oluştur" MinWidth="90" IsDefault="True" Click="OnCreateClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

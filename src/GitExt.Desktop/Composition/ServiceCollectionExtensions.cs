@@ -49,6 +49,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IStagingWriter, StagingWriter>();
         services.AddSingleton<ICommitWriter, CommitWriter>();
         services.AddSingleton<IWorkingTreeWriter, WorkingTreeWriter>();
+        services.AddSingleton<IInProgressOperationReader, InProgressOperationReader>();
+        // Yıkıcı geçiş (`switch --discard-changes`) yedek almadan yapılmıyor; bağımlılık
+        // bu yüzden açık (P06-T02).
+        services.AddSingleton<IBranchWriter>(sp => new BranchWriter(
+            sp.GetRequiredService<IGitWriter>(),
+            sp.GetRequiredService<IGitProcessRunner>(),
+            sp.GetRequiredService<IWorkingTreeWriter>()));
 
         services.AddSingleton<IRepositoryLocator, RepositoryLocator>();
         services.AddSingleton<ICommitLogReader, CommitLogReader>();
@@ -65,6 +72,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGitConfigReader, GitConfigReader>();
         services.AddSingleton<ICommitMessageReader, CommitMessageReader>();
         services.AddSingleton<ICommitMessageStore, CommitMessageStore>();
+
+        // Dosya sistemi izleme (P05-T14). SINGLETON olmak ZORUNDA: her istekte yenisi
+        // üretilseydi her biri kendi `inotify` örneğini ve depo ağacındaki her dizin için
+        // bir izleme tutardı (ölçüm: 11.512 dizinlik ağaçta 11.512 izleme). Örnek sınırı
+        // bu makinede 1024 ve ölçümde 949. izleyicide `IOException` alındı.
+        services.AddSingleton<IRepositoryWatcher>(_ => new RepositoryWatcher());
 
         services.AddSingleton<CommitListViewModel>();
         services.AddSingleton<MainWindowViewModel>();

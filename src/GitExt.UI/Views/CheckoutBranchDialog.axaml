@@ -1,0 +1,59 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExt.UI.Views.CheckoutBranchDialog"
+        Title="Dala geç"
+        Width="540"
+        SizeToContent="Height"
+        MinHeight="200"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        Yerleşim GitExtensions `FormCheckoutBranch.Designer.cs`'ten (§ 9).
+        `flpnlLocalOptions` sırası: rbDontChange, rbMerge, rbStash, rbReset.
+        Düğme: cmdOk metni "Checkout".
+
+        "Yerel değişiklikler" grubu yalnızca kirli ağaçta gösteriliyor: temiz ağaçta
+        dört seçeneğin hepsi aynı şeyi yapar ve kullanıcıya anlamsız bir karar sordurur.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <StackPanel Spacing="4">
+            <TextBlock Name="TargetLabel" Text="Geçilecek dal" />
+            <TextBox Name="TargetText" IsReadOnly="True" IsTabStop="False" />
+        </StackPanel>
+
+        <TextBlock Name="DetachWarning"
+                   FontSize="11"
+                   TextWrapping="Wrap"
+                   IsVisible="False"
+                   Opacity="0.85"
+                   Text="Bu bir dal değil, doğrudan bir commit. Geçtikten sonra HEAD ayrık (detached) olur: burada atacağınız commit'ler hiçbir dalda görünmez." />
+
+        <StackPanel Name="LocalChangesGroup" Spacing="4" IsVisible="False">
+            <TextBlock Text="Yerel değişiklikler" FontWeight="SemiBold" />
+
+            <RadioButton Name="KeepOption" GroupName="LocalChanges" IsChecked="True"
+                         Content="Dokunma" />
+            <RadioButton Name="MergeOption" GroupName="LocalChanges"
+                         Content="Birleştir (merge)" />
+            <RadioButton Name="StashOption" GroupName="LocalChanges"
+                         Content="Stash'le (takip edilmeyen dosyalar dahil)" />
+            <RadioButton Name="DiscardOption" GroupName="LocalChanges"
+                         Content="Sıfırla — yerel değişiklikleri at" />
+
+            <TextBlock Name="ActionHint"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       Opacity="0.85"
+                       Margin="0,2,0,0" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Name="CancelButton" Content="İptal" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="CheckoutButton" Content="Geç" MinWidth="90" IsDefault="True" Click="OnCheckoutClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>
