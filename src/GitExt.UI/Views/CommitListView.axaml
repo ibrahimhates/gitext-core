@@ -127,8 +127,8 @@
                     <Separator />
 
                     <MenuItem Header="Dala geç (chec_kout)…" Click="OnCheckoutClick" />
-                    <MenuItem Header="Dalı pus_hla…" IsEnabled="False" />
-                    <MenuItem Header="Mevcut dala _birleştir…" IsEnabled="False" />
+                    <MenuItem Name="MenuContextPush" Header="Dalı pus_hla…" Click="OnPushClick" />
+                    <MenuItem Name="MenuContextMerge" Header="Mevcut dala _birleştir…" Click="OnMergeClick" />
                     <MenuItem Header="Mevcut dalı buna _rebase et" IsEnabled="False" />
                     <MenuItem Header="Mevcut dalı buraya sıfırla…" IsEnabled="False" />
                     <Separator />

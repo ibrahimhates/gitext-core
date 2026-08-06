@@ -283,6 +283,19 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Kimlik doğrulama ekranını gösteren taraf (P06-T09).</summary>
     public IAuthenticationPrompt? AuthenticationPrompt { get; set; }
 
+    /// <summary>Dal paneli (P06-T13).</summary>
+    public RefTreeViewModel RefTree { get; } = new();
+
+    /// <summary>
+    /// Panelden çift tıklamayla dala geçer (P06-T13).
+    /// </summary>
+    /// <remarks>
+    /// Diyalog akışı <see cref="CheckoutCommand"/>'la <b>aynı</b>: kirli ağaç uyarısı ve
+    /// seçenekler tek yerde. İkinci bir geçiş yolu yazmak, birinin sessizce korumasız
+    /// kalması demekti (P06-T02'nin kuralı: değişiklikleri kaybettirecek hiçbir yol olmamalı).
+    /// </remarks>
+    public Task CheckoutRefAsync(string refName) => CheckoutCoreAsync(refName);
+
     /// <summary>Merge ekranını açar (P06-T11).</summary>
     public IAsyncRelayCommand MergeCommand { get; }
 
@@ -567,7 +580,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// birleştirirken hangisinin olacağı <b>diyalogda açıkça yazılıyor</b>, sessizce
     /// seçilmiyor.
     /// </remarks>
-    private async Task CheckoutAsync()
+    private Task CheckoutAsync() => CheckoutCoreAsync(null);
+
+    /// <param name="refName">
+    /// Panelden gelen ref adı; <see langword="null"/> ise seçili commit kullanılır.
+    /// </param>
+    private async Task CheckoutCoreAsync(string? refName)
     {
         if (_branchWriter is null
             || CheckoutPrompt is null
@@ -576,7 +594,11 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        if (ResolveCheckoutTarget() is not { } target)
+        CheckoutTarget? resolved = refName is { Length: > 0 }
+            ? new CheckoutTarget(refName, refName, IsDetached: false)
+            : ResolveCheckoutTarget();
+
+        if (resolved is not { } target)
         {
             BranchNotice = "Geçilecek bir commit seçin.";
             return;
@@ -1248,9 +1270,18 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             IsDetachedHead = Commits.Refs?.Head.IsDetached == true;
 
+            // Dal paneli (P06-T13) aynı ref okumasından besleniyor: ikinci bir okuma
+            // yazmak, iki panelin sessizce ayrışması demekti.
+            RefTree.Load(Commits.Refs);
+
             CurrentOperation = _operations is null
                 ? InProgressOperation.None
                 : await ReadOperationAsync(path, cancellationToken).ConfigureAwait(true);
+        }
+
+        if (Commits.Repository?.WorkingDirectory is not { Length: > 0 })
+        {
+            RefTree.Load(null);
         }
 
         OnPropertyChanged(nameof(ShowDetachedBanner));

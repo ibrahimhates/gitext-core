@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitExt.UI.ViewModels"
+             x:Class="GitExt.UI.Views.RefTreeView"
+             x:DataType="vm:RefTreeViewModel">
+
+    <!--
+        Dal paneli (P06-T13). Yerleşim GitExtensions'ın sol RepoObjectsTree'sinden (§ 9):
+        üstte arama kutusu, altında Dallar / Uzak depolar / Etiketler ağacı.
+        Çift tıkla checkout — GitExtensions'ta da öyle.
+    -->
+    <Grid RowDefinitions="Auto,*">
+        <TextBox Name="FilterBox"
+                 Grid.Row="0"
+                 Margin="4"
+                 Watermark="Ara…"
+                 Text="{Binding Filter}" />
+
+        <TreeView Name="RefTree"
+                  Grid.Row="1"
+                  ItemsSource="{Binding Roots}"
+                  SelectedItem="{Binding Selected}"
+                  DoubleTapped="OnDoubleTapped">
+
+            <!--
+                DAL BAĞLAM MENÜSÜ (P06-T14) — öğe sırası GitExtensions'ın RepoObjectsTree
+                dal menüsünden: checkout · yeni dal · birleştir · ayraç · yeniden adlandır ·
+                sil · ayraç · push · ayraç · adı kopyala.
+
+                ⚠️ Uygulanmamış olanlar KALDIRILMIYOR, devre dışı duruyor (§ 9): rebase ve
+                "upstream ayarla" Faz 07'nin konusu.
+
+                🔑 Her öğe ana penceredeki AYNI komutu çağırıyor; menü kendi akışını
+                yazmıyor. İkinci bir yol, birinin kirli-ağaç korumasız kalması demekti.
+            -->
+            <TreeView.ContextMenu>
+                <ContextMenu Name="RefContextMenu">
+                    <MenuItem Name="MenuRefCheckout" Header="Bu dala geç (chec_kout)" Click="OnCheckoutClick" IsEnabled="{Binding CanCheckoutSelected}" />
+                    <MenuItem Name="MenuRefCreateBranch" Header="Burada yeni _dal oluştur…" Click="OnCreateBranchClick" IsEnabled="{Binding CanBranchFromSelected}" />
+                    <MenuItem Name="MenuRefMerge" Header="Mevcut dala _birleştir…" Click="OnMergeClick" IsEnabled="{Binding CanMergeSelected}" />
+                    <Separator />
+                    <MenuItem Name="MenuRefRename" Header="Yeniden adlandır…" Click="OnRenameClick" IsEnabled="{Binding CanRenameSelected}" />
+                    <MenuItem Name="MenuRefDelete" Header="Si_l…" Click="OnDeleteClick" IsEnabled="{Binding CanDeleteSelected}" />
+                    <Separator />
+                    <MenuItem Name="MenuRefPush" Header="_Push…" Click="OnPushClick" IsEnabled="{Binding CanPushSelected}" />
+                    <MenuItem Name="MenuRefRebase" Header="Mevcut dalı buna _rebase et" IsEnabled="False" />
+                    <MenuItem Name="MenuRefSetUpstream" Header="Upstream ayarla…" IsEnabled="False" />
+                    <Separator />
+                    <MenuItem Name="MenuRefCopyName" Header="Adı _kopyala" Click="OnCopyNameClick" IsEnabled="{Binding CanCopySelectedName}" />
+                </ContextMenu>
+            </TreeView.ContextMenu>
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate DataType="vm:RefNodeViewModel" ItemsSource="{Binding Children}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Name}"
+                                   FontWeight="{Binding IsCurrent, Converter={x:Static vm:BoldWhenTrue.Instance}}" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding AheadBehind}"
+                                   IsVisible="{Binding HasAheadBehind}"
+                                   FontSize="10"
+                                   Opacity="0.75"
+                                   Margin="8,0,4,0"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+
+        <TextBlock Name="EmptyText"
+                   Grid.Row="1"
+                   Text="Eşleşen dal yok."
+                   FontSize="11"
+                   Opacity="0.7"
+                   Margin="8"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Top"
+                   IsVisible="{Binding IsEmpty}" />
+    </Grid>
+</UserControl>

@@ -33,6 +33,11 @@ public partial class MainWindow : Window
                 model.PushPrompt = new DialogPushPrompt(this, model);
                 model.AuthenticationPrompt = new DialogAuthenticationPrompt(this);
                 model.MergePrompt = new DialogMergePrompt(this);
+
+                // Panelden çift tıklama, menüdeki checkout ile AYNI akışı çağırıyor
+                // (P06-T13): ikinci bir geçiş yolu, birinin korumasız kalması demekti.
+                BranchPanel.Checkout = model.CheckoutRefAsync;
+                BranchPanel.Commands = model;
                 model.MergeAbortConfirmer = new DialogMergeAbortConfirmer(this);
             }
         };

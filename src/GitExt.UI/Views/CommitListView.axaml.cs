@@ -352,6 +352,25 @@ public partial class CommitListView : UserControl
     /// yerel bir dal olup olmaması belirliyor ve sonuç <b>diyalogda yazılı</b>.
     /// GitExtensions'ta iki ayrı öğe olduğu için ikisi de yerinde duruyor (§ 9).
     /// </remarks>
+    // P06-T14: bu iki öğe P08-T27'de yerinde ama devre dışıydı; komutları T07/T08 ve
+    // T11'de geldi. Menü öğesi kendi akışını yazmıyor, MENÜDEKİ komutu çağırıyor —
+    // ikinci bir yol, birinin sessizce korumasız kalması demekti.
+    private async void OnPushClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.PushCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnMergeClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.MergeCommand.ExecuteAsync(null);
+        }
+    }
+
     private async void OnCheckoutClick(object? sender, RoutedEventArgs e)
     {
         if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)

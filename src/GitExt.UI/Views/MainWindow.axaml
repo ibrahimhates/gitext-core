@@ -259,9 +259,28 @@
             Liste üstte, detay altta — GitExtensions'ın yerleşimi. Ayırıcı sürüklenebilir;
             detay paneli sabit yükseklikte olsaydı uzun commit mesajları okunamazdı.
         -->
+        <!--
+            P06-T13: dal paneli SOLDA, sürüklenebilir ayırıcıyla — GitExtensions'ın
+            RepoObjectsTree'siyle aynı yer (§ 9).
+        -->
         <Grid Grid.Row="2"
-              RowDefinitions="*,Auto,Auto"
+              ColumnDefinitions="Auto,Auto,*"
               IsVisible="{Binding !ShowWelcome}">
+
+            <views:RefTreeView Name="BranchPanel"
+                               Grid.Column="0"
+                               Width="220"
+                               MinWidth="120"
+                               DataContext="{Binding RefTree}" />
+
+            <GridSplitter Name="BranchPanelSplitter"
+                          Grid.Column="1"
+                          Width="4"
+                          ResizeDirection="Columns"
+                          Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+
+        <Grid Grid.Column="2"
+              RowDefinitions="*,Auto,Auto">
 
             <views:CommitListView Grid.Row="0" DataContext="{Binding Commits}" />
 
@@ -305,6 +324,7 @@
                     <views:DiffView DataContext="{Binding Commits.Diff}" />
                 </TabItem>
             </TabControl>
+        </Grid>
         </Grid>
     </Grid>
 </Window>

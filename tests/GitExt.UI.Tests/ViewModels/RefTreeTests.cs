@@ -1,0 +1,276 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using GitExt.Core.Model;
+using GitExt.UI.Tests.Fakes;
+using GitExt.UI.ViewModels;
+using GitExt.UI.Views;
+
+namespace GitExt.UI.Tests.ViewModels;
+
+/// <summary>
+/// P06-T13 — dal paneli.
+/// </summary>
+public class RefTreeTests
+{
+    private static RepositoryRefs Sample() => FakeGitData.Refs(
+        localBranches:
+        [
+            FakeGitData.LocalBranch("main", FakeGitData.Sha(1), isCurrent: true) with
+            {
+                Upstream = "origin/main",
+                Tracking = new UpstreamTracking(2, 1, IsGone: false),
+            },
+            FakeGitData.LocalBranch("feature/login", FakeGitData.Sha(2)),
+            FakeGitData.LocalBranch("feature/logout", FakeGitData.Sha(3)),
+        ],
+        remoteBranches:
+        [
+            FakeGitData.RemoteBranch("origin/main", FakeGitData.Sha(1)),
+            FakeGitData.RemoteBranch("origin/feature/login", FakeGitData.Sha(2)),
+            FakeGitData.SymbolicRemoteHead("origin", "refs/remotes/origin/main", FakeGitData.Sha(1)),
+        ],
+        tags: [FakeGitData.Tag("v1.0", FakeGitData.Sha(1))]);
+
+    private static RefTreeViewModel Create()
+    {
+        RefTreeViewModel model = new();
+        model.Load(Sample());
+
+        return model;
+    }
+
+    private static RefNodeViewModel Root(RefTreeViewModel model, string name) =>
+        model.Roots.Single(node => node.Name == name);
+
+    [AvaloniaFact]
+    public void Uc_bolum_de_kuruluyor()
+    {
+        RefTreeViewModel model = Create();
+
+        model.Roots.Select(node => node.Name).ShouldBe(["Dallar", "Uzak depolar", "Etiketler"]);
+    }
+
+    [AvaloniaFact]
+    public void Egik_cizgili_adlar_KLASORLENIYOR()
+    {
+        // `feature/login` ve `feature/logout` düz listede iki satır olurdu; GitExtensions'ın
+        // ağacı da bunları tek bir "feature" düğümü altında topluyor (§ 9).
+        RefNodeViewModel branches = Root(Create(), "Dallar");
+
+        RefNodeViewModel folder = branches.Children.Single(node => node.Kind == RefNodeKind.Folder);
+
+        folder.Name.ShouldBe("feature");
+        folder.Children.Select(node => node.Name).ShouldBe(["login", "logout"]);
+        folder.Children[0].FullName.ShouldBe("feature/login", "tam ad korunmalı");
+    }
+
+    [AvaloniaFact]
+    public void Uzak_dallar_UZAK_DEPO_altinda_gruplaniyor()
+    {
+        RefNodeViewModel remotes = Root(Create(), "Uzak depolar");
+
+        RefNodeViewModel origin = remotes.Children.Single();
+        origin.Name.ShouldBe("origin");
+        origin.Kind.ShouldBe(RefNodeKind.Remote);
+
+        origin.Children.Select(node => node.Name)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ShouldBe(["feature", "main"]);
+    }
+
+    [AvaloniaFact]
+    public void Sembolik_origin_HEAD_agacta_YOK()
+    {
+        // Beşinci kez aynı tuzak (P03-T12, P06-T05, T06, T08): aynı commit'te ikinci bir
+        // dal gibi görünürdü.
+        RefNodeViewModel origin = Root(Create(), "Uzak depolar").Children.Single();
+
+        origin.Children.ShouldNotContain(node => node.Name == "HEAD");
+    }
+
+    [AvaloniaFact]
+    public void Mevcut_dal_isaretli_ve_ahead_behind_yazili()
+    {
+        RefNodeViewModel branches = Root(Create(), "Dallar");
+
+        RefNodeViewModel main = branches.Children.Single(node => node.Name == "main");
+
+        main.IsCurrent.ShouldBeTrue();
+        main.AheadBehind.ShouldBe("↑2 ↓1");
+        main.HasAheadBehind.ShouldBeTrue();
+    }
+
+    [AvaloniaFact]
+    public void Upstream_i_olmayan_dalda_rozet_YOK()
+    {
+        RefNodeViewModel branches = Root(Create(), "Dallar");
+        RefNodeViewModel folder = branches.Children.Single(node => node.Kind == RefNodeKind.Folder);
+
+        folder.Children[0].HasAheadBehind.ShouldBeFalse();
+    }
+
+    [AvaloniaFact]
+    public void Upstream_SILINMISSE_ayri_yaziliyor()
+    {
+        // "0/0" göstermek dalın güncel olduğunu düşündürürdü.
+        RefTreeViewModel model = new();
+
+        model.Load(FakeGitData.Refs(localBranches:
+        [
+            FakeGitData.LocalBranch("eski", FakeGitData.Sha(1)) with
+            {
+                Upstream = "origin/eski",
+                Tracking = new UpstreamTracking(0, 0, IsGone: true),
+            },
+        ]));
+
+        Root(model, "Dallar").Children.Single().AheadBehind.ShouldBe("upstream yok");
+    }
+
+    [AvaloniaFact]
+    public void Suzme_eslesmeyenleri_ve_BOS_bolumleri_eliyor()
+    {
+        RefTreeViewModel model = Create();
+
+        model.Filter = "logout";
+
+        model.Roots.Select(node => node.Name).ShouldBe(["Dallar"], "boş bölüm gösterilmemeli");
+
+        RefNodeViewModel folder = Root(model, "Dallar").Children.Single();
+        folder.Children.Single().Name.ShouldBe("logout");
+    }
+
+    [AvaloniaFact]
+    public void Suzme_BUYUK_kucuk_harf_ayirmiyor()
+    {
+        RefTreeViewModel model = Create();
+
+        model.Filter = "LOGIN";
+
+        model.IsEmpty.ShouldBeFalse();
+    }
+
+    [AvaloniaFact]
+    public void Hicbir_sey_eslesmezse_bos_bildiriliyor()
+    {
+        RefTreeViewModel model = Create();
+
+        model.Filter = "boyle-bir-sey-yok";
+
+        model.IsEmpty.ShouldBeTrue();
+        model.Roots.ShouldBeEmpty();
+    }
+
+    [AvaloniaFact]
+    public void Suzme_temizlenince_agac_GERI_geliyor()
+    {
+        RefTreeViewModel model = Create();
+
+        model.Filter = "logout";
+        model.Filter = string.Empty;
+
+        model.Roots.Count.ShouldBe(3);
+    }
+
+    [AvaloniaFact]
+    public void Baslik_ve_klasor_CHECKOUT_edilemez()
+    {
+        // Ağacı gezerken kazara dal değiştirmek olmamalı.
+        RefTreeViewModel model = Create();
+
+        Root(model, "Dallar").IsCheckoutable.ShouldBeFalse();
+        Root(model, "Dallar").Children.Single(node => node.Kind == RefNodeKind.Folder)
+            .IsCheckoutable.ShouldBeFalse();
+        Root(model, "Etiketler").Children.Single().IsCheckoutable.ShouldBeFalse("etiket dal değil");
+
+        Root(model, "Dallar").Children.Single(node => node.Name == "main")
+            .IsCheckoutable.ShouldBeTrue();
+    }
+
+    [AvaloniaFact]
+    public void Depo_kapaninca_agac_BOSALIYOR()
+    {
+        RefTreeViewModel model = Create();
+
+        model.Load(null);
+
+        model.Roots.ShouldBeEmpty();
+        model.HasRefs.ShouldBeFalse();
+    }
+
+    // ------------------------------------------------------- ana pencere
+
+    [AvaloniaFact]
+    public async Task Depo_acilinca_panel_DOLUYOR()
+    {
+        MainWindowViewModel model = new(
+            new CommitListViewModel(
+                new FakeRepositoryLocator(),
+                new FakeCommitLogReader(FakeGitData.LinearHistory(2)),
+                new FakeRefReader(Sample()),
+                new FakeCommitSignatureReader(),
+                new FakeDiffReader()),
+            new FakeRecentRepositoryStore());
+
+        model.RefTree.HasRefs.ShouldBeFalse();
+
+        await model.OpenRepositoryAsync("/depo");
+
+        model.RefTree.HasRefs.ShouldBeTrue();
+        model.RefTree.Roots.Count.ShouldBe(3);
+    }
+
+    [AvaloniaFact]
+    public async Task Cift_tiklama_MENUDEKI_checkout_akisini_cagiriyor()
+    {
+        // 🔑 İkinci bir geçiş yolu yazmak, birinin kirli-ağaç korumasız kalması demekti
+        // (P06-T02: değişiklikleri kaybettirecek hiçbir yol olmamalı).
+        FakeCheckoutPrompt prompt = new(new CheckoutDecision { Confirmed = false });
+        FakeBranchWriter writer = new();
+
+        MainWindowViewModel model = new(
+            new CommitListViewModel(
+                new FakeRepositoryLocator(),
+                new FakeCommitLogReader(FakeGitData.LinearHistory(2)),
+                new FakeRefReader(Sample()),
+                new FakeCommitSignatureReader(),
+                new FakeDiffReader()),
+            new FakeRecentRepositoryStore(),
+            branchWriter: writer)
+        {
+            CheckoutPrompt = prompt,
+        };
+
+        await model.OpenRepositoryAsync("/depo");
+        await model.CheckoutRefAsync("feature/login");
+
+        prompt.LastRequest.ShouldNotBeNull();
+        prompt.LastRequest!.Target.ShouldBe("feature/login");
+        writer.Switched.ShouldBeEmpty("iptal edildiğinde geçiş yapılmamalı");
+    }
+
+    // ---------------------------------------------------------- yerleşim
+
+    [AvaloniaFact]
+    public void Panel_SOLDA_ve_arama_kutusu_ustte()
+    {
+        RefTreeView view = new() { DataContext = Create(), Width = 220, Height = 400 };
+
+        Window window = new() { Content = view, Width = 300, Height = 400 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        // Ad kapsamı UserControl'e ait, barındıran pencereye değil.
+        TextBox filter = view.GetControl<TextBox>("FilterBox");
+        TreeView tree = view.GetControl<TreeView>("RefTree");
+
+        double filterTop = filter.TranslatePoint(default, window)!.Value.Y;
+        double treeTop = tree.TranslatePoint(default, window)!.Value.Y;
+
+        filterTop.ShouldBeLessThan(treeTop);
+
+        window.Close();
+    }
+}
