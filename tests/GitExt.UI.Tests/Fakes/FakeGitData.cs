@@ -1134,3 +1134,288 @@ public sealed class FakeInProgressOperationReader : IInProgressOperationReader
         CancellationToken cancellationToken = default) =>
         Task.FromResult(_operation);
 }
+
+/// <summary>
+/// Uzak depo okuyucusunun sahtesi (P06-T05).
+/// </summary>
+public sealed class FakeRemoteReader : IRemoteReader
+{
+    public List<GitRemote> Remotes { get; } = [];
+
+    public Task<IReadOnlyList<GitRemote>> ReadAllAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<GitRemote>>([.. Remotes]);
+
+    public Task<GitRemote?> FindAsync(
+        string workingDirectory,
+        string name,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Remotes.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.Ordinal)));
+}
+
+/// <summary>
+/// Uzak depo yazıcısının sahtesi (P06-T05).
+/// </summary>
+public sealed class FakeRemoteWriter : IRemoteWriter
+{
+    private readonly FakeRemoteReader _reader;
+
+    public FakeRemoteWriter(FakeRemoteReader reader) => _reader = reader;
+
+    /// <summary>Ayarlanırsa yazma çağrıları bunu fırlatır.</summary>
+    public Exception? Failure { get; set; }
+
+    /// <summary>Yeniden adlandırmanın döndüreceği uyarılar (çıkış kodu 0 ile gelen).</summary>
+    public IReadOnlyList<string> RenameWarnings { get; set; } = [];
+
+    public List<RemoteAddOptions> Added { get; } = [];
+
+    public List<(string Old, string New)> Renamed { get; } = [];
+
+    public List<string> Removed { get; } = [];
+
+    public List<(string Name, RemoteUrlKind Kind, string Url, string Operation)> UrlChanges { get; } = [];
+
+    /// <summary>Silme planının içeriği; testler bunu kurup diyaloğa ne gittiğine bakıyor.</summary>
+    public RemoteRemovalPlan? Plan { get; set; }
+
+    /// <summary>Plan silmeden ÖNCE mi istendi? (sabotaj testi için)</summary>
+    public bool PlanRequestedBeforeRemoval { get; private set; }
+
+    public Task AddAsync(
+        string workingDirectory,
+        RemoteAddOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
+        Added.Add(options);
+        _reader.Remotes.Add(new GitRemote { Name = options.Name, FetchUrls = [options.Url] });
+
+        return Task.CompletedTask;
+    }
+
+    public Task<RemoteRemovalPlan> PrepareRemovalAsync(
+        string workingDirectory,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        if (Removed.Count == 0)
+        {
+            PlanRequestedBeforeRemoval = true;
+        }
+
+        return Task.FromResult(Plan ?? new RemoteRemovalPlan
+        {
+            Remote = _reader.Remotes.First(r => string.Equals(r.Name, name, StringComparison.Ordinal)),
+        });
+    }
+
+    public async Task<RemoteRemovalPlan> RemoveAsync(
+        string workingDirectory,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        RemoteRemovalPlan plan =
+            await PrepareRemovalAsync(workingDirectory, name, cancellationToken);
+
+        if (Failure is not null)
+        {
+            throw Failure;
+        }
+
+        Removed.Add(name);
+        _reader.Remotes.RemoveAll(r => string.Equals(r.Name, name, StringComparison.Ordinal));
+
+        return plan;
+    }
+
+    public Task<RemoteRenameResult> RenameAsync(
+        string workingDirectory,
+        string oldName,
+        string newName,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException<RemoteRenameResult>(Failure);
+        }
+
+        Renamed.Add((oldName, newName));
+
+        int index = _reader.Remotes.FindIndex(r => string.Equals(r.Name, oldName, StringComparison.Ordinal));
+        if (index >= 0)
+        {
+            _reader.Remotes[index] = _reader.Remotes[index] with { Name = newName };
+        }
+
+        return Task.FromResult(new RemoteRenameResult(oldName, newName, RenameWarnings));
+    }
+
+    public Task SetUrlAsync(
+        string workingDirectory,
+        string name,
+        RemoteUrlKind kind,
+        string url,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
+        UrlChanges.Add((name, kind, url, "set"));
+
+        int index = _reader.Remotes.FindIndex(r => string.Equals(r.Name, name, StringComparison.Ordinal));
+        if (index >= 0)
+        {
+            _reader.Remotes[index] = kind == RemoteUrlKind.Fetch
+                ? _reader.Remotes[index] with { FetchUrls = [url] }
+                : _reader.Remotes[index] with { PushUrls = [url] };
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task AddUrlAsync(
+        string workingDirectory,
+        string name,
+        RemoteUrlKind kind,
+        string url,
+        CancellationToken cancellationToken = default)
+    {
+        UrlChanges.Add((name, kind, url, "add"));
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveUrlAsync(
+        string workingDirectory,
+        string name,
+        RemoteUrlKind kind,
+        string url,
+        CancellationToken cancellationToken = default)
+    {
+        UrlChanges.Add((name, kind, url, "delete"));
+
+        int index = _reader.Remotes.FindIndex(r => string.Equals(r.Name, name, StringComparison.Ordinal));
+        if (index >= 0 && kind == RemoteUrlKind.Push)
+        {
+            _reader.Remotes[index] = _reader.Remotes[index] with { PushUrls = [] };
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Uzak depo silme onayının sahtesi (P06-T05).
+/// </summary>
+public sealed class FakeRemoteRemovalConfirmer : IRemoteRemovalConfirmer
+{
+    private readonly bool _answer;
+
+    public FakeRemoteRemovalConfirmer(bool answer = true) => _answer = answer;
+
+    public List<RemoteRemovalRequest> Requests { get; } = [];
+
+    public Task<bool> ConfirmAsync(RemoteRemovalRequest request)
+    {
+        Requests.Add(request);
+        return Task.FromResult(_answer);
+    }
+}
+
+/// <summary>
+/// Uzak depo yönetimi ekranını gösteren tarafın sahtesi (P06-T05).
+/// </summary>
+public sealed class FakeRemotesPrompt : IRemotesPrompt
+{
+    public FakeRemoteRemovalConfirmer Confirmer { get; } = new();
+
+    public IRemoteRemovalConfirmer RemovalConfirmer => Confirmer;
+
+    /// <summary>Gösterilen ViewModel; testler içeriğine bakıyor.</summary>
+    public RemotesViewModel? Shown { get; private set; }
+
+    public Task ShowAsync(RemotesViewModel model)
+    {
+        Shown = model;
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Fetch yazıcısının sahtesi (P06-T06).</summary>
+public sealed class FakeFetchWriter : IFetchWriter
+{
+    public List<FetchOptions> Fetched { get; } = [];
+
+    public FetchResult Result { get; set; } = new();
+
+    public PrunePreview Preview { get; set; } = new();
+
+    public Task<FetchResult> FetchAsync(
+        string workingDirectory,
+        FetchOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        Fetched.Add(options);
+        return Task.FromResult(Result);
+    }
+
+    public Task<PrunePreview> PreviewPruneAsync(
+        string workingDirectory,
+        string remote,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Preview);
+}
+
+/// <summary>Pull yazıcısının sahtesi (P06-T07).</summary>
+public sealed class FakePullWriter : IPullWriter
+{
+    public List<PullOptions> Pulled { get; } = [];
+
+    /// <summary>Ayarlardan çözülen strateji (ekranın hangi seçenekle açılacağını belirler).</summary>
+    public ResolvedPullStrategy Configured { get; set; } =
+        new(PullStrategy.Merge, PullStrategySource.ApplicationDefault, null);
+
+    public PullResult? Result { get; set; }
+
+    public Task<ResolvedPullStrategy> ResolveStrategyAsync(
+        string workingDirectory,
+        PullStrategy requested = PullStrategy.Default,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(requested == PullStrategy.Default
+            ? Configured
+            : new ResolvedPullStrategy(requested, PullStrategySource.UserChoice, null));
+
+    public Task<PullResult> PullAsync(
+        string workingDirectory,
+        PullOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        Pulled.Add(options);
+
+        return Task.FromResult(Result ?? new PullResult
+        {
+            Strategy = Configured,
+            HeadBefore = "aaaa",
+            HeadAfter = "aaaa",
+        });
+    }
+}
+
+/// <summary>Pull/Fetch ekranını gösteren tarafın sahtesi (P06-T07).</summary>
+public sealed class FakePullPrompt : IPullPrompt
+{
+    public PullViewModel? Shown { get; private set; }
+
+    public Task ShowAsync(PullViewModel model)
+    {
+        Shown = model;
+        return Task.CompletedTask;
+    }
+}

@@ -53,6 +53,34 @@ public enum GitFailureKind
 
     /// <summary>Depoda hiç commit yok; işlem bir başlangıç noktası bulamıyor (P06-T01).</summary>
     UnbornHead,
+
+    /// <summary>Aynı adda bir uzak depo zaten var (P06-T05, çıkış kodu 3).</summary>
+    RemoteAlreadyExists,
+
+    /// <summary>Belirtilen uzak depo yok (P06-T05, çıkış kodu 2).</summary>
+    RemoteNotFound,
+
+    /// <summary>
+    /// Uzak depo adı mevcut bir adla iç içe geçiyor (P06-T05).
+    /// </summary>
+    /// <remarks>
+    /// <b>ÖLÇÜLDÜ — iki yönlü:</b> <c>ic</c> varken <c>ic/main</c> eklenemiyor
+    /// (<i>"is a subset of existing remote"</i>) ve simetrik olarak <c>ic/main</c> varken
+    /// <c>ic</c> eklenemiyor (<i>"is a superset"</i>). Dallardaki
+    /// <see cref="RefNameConflict"/> ile aynı sebep — <c>refs/remotes/</c> altında da adlar
+    /// dizin gibi saklanıyor — ama mesajı ayrı, çünkü kullanıcıya önerilecek çözüm farklı.
+    /// </remarks>
+    RemoteNameConflict,
+
+    /// <summary>Uzak depoya ulaşılamadı: adres yanlış, depo yok ya da erişim kapalı (P06-T06).</summary>
+    /// <remarks>
+    /// 🔴 <b>ÖLÇÜLDÜ — bu tür olmadan mesaj YANLIŞTI.</b> Ulaşılamayan bir remote için git
+    /// <c>fatal: '…' does not appear to be a git repository</c> yazıyor; bu metin
+    /// <see cref="NotARepository"/> kalıbına uyuyor ve kullanıcıya <i>"Bu klasör bir Git
+    /// deposu değil"</i> denirdi — oysa klasör gayet iyi, sorun <b>uzak adreste</b>.
+    /// Ayrım git'in ikinci satırından geliyor: <c>Could not read from remote repository.</c>
+    /// </remarks>
+    RemoteUnreachable,
 }
 
 /// <summary>

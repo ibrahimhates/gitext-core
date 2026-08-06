@@ -1,0 +1,160 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.RemotesWindow"
+        x:DataType="vm:RemotesViewModel"
+        Title="Uzak depolar"
+        Width="760"
+        Height="420"
+        MinWidth="620"
+        MinHeight="360"
+        WindowStartupLocation="CenterOwner">
+
+    <!--
+        Yerleşim GitExtensions `FormRemotes.Designer.cs`'ten (§ 9):
+          · TabControl: "Remote repositories" / "Default pull behavior"
+          · solda liste (panel1, Dock=Left), sağda yönetim paneli (pnlManagementContainer)
+          · düğme şeridi listenin sağında dikey: New · Delete
+          · alan sırası: Url → Name → (Separate Push Url) → Push Url
+          · en altta "Save changes"
+
+        Bizde OLMAYANLAR ve nedenleri:
+          · Prefix / Color  → GitExtensions'a özel görsel ayarlar
+          · PuTTY SSH paneli → Linux'ta PuTTY yok; kimlik doğrulama P06-T09
+          · btnToggleState (etkinleştir/devre dışı bırak) → git'te karşılığı yok,
+            GitExtensions bunu kendi ayar dosyasında tutuyor
+        İkinci sekme YERİNDE ama devre dışı: içeriği P06-T07'nin (pull) konusu.
+    -->
+    <TabControl Margin="8">
+
+        <TabItem Header="Uzak depolar">
+            <Grid ColumnDefinitions="220,Auto,*" Margin="4,8,4,4">
+
+                <ListBox Name="RemotesList"
+                         Grid.Column="0"
+                         ItemsSource="{Binding Remotes}"
+                         SelectedItem="{Binding Selected}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="vm:RemoteRowViewModel">
+                            <StackPanel Spacing="1">
+                                <TextBlock Text="{Binding Name}" />
+                                <!-- Parola MASKELİ: yalnızca gösterim, düzenleme kutusu ham. -->
+                                <TextBlock Text="{Binding DisplayUrl}" FontSize="11" Opacity="0.7" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Column="1" Margin="8,0" Spacing="6" VerticalAlignment="Top">
+                    <Button Name="NewButton"
+                            Content="Yeni"
+                            MinWidth="90"
+                            Command="{Binding NewCommand}"
+                            ToolTip.Tip="Yeni uzak depo ekle" />
+                    <Button Name="DeleteButton"
+                            Content="Sil"
+                            MinWidth="90"
+                            Command="{Binding DeleteCommand}"
+                            ToolTip.Tip="Seçili uzak depoyu kaldır" />
+                </StackPanel>
+
+                <Grid Grid.Column="2"
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto"
+                      ColumnDefinitions="Auto,*"
+                      Margin="4,0,0,0">
+
+                    <!-- Satır 0: Url (FormRemotes'ta da ilk satır) -->
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="URL"
+                               Margin="0,0,8,6"
+                               VerticalAlignment="Center" />
+                    <TextBox Name="UrlBox"
+                             Grid.Row="0" Grid.Column="1"
+                             Margin="0,0,0,6"
+                             Text="{Binding Url}" />
+
+                    <!-- Satır 1: Name -->
+                    <TextBlock Grid.Row="1" Grid.Column="0"
+                               Text="Ad"
+                               Margin="0,0,8,2"
+                               VerticalAlignment="Center" />
+                    <TextBox Name="NameBox"
+                             Grid.Row="1" Grid.Column="1"
+                             Text="{Binding Name}" />
+
+                    <TextBlock Name="NameProblemText"
+                               Grid.Row="2" Grid.Column="1"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Margin="0,2,0,6"
+                               Text="{Binding NameProblem}"
+                               IsVisible="{Binding NameProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+
+                    <!-- Satır 3: Separate Push Url (FormRemotes'taki checkBoxSepPushUrl) -->
+                    <CheckBox Name="SeparatePushBox"
+                              Grid.Row="3" Grid.Column="1"
+                              Content="Push için ayrı URL"
+                              Margin="0,0,0,6"
+                              IsChecked="{Binding SeparatePushUrl}" />
+
+                    <!-- Satır 4: Push Url -->
+                    <TextBlock Grid.Row="4" Grid.Column="0"
+                               Text="Push URL"
+                               Margin="0,0,8,6"
+                               VerticalAlignment="Center"
+                               IsEnabled="{Binding SeparatePushUrl}" />
+                    <TextBox Name="PushUrlBox"
+                             Grid.Row="4" Grid.Column="1"
+                             Margin="0,0,0,6"
+                             IsEnabled="{Binding SeparatePushUrl}"
+                             Text="{Binding PushUrl}" />
+
+                    <StackPanel Grid.Row="5" Grid.Column="1" Spacing="4">
+                        <TextBlock Name="MultipleUrlText"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding MultipleUrlNotice}"
+                                   IsVisible="{Binding HasMultipleUrls}" />
+
+                        <TextBlock Name="WarningText"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding Warning}"
+                                   IsVisible="{Binding HasWarning}"
+                                   Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+
+                        <TextBlock Name="NoticeText"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Opacity="0.8"
+                                   Text="{Binding Notice}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="7" Grid.Column="1"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Spacing="8">
+                        <Button Name="CloseButton"
+                                Content="Kapat"
+                                MinWidth="90"
+                                IsCancel="True"
+                                Click="OnCloseClick" />
+                        <Button Name="SaveButton"
+                                Content="Değişiklikleri kaydet"
+                                MinWidth="140"
+                                IsDefault="True"
+                                Command="{Binding SaveCommand}" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </TabItem>
+
+        <!-- Sıra bozulmasın diye YERİNDE ama devre dışı: içeriği P06-T07. -->
+        <TabItem Name="PullBehaviorTab" Header="Varsayılan pull davranışı" IsEnabled="False">
+            <TextBlock Margin="12"
+                       TextWrapping="Wrap"
+                       Text="Dal bazlı varsayılan pull ayarları henüz uygulanmadı (P06-T07)." />
+        </TabItem>
+    </TabControl>
+</Window>

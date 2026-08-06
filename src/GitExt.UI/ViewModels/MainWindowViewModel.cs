@@ -67,6 +67,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IWorkingTreeWriter? _workingTreeWriter;
     private readonly IBranchWriter? _branchWriter;
     private readonly IInProgressOperationReader? _operations;
+    private readonly IRemoteReader? _remoteReader;
+    private readonly IRemoteWriter? _remoteWriter;
+    private readonly IFetchWriter? _fetchWriter;
+    private readonly IPullWriter? _pullWriter;
 
     /// <summary>
     /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
@@ -110,7 +114,11 @@ public partial class MainWindowViewModel : ViewModelBase
         IRepositoryWatcher? watcher = null,
         IWorkingTreeWriter? workingTreeWriter = null,
         IBranchWriter? branchWriter = null,
-        IInProgressOperationReader? operations = null)
+        IInProgressOperationReader? operations = null,
+        IRemoteReader? remoteReader = null,
+        IRemoteWriter? remoteWriter = null,
+        IFetchWriter? fetchWriter = null,
+        IPullWriter? pullWriter = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
         ArgumentNullException.ThrowIfNull(recentStore);
@@ -125,6 +133,10 @@ public partial class MainWindowViewModel : ViewModelBase
         _workingTreeWriter = workingTreeWriter;
         _branchWriter = branchWriter;
         _operations = operations;
+        _remoteReader = remoteReader;
+        _remoteWriter = remoteWriter;
+        _fetchWriter = fetchWriter;
+        _pullWriter = pullWriter;
 
         if (_watcher is not null)
         {
@@ -153,16 +165,24 @@ public partial class MainWindowViewModel : ViewModelBase
         CheckoutCommand = new AsyncRelayCommand(CheckoutAsync, () => CanCheckout);
         RenameBranchCommand = new AsyncRelayCommand(RenameBranchAsync, () => CanEditBranch);
         DeleteBranchCommand = new AsyncRelayCommand(DeleteBranchAsync, () => CanEditBranch);
+        ManageRemotesCommand = new AsyncRelayCommand(ManageRemotesAsync, () => CanManageRemotes);
+        PullCommand = new AsyncRelayCommand(PullAsync, () => CanPull);
 
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
 
+        // 🔴 Depoya bağlı HER ŞEY buradan haber alıyor. Tek yer olması şart: depo dört ayrı
+        // yoldan açılıp kapanıyor (açık yol, sürükle-bırak, açılışta sessiz deneme, kapatma)
+        // ve bildirimi tek tek o yollara koymak, birini unutmayı sessiz bir hata yapardı —
+        // nitekim öyle olmuştu: `HasRepository` yalnızca KAPANIŞTA bildiriliyordu, açılışta
+        // hiç. `_Depo` ve `_Komutlar` menüleri depo açıkken de soluk kalıyordu.
         Commits.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(CommitListViewModel.IsLoading)
                 or nameof(CommitListViewModel.Repository))
             {
                 OnPropertyChanged(nameof(ShowWelcome));
+                NotifyRepositoryDependents();
             }
         };
     }
@@ -230,6 +250,33 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Dal düzenleme diyaloglarını gösteren taraf (P06-T03).</summary>
     public IBranchEditPrompt? BranchEditPrompt { get; set; }
 
+    /// <summary>Uzak depo yönetimi ekranını açar (P06-T05).</summary>
+    public IAsyncRelayCommand ManageRemotesCommand { get; }
+
+    /// <summary>Uzak depo yönetimi ekranını gösteren taraf (P06-T05).</summary>
+    public IRemotesPrompt? RemotesPrompt { get; set; }
+
+    /// <summary>Pull/Fetch ekranını açar (P06-T06 + P06-T07).</summary>
+    public IAsyncRelayCommand PullCommand { get; }
+
+    /// <summary>Pull/Fetch ekranını gösteren taraf.</summary>
+    public IPullPrompt? PullPrompt { get; set; }
+
+    /// <summary>Pull/Fetch yapılabilir mi?</summary>
+    public bool CanPull =>
+        _fetchWriter is not null
+        && _pullWriter is not null
+        && _remoteReader is not null
+        && PullPrompt is not null
+        && Commits.Repository?.WorkingDirectory is { Length: > 0 };
+
+    /// <summary>Uzak depolar yönetilebilir mi?</summary>
+    public bool CanManageRemotes =>
+        _remoteReader is not null
+        && _remoteWriter is not null
+        && RemotesPrompt is not null
+        && Commits.Repository?.WorkingDirectory is { Length: > 0 };
+
     /// <summary>Dal düzenlenebilir mi?</summary>
     public bool CanEditBranch =>
         _branchWriter is not null
@@ -278,7 +325,50 @@ public partial class MainWindowViewModel : ViewModelBase
     public partial string? BranchNotice { get; set; }
 
     /// <summary>Bir depo açık mı? Menü öğelerinin etkinliği buna bağlı.</summary>
+    /// <remarks>
+    /// ⚠️ Hesaplanan özellik: değeri her zaman doğru ama <b>bildirimi</b> kendiliğinden
+    /// gelmiyor. Bağlamanın güncellenmesi <see cref="NotifyRepositoryDependents"/>'a bağlı.
+    /// </remarks>
     public bool HasRepository => Commits.Repository is not null;
+
+    /// <summary>
+    /// Depo açılıp kapandığında değişen <b>tüm</b> bağlamaları ve komut durumlarını bildirir.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Bunun eksikliği gerçek bir hataydı: <c>HasRepository</c> yalnızca kapanışta
+    /// bildiriliyordu, açılışta hiç → <c>IsEnabled="{Binding HasRepository}"</c> ilk
+    /// değerinde (<see langword="false"/>) donuyor ve <b>ana menünün iki bölümü birden</b>
+    /// (<i>Depo</i>, <i>Komutlar</i>) depo açıkken de soluk kalıyordu.
+    /// </para>
+    /// <para>
+    /// ⚠️ <b>Komutların da bildirilmesi gerekiyor:</b> <c>CanExecute</c> temsilcileri
+    /// <c>Commits.Repository</c>'ye bakıyor ama bir kez oluşturulmuş menü öğesi
+    /// <c>CanExecuteChanged</c> gelmedikçe sormuyor. Alt menü öğeleri menü <b>her açılışta</b>
+    /// yeniden kurulduğu için orada fark edilmiyordu; araç çubuğu ve kısayollar gibi
+    /// kalıcı bağlamalarda ise sessizce ölü kalırdı.
+    /// </para>
+    /// <para>
+    /// Bir özellik/komut eklendiğinde buraya da eklenmeli — bunu unutmak sessiz bir hata
+    /// olduğu için <c>MainWindowBindingTests</c> gerçek pencere üzerinden kontrol ediyor.
+    /// </para>
+    /// </remarks>
+    private void NotifyRepositoryDependents()
+    {
+        OnPropertyChanged(nameof(HasRepository));
+        OnPropertyChanged(nameof(CanCreateBranch));
+        OnPropertyChanged(nameof(CanCheckout));
+        OnPropertyChanged(nameof(CanEditBranch));
+        OnPropertyChanged(nameof(CanManageRemotes));
+        OnPropertyChanged(nameof(CanPull));
+
+        CreateBranchCommand.NotifyCanExecuteChanged();
+        CheckoutCommand.NotifyCanExecuteChanged();
+        RenameBranchCommand.NotifyCanExecuteChanged();
+        DeleteBranchCommand.NotifyCanExecuteChanged();
+        ManageRemotesCommand.NotifyCanExecuteChanged();
+        PullCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>
     /// Açık depoyu baştan okur.
@@ -625,6 +715,95 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshAsync().ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Uzak depo yönetimi ekranını açar (P06-T05).
+    /// </summary>
+    /// <remarks>
+    /// Ekranın kendi ViewModel'ı var ve ana pencereyi <b>tanımıyor</b> (P04-T08'de verilen
+    /// karar): burası yalnızca onu kuruyor, pencereyi açmak görünümün işi.
+    /// <para>
+    /// Kapanışta <see cref="RefreshAsync"/>: uzak izleme dalları silinmiş veya yeni bir
+    /// remote eklenmiş olabilir; rozetler ve dal listesi bunu yansıtmalı.
+    /// </para>
+    /// </remarks>
+    private async Task ManageRemotesAsync()
+    {
+        if (_remoteReader is null
+            || _remoteWriter is null
+            || RemotesPrompt is null
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        RemotesViewModel model = new(_remoteReader, _remoteWriter, RemotesPrompt.RemovalConfirmer);
+
+        try
+        {
+            await model.LoadAsync(path).ConfigureAwait(true);
+        }
+        catch (GitException error)
+        {
+            BranchNotice = error.Message;
+            return;
+        }
+
+        // Depo yazma işlemleri sırasında izleyici askıya alınıyor: config değişiklikleri
+        // tazeleme fırtınası üretebiliyor (P05-T14).
+        using (_watcher?.Suspend())
+        {
+            await RemotesPrompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Pull/Fetch ekranını açar (P06-T06 + P06-T07).
+    /// </summary>
+    /// <remarks>
+    /// Fetch'in ayrı bir ekranı yok: GitExtensions'ta da <c>FormPull</c>'un bir seçeneği
+    /// ve menüdeki yer birleşik ("Pull/Fetch…", § 9).
+    /// <para>
+    /// Kapanışta tazeleme şart: uzak izleme dalları değişmiş, HEAD ilerlemiş olabilir.
+    /// </para>
+    /// </remarks>
+    private async Task PullAsync()
+    {
+        if (_fetchWriter is null
+            || _pullWriter is null
+            || _remoteReader is null
+            || PullPrompt is null
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        PullViewModel model = new(_remoteReader, _fetchWriter, _pullWriter);
+
+        try
+        {
+            await model
+                .LoadAsync(
+                    path,
+                    Commits.Refs?.CurrentBranch?.Name ?? string.Empty,
+                    [.. Commits.Refs?.RemoteBranches.Select(branch => branch.Ref) ?? []])
+                .ConfigureAwait(true);
+        }
+        catch (GitException error)
+        {
+            BranchNotice = error.Message;
+            return;
+        }
+
+        using (_watcher?.Suspend())
+        {
+            await PullPrompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
     /// <summary>Seçili commit'teki ilk yerel dal.</summary>
     private string? SelectedLocalBranch =>
         Commits.SelectedRow?.Badges.FirstOrDefault(badge => badge.IsLocalBranch)?.Text;
@@ -754,8 +933,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Subtitle = "Depo açılmadı.";
 
+        // `Commits.Close()` zaten `Repository = null` yapıyor ve abonelik bildirimleri
+        // gönderiyor; buradaki çağrı yalnızca sıranın garantisi için duruyor (ikinci kez
+        // bildirmek zararsız, eksik bildirmek değil).
         OnPropertyChanged(nameof(ShowWelcome));
-        OnPropertyChanged(nameof(HasRepository));
+        NotifyRepositoryDependents();
     }
 
     [ObservableProperty]

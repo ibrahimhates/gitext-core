@@ -1,0 +1,184 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.PullWindow"
+        x:DataType="vm:PullViewModel"
+        Title="Pull / Fetch"
+        Width="620"
+        SizeToContent="Height"
+        MinHeight="480"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        Yerleşim GitExtensions `FormPull.Designer.cs`'ten (§ 9), grup sırası birebir:
+          GroupPullFrom (Remote / URL) → GroupBranch (Local / Remote branch) →
+          GroupMergeOptions (Merge · Rebase · yalnızca Fetch) → GroupTagOptions →
+          Prune / PruneTags → AutoStash → Pull düğmesi.
+
+        Bizde OLMAYAN: "URL" seçeneği (yerinde ama devre dışı — uzak depo eklemeden URL'den
+        çekmek P06-T09'un kimlik doğrulama akışına bağlı), "Solve conflicts" ve "Stash
+        changes" düğmeleri (mergetool Faz 07, stash yönetimi Faz 07).
+
+        EKLENEN: stratejinin NEREDEN geldiğini yazan satır ve çalıştırılacak KOMUT.
+        Planın maddesi: "pull düğmesinin ne yaptığı belirsiz kalmamalı".
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <HeaderedContentControl Header="Nereden çekilecek">
+            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="8,4">
+                <RadioButton Name="FromRemoteRadio"
+                             Grid.Row="0" Grid.Column="0"
+                             GroupName="PullFrom"
+                             Content="Uzak depo"
+                             IsChecked="True"
+                             Margin="0,0,8,0" />
+                <ComboBox Name="RemoteBox"
+                          Grid.Row="0" Grid.Column="1"
+                          HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding Remotes}"
+                          SelectedItem="{Binding SelectedRemote}" />
+                <Button Name="ManageRemotesButton"
+                        Grid.Row="0" Grid.Column="2"
+                        Content="Yönet…"
+                        Margin="8,0,0,0"
+                        Click="OnManageRemotesClick" />
+
+                <!-- Yerinde ama devre dışı (§ 9): URL'den çekme P06-T09'a bağlı. -->
+                <RadioButton Name="FromUrlRadio"
+                             Grid.Row="1" Grid.Column="0"
+                             GroupName="PullFrom"
+                             Content="URL"
+                             IsEnabled="False"
+                             Margin="0,6,8,0" />
+                <TextBox Name="UrlBox"
+                         Grid.Row="1" Grid.Column="1"
+                         IsEnabled="False"
+                         Margin="0,6,0,0" />
+            </Grid>
+        </HeaderedContentControl>
+
+        <HeaderedContentControl Header="Dal">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="8,4">
+                <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="Yerel dal"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,4" />
+                <TextBox Name="LocalBranchBox"
+                         Grid.Row="0" Grid.Column="1"
+                         IsReadOnly="True"
+                         IsTabStop="False"
+                         Margin="0,0,0,4"
+                         Text="{Binding CurrentBranch}" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0"
+                           Text="Uzak dal"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+                <ComboBox Name="BranchBox"
+                          Grid.Row="1" Grid.Column="1"
+                          HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding RemoteBranches}"
+                          SelectedItem="{Binding SelectedBranch}" />
+            </Grid>
+        </HeaderedContentControl>
+
+        <HeaderedContentControl Header="Birleştirme seçenekleri">
+            <StackPanel Margin="8,4" Spacing="4">
+                <RadioButton Name="MergeRadio"
+                             GroupName="Action"
+                             Content="Uzak dalı mevcut dala birleştir"
+                             IsChecked="{Binding IsMerge}" />
+                <RadioButton Name="RebaseRadio"
+                             GroupName="Action"
+                             Content="Mevcut dalı uzak dalın üstüne taşı (rebase)"
+                             IsChecked="{Binding IsRebase}" />
+                <RadioButton Name="FetchOnlyRadio"
+                             GroupName="Action"
+                             Content="Birleştirme, yalnızca uzak değişiklikleri getir"
+                             IsChecked="{Binding IsFetchOnly}" />
+
+                <TextBlock Name="StrategyNoticeText"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Opacity="0.85"
+                           Margin="0,4,0,0"
+                           Text="{Binding StrategyNotice}" />
+            </StackPanel>
+        </HeaderedContentControl>
+
+        <HeaderedContentControl Header="Etiket seçenekleri">
+            <StackPanel Margin="8,4" Spacing="4">
+                <RadioButton Name="ReachableTagsRadio"
+                             GroupName="Tags"
+                             Content="Ulaşılan commit'lerin etiketlerini getir"
+                             IsChecked="{Binding IsReachableTags}" />
+                <RadioButton Name="AllTagsRadio"
+                             GroupName="Tags"
+                             Content="Tüm etiketleri getir"
+                             IsChecked="{Binding IsAllTags}" />
+                <RadioButton Name="NoTagsRadio"
+                             GroupName="Tags"
+                             Content="Etiket getirme"
+                             IsChecked="{Binding IsNoTags}" />
+            </StackPanel>
+        </HeaderedContentControl>
+
+        <StackPanel Spacing="4">
+            <CheckBox Name="PruneBox"
+                      Content="Uzakta silinmiş dalların izlerini temizle (prune)"
+                      IsChecked="{Binding Prune}" />
+            <CheckBox Name="PruneTagsBox"
+                      Content="Uzakta silinmiş etiketleri de temizle"
+                      Margin="20,0,0,0"
+                      IsEnabled="{Binding CanPruneTags}"
+                      IsChecked="{Binding PruneTags}" />
+            <CheckBox Name="AutoStashBox"
+                      Content="Kaydedilmemiş değişiklikleri otomatik stash'le"
+                      IsEnabled="{Binding AutoStashApplies}"
+                      IsChecked="{Binding AutoStash}" />
+        </StackPanel>
+
+        <!-- "Komutu göster" ilkesi: düğmeye basmadan ne olacağı okunabilmeli. -->
+        <StackPanel Spacing="3">
+            <TextBlock Text="Çalıştırılacak komut:" FontSize="11" Opacity="0.8" />
+            <TextBox Name="CommandPreviewBox"
+                     IsReadOnly="True"
+                     IsTabStop="False"
+                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontSize="11"
+                     Text="{Binding CommandPreview}" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Name="WarningText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding HasWarning}"
+                       Text="{Binding Warning}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+            <TextBlock Name="NoticeText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       Opacity="0.85"
+                       Text="{Binding Notice}" />
+            <StackPanel Spacing="2" IsVisible="{Binding HasRecoveryCommand}">
+                <TextBlock Text="Geri almak için:" FontSize="11" Opacity="0.8" />
+                <TextBox Name="RecoveryCommandBox"
+                         IsReadOnly="True"
+                         FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                         FontSize="11"
+                         Text="{Binding RecoveryCommand}" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="CloseButton" Content="Kapat" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
+            <Button Name="PullButton"
+                    Content="Çalıştır"
+                    MinWidth="110"
+                    IsDefault="True"
+                    Command="{Binding RunCommand}" />
+        </StackPanel>
+    </StackPanel>
+</Window>

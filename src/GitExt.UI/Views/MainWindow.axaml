@@ -64,7 +64,9 @@
                           Command="{Binding RefreshCommand}" />
                 <MenuItem Name="MenuFileExplorer" Header="Dosya _gezgini" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuRemotes" Header="Uzak _depolar…" IsEnabled="False" />
+                <MenuItem Name="MenuRemotes"
+                          Header="Uzak _depolar…"
+                          Command="{Binding ManageRemotesCommand}" />
                 <Separator />
                 <MenuItem Name="MenuSubmodules" Header="Alt modülleri yö_net…" IsEnabled="False" />
                 <MenuItem Name="MenuWorktrees" Header="Ça_lışma ağaçlarını yönet…" IsEnabled="False" />
@@ -82,7 +84,7 @@
                 <MenuItem Name="MenuCommit" Header="_Commit…" Click="OnCommitClick" />
                 <MenuItem Name="MenuUndoLastCommit" Header="Son commit'i _geri al…" IsEnabled="False" />
                 <!-- Faz 06 -->
-                <MenuItem Name="MenuPull" Header="Pull_/Fetch…" IsEnabled="False" />
+                <MenuItem Name="MenuPull" Header="Pull_/Fetch…" Command="{Binding PullCommand}" />
                 <MenuItem Name="MenuPush" Header="_Push…" IsEnabled="False" />
                 <Separator />
                 <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" IsEnabled="False" />

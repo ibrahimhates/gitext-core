@@ -57,6 +57,19 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IGitProcessRunner>(),
             sp.GetRequiredService<IWorkingTreeWriter>()));
 
+        // Uzak depo okuma/yazma (P06-T05). Yazıcı okuyucuya bağımlı: çoklu URL durumunu
+        // git'e sormadan ÖNCE görmesi gerekiyor (tek adımlı `set-url` orada çöküyor).
+        services.AddSingleton<IRemoteReader, RemoteReader>();
+        services.AddSingleton<IRemoteWriter, RemoteWriter>();
+
+        // Fetch (P06-T06). Ne değiştiğini ref anlık görüntüsü farkıyla hesapladığı için
+        // hem yazıcıya hem okuyucuya ihtiyacı var.
+        services.AddSingleton<IFetchWriter, FetchWriter>();
+
+        // Pull (P06-T07). Stratejiyi ayarlardan çözdüğü için config okuyucusuna bağımlı;
+        // strateji git'e bırakılmıyor (ayarsız+iraksayan depoda git reddediyor).
+        services.AddSingleton<IPullWriter, PullWriter>();
+
         services.AddSingleton<IRepositoryLocator, RepositoryLocator>();
         services.AddSingleton<ICommitLogReader, CommitLogReader>();
         services.AddSingleton<IRefReader, RefReader>();

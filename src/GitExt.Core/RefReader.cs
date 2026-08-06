@@ -253,8 +253,18 @@ public sealed class RefReader : IRefReader
     /// Yapılandırılmış uzak depoları okur.
     /// </summary>
     /// <remarks>
-    /// <c>git remote -v</c> insan-okunur; onun yerine <c>config --get-regexp</c> kullanılıyor
+    /// <para>
+    /// <c>git remote -v</c> insan-okunur; onun yerine <c>config</c> kullanılıyor
     /// (ADR-0002: insan-okunur çıktı ayrıştırılmaz).
+    /// </para>
+    /// <para>
+    /// 🔴 <b>Ayrıştırma burada DEĞİL, <see cref="RemoteConfigParser"/>'da</b> (P06-T05).
+    /// Burada ikinci bir ayrıştırıcı vardı ve ölçüm üç sessiz farkını gösterdi: <c>-z</c>
+    /// kullanmadığı için satır sonu içeren URL <b>ikiye bölünüyordu</b>, çoklu URL'de
+    /// <b>sonuncusu</b> kazanıyordu ve URL'siz bir remote listeden <b>düşüyordu</b>.
+    /// Aynı soruya iki yoldan cevap vermek, birinin sessizce yanlış olmasına izin vermişti
+    /// (P06-T04'ün dersi).
+    /// </para>
     /// </remarks>
     private async Task<IReadOnlyList<RemoteInfo>> ReadRemotesAsync(
         string workingDirectory,
@@ -264,63 +274,30 @@ public sealed class RefReader : IRefReader
             new GitCommand
             {
                 WorkingDirectory = workingDirectory,
-                Arguments = ["config", "--get-regexp", "^remote\\..*\\.(url|pushurl)$"],
+                Arguments = ["config", "-z", "--get-regexp", RemoteConfigParser.KeyPattern],
                 // Hiç remote yoksa 1 döner; bu bir hata değil.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);
 
-        Dictionary<string, (string? Url, string? PushUrl)> remotes = [];
-
-        foreach (string line in result.GetStandardOutputText()
-                     .Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        {
-            // Biçim: "remote.origin.url https://…"
-            int space = line.IndexOf(' ', StringComparison.Ordinal);
-            if (space <= 0)
-            {
-                continue;
-            }
-
-            string key = line[..space];
-            string value = line[(space + 1)..].Trim();
-
-            if (!key.StartsWith("remote.", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            int lastDot = key.LastIndexOf('.');
-            if (lastDot <= "remote.".Length)
-            {
-                continue;
-            }
-
-            // Uzak adı nokta içerebilir; bu yüzden baştan ve sondan kırpıyoruz.
-            string name = key["remote.".Length..lastDot];
-            string suffix = key[(lastDot + 1)..];
-
-            remotes.TryGetValue(name, out (string? Url, string? PushUrl) entry);
-
-            remotes[name] = suffix switch
-            {
-                "url" => (value, entry.PushUrl),
-                "pushurl" => (entry.Url, value),
-                _ => entry,
-            };
-        }
+        IReadOnlyList<GitRemote> remotes = RemoteConfigParser.Parse(
+            result.ExitCode == 0 ? result.SplitStandardOutputAtNul() : [],
+            knownNames: null);
 
         return
         [
+            // URL'si olmayan remote burada elenmeye devam ediyor: `RemoteInfo.FetchUrl`
+            // zorunlu ve bu tür çağıranlar (rozetler, dal listesi) adresi olmayan bir
+            // remote'la bir şey yapamaz. Uzak depo yönetimi ekranı onları da göstermek
+            // zorunda ve bu yüzden `IRemoteReader` kullanıyor.
             .. remotes
-                .Where(pair => pair.Value.Url is not null || pair.Value.PushUrl is not null)
-                .Select(pair => new RemoteInfo
+                .Where(remote => remote.FetchUrls.Count > 0 || remote.PushUrls.Count > 0)
+                .Select(remote => new RemoteInfo
                 {
-                    Name = pair.Key,
-                    FetchUrl = pair.Value.Url ?? pair.Value.PushUrl!,
-                    PushUrl = pair.Value.PushUrl ?? pair.Value.Url!,
-                })
-                .OrderBy(remote => remote.Name, StringComparer.Ordinal),
+                    Name = remote.Name,
+                    FetchUrl = remote.Url ?? remote.PushUrls[0],
+                    PushUrl = remote.EffectivePushUrls[0],
+                }),
         ];
     }
 }

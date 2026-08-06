@@ -27,8 +27,46 @@ public partial class MainWindow : Window
                 model.BranchPrompt = new DialogBranchPrompt(this);
                 model.CheckoutPrompt = new DialogCheckoutPrompt(this);
                 model.BranchEditPrompt = new DialogBranchEditPrompt(this);
+                model.RemotesPrompt = new DialogRemotesPrompt(this);
+                model.PullPrompt = new DialogPullPrompt(this, model);
             }
         };
+    }
+
+    /// <summary>Pull/Fetch ekranını gerçek bir pencereyle gösterir (P06-T06, T07).</summary>
+    private sealed class DialogPullPrompt : IPullPrompt
+    {
+        private readonly Window _owner;
+        private readonly MainWindowViewModel _model;
+
+        public DialogPullPrompt(Window owner, MainWindowViewModel model)
+        {
+            _owner = owner;
+            _model = model;
+        }
+
+        // "Yönet…" düğmesi uzak depo ekranını açıyor — GitExtensions'ta da `FormPull`'da
+        // `AddRemote` düğmesi var (§ 9). İkinci bir yol değil, aynı komutun kısayolu.
+        public Task ShowAsync(PullViewModel model) =>
+            PullWindow.ShowAsync(
+                model,
+                _owner,
+                () => _model.ManageRemotesCommand.ExecuteAsync(null));
+    }
+
+    /// <summary>Uzak depo yönetimi ekranını gerçek bir pencereyle gösterir (P06-T05).</summary>
+    private sealed class DialogRemotesPrompt : IRemotesPrompt, IRemoteRemovalConfirmer
+    {
+        private readonly Window _owner;
+
+        public DialogRemotesPrompt(Window owner) => _owner = owner;
+
+        public IRemoteRemovalConfirmer RemovalConfirmer => this;
+
+        public Task ShowAsync(RemotesViewModel model) => RemotesWindow.ShowAsync(model, _owner);
+
+        public Task<bool> ConfirmAsync(RemoteRemovalRequest request) =>
+            RemoveRemoteDialog.ShowAsync(request, _owner);
     }
 
     /// <summary>Dal düzenleme diyaloglarını gerçek bir pencereyle gösterir (P06-T03).</summary>

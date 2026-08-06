@@ -71,6 +71,15 @@ internal static class GitFailureClassifier
 
         ReadOnlySpan<char> text = standardError.AsSpan();
 
+        // ⚠️ SIRA ÖNEMLİ: bu kontrol aşağıdaki "does not appear to be a git repository"
+        // kalıbından ÖNCE gelmeli. Ulaşılamayan bir remote için git ikisini birden yazıyor
+        // ve genel kalıba düşseydi kullanıcıya "Bu klasör bir Git deposu değil" derdik —
+        // klasör iyiyken (P06-T06'da ölçüldü).
+        if (ContainsAny(text, "Could not read from remote repository"))
+        {
+            return GitFailureKind.RemoteUnreachable;
+        }
+
         if (ContainsAny(text, "not a git repository", "does not appear to be a git repository"))
         {
             return GitFailureKind.NotARepository;
@@ -116,6 +125,27 @@ internal static class GitFailureClassifier
         if (ContainsAny(text, "CONFLICT", "Automatic merge failed", "needs merge"))
         {
             return GitFailureKind.Conflict;
+        }
+
+        // ⚠️ SIRA ÖNEMLİ: "error: remote origin already exists." aşağıdaki genel
+        // "already exists" kalıbına da uyuyor — remote kontrolü ÖNCE gelmeli, yoksa uzak
+        // depo çakışması kullanıcıya "Bu adda bir dal zaten var." derdi (P06-T05).
+        if (ContainsAny(text, "remote ") && ContainsAny(text, "already exists"))
+        {
+            return GitFailureKind.RemoteAlreadyExists;
+        }
+
+        // ÖLÇÜLDÜ (P06-T05): iki yazım da geçiyor — `remove`/`rename` iki nokta üst üste
+        // ile ("No such remote: 'x'"), `get-url`/`set-url` onsuz ("No such remote 'x'").
+        if (ContainsAny(text, "No such remote"))
+        {
+            return GitFailureKind.RemoteNotFound;
+        }
+
+        // ÖLÇÜLDÜ (P06-T05): "fatal: remote name 'ic/main' is a subset of existing remote 'ic'"
+        if (ContainsAny(text, "is a subset of existing remote", "is a superset of existing remote"))
+        {
+            return GitFailureKind.RemoteNameConflict;
         }
 
         // ⚠️ Sıra önemli: aşağıdaki iki kalıp "cannot lock ref" içerebiliyor ama yukarıdaki
@@ -182,6 +212,13 @@ internal static class GitFailureClassifier
         GitFailureKind.RefNameConflict =>
             "Bu ad mevcut bir dalla çakışıyor. Git dalları dosya gibi saklar: "
             + "\"feature\" dalı varken \"feature/x\" oluşturulamaz (ve tersi).",
+        GitFailureKind.RemoteAlreadyExists => "Bu adda bir uzak depo zaten var.",
+        GitFailureKind.RemoteNotFound => "Böyle bir uzak depo yok.",
+        GitFailureKind.RemoteUnreachable =>
+            "Uzak depoya ulaşılamadı. Adresi, ağ bağlantınızı ve erişim yetkinizi kontrol edin.",
+        GitFailureKind.RemoteNameConflict =>
+            "Bu ad mevcut bir uzak depoyla iç içe geçiyor: \"ic\" varken \"ic/main\" "
+            + "eklenemez (ve tersi). Farklı bir ad seçin.",
         GitFailureKind.UnbornHead =>
             "Depoda henüz commit yok, dal oluşturulacak bir başlangıç noktası bulunamıyor. "
             + "Önce ilk commit'i atın.",
