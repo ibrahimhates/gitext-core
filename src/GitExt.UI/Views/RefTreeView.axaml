@@ -20,7 +20,8 @@
                   Grid.Row="1"
                   ItemsSource="{Binding Roots}"
                   SelectedItem="{Binding Selected}"
-                  DoubleTapped="OnDoubleTapped">
+                  DoubleTapped="OnDoubleTapped"
+                  DragDrop.AllowDrop="True">
 
             <!--
                 DAL BAĞLAM MENÜSÜ (P06-T14) — öğe sırası GitExtensions'ın RepoObjectsTree

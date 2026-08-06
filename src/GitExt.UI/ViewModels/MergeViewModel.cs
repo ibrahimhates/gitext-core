@@ -386,6 +386,23 @@ public interface IMergePrompt
     Task ShowAsync(MergeViewModel model);
 }
 
+/// <summary>Sürükle-bırak birleştirmesinin isteği (P06-T15).</summary>
+/// <param name="Source">Sürüklenen dal.</param>
+/// <param name="Target">Bırakılan dal — <b>mevcut dal</b> olmak zorunda.</param>
+/// <param name="Command">Çalıştırılacak komut; onay ekranında birebir gösteriliyor.</param>
+public sealed record MergeDropRequest(string Source, string Target, string Command);
+
+/// <summary>Sürükle-bırak birleştirmesini onaylayan taraf (P06-T15).</summary>
+/// <remarks>
+/// 🔑 <b>Onay her zaman soruluyor</b> — planın maddesi. Kazara sürükleme gerçek bir risk:
+/// bir dalı yanlışlıkla birkaç piksel oynatmak, sessizce geçmişi değiştiren bir işlem
+/// başlatmamalı.
+/// </remarks>
+public interface IMergeDropConfirmer
+{
+    Task<bool> ConfirmAsync(MergeDropRequest request);
+}
+
 /// <summary>Süren merge'in iptalini onaylayan taraf (P06-T12).</summary>
 public interface IMergeAbortConfirmer
 {

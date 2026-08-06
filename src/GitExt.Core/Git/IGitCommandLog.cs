@@ -14,6 +14,15 @@ public interface IGitCommandLog
     void Record(GitResult result);
 
     void RecordFailure(GitCommand command, TimeSpan duration, string reason);
+
+    /// <summary>
+    /// Yeni bir kayıt eklendiğinde tetiklenir (P06-T16).
+    /// </summary>
+    /// <remarks>
+    /// ⚠️ <b>Arayüz iş parçacığında DEĞİL</b>: git süreçleri havuz iş parçacıklarında
+    /// çalışıyor. Dinleyen taraf kendi bağlamına geçmek zorunda.
+    /// </remarks>
+    event EventHandler<GitCommandLogEntry>? Recorded;
 }
 
 /// <summary>
@@ -92,9 +101,12 @@ public sealed class InMemoryGitCommandLog : IGitCommandLog
         });
     }
 
+    public event EventHandler<GitCommandLogEntry>? Recorded;
+
     private void Add(GitCommandLogEntry entry)
     {
         _entries.Enqueue(entry);
+        Recorded?.Invoke(this, entry);
 
         while (_entries.Count > _capacity && _entries.TryDequeue(out _))
         {
@@ -120,5 +132,12 @@ public sealed class NullGitCommandLog : IGitCommandLog
 
     public void RecordFailure(GitCommand command, TimeSpan duration, string reason)
     {
+    }
+
+    /// <remarks>Hiç tetiklenmiyor; ekleme/çıkarma sessizce yok sayılıyor.</remarks>
+    public event EventHandler<GitCommandLogEntry>? Recorded
+    {
+        add { }
+        remove { }
     }
 }

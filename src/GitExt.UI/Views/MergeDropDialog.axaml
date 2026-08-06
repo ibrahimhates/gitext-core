@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExt.UI.Views.MergeDropDialog"
+        Title="Birleştirmeyi onayla"
+        Width="470"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        P06-T15. Onay HER ZAMAN soruluyor: kazara sürükleme gerçek bir risk ve geçmişi
+        sessizce değiştiren bir işlem tek bir fare kaymasıyla başlamamalı.
+        Sürükleme eşiği (6 piksel) ilk savunma hattı, bu ekran ikincisi.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+        <TextBlock Name="QuestionText" TextWrapping="Wrap" />
+
+        <StackPanel Spacing="3">
+            <TextBlock Text="Çalıştırılacak komut:" FontSize="11" Opacity="0.8" />
+            <TextBox Name="CommandBox"
+                     IsReadOnly="True"
+                     IsTabStop="False"
+                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontSize="11" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="CancelButton" Content="Vazgeç" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="ConfirmButton"
+                    Content="Birleştir"
+                    MinWidth="110"
+                    IsDefault="True"
+                    Click="OnConfirmClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

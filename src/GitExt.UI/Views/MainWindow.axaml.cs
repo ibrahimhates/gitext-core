@@ -38,6 +38,9 @@ public partial class MainWindow : Window
                 // (P06-T13): ikinci bir geçiş yolu, birinin korumasız kalması demekti.
                 BranchPanel.Checkout = model.CheckoutRefAsync;
                 BranchPanel.Commands = model;
+                BranchPanel.MergeDropped = model.MergeDroppedAsync;
+                model.MergeDropConfirmer = new DialogMergeDropConfirmer(this);
+                model.CommandLogPrompt = new DialogCommandLogPrompt(this);
                 model.MergeAbortConfirmer = new DialogMergeAbortConfirmer(this);
             }
         };
@@ -72,6 +75,27 @@ public partial class MainWindow : Window
         public DialogMergePrompt(Window owner) => _owner = owner;
 
         public Task ShowAsync(MergeViewModel model) => MergeWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Komut günlüğünü gerçek bir pencereyle gösterir (P06-T16).</summary>
+    private sealed class DialogCommandLogPrompt : ICommandLogPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogCommandLogPrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(CommandLogViewModel model) => CommandLogWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Sürükle-bırak birleştirme onayını sorar (P06-T15).</summary>
+    private sealed class DialogMergeDropConfirmer : IMergeDropConfirmer
+    {
+        private readonly Window _owner;
+
+        public DialogMergeDropConfirmer(Window owner) => _owner = owner;
+
+        public Task<bool> ConfirmAsync(MergeDropRequest request) =>
+            MergeDropDialog.ShowAsync(request, _owner);
     }
 
     /// <summary>Merge iptal onayını gerçek bir pencereyle sorar (P06-T12).</summary>

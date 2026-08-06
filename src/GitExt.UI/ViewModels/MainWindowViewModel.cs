@@ -74,6 +74,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IPushWriter? _pushWriter;
     private readonly IAuthenticationDiagnostics? _authDiagnostics;
     private readonly IMergeWriter? _mergeWriter;
+    private readonly IGitCommandLog? _commandLog;
 
     /// <summary>
     /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
@@ -124,7 +125,8 @@ public partial class MainWindowViewModel : ViewModelBase
         IPullWriter? pullWriter = null,
         IPushWriter? pushWriter = null,
         IAuthenticationDiagnostics? authenticationDiagnostics = null,
-        IMergeWriter? mergeWriter = null)
+        IMergeWriter? mergeWriter = null,
+        IGitCommandLog? commandLog = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
         ArgumentNullException.ThrowIfNull(recentStore);
@@ -146,6 +148,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _pushWriter = pushWriter;
         _authDiagnostics = authenticationDiagnostics;
         _mergeWriter = mergeWriter;
+        _commandLog = commandLog;
 
         if (_watcher is not null)
         {
@@ -178,6 +181,7 @@ public partial class MainWindowViewModel : ViewModelBase
         PullCommand = new AsyncRelayCommand(PullAsync, () => CanPull);
         PushCommand = new AsyncRelayCommand(PushAsync, () => CanPush);
         MergeCommand = new AsyncRelayCommand(MergeAsync, () => CanMerge);
+        ShowCommandLogCommand = new AsyncRelayCommand(ShowCommandLogAsync, () => CanShowCommandLog);
         AbortMergeCommand = new AsyncRelayCommand(AbortMergeAsync, () => CanAbortMerge);
 
         RecentRepositories.CollectionChanged += (_, _) =>
@@ -296,6 +300,21 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </remarks>
     public Task CheckoutRefAsync(string refName) => CheckoutCoreAsync(refName);
 
+    /// <summary>Git komut günlüğünü açar (P06-T16).</summary>
+    public IAsyncRelayCommand ShowCommandLogCommand { get; }
+
+    /// <summary>Komut günlüğü panelini gösteren taraf (P06-T16).</summary>
+    public ICommandLogPrompt? CommandLogPrompt { get; set; }
+
+    /// <summary>
+    /// Günlük açılabilir mi?
+    /// </summary>
+    /// <remarks>
+    /// Depoya bağlı DEĞİL: günlük depo açılmadan çalışan komutları da (depo arama,
+    /// sürüm kontrolü) gösteriyor ve sorun tam da orada olabilir.
+    /// </remarks>
+    public bool CanShowCommandLog => _commandLog is not null && CommandLogPrompt is not null;
+
     /// <summary>Merge ekranını açar (P06-T11).</summary>
     public IAsyncRelayCommand MergeCommand { get; }
 
@@ -307,6 +326,84 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Merge iptalini onaylatan taraf (P06-T12).</summary>
     public IMergeAbortConfirmer? MergeAbortConfirmer { get; set; }
+
+    /// <summary>Sürükle-bırak birleştirmesini onaylatan taraf (P06-T15).</summary>
+    public IMergeDropConfirmer? MergeDropConfirmer { get; set; }
+
+    /// <summary>
+    /// Bir dalı başka bir dalın üstüne bırakınca çağrılır (P06-T15).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔑 <b>Hedef MEVCUT dal olmak zorunda.</b> GitExtensions başka bir dalın üstüne
+    /// bırakmaya da izin veriyor ama bunun için önce o dala <b>geçmesi</b> gerekiyor —
+    /// yani tek bir sürüklemenin arkasında gizli ikinci bir işlem oluyor. Bu projede
+    /// gizli işlem yok: hedef mevcut dal değilse birleştirme yapılmıyor ve sebebi
+    /// yazılıyor.
+    /// </para>
+    /// <para>
+    /// Onay <b>her zaman</b> soruluyor (planın maddesi) ve onay ekranında çalıştırılacak
+    /// komut birebir yazılı.
+    /// </para>
+    /// </remarks>
+    public async Task MergeDroppedAsync(string source, string target)
+    {
+        if (_mergeWriter is null
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        string current = Commits.Refs?.CurrentBranch?.Name ?? string.Empty;
+
+        if (!string.Equals(target, current, StringComparison.Ordinal))
+        {
+            BranchNotice = $"Birleştirme yalnızca üzerinde bulunduğunuz dala yapılabilir. "
+                + $"Önce \"{target}\" dalına geçin.";
+            return;
+        }
+
+        if (string.Equals(source, target, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        MergeOptions options = new() { Source = source };
+
+        if (MergeDropConfirmer is not { } confirmer
+            || !await confirmer
+                .ConfirmAsync(new MergeDropRequest(source, target, MergeWriter.Describe(options)))
+                .ConfigureAwait(true))
+        {
+            return;
+        }
+
+        try
+        {
+            MergeResult result;
+
+            using (_watcher?.Suspend())
+            {
+                result = await _mergeWriter.MergeAsync(path, options).ConfigureAwait(true);
+            }
+
+            BranchNotice = result.Outcome switch
+            {
+                MergeOutcome.AlreadyUpToDate => "Zaten güncel.",
+                MergeOutcome.FastForward => $"\"{source}\" ileri sarıldı.",
+                MergeOutcome.MergeCommit => $"\"{source}\" birleştirildi.",
+                MergeOutcome.Staged => "Değişiklikler hazırlandı ama commit YAPILMADI.",
+                _ => $"Birleştirme çakışmayla durdu: {result.ConflictedPaths.Count} dosya "
+                    + "çözülmemiş durumda.",
+            };
+        }
+        catch (GitException error)
+        {
+            BranchNotice = error.Message;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
 
     /// <summary>Birleştirme yapılabilir mi?</summary>
     public bool CanMerge =>
@@ -1023,6 +1120,17 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Git komut günlüğünü açar (P06-T16).</summary>
+    private async Task ShowCommandLogAsync()
+    {
+        if (_commandLog is null || CommandLogPrompt is null)
+        {
+            return;
+        }
+
+        await CommandLogPrompt.ShowAsync(new CommandLogViewModel(_commandLog)).ConfigureAwait(true);
     }
 
     /// <summary>Çözülmemiş dosyalar — iptal onayında gösteriliyor.</summary>

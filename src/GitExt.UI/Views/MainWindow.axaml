@@ -110,6 +110,10 @@
             </MenuItem>
 
             <MenuItem Header="_Araçlar">
+                <MenuItem Name="MenuCommandLog"
+                          Header="Git komut _günlüğü…"
+                          Command="{Binding ShowCommandLogCommand}" />
+                <Separator />
                 <MenuItem Name="MenuSettings" Header="Aya_rlar…" IsEnabled="False" />
             </MenuItem>
 
