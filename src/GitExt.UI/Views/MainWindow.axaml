@@ -85,7 +85,7 @@
                 <MenuItem Name="MenuUndoLastCommit" Header="Son commit'i _geri al…" IsEnabled="False" />
                 <!-- Faz 06 -->
                 <MenuItem Name="MenuPull" Header="Pull_/Fetch…" Command="{Binding PullCommand}" />
-                <MenuItem Name="MenuPush" Header="_Push…" IsEnabled="False" />
+                <MenuItem Name="MenuPush" Header="_Push…" Command="{Binding PushCommand}" />
                 <Separator />
                 <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" IsEnabled="False" />
                 <MenuItem Name="MenuResetChanges" Header="Değişiklikleri sıfı_rla…" IsEnabled="False" />

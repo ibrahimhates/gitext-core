@@ -1408,6 +1408,66 @@ public sealed class FakePullWriter : IPullWriter
     }
 }
 
+/// <summary>Push yazıcısının sahtesi (P06-T08).</summary>
+public sealed class FakePushWriter : IPushWriter
+{
+    public List<PushOptions> Pushed { get; } = [];
+
+    /// <summary>Ekranın kuracağı plan; kira çıpası da buradan geliyor.</summary>
+    public PushPlan Plan { get; set; } = new()
+    {
+        Remote = "origin",
+        LocalBranch = "main",
+        RemoteBranch = "main",
+        RemoteTipObjectId = "aaaabbbbcccc",
+        HasUpstream = true,
+        RemoteBranches = ["main"],
+    };
+
+    public PushResult? Result { get; set; }
+
+    public GitExt.Core.Git.GitException? Failure { get; set; }
+
+    public Task<PushPlan> PlanAsync(
+        string workingDirectory,
+        string remote,
+        string localBranch,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Plan with { Remote = remote, LocalBranch = localBranch });
+
+    public Task<PushResult> PushAsync(
+        string workingDirectory,
+        PushOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        Pushed.Add(options);
+
+        if (Failure is { } error)
+        {
+            throw error;
+        }
+
+        return Task.FromResult(Result ?? new PushResult
+        {
+            Refs = [new PushRefResult(' ', "refs/heads/main", "refs/heads/main", "aaa..bbb", null)],
+        });
+    }
+
+    public string DescribeCommand(PushOptions options) => PushWriter.Describe(options);
+}
+
+/// <summary>Push ekranını gösteren tarafın sahtesi (P06-T08).</summary>
+public sealed class FakePushPrompt : IPushPrompt
+{
+    public PushViewModel? Shown { get; private set; }
+
+    public Task ShowAsync(PushViewModel model)
+    {
+        Shown = model;
+        return Task.CompletedTask;
+    }
+}
+
 /// <summary>Pull/Fetch ekranını gösteren tarafın sahtesi (P06-T07).</summary>
 public sealed class FakePullPrompt : IPullPrompt
 {

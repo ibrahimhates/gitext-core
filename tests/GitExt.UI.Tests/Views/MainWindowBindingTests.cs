@@ -44,7 +44,11 @@ public class MainWindowBindingTests
             new FakeRecentRepositoryStore(),
             branchWriter: new FakeBranchWriter(),
             remoteReader: remotes,
-            remoteWriter: new FakeRemoteWriter(remotes));
+            remoteWriter: new FakeRemoteWriter(remotes),
+            pushWriter: new FakePushWriter())
+        {
+            PushPrompt = new FakePushPrompt(),
+        };
     }
 
     private static MenuItem TopLevelMenu(Window window, string header) =>
@@ -127,12 +131,14 @@ public class MainWindowBindingTests
 
         model.CreateBranchCommand.CanExecuteChanged += (_, _) => changed.Add("dal");
         model.ManageRemotesCommand.CanExecuteChanged += (_, _) => changed.Add("remote");
+        model.PushCommand.CanExecuteChanged += (_, _) => changed.Add("push");
 
         await model.OpenRepositoryAsync("/tmp/depo");
         Dispatcher.UIThread.RunJobs();
 
         changed.ShouldContain("dal");
         changed.ShouldContain("remote");
+        changed.ShouldContain("push");
 
         window.Close();
     }

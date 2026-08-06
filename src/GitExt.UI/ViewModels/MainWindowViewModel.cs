@@ -71,6 +71,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IRemoteWriter? _remoteWriter;
     private readonly IFetchWriter? _fetchWriter;
     private readonly IPullWriter? _pullWriter;
+    private readonly IPushWriter? _pushWriter;
 
     /// <summary>
     /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
@@ -118,7 +119,8 @@ public partial class MainWindowViewModel : ViewModelBase
         IRemoteReader? remoteReader = null,
         IRemoteWriter? remoteWriter = null,
         IFetchWriter? fetchWriter = null,
-        IPullWriter? pullWriter = null)
+        IPullWriter? pullWriter = null,
+        IPushWriter? pushWriter = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
         ArgumentNullException.ThrowIfNull(recentStore);
@@ -137,6 +139,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _remoteWriter = remoteWriter;
         _fetchWriter = fetchWriter;
         _pullWriter = pullWriter;
+        _pushWriter = pushWriter;
 
         if (_watcher is not null)
         {
@@ -167,6 +170,7 @@ public partial class MainWindowViewModel : ViewModelBase
         DeleteBranchCommand = new AsyncRelayCommand(DeleteBranchAsync, () => CanEditBranch);
         ManageRemotesCommand = new AsyncRelayCommand(ManageRemotesAsync, () => CanManageRemotes);
         PullCommand = new AsyncRelayCommand(PullAsync, () => CanPull);
+        PushCommand = new AsyncRelayCommand(PushAsync, () => CanPush);
 
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
@@ -261,6 +265,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Pull/Fetch ekranını gösteren taraf.</summary>
     public IPullPrompt? PullPrompt { get; set; }
+
+    /// <summary>Push ekranını açar (P06-T08).</summary>
+    public IAsyncRelayCommand PushCommand { get; }
+
+    /// <summary>Push ekranını gösteren taraf.</summary>
+    public IPushPrompt? PushPrompt { get; set; }
+
+    /// <summary>Push yapılabilir mi?</summary>
+    public bool CanPush =>
+        _pushWriter is not null
+        && _remoteReader is not null
+        && PushPrompt is not null
+        && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
     /// <summary>Pull/Fetch yapılabilir mi?</summary>
     public bool CanPull =>
@@ -361,6 +378,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanEditBranch));
         OnPropertyChanged(nameof(CanManageRemotes));
         OnPropertyChanged(nameof(CanPull));
+        OnPropertyChanged(nameof(CanPush));
 
         CreateBranchCommand.NotifyCanExecuteChanged();
         CheckoutCommand.NotifyCanExecuteChanged();
@@ -368,6 +386,7 @@ public partial class MainWindowViewModel : ViewModelBase
         DeleteBranchCommand.NotifyCanExecuteChanged();
         ManageRemotesCommand.NotifyCanExecuteChanged();
         PullCommand.NotifyCanExecuteChanged();
+        PushCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>
@@ -799,6 +818,48 @@ public partial class MainWindowViewModel : ViewModelBase
         using (_watcher?.Suspend())
         {
             await PullPrompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Push ekranını açar (P06-T08).
+    /// </summary>
+    /// <remarks>
+    /// Kapanışta tazeleme şart: <c>-u</c> ile upstream kurulmuş, uzak izleme dalları
+    /// ilerlemiş ya da bir dal silinmiş olabilir — üçü de dal rozetlerini değiştiriyor.
+    /// </remarks>
+    private async Task PushAsync()
+    {
+        if (_pushWriter is null
+            || _remoteReader is null
+            || PushPrompt is null
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        PushViewModel model = new(_remoteReader, _pushWriter);
+
+        try
+        {
+            await model
+                .LoadAsync(
+                    path,
+                    Commits.Refs?.CurrentBranch?.Name ?? string.Empty,
+                    [.. Commits.Refs?.LocalBranches ?? []])
+                .ConfigureAwait(true);
+        }
+        catch (GitException error)
+        {
+            BranchNotice = error.Message;
+            return;
+        }
+
+        using (_watcher?.Suspend())
+        {
+            await PushPrompt.ShowAsync(model).ConfigureAwait(true);
         }
 
         await RefreshAsync().ConfigureAwait(true);

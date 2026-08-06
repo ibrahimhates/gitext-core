@@ -219,7 +219,12 @@ public sealed class TestRepository : IDisposable
     /// </remarks>
     public void InstallHook(string name, string shellScript)
     {
-        string hooksDirectory = System.IO.Path.Combine(_root, ".git", "hooks");
+        // Bare depoda kancalar `.git/hooks` altında DEĞİL, deponun kökünde; yeri git'in
+        // kendisine sorulur (P06-T08'de uzak taraf kancası bare depoya kuruluyor).
+        string hooksDirectory = System.IO.Path.GetFullPath(
+            Git("rev-parse", "--git-path", "hooks").Trim(),
+            _root);
+
         Directory.CreateDirectory(hooksDirectory);
 
         string hookPath = System.IO.Path.Combine(hooksDirectory, name);

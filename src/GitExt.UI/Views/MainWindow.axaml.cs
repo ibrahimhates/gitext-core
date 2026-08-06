@@ -29,6 +29,7 @@ public partial class MainWindow : Window
                 model.BranchEditPrompt = new DialogBranchEditPrompt(this);
                 model.RemotesPrompt = new DialogRemotesPrompt(this);
                 model.PullPrompt = new DialogPullPrompt(this, model);
+                model.PushPrompt = new DialogPushPrompt(this, model);
             }
         };
     }
@@ -52,6 +53,28 @@ public partial class MainWindow : Window
                 model,
                 _owner,
                 () => _model.ManageRemotesCommand.ExecuteAsync(null));
+    }
+
+    /// <summary>Push ekranını gerçek bir pencereyle gösterir (P06-T08).</summary>
+    private sealed class DialogPushPrompt : IPushPrompt
+    {
+        private readonly Window _owner;
+        private readonly MainWindowViewModel _model;
+
+        public DialogPushPrompt(Window owner, MainWindowViewModel model)
+        {
+            _owner = owner;
+            _model = model;
+        }
+
+        // Alt sıradaki "Pull…" düğmesi GitExtensions `FormPush`'tan (§ 9): reddedilen bir
+        // gönderimden sonra kullanıcının gideceği yer zaten orası.
+        public Task ShowAsync(PushViewModel model) =>
+            PushWindow.ShowAsync(
+                model,
+                _owner,
+                () => _model.ManageRemotesCommand.ExecuteAsync(null),
+                () => _model.PullCommand.ExecuteAsync(null));
     }
 
     /// <summary>Uzak depo yönetimi ekranını gerçek bir pencereyle gösterir (P06-T05).</summary>

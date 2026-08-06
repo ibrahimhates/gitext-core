@@ -25,3 +25,12 @@ public interface IPullPrompt
     /// <summary>Ekranı modal gösterir ve kapanmasını bekler.</summary>
     Task ShowAsync(PullViewModel model);
 }
+
+/// <summary>
+/// Push ekranını gösteren taraf (P06-T08).
+/// </summary>
+public interface IPushPrompt
+{
+    /// <summary>Ekranı modal gösterir ve kapanmasını bekler.</summary>
+    Task ShowAsync(PushViewModel model);
+}

@@ -1,0 +1,259 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.PushWindow"
+        x:DataType="vm:PushViewModel"
+        Title="Push"
+        Width="660"
+        SizeToContent="Height"
+        MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        Yerleşim GitExtensions `FormPush.Designer.cs`'ten (§ 9), sıra birebir:
+          GroupBox2 "Push to" (Remote / Url) →
+          TabControlTagBranch (Push branches · Push tags · Push multiple branches) →
+          alt sıra: Pull · Load SSH key · Push.
+
+        Bizde OLMAYAN: "Url" seçeneği ve "Load SSH key" (yerinde ama devre dışı — ikisi de
+        P06-T09'un kimlik doğrulama akışına bağlı), "Recursive submodules" (alt modüller
+        Faz 08), "Create pull request after push" (depo barındırıcı tümleşmesi kapsam dışı).
+
+        DEVRE DISI ve GEREKCESI YAZILI: "Force push". Plan kararı — çıplak zorlama bayrağı
+        sunulmuyor. Kutunun yerini boş bırakmak "bu program zorlayamıyor" izlenimi verirdi.
+        (Bayrağın kendisi burada YAZILAMIYOR: XML yorumu iki tire içeremiyor. Aynı tuzak
+        Faz 01'de Directory.Build.props'ta ve P06-T05'te de çıkmıştı.)
+
+        EKLENEN: kiranın hangi uca göre karar vereceği ve çalıştırılacak KOMUT.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <HeaderedContentControl Header="Nereye gönderilecek">
+            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="8,4">
+                <RadioButton Name="ToRemoteRadio"
+                             Grid.Row="0" Grid.Column="0"
+                             GroupName="PushTo"
+                             Content="Uzak depo"
+                             IsChecked="True"
+                             Margin="0,0,8,0" />
+                <ComboBox Name="RemoteBox"
+                          Grid.Row="0" Grid.Column="1"
+                          HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding Remotes}"
+                          SelectedItem="{Binding SelectedRemote}" />
+                <Button Name="ManageRemotesButton"
+                        Grid.Row="0" Grid.Column="2"
+                        Content="Yönet…"
+                        Margin="8,0,0,0"
+                        Click="OnManageRemotesClick" />
+
+                <!-- Yerinde ama devre dışı (§ 9): URL'ye gönderim P06-T09'a bağlı. -->
+                <RadioButton Name="ToUrlRadio"
+                             Grid.Row="1" Grid.Column="0"
+                             GroupName="PushTo"
+                             Content="URL"
+                             IsEnabled="False"
+                             Margin="0,6,8,0" />
+                <TextBox Name="UrlBox"
+                         Grid.Row="1" Grid.Column="1"
+                         IsEnabled="False"
+                         Margin="0,6,0,0" />
+            </Grid>
+        </HeaderedContentControl>
+
+        <TabControl Name="TargetTabs" Margin="0,4">
+
+            <TabItem Name="BranchTab" Header="Dal gönder" IsSelected="{Binding IsBranchTab}">
+                <StackPanel Margin="8" Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0"
+                                   Text="Gönderilecek dal"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,4" />
+                        <ComboBox Name="SourceBranchBox"
+                                  Grid.Row="0" Grid.Column="1"
+                                  HorizontalAlignment="Stretch"
+                                  Margin="0,0,0,4"
+                                  ItemsSource="{Binding SourceBranches}"
+                                  SelectedItem="{Binding SourceBranch}" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0"
+                                   Text="hedef"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <TextBox Name="RemoteBranchBox"
+                                 Grid.Row="1" Grid.Column="1"
+                                 Text="{Binding RemoteBranch}" />
+                    </Grid>
+
+                    <TextBlock Name="NewBranchNotice"
+                               FontSize="11"
+                               Opacity="0.85"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding WouldCreateRemoteBranch}"
+                               Text="Bu ad uzakta yok — yeni bir dal oluşturulacak." />
+
+                    <ToggleButton Name="ShowOptionsToggle"
+                                  Content="Seçenekleri göster"
+                                  HorizontalAlignment="Left"
+                                  IsChecked="{Binding ShowOptions}" />
+
+                    <StackPanel Name="PushOptionsPanel"
+                                Spacing="4"
+                                IsVisible="{Binding ShowOptions}">
+                        <CheckBox Name="SetUpstreamBox"
+                                  Content="İzleme referansını ayarla (upstream)"
+                                  IsChecked="{Binding SetUpstream}" />
+                        <CheckBox Name="ForceWithLeaseBox"
+                                  Content="Kirayla zorla (force with lease)"
+                                  IsChecked="{Binding ForceWithLease}" />
+
+                        <!-- Yerinde ama devre dışı: plan kararı, aşağıdaki satır nedenini yazıyor. -->
+                        <CheckBox Name="ForcePushBox"
+                                  Content="Zorla gönder"
+                                  IsEnabled="False" />
+                        <TextBlock Name="ForceDisabledText"
+                                   FontSize="11"
+                                   Opacity="0.8"
+                                   TextWrapping="Wrap"
+                                   Margin="20,0,0,0"
+                                   Text="{Binding ForceDisabledReason}" />
+
+                        <CheckBox Name="RecursiveSubmodulesBox"
+                                  Content="Alt modülleri de gönder"
+                                  IsEnabled="False" />
+                        <CheckBox Name="CreatePullRequestBox"
+                                  Content="Gönderimden sonra pull request oluştur"
+                                  IsEnabled="False" />
+                    </StackPanel>
+
+                    <TextBlock Name="LeaseNoticeText"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Opacity="0.85"
+                               IsVisible="{Binding HasLeaseNotice}"
+                               Text="{Binding LeaseNotice}" />
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Name="TagTab" Header="Etiket gönder" IsSelected="{Binding IsTagTab}">
+                <StackPanel Margin="8" Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0"
+                                   Text="Gönderilecek etiket"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <ComboBox Name="TagBox"
+                                  Grid.Column="1"
+                                  HorizontalAlignment="Stretch"
+                                  IsEnabled="{Binding !AllTags}"
+                                  ItemsSource="{Binding Tags}"
+                                  SelectedItem="{Binding SelectedTag}" />
+                    </Grid>
+
+                    <CheckBox Name="AllTagsBox"
+                              Content="Tüm etiketleri gönder"
+                              IsChecked="{Binding AllTags}" />
+
+                    <CheckBox Name="ForceTagBox"
+                              Content="Zorla gönder"
+                              IsEnabled="False" />
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Name="MultipleTab" Header="Birden çok dal" IsSelected="{Binding IsMultipleTab}">
+                <StackPanel Margin="8" Spacing="6">
+                    <!--
+                        GitExtensions burada bir `DataGridView` kullanıyor. Avalonia'nın
+                        `DataGrid`i ayrı bir NuGet paketi; tek bir ekran için bağımlılık
+                        eklemek ADR-0006'nın kilit dosyasını da genişletirdi. Sütun sırası
+                        ve başlıkları birebir korunarak `ItemsControl` ile kuruldu.
+                    -->
+                    <Grid Name="BranchGridHeader" ColumnDefinitions="*,*,90,70,110" Margin="2,0">
+                        <TextBlock Grid.Column="0" Text="Yerel dal" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="1" Text="Uzak dal" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="2" Text="İleri/geri" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="3" Text="Gönder" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="4" Text="Uzaktakini sil" FontWeight="SemiBold" FontSize="11" />
+                    </Grid>
+
+                    <ScrollViewer Height="180">
+                        <ItemsControl Name="BranchGrid" ItemsSource="{Binding Rows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:PushBranchRowViewModel">
+                                    <Grid ColumnDefinitions="*,*,90,70,110" Margin="2,3">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding LocalBranch}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding RemoteBranch}"
+                                                   Opacity="0.85"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding AheadBehind}"
+                                                   FontSize="11"
+                                                   Opacity="0.85"
+                                                   VerticalAlignment="Center" />
+                                        <CheckBox Grid.Column="3" IsChecked="{Binding Push}" />
+                                        <CheckBox Grid.Column="4"
+                                                  IsChecked="{Binding Delete}"
+                                                  IsEnabled="{Binding CanDelete}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <TextBlock Name="DeleteWarningText"
+                               FontSize="11"
+                               TextWrapping="Wrap"
+                               Opacity="0.85"
+                               Text="Uzaktaki bir dalı silmek, o dalın uçtaki commit'lerini başkaları için de erişilemez yapar. Gönderme ve silme aynı satırda birlikte seçilemez." />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <!-- "Komutu göster" ilkesi: düğmeye basmadan ne olacağı okunabilmeli. -->
+        <StackPanel Spacing="3">
+            <TextBlock Text="Çalıştırılacak komut:" FontSize="11" Opacity="0.8" />
+            <TextBox Name="CommandPreviewBox"
+                     IsReadOnly="True"
+                     IsTabStop="False"
+                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontSize="11"
+                     Text="{Binding CommandPreview}" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Name="WarningText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding HasWarning}"
+                       Text="{Binding Warning}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+            <TextBlock Name="AdviceText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       Opacity="0.9"
+                       IsVisible="{Binding HasAdvice}"
+                       Text="{Binding Advice}" />
+            <TextBlock Name="NoticeText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       Opacity="0.85"
+                       Text="{Binding Notice}" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="PullButton" Content="Pull…" MinWidth="90" Click="OnPullClick" />
+            <Button Name="LoadSshKeyButton" Content="SSH anahtarı yükle" MinWidth="140" IsEnabled="False" />
+            <Button Name="CloseButton" Content="Kapat" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
+            <Button Name="PushButton"
+                    Content="Gönder"
+                    MinWidth="110"
+                    IsDefault="True"
+                    Command="{Binding RunCommand}" />
+        </StackPanel>
+    </StackPanel>
+</Window>

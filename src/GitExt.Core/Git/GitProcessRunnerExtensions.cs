@@ -29,7 +29,8 @@ public static class GitProcessRunnerExtensions
             GitFailureClassifier.Describe(kind),
             command.ToDisplayString(),
             result.ExitCode,
-            result.StandardError);
+            result.StandardError,
+            result.GetStandardOutputText());
     }
 
     /// <summary>

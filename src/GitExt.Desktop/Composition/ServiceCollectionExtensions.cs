@@ -70,6 +70,10 @@ public static class ServiceCollectionExtensions
         // strateji git'e bırakılmıyor (ayarsız+iraksayan depoda git reddediyor).
         services.AddSingleton<IPullWriter, PullWriter>();
 
+        // Push (P06-T08). Sonucu `--porcelain` ile stdout'tan okuyor ve kira çıpasını
+        // yerel izleme ref'lerinden alıyor — ikisi için de okuyucuya ihtiyacı var.
+        services.AddSingleton<IPushWriter, PushWriter>();
+
         services.AddSingleton<IRepositoryLocator, RepositoryLocator>();
         services.AddSingleton<ICommitLogReader, CommitLogReader>();
         services.AddSingleton<IRefReader, RefReader>();

@@ -93,13 +93,15 @@ public class GitException : Exception
         string message,
         string commandLine,
         int exitCode,
-        string standardError)
+        string standardError,
+        string standardOutput = "")
         : base(message)
     {
         Kind = kind;
         CommandLine = commandLine;
         ExitCode = exitCode;
         StandardError = standardError;
+        StandardOutput = standardOutput;
     }
 
     /// <summary>Hatanın sınıflandırılmış türü.</summary>
@@ -113,6 +115,20 @@ public class GitException : Exception
 
     /// <summary>Ham <c>stderr</c> çıktısı. Kullanıcıya detay panelinde gösterilebilir.</summary>
     public string StandardError { get; }
+
+    /// <summary>
+    /// Ham <c>stdout</c> çıktısı.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>P06-T08'de eklendi — yokluğu sessiz bir bilgi kaybıydı.</b> Başarısız komutların
+    /// çoğunda stdout boş olduğu için alan hiç istenmemişti. Ama <c>git push --porcelain</c>
+    /// <b>reddedilen</b> ref'leri de <b>stdout'a</b> makine-okunur biçimde yazıp çıkış kodu 1
+    /// veriyor (ölçüldü); istisna fırlatılırken bu çıktı atılırsa geriye yalnızca
+    /// insan-okunur <c>hint:</c> satırları kalır — yani ADR-0002'nin yasakladığı kanal.
+    /// Üstelik kısmi başarıda (bir dal gitti, biri reddedildi) gerçekten <b>ne olduğu</b>
+    /// tam olarak burada yazıyor.
+    /// </remarks>
+    public string StandardOutput { get; }
 }
 
 /// <summary>
