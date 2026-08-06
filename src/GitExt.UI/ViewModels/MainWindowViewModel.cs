@@ -73,6 +73,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IPullWriter? _pullWriter;
     private readonly IPushWriter? _pushWriter;
     private readonly IAuthenticationDiagnostics? _authDiagnostics;
+    private readonly IMergeWriter? _mergeWriter;
 
     /// <summary>
     /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
@@ -122,7 +123,8 @@ public partial class MainWindowViewModel : ViewModelBase
         IFetchWriter? fetchWriter = null,
         IPullWriter? pullWriter = null,
         IPushWriter? pushWriter = null,
-        IAuthenticationDiagnostics? authenticationDiagnostics = null)
+        IAuthenticationDiagnostics? authenticationDiagnostics = null,
+        IMergeWriter? mergeWriter = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
         ArgumentNullException.ThrowIfNull(recentStore);
@@ -143,6 +145,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _pullWriter = pullWriter;
         _pushWriter = pushWriter;
         _authDiagnostics = authenticationDiagnostics;
+        _mergeWriter = mergeWriter;
 
         if (_watcher is not null)
         {
@@ -174,6 +177,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ManageRemotesCommand = new AsyncRelayCommand(ManageRemotesAsync, () => CanManageRemotes);
         PullCommand = new AsyncRelayCommand(PullAsync, () => CanPull);
         PushCommand = new AsyncRelayCommand(PushAsync, () => CanPush);
+        MergeCommand = new AsyncRelayCommand(MergeAsync, () => CanMerge);
+        AbortMergeCommand = new AsyncRelayCommand(AbortMergeAsync, () => CanAbortMerge);
 
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
@@ -277,6 +282,36 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Kimlik doğrulama ekranını gösteren taraf (P06-T09).</summary>
     public IAuthenticationPrompt? AuthenticationPrompt { get; set; }
+
+    /// <summary>Merge ekranını açar (P06-T11).</summary>
+    public IAsyncRelayCommand MergeCommand { get; }
+
+    /// <summary>Merge ekranını gösteren taraf.</summary>
+    public IMergePrompt? MergePrompt { get; set; }
+
+    /// <summary>Süren merge'i iptal eder (P06-T12).</summary>
+    public IAsyncRelayCommand AbortMergeCommand { get; }
+
+    /// <summary>Merge iptalini onaylatan taraf (P06-T12).</summary>
+    public IMergeAbortConfirmer? MergeAbortConfirmer { get; set; }
+
+    /// <summary>Birleştirme yapılabilir mi?</summary>
+    public bool CanMerge =>
+        _mergeWriter is not null
+        && MergePrompt is not null
+        && Commits.Repository?.WorkingDirectory is { Length: > 0 };
+
+    /// <summary>
+    /// Süren bir merge iptal edilebilir mi?
+    /// </summary>
+    /// <remarks>
+    /// Yalnızca <b>merge</b> için: rebase/cherry-pick/revert'in iptali başka komutlar ve
+    /// Faz 07'nin konusu. Yanlış komutu sunmak yarım kalmış bir işi bozardı.
+    /// </remarks>
+    public bool CanAbortMerge =>
+        _mergeWriter is not null
+        && CurrentOperation == InProgressOperation.Merge
+        && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
     /// <summary>Push yapılabilir mi?</summary>
     public bool CanPush =>
@@ -385,6 +420,8 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanManageRemotes));
         OnPropertyChanged(nameof(CanPull));
         OnPropertyChanged(nameof(CanPush));
+        OnPropertyChanged(nameof(CanMerge));
+        OnPropertyChanged(nameof(CanAbortMerge));
 
         CreateBranchCommand.NotifyCanExecuteChanged();
         CheckoutCommand.NotifyCanExecuteChanged();
@@ -393,6 +430,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ManageRemotesCommand.NotifyCanExecuteChanged();
         PullCommand.NotifyCanExecuteChanged();
         PushCommand.NotifyCanExecuteChanged();
+        MergeCommand.NotifyCanExecuteChanged();
+        AbortMergeCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>
@@ -871,6 +910,118 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Merge ekranını açar (P06-T11).
+    /// </summary>
+    private async Task MergeAsync()
+    {
+        if (_mergeWriter is null
+            || MergePrompt is null
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        MergeViewModel model = new(_mergeWriter);
+
+        // Uzak dallar da birleştirilebilir; GitExtensions'ın listesi de ikisini birden
+        // içeriyor (§ 9).
+        IReadOnlyList<string> sources =
+        [
+            .. (Commits.Refs?.LocalBranches ?? []).Select(branch => branch.Name),
+            .. (Commits.Refs?.RemoteBranches ?? [])
+                .Where(branch => !branch.Ref.IsSymbolic)
+                .Select(branch => branch.Name),
+        ];
+
+        try
+        {
+            await model
+                .LoadAsync(
+                    path,
+                    Commits.Refs?.CurrentBranch?.Name ?? string.Empty,
+                    sources,
+                    SelectedLocalBranch)
+                .ConfigureAwait(true);
+        }
+        catch (GitException error)
+        {
+            BranchNotice = error.Message;
+            return;
+        }
+
+        using (_watcher?.Suspend())
+        {
+            await MergePrompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Süren merge'i iptal eder (P06-T12).
+    /// </summary>
+    /// <remarks>
+    /// 🔑 Onay şart: <c>merge --abort</c> çalışma ağacını merge ÖNCESİNE döndürüyor, yani
+    /// kullanıcının çakışmaları çözerken yazdığı her şey gider (ölçüldü). Onay ekranında
+    /// çözülmemiş dosyalar listeleniyor — neyin kaybolacağı görünmeden onay istenmiyor.
+    /// </remarks>
+    private async Task AbortMergeAsync()
+    {
+        if (_mergeWriter is null
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        IReadOnlyList<string> conflicted = Commits.Refs is null
+            ? []
+            : await ReadConflictedAsync(path).ConfigureAwait(true);
+
+        if (MergeAbortConfirmer is { } confirmer
+            && !await confirmer.ConfirmAsync(conflicted).ConfigureAwait(true))
+        {
+            return;
+        }
+
+        try
+        {
+            using (_watcher?.Suspend())
+            {
+                await _mergeWriter.AbortAsync(path).ConfigureAwait(true);
+            }
+
+            BranchNotice = "Birleştirme iptal edildi; çalışma ağacı önceki hâline döndü.";
+        }
+        catch (GitException error)
+        {
+            BranchNotice = error.Message;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Çözülmemiş dosyalar — iptal onayında gösteriliyor.</summary>
+    private async Task<IReadOnlyList<string>> ReadConflictedAsync(string path)
+    {
+        if (_statusReader is null)
+        {
+            return [];
+        }
+
+        try
+        {
+            WorkingTreeStatus status = await _statusReader.ReadAsync(path).ConfigureAwait(true);
+
+            return [.. status.Conflicted.Select(entry => entry.Path.Value)];
+        }
+        catch (GitException)
+        {
+            // Onay ekranı listesiz de gösterilebilir; iptali engellemek doğru olmazdı.
+            return [];
+        }
     }
 
     /// <summary>Seçili commit'teki ilk yerel dal.</summary>

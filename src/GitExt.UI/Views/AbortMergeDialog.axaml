@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExt.UI.Views.AbortMergeDialog"
+        Title="Birleştirmeyi iptal et"
+        Width="480"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        P06-T12. Yıkıcı bir işlem: birleştirmeyi iptal eden komut çalışma ağacını ÖNCESİNE
+        döndürüyor, yani çakışmaları çözerken yazılan her şey gider (ölçüldü).
+        P05-T15 kuralı: kaybolacak şey ekranda listeliyse onay kutusu yeterli.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+        <TextBlock Name="ExplanationText"
+                   TextWrapping="Wrap"
+                   Text="Birleştirme geri alınacak ve çalışma ağacı birleştirme öncesindeki hâline dönecek. Çakışmaları çözerken yaptığınız düzenlemeler KAYBOLUR." />
+
+        <StackPanel Name="ConflictPanel" Spacing="3">
+            <TextBlock Text="Çözülmemiş dosyalar:" FontSize="11" Opacity="0.8" />
+            <ScrollViewer MaxHeight="140">
+                <ItemsControl Name="ConflictList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="x:String">
+                            <TextBlock Text="{Binding}"
+                                       FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                       FontSize="11"
+                                       Margin="0,0,0,2" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+
+        <CheckBox Name="ConfirmBox" Content="Anladım, düzenlemelerim kaybolabilir" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="CancelButton" Content="Vazgeç" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="ConfirmButton"
+                    Content="İptal et"
+                    MinWidth="110"
+                    IsEnabled="{Binding #ConfirmBox.IsChecked}"
+                    Click="OnConfirmClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

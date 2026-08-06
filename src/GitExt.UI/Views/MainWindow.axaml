@@ -96,7 +96,7 @@
                           Command="{Binding DeleteBranchCommand}" />
                 <MenuItem Name="MenuCheckoutBranch" Header="Dala geç (chec_kout)…"
                           Command="{Binding CheckoutCommand}" />
-                <MenuItem Name="MenuMerge" Header="Dalları _birleştir…" IsEnabled="False" />
+                <MenuItem Name="MenuMerge" Header="Dalları _birleştir…" Command="{Binding MergeCommand}" />
                 <MenuItem Name="MenuRebase" Header="R_ebase…" IsEnabled="False" />
                 <Separator />
                 <MenuItem Name="MenuCreateTag" Header="Etiket oluş_tur…" IsEnabled="False" />
@@ -231,11 +231,25 @@
                 Padding="8,5"
                 Margin="10,6"
                 ZIndex="9">
-            <TextBlock Name="OperationText"
-                       Text="{Binding OperationText}"
-                       TextWrapping="Wrap"
-                       VerticalAlignment="Center"
-                       FontSize="12" />
+            <!--
+                P06-T12: süren merge'den çıkış aynı şeritten. Düğme yalnızca merge'de
+                görünüyor — rebase/cherry-pick/revert'in iptali farklı komutlar ve
+                Faz 07'nin konusu; yanlış komutu sunmak yarım bir işi bozardı.
+            -->
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Name="OperationText"
+                           Grid.Column="0"
+                           Text="{Binding OperationText}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           FontSize="12" />
+                <Button Name="AbortMergeButton"
+                        Grid.Column="1"
+                        Content="Birleştirmeyi iptal et"
+                        Margin="8,0,0,0"
+                        IsVisible="{Binding CanAbortMerge}"
+                        Command="{Binding AbortMergeCommand}" />
+            </Grid>
         </Border>
 
         <!-- Depo açılmadıysa karşılama ekranı; boş pencere göstermek yerine yol gösterilir. -->

@@ -32,6 +32,8 @@ public partial class MainWindow : Window
                 model.PullPrompt = new DialogPullPrompt(this, model);
                 model.PushPrompt = new DialogPushPrompt(this, model);
                 model.AuthenticationPrompt = new DialogAuthenticationPrompt(this);
+                model.MergePrompt = new DialogMergePrompt(this);
+                model.MergeAbortConfirmer = new DialogMergeAbortConfirmer(this);
             }
         };
     }
@@ -55,6 +57,27 @@ public partial class MainWindow : Window
                 model,
                 _owner,
                 () => _model.ManageRemotesCommand.ExecuteAsync(null));
+    }
+
+    /// <summary>Merge ekranını gerçek bir pencereyle gösterir (P06-T11).</summary>
+    private sealed class DialogMergePrompt : IMergePrompt
+    {
+        private readonly Window _owner;
+
+        public DialogMergePrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(MergeViewModel model) => MergeWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Merge iptal onayını gerçek bir pencereyle sorar (P06-T12).</summary>
+    private sealed class DialogMergeAbortConfirmer : IMergeAbortConfirmer
+    {
+        private readonly Window _owner;
+
+        public DialogMergeAbortConfirmer(Window owner) => _owner = owner;
+
+        public Task<bool> ConfirmAsync(IReadOnlyList<string> conflicted) =>
+            AbortMergeDialog.ShowAsync(conflicted, _owner);
     }
 
     /// <summary>Kimlik doğrulama ekranını gerçek bir pencereyle gösterir (P06-T09).</summary>

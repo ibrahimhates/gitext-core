@@ -1124,15 +1124,99 @@ public sealed class FakeBranchEditPrompt : IBranchEditPrompt
 /// </summary>
 public sealed class FakeInProgressOperationReader : IInProgressOperationReader
 {
-    private readonly InProgressOperation _operation;
-
     public FakeInProgressOperationReader(InProgressOperation operation = InProgressOperation.None) =>
-        _operation = operation;
+        Operation = operation;
+
+    /// <summary>Testin tazeleme aralarında değiştirebilmesi için yazılabilir (P06-T12).</summary>
+    public InProgressOperation Operation { get; set; }
 
     public Task<InProgressOperation> ReadAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult(_operation);
+        Task.FromResult(Operation);
+}
+
+/// <summary>Merge yazıcısının sahtesi (P06-T11, P06-T12).</summary>
+public sealed class FakeMergeWriter : IMergeWriter
+{
+    public List<MergeOptions> Merged { get; } = [];
+
+    public int Aborted { get; private set; }
+
+    public MergeResult? Result { get; set; }
+
+    public MergePreview Preview { get; set; } = new()
+    {
+        HasChanges = true,
+        CanFastForward = true,
+        HasCommonAncestor = true,
+        Ahead = 1,
+    };
+
+    public GitExt.Core.Git.GitException? Failure { get; set; }
+
+    public Task<MergeResult> MergeAsync(
+        string workingDirectory,
+        MergeOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        Merged.Add(options);
+
+        if (Failure is { } error)
+        {
+            throw error;
+        }
+
+        return Task.FromResult(Result ?? new MergeResult
+        {
+            Outcome = MergeOutcome.FastForward,
+            HeadBefore = "aaaa",
+            HeadAfter = "bbbb",
+        });
+    }
+
+    public Task<MergePreview> PreviewAsync(
+        string workingDirectory,
+        string source,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Preview);
+
+    public Task<string> AbortAsync(string workingDirectory, CancellationToken cancellationToken = default)
+    {
+        Aborted++;
+        return Task.FromResult("aaaa");
+    }
+
+    public string DescribeCommand(MergeOptions options) => MergeWriter.Describe(options);
+}
+
+/// <summary>Merge ekranını gösteren tarafın sahtesi (P06-T11).</summary>
+public sealed class FakeMergePrompt : IMergePrompt
+{
+    public MergeViewModel? Shown { get; private set; }
+
+    public Task ShowAsync(MergeViewModel model)
+    {
+        Shown = model;
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Merge iptal onayının sahtesi (P06-T12).</summary>
+public sealed class FakeMergeAbortConfirmer : IMergeAbortConfirmer
+{
+    public bool Asked { get; private set; }
+
+    public bool Answer { get; set; } = true;
+
+    public IReadOnlyList<string> SeenConflicts { get; private set; } = [];
+
+    public Task<bool> ConfirmAsync(IReadOnlyList<string> conflicted)
+    {
+        Asked = true;
+        SeenConflicts = conflicted;
+        return Task.FromResult(Answer);
+    }
 }
 
 /// <summary>

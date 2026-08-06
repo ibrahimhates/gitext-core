@@ -79,6 +79,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISshAgentProbe, SshAgentProbe>();
         services.AddSingleton<IAuthenticationDiagnostics, AuthenticationDiagnostics>();
 
+        // Merge (P06-T11, P06-T12). Sonucu git'in metninden değil DURUMDAN okuyor
+        // (`--squash` çıkış kodu 0 verip HEAD'i ilerletmiyor), o yüzden okuyucuya bağımlı.
+        services.AddSingleton<IMergeWriter, MergeWriter>();
+
         services.AddSingleton<IRepositoryLocator, RepositoryLocator>();
         services.AddSingleton<ICommitLogReader, CommitLogReader>();
         services.AddSingleton<IRefReader, RefReader>();

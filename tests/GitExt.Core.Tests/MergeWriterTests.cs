@@ -1,0 +1,381 @@
+using GitExt.Core.Git;
+using GitExt.Core.Tests.Fixtures;
+
+namespace GitExt.Core.Tests;
+
+/// <summary>
+/// P06-T11 + P06-T12 — merge ve merge'den çıkış.
+/// </summary>
+/// <remarks>
+/// Ölçümün iki sessiz noktası: <c>--squash</c>'ın çıkış kodu 0 verip <b>commit
+/// yapmaması</b>, ve çakışma metninin <c>stdout</c>'ta olması (P06-T07'de pull'da aynı
+/// tuzağa düşülmüştü).
+/// </remarks>
+public class MergeWriterTests
+{
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    private sealed record Harness(TestRepository Repository, MergeWriter Writer, GitWriteQueue Queue)
+        : IDisposable
+    {
+        public string Path => Repository.Path;
+
+        public void Dispose()
+        {
+            Queue.Dispose();
+            Repository.Dispose();
+        }
+
+        public string Head => Repository.Git("rev-parse", "HEAD").Trim();
+
+        /// <summary>Bir dal oluşturup üzerinde commit atar, sonra ana dala döner.</summary>
+        public void BranchWithCommit(string branch, string file, string content)
+        {
+            Repository.Git("checkout", "-q", "-b", branch);
+            Repository.WriteFile(file, content);
+            Repository.Git("add", "-A");
+            Repository.Git("commit", "-m", $"{branch} commit");
+            Repository.Git("checkout", "-q", "main");
+        }
+
+        public void CommitOnMain(string file, string content)
+        {
+            Repository.WriteFile(file, content);
+            Repository.Git("add", "-A");
+            Repository.Git("commit", "-m", "main commit");
+        }
+    }
+
+    private static async Task<Harness> CreateAsync()
+    {
+        TestRepository repository = TestRepository.CreateWithSingleCommit();
+        repository.Git("branch", "-M", "main");
+
+        GitExecutable executable = await GitExecutable.LocateAsync(cancellationToken: Ct);
+        GitProcessRunner runner = new(executable);
+        GitWriteQueue queue = new();
+
+        return new Harness(repository, new MergeWriter(new GitWriter(runner, queue), runner), queue);
+    }
+
+    // -------------------------------------------------------------- temel
+
+    [Fact]
+    public async Task Ileri_sarma_yeni_commit_URETMIYOR()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "g.txt", "dal\n");
+
+        MergeResult result = await harness.Writer.MergeAsync(
+            harness.Path, new MergeOptions { Source = "dal" }, Ct);
+
+        result.Outcome.ShouldBe(MergeOutcome.FastForward);
+        result.RequiresCommit.ShouldBeFalse();
+        result.RecoveryCommand.ShouldBe($"git reset --hard {result.HeadBefore}");
+    }
+
+    [Fact]
+    public async Task No_ff_her_zaman_birlestirme_commit_i_uretiyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "g.txt", "dal\n");
+
+        MergeResult result = await harness.Writer.MergeAsync(
+            harness.Path,
+            new MergeOptions { Source = "dal", Strategy = MergeStrategy.NoFastForward },
+            Ct);
+
+        result.Outcome.ShouldBe(MergeOutcome.MergeCommit);
+
+        harness.Repository.Git("rev-list", "--parents", "-1", "HEAD")
+            .Trim()
+            .Split(' ')
+            .Length
+            .ShouldBe(3, "iki ebeveynli olmalı");
+    }
+
+    [Fact]
+    public async Task SQUASH_commit_YAPMIYOR_ve_bu_bildiriliyor()
+    {
+        // 🔴 ÖLÇÜLDÜ: git "Squash commit -- not updating HEAD" yazıp çıkış kodu 0 veriyor.
+        // "Başarılı" deyip bırakmak, kullanıcının birleştirdiğini sanıp commit'lememesi
+        // demekti — dalı silseydi çalışması kaybolurdu.
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "g.txt", "dal\n");
+        string before = harness.Head;
+
+        MergeResult result = await harness.Writer.MergeAsync(
+            harness.Path,
+            new MergeOptions { Source = "dal", Strategy = MergeStrategy.Squash },
+            Ct);
+
+        result.Outcome.ShouldBe(MergeOutcome.Staged);
+        result.RequiresCommit.ShouldBeTrue();
+        result.HeadAfter.ShouldBe(before, "HEAD gerçekten ilerlememiş olmalı");
+        result.RecoveryCommand.ShouldBeNull("geri alınacak bir commit yok");
+
+        // git'in hazırladığı taslak kullanıcıya veriliyor.
+        result.SuggestedMessage.ShouldNotBeNull();
+        result.SuggestedMessage!.ShouldContain("dal commit");
+
+        // Değişiklik gerçekten index'te bekliyor.
+        harness.Repository.Git("diff", "--cached", "--name-only").Trim().ShouldBe("g.txt");
+    }
+
+    [Fact]
+    public async Task No_commit_de_ayni_sekilde_bildiriliyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "g.txt", "dal\n");
+        harness.CommitOnMain("h.txt", "main\n");
+
+        MergeResult result = await harness.Writer.MergeAsync(
+            harness.Path,
+            new MergeOptions
+            {
+                Source = "dal",
+                Strategy = MergeStrategy.NoFastForward,
+                NoCommit = true,
+            },
+            Ct);
+
+        result.RequiresCommit.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Zaten_guncelken_hicbir_sey_yapilmiyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.Repository.Git("branch", "dal");
+
+        MergeResult result = await harness.Writer.MergeAsync(
+            harness.Path, new MergeOptions { Source = "dal" }, Ct);
+
+        result.Outcome.ShouldBe(MergeOutcome.AlreadyUpToDate);
+        result.RecoveryCommand.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Ozel_mesaj_gecirilyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "g.txt", "dal\n");
+
+        await harness.Writer.MergeAsync(
+            harness.Path,
+            new MergeOptions
+            {
+                Source = "dal",
+                Strategy = MergeStrategy.NoFastForward,
+                Message = "benim mesajim",
+            },
+            Ct);
+
+        harness.Repository.Git("log", "-1", "--format=%s").Trim().ShouldBe("benim mesajim");
+    }
+
+    // ----------------------------------------------------------- çakışma
+
+    [Fact]
+    public async Task Cakisma_ISTISNA_degil_DURUM_olarak_donuyor()
+    {
+        // 🔴 ÖLÇÜLDÜ: çakışma metni stdout'ta, stderr BOŞ. Sınıflandırıcı stderr'e baktığı
+        // için "Unknown" diyor — karar metne değil index'e bakarak veriliyor.
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "f.txt", "benim\n");
+        harness.CommitOnMain("f.txt", "onun\n");
+
+        MergeResult result = await harness.Writer.MergeAsync(
+            harness.Path, new MergeOptions { Source = "dal" }, Ct);
+
+        result.Outcome.ShouldBe(MergeOutcome.Conflicted);
+        result.HasConflicts.ShouldBeTrue();
+        result.ConflictedPaths.ShouldBe(["f.txt"]);
+    }
+
+    [Fact]
+    public async Task GERCEK_hata_istisna_olarak_KALIYOR()
+    {
+        // Çakışmayı istisnadan kurtarırken her hatayı yutmamak şart: olmayan bir dal
+        // sessizce "birleştirildi" sayılsaydı kullanıcı hiçbir şey olmadığını fark etmezdi.
+        using Harness harness = await CreateAsync();
+
+        await Should.ThrowAsync<GitException>(
+            () => harness.Writer.MergeAsync(
+                harness.Path, new MergeOptions { Source = "boyle-bir-dal-yok" }, Ct));
+    }
+
+    [Fact]
+    public async Task ff_only_ileri_sarilamayan_durumda_REDDEDIYOR()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "g.txt", "dal\n");
+        harness.CommitOnMain("h.txt", "main\n");
+
+        await Should.ThrowAsync<GitException>(
+            () => harness.Writer.MergeAsync(
+                harness.Path,
+                new MergeOptions { Source = "dal", Strategy = MergeStrategy.FastForwardOnly },
+                Ct));
+
+        // Depo dokunulmamış olmalı.
+        harness.Repository.Git("status", "--porcelain").Trim().ShouldBeEmpty();
+    }
+
+    // ---------------------------------------------------------- önizleme
+
+    [Fact]
+    public async Task Onizleme_ileri_sarilabilirligi_soyluyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "g.txt", "dal\n");
+
+        MergePreview preview = await harness.Writer.PreviewAsync(harness.Path, "dal", Ct);
+
+        preview.HasChanges.ShouldBeTrue();
+        preview.CanFastForward.ShouldBeTrue();
+        preview.HasCommonAncestor.ShouldBeTrue();
+        preview.Ahead.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Iraksayan_dalda_ileri_sarilamiyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "g.txt", "dal\n");
+        harness.CommitOnMain("h.txt", "main\n");
+
+        MergePreview preview = await harness.Writer.PreviewAsync(harness.Path, "dal", Ct);
+
+        preview.CanFastForward.ShouldBeFalse();
+        preview.HasChanges.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Yapacak_bir_sey_yoksa_onizleme_bunu_soyluyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.Repository.Git("branch", "dal");
+
+        MergePreview preview = await harness.Writer.PreviewAsync(harness.Path, "dal", Ct);
+
+        preview.HasChanges.ShouldBeFalse();
+        preview.Ahead.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Ilgisiz_gecmis_onizlemede_belirtiliyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        // Yetim dal: aynı depoda ama ortak atası YOK.
+        harness.Repository.Git("checkout", "-q", "--orphan", "yetim");
+        harness.Repository.WriteFile("baska.txt", "bambaska\n");
+        harness.Repository.Git("add", "-A");
+        harness.Repository.Git("commit", "-m", "ilgisiz");
+        harness.Repository.Git("checkout", "-q", "main");
+
+        MergePreview preview = await harness.Writer.PreviewAsync(harness.Path, "yetim", Ct);
+
+        preview.HasCommonAncestor.ShouldBeFalse();
+        preview.CanFastForward.ShouldBeFalse();
+    }
+
+    // ------------------------------------------------------------ abort
+
+    [Fact]
+    public async Task ABORT_calisma_agacini_merge_ONCESINE_donduruyor()
+    {
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "f.txt", "benim\n");
+        harness.CommitOnMain("f.txt", "onun\n");
+
+        string before = harness.Head;
+
+        await harness.Writer.MergeAsync(harness.Path, new MergeOptions { Source = "dal" }, Ct);
+
+        harness.Repository.Git("diff", "--name-only", "--diff-filter=U").Trim().ShouldBe("f.txt");
+
+        string after = await harness.Writer.AbortAsync(harness.Path, Ct);
+
+        after.ShouldBe(before);
+        harness.Repository.Git("status", "--porcelain").Trim().ShouldBeEmpty();
+        File.ReadAllText(System.IO.Path.Combine(harness.Path, "f.txt")).ShouldBe("onun\n");
+    }
+
+    [Fact]
+    public async Task Suren_merge_YOKKEN_abort_istisna_veriyor()
+    {
+        // Sessizce "iptal edildi" demek, kullanıcıya olmamış bir şeyi anlatırdı.
+        using Harness harness = await CreateAsync();
+
+        await Should.ThrowAsync<GitException>(() => harness.Writer.AbortAsync(harness.Path, Ct));
+    }
+
+    [Fact]
+    public async Task Suren_merge_InProgressOperationReader_ile_GORULUYOR()
+    {
+        // Bant (P06-T04) ve iptal düğmesi (P06-T12) aynı kaynağa bakıyor.
+        using Harness harness = await CreateAsync();
+
+        harness.BranchWithCommit("dal", "f.txt", "benim\n");
+        harness.CommitOnMain("f.txt", "onun\n");
+
+        await harness.Writer.MergeAsync(harness.Path, new MergeOptions { Source = "dal" }, Ct);
+
+        GitExecutable executable = await GitExecutable.LocateAsync(cancellationToken: Ct);
+        InProgressOperationReader reader = new(new GitProcessRunner(executable));
+
+        (await reader.ReadAsync(harness.Path, Ct)).ShouldBe(InProgressOperation.Merge);
+
+        await harness.Writer.AbortAsync(harness.Path, Ct);
+
+        (await reader.ReadAsync(harness.Path, Ct)).ShouldBe(InProgressOperation.None);
+    }
+
+    // ----------------------------------------------------------- komut
+
+    [Fact]
+    public void Komut_onizlemesi_secimleri_yansitiyor()
+    {
+        MergeWriter.Describe(new MergeOptions { Source = "dal" })
+            .ShouldBe("git merge -- dal");
+
+        MergeWriter.Describe(new MergeOptions { Source = "dal", Strategy = MergeStrategy.NoFastForward })
+            .ShouldBe("git merge --no-ff -- dal");
+
+        MergeWriter.Describe(new MergeOptions { Source = "dal", Strategy = MergeStrategy.Squash })
+            .ShouldBe("git merge --squash -- dal");
+
+        MergeWriter.Describe(new MergeOptions
+        {
+            Source = "dal",
+            Strategy = MergeStrategy.NoFastForward,
+            Message = "mesaj",
+        }).ShouldBe("git merge --no-ff -m mesaj -- dal");
+    }
+
+    [Fact]
+    public void Squash_ile_no_commit_birlikte_YAZILMIYOR()
+    {
+        // `--squash` zaten commit'lemiyor; ikisini birlikte vermek gürültü olurdu.
+        MergeWriter.Describe(new MergeOptions
+        {
+            Source = "dal",
+            Strategy = MergeStrategy.Squash,
+            NoCommit = true,
+        }).ShouldBe("git merge --squash -- dal");
+    }
+}

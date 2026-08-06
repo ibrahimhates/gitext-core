@@ -1,0 +1,156 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.MergeWindow"
+        x:DataType="vm:MergeViewModel"
+        Title="Birleştir"
+        Width="580"
+        SizeToContent="Height"
+        MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        Yerleşim GitExtensions `FormMergeBranch.Designer.cs`'ten (§ 9), sıra birebir:
+          "Merge branch" (dal seçimi) -> "Into current branch" (salt okunur) ->
+          fast forward / always create a merge commit -> "Do not commit" ->
+          "Show advanced options" -> (squash · allow unrelated histories · merge message)
+          -> "Merge" düğmesi.
+
+        Bizde OLMAYAN: "Use non-default merge strategy" (resolve/octopus/ours/subtree) ve
+        "Add log messages" — yerinde ama devre dışı; ikisi de ileri seviye ve Faz 07'nin
+        çakışma çözümüyle birlikte anlam kazanıyor.
+
+        EKLENEN: seçilen dalın NE getireceği (ileri sarılabilir mi, kaç commit) ve
+        çalıştırılacak KOMUT. Ayrıca squash seçilince ne olacağı ÖNCEDEN yazılı.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                       Text="Birleştirilecek dal"
+                       VerticalAlignment="Center"
+                       Margin="0,0,8,4" />
+            <ComboBox Name="SourceBox"
+                      Grid.Row="0" Grid.Column="1"
+                      HorizontalAlignment="Stretch"
+                      Margin="0,0,0,4"
+                      ItemsSource="{Binding Sources}"
+                      SelectedItem="{Binding Source}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="Mevcut dala"
+                       VerticalAlignment="Center"
+                       Margin="0,0,8,0" />
+            <TextBox Name="CurrentBranchBox"
+                     Grid.Row="1" Grid.Column="1"
+                     IsReadOnly="True"
+                     IsTabStop="False"
+                     Text="{Binding CurrentBranch}" />
+        </Grid>
+
+        <TextBlock Name="PreviewNoticeText"
+                   FontSize="11"
+                   Opacity="0.85"
+                   TextWrapping="Wrap"
+                   IsVisible="{Binding HasPreviewNotice}"
+                   Text="{Binding PreviewNotice}" />
+
+        <StackPanel Spacing="4">
+            <RadioButton Name="FastForwardRadio"
+                         GroupName="MergeMode"
+                         Content="Mümkünse tek dal çizgisi koru (ileri sar)"
+                         IsChecked="{Binding IsFastForward}" />
+            <RadioButton Name="MergeCommitRadio"
+                         GroupName="MergeMode"
+                         Content="Her zaman yeni bir birleştirme commit'i oluştur"
+                         IsChecked="{Binding IsMergeCommit}" />
+        </StackPanel>
+
+        <CheckBox Name="NoCommitBox"
+                  Content="Commit'leme"
+                  IsChecked="{Binding NoCommit}" />
+
+        <ToggleButton Name="ShowAdvancedToggle"
+                      Content="Gelişmiş seçenekleri göster"
+                      HorizontalAlignment="Left"
+                      IsChecked="{Binding ShowAdvanced}" />
+
+        <StackPanel Name="AdvancedPanel" Spacing="6" IsVisible="{Binding ShowAdvanced}">
+            <!-- Yerinde ama devre dışı (§ 9): Faz 07'nin çakışma çözümüyle anlam kazanıyor. -->
+            <CheckBox Name="CustomStrategyBox"
+                      Content="Varsayılan olmayan birleştirme stratejisi kullan"
+                      IsEnabled="False" />
+
+            <CheckBox Name="SquashBox"
+                      Content="Commit'leri tek bir değişiklikte topla (squash)"
+                      IsChecked="{Binding IsSquash}" />
+
+            <TextBlock Name="SquashNoticeText"
+                       FontSize="11"
+                       Opacity="0.9"
+                       TextWrapping="Wrap"
+                       Margin="20,0,0,0"
+                       IsVisible="{Binding HasSquashNotice}"
+                       Text="{Binding SquashNotice}" />
+
+            <CheckBox Name="UnrelatedBox"
+                      Content="İlgisiz geçmişlere izin ver"
+                      IsChecked="{Binding AllowUnrelatedHistories}" />
+
+            <CheckBox Name="AddLogMessagesBox"
+                      Content="Günlük mesajlarını ekle"
+                      IsEnabled="False" />
+
+            <TextBlock Text="Birleştirme mesajı (boşsa git'in varsayılanı):"
+                       FontSize="11"
+                       Opacity="0.8" />
+            <TextBox Name="MessageBox"
+                     AcceptsReturn="True"
+                     Height="60"
+                     Text="{Binding Message}" />
+        </StackPanel>
+
+        <!-- "Komutu göster" ilkesi. -->
+        <StackPanel Spacing="3">
+            <TextBlock Text="Çalıştırılacak komut:" FontSize="11" Opacity="0.8" />
+            <TextBox Name="CommandPreviewBox"
+                     IsReadOnly="True"
+                     IsTabStop="False"
+                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontSize="11"
+                     Text="{Binding CommandPreview}" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Name="WarningText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding HasWarning}"
+                       Text="{Binding Warning}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+            <TextBlock Name="NoticeText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       Opacity="0.85"
+                       Text="{Binding Notice}" />
+            <StackPanel Name="RecoveryPanel" Spacing="2" IsVisible="{Binding HasRecoveryCommand}">
+                <TextBlock Text="Geri almak için:" FontSize="11" Opacity="0.8" />
+                <TextBox Name="RecoveryCommandBox"
+                         IsReadOnly="True"
+                         FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                         FontSize="11"
+                         Text="{Binding RecoveryCommand}" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="CloseButton" Content="Kapat" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
+            <Button Name="MergeButton"
+                    Content="Birleştir"
+                    MinWidth="110"
+                    IsDefault="True"
+                    Command="{Binding RunCommand}" />
+        </StackPanel>
+    </StackPanel>
+</Window>
