@@ -72,6 +72,40 @@ internal static class GitFailureClassifier
 
         ReadOnlySpan<char> text = standardError.AsSpan();
 
+        // 🔴 SIRA ÖNEMLİ — P06-T09'da düzeltildi. SSH tarafında git, kimlik ve ağ
+        // hatalarının HEPSİNE "Could not read from remote repository." satırını ekliyor
+        // (ölçüldü):
+        //   git@github.com: Permission denied (publickey).      -> KİMLİK
+        //   ssh: Could not resolve hostname …                   -> AĞ
+        // Bu kontrol önce gelseydi (ve P06-T09'a kadar geliyordu) ikisi de
+        // "Uzak depo bulunamadı" diye gösterilirdi: kullanıcı adresini kurcalar, oysa
+        // adres doğru — eksik olan SSH anahtarı.
+        if (ContainsAny(
+                text,
+                "Authentication failed",
+                "could not read Username",
+                "could not read Password",
+                "Permission denied (publickey",
+                "Permission denied, please try again",
+                "terminal prompts disabled",
+                "Invalid username or token",
+                "Support for password authentication was removed"))
+        {
+            return GitFailureKind.AuthenticationRequired;
+        }
+
+        if (ContainsAny(
+                text,
+                "Could not resolve host",
+                "Connection refused",
+                "Connection timed out",
+                "Network is unreachable",
+                "Connection closed by",
+                "kex_exchange_identification"))
+        {
+            return GitFailureKind.NetworkFailure;
+        }
+
         // ⚠️ SIRA ÖNEMLİ: bu kontrol aşağıdaki "does not appear to be a git repository"
         // kalıbından ÖNCE gelmeli. Ulaşılamayan bir remote için git ikisini birden yazıyor
         // ve genel kalıba düşseydi kullanıcıya "Bu klasör bir Git deposu değil" derdik —
@@ -101,24 +135,9 @@ internal static class GitFailureClassifier
             return GitFailureKind.IndexLocked;
         }
 
-        if (ContainsAny(
-                text,
-                "Authentication failed",
-                "could not read Username",
-                "could not read Password",
-                "Permission denied (publickey",
-                "terminal prompts disabled"))
-        {
-            return GitFailureKind.AuthenticationRequired;
-        }
-
-        if (ContainsAny(
-                text,
-                "Could not resolve host",
-                "Connection refused",
-                "Connection timed out",
-                "unable to access",
-                "Network is unreachable"))
+        // `unable to access` HTTPS tarafının genel ağ hatası; yukarıdaki kimlik
+        // kalıplarından SONRA bakılıyor, çünkü kimlik hatası da bu satırı içerebiliyor.
+        if (ContainsAny(text, "unable to access"))
         {
             return GitFailureKind.NetworkFailure;
         }

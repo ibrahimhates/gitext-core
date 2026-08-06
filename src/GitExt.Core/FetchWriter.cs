@@ -47,6 +47,16 @@ public sealed record FetchOptions
 
     /// <summary><c>--dry-run</c>: hiçbir şey yazma.</summary>
     public bool DryRun { get; init; }
+
+    /// <summary>
+    /// Kullanıcının verdiği HTTPS kimlik bilgisi (P06-T09).
+    /// </summary>
+    /// <remarks>
+    /// <see langword="null"/> ise git kendi kanallarını (credential helper, SSH agent)
+    /// kullanır — ölçüldü, ikisi de bizim ortamımızda sorunsuz çalışıyor. Dolu olduğunda
+    /// değer <c>GIT_ASKPASS</c> üzerinden geçiriliyor, komut satırına <b>yazılmıyor</b>.
+    /// </remarks>
+    public GitCredentials? Credentials { get; init; }
 }
 
 /// <summary>Bir ref'in fetch sonrası nasıl değiştiği (P06-T06).</summary>
@@ -194,8 +204,13 @@ public sealed class FetchWriter : IFetchWriter
 
         try
         {
+            using AskPassSession? askPass = options.Credentials is { } credentials
+                ? AskPassSession.Create(credentials)
+                : null;
+
             GitResult result = await _writer
-                .RunAsync(workingDirectory, BuildArguments(options), cancellationToken)
+                .RunWithEnvironmentAsync(
+                    workingDirectory, BuildArguments(options), askPass?.Environment, cancellationToken)
                 .ConfigureAwait(false);
 
             standardError = result.StandardError;

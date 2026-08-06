@@ -72,6 +72,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IFetchWriter? _fetchWriter;
     private readonly IPullWriter? _pullWriter;
     private readonly IPushWriter? _pushWriter;
+    private readonly IAuthenticationDiagnostics? _authDiagnostics;
 
     /// <summary>
     /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
@@ -120,7 +121,8 @@ public partial class MainWindowViewModel : ViewModelBase
         IRemoteWriter? remoteWriter = null,
         IFetchWriter? fetchWriter = null,
         IPullWriter? pullWriter = null,
-        IPushWriter? pushWriter = null)
+        IPushWriter? pushWriter = null,
+        IAuthenticationDiagnostics? authenticationDiagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
         ArgumentNullException.ThrowIfNull(recentStore);
@@ -140,6 +142,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _fetchWriter = fetchWriter;
         _pullWriter = pullWriter;
         _pushWriter = pushWriter;
+        _authDiagnostics = authenticationDiagnostics;
 
         if (_watcher is not null)
         {
@@ -271,6 +274,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Push ekranını gösteren taraf.</summary>
     public IPushPrompt? PushPrompt { get; set; }
+
+    /// <summary>Kimlik doğrulama ekranını gösteren taraf (P06-T09).</summary>
+    public IAuthenticationPrompt? AuthenticationPrompt { get; set; }
 
     /// <summary>Push yapılabilir mi?</summary>
     public bool CanPush =>
@@ -798,7 +804,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        PullViewModel model = new(_remoteReader, _fetchWriter, _pullWriter);
+        PullViewModel model = new(
+            _remoteReader, _fetchWriter, _pullWriter, _authDiagnostics, AuthenticationPrompt);
 
         try
         {
@@ -840,7 +847,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        PushViewModel model = new(_remoteReader, _pushWriter);
+        PushViewModel model = new(
+            _remoteReader, _pushWriter, _authDiagnostics, AuthenticationPrompt);
 
         try
         {

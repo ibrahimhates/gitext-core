@@ -74,6 +74,11 @@ public static class ServiceCollectionExtensions
         // yerel izleme ref'lerinden alıyor — ikisi için de okuyucuya ihtiyacı var.
         services.AddSingleton<IPushWriter, PushWriter>();
 
+        // Kimlik doğrulama teşhisi (P06-T09). git'in metnine değil ORTAMA bakıyor:
+        // uzak URL'nin biçimi, `credential.helper` ayarı ve `ssh-add -l`'in çıkış kodu.
+        services.AddSingleton<ISshAgentProbe, SshAgentProbe>();
+        services.AddSingleton<IAuthenticationDiagnostics, AuthenticationDiagnostics>();
+
         services.AddSingleton<IRepositoryLocator, RepositoryLocator>();
         services.AddSingleton<ICommitLogReader, CommitLogReader>();
         services.AddSingleton<IRefReader, RefReader>();

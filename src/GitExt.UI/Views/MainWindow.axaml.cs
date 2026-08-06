@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using GitExt.Core;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
                 model.RemotesPrompt = new DialogRemotesPrompt(this);
                 model.PullPrompt = new DialogPullPrompt(this, model);
                 model.PushPrompt = new DialogPushPrompt(this, model);
+                model.AuthenticationPrompt = new DialogAuthenticationPrompt(this);
             }
         };
     }
@@ -53,6 +55,17 @@ public partial class MainWindow : Window
                 model,
                 _owner,
                 () => _model.ManageRemotesCommand.ExecuteAsync(null));
+    }
+
+    /// <summary>Kimlik doğrulama ekranını gerçek bir pencereyle gösterir (P06-T09).</summary>
+    private sealed class DialogAuthenticationPrompt : IAuthenticationPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogAuthenticationPrompt(Window owner) => _owner = owner;
+
+        public Task<GitCredentials?> ShowAsync(AuthenticationViewModel model) =>
+            AuthenticationWindow.ShowAsync(model, _owner);
     }
 
     /// <summary>Push ekranını gerçek bir pencereyle gösterir (P06-T08).</summary>

@@ -1428,6 +1428,9 @@ public sealed class FakePushWriter : IPushWriter
 
     public GitExt.Core.Git.GitException? Failure { get; set; }
 
+    /// <summary>Kimlik verilene kadar başarısız ol (P06-T09 tekrar-deneme akışı).</summary>
+    public bool FailUntilCredentialsGiven { get; set; }
+
     public Task<PushPlan> PlanAsync(
         string workingDirectory,
         string remote,
@@ -1442,7 +1445,7 @@ public sealed class FakePushWriter : IPushWriter
     {
         Pushed.Add(options);
 
-        if (Failure is { } error)
+        if (Failure is { } error && (!FailUntilCredentialsGiven || options.Credentials is null))
         {
             throw error;
         }

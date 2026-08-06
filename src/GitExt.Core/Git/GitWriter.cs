@@ -24,6 +24,20 @@ public interface IGitWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Yazma komutunu, o çağrıya özel ortam değişkenleriyle çalıştırır (P06-T09).
+    /// </summary>
+    /// <remarks>
+    /// Tek kullanım yeri kimlik doğrulama: <c>GIT_ASKPASS</c> ve onun okuyacağı gizli
+    /// değer. Parola argüman olarak geçirilemez — komut satırı <c>ps</c> ile herkese
+    /// görünür (bkz. <c>AskPassSession</c>).
+    /// </remarks>
+    Task<GitResult> RunWithEnvironmentAsync(
+        string workingDirectory,
+        IReadOnlyList<string> arguments,
+        IReadOnlyDictionary<string, string>? environment,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Yazma komutunu <b>stdin</b>'e veri vererek çalıştırır.
     /// </summary>
     /// <remarks>
@@ -101,7 +115,14 @@ public sealed class GitWriter : IGitWriter
         string workingDirectory,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken = default) =>
-        RunCoreAsync(workingDirectory, arguments, null, cancellationToken);
+        RunCoreAsync(workingDirectory, arguments, null, null, cancellationToken);
+
+    public Task<GitResult> RunWithEnvironmentAsync(
+        string workingDirectory,
+        IReadOnlyList<string> arguments,
+        IReadOnlyDictionary<string, string>? environment,
+        CancellationToken cancellationToken = default) =>
+        RunCoreAsync(workingDirectory, arguments, null, environment, cancellationToken);
 
     public Task<GitResult> RunAsync(
         string workingDirectory,
@@ -116,6 +137,7 @@ public sealed class GitWriter : IGitWriter
             workingDirectory,
             arguments,
             (encoding ?? System.Text.Encoding.UTF8).GetBytes(standardInput),
+            null,
             cancellationToken);
     }
 
@@ -123,6 +145,7 @@ public sealed class GitWriter : IGitWriter
         string workingDirectory,
         IReadOnlyList<string> arguments,
         ReadOnlyMemory<byte>? standardInput,
+        IReadOnlyDictionary<string, string>? environment,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
@@ -140,7 +163,7 @@ public sealed class GitWriter : IGitWriter
                 // akış devam edip `rev-parse HEAD`'i ayrıştırmaya çalıştı).
                 // Kilit yeniden denemesi de buna bağlı: hata fırlamazsa retry hiç tetiklenmez.
                 inner => _runner.RunCheckedAsync(
-                    BuildCommand(workingDirectory, arguments, standardInput),
+                    BuildCommand(workingDirectory, arguments, standardInput, environment),
                     inner),
                 _retryOptions,
                 token),
@@ -150,12 +173,14 @@ public sealed class GitWriter : IGitWriter
     private GitCommand BuildCommand(
         string workingDirectory,
         IReadOnlyList<string> arguments,
-        ReadOnlyMemory<byte>? standardInput) =>
+        ReadOnlyMemory<byte>? standardInput,
+        IReadOnlyDictionary<string, string>? environment) =>
         new()
         {
             WorkingDirectory = workingDirectory,
             Arguments = arguments,
             StandardInput = standardInput,
+            Environment = environment,
 
             // ⚠️ Yazma komutu: `GIT_OPTIONAL_LOCKS=0` uygulanmaz. Bu bayrak yalnızca
             // "opsiyonel" kilitleri kapatır; yazmanın gerçek kilidi zaten alınmak zorunda.

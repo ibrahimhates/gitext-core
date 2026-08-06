@@ -80,6 +80,16 @@ public sealed record PullOptions
 
     /// <summary>Etiket davranışı (fetch aşaması).</summary>
     public FetchTagMode Tags { get; init; }
+
+    /// <summary>
+    /// Kullanıcının verdiği HTTPS kimlik bilgisi (P06-T09).
+    /// </summary>
+    /// <remarks>
+    /// <see langword="null"/> ise git kendi kanallarını (credential helper, SSH agent)
+    /// kullanır — ölçüldü, ikisi de bizim ortamımızda sorunsuz çalışıyor. Dolu olduğunda
+    /// değer <c>GIT_ASKPASS</c> üzerinden geçiriliyor, komut satırına <b>yazılmıyor</b>.
+    /// </remarks>
+    public GitCredentials? Credentials { get; init; }
 }
 
 /// <summary>Pull sonucu (P06-T07).</summary>
@@ -262,8 +272,16 @@ public sealed class PullWriter : IPullWriter
 
         try
         {
+            using AskPassSession? askPass = options.Credentials is { } credentials
+                ? AskPassSession.Create(credentials)
+                : null;
+
             GitResult result = await _writer
-                .RunAsync(workingDirectory, BuildArguments(options, strategy.Strategy), cancellationToken)
+                .RunWithEnvironmentAsync(
+                    workingDirectory,
+                    BuildArguments(options, strategy.Strategy),
+                    askPass?.Environment,
+                    cancellationToken)
                 .ConfigureAwait(false);
 
             standardError = result.StandardError;

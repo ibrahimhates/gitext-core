@@ -104,6 +104,8 @@ public sealed class PushViewModel : ViewModelBase
 {
     private readonly IRemoteReader _remotes;
     private readonly IPushWriter _push;
+    private readonly IAuthenticationDiagnostics? _diagnostics;
+    private readonly IAuthenticationPrompt? _authentication;
 
     private string _workingDirectory = string.Empty;
     private string? _selectedRemote;
@@ -123,13 +125,19 @@ public sealed class PushViewModel : ViewModelBase
     private PushPlan? _plan;
     private IReadOnlyList<BranchInfo> _localBranches = [];
 
-    public PushViewModel(IRemoteReader remotes, IPushWriter push)
+    public PushViewModel(
+        IRemoteReader remotes,
+        IPushWriter push,
+        IAuthenticationDiagnostics? diagnostics = null,
+        IAuthenticationPrompt? authentication = null)
     {
         ArgumentNullException.ThrowIfNull(remotes);
         ArgumentNullException.ThrowIfNull(push);
 
         _remotes = remotes;
         _push = push;
+        _diagnostics = diagnostics;
+        _authentication = authentication;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
     }
@@ -621,6 +629,10 @@ public sealed class PushViewModel : ViewModelBase
 
             Report(result);
         }
+        catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
+        {
+            await HandleAuthenticationAsync(error).ConfigureAwait(true);
+        }
         catch (GitException error)
         {
             Warning = error.Message;
@@ -628,6 +640,55 @@ public sealed class PushViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Kimlik doğrulama hatasını ele alır (P06-T09).
+    /// </summary>
+    /// <remarks>
+    /// 🔑 Ham <c>stderr</c> gösterilmiyor: aynı satır hem eksik SSH anahtarında hem
+    /// çözülemeyen sunucu adında yazılıyor (ölçüldü). Teşhis <b>ortama</b> bakıyor ve
+    /// yalnızca HTTPS'te kimlik sorup tekrar deniyor — SSH'ta istenen şey bir anahtar,
+    /// diyalogla çözülmez.
+    /// </remarks>
+    private async Task HandleAuthenticationAsync(GitException error)
+    {
+        if (_diagnostics is null || _authentication is null)
+        {
+            Warning = error.Message;
+            return;
+        }
+
+        AuthenticationDiagnosis diagnosis = await _diagnostics
+            .DiagnoseAsync(_workingDirectory, SelectedRemote)
+            .ConfigureAwait(true);
+
+        GitCredentials? credentials = await _authentication
+            .ShowAsync(new AuthenticationViewModel(diagnosis))
+            .ConfigureAwait(true);
+
+        if (credentials is null)
+        {
+            Warning = diagnosis.Explanation;
+            Advice = diagnosis.Suggestions.Count > 0
+                ? "Deneyebilecekleriniz: " + string.Join(" · ", diagnosis.Suggestions)
+                : null;
+
+            return;
+        }
+
+        try
+        {
+            PushResult result = await _push
+                .PushAsync(_workingDirectory, BuildOptions() with { Credentials = credentials })
+                .ConfigureAwait(true);
+
+            Report(result);
+        }
+        catch (GitException retry)
+        {
+            Warning = retry.Message;
         }
     }
 

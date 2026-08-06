@@ -222,6 +222,17 @@ public sealed class GitProcessRunner : IGitProcessRunner
         }
 
         GitEnvironment.Apply(startInfo, command.IsReadOnly);
+
+        // Komuta özel ortam EN SONA: kimlik doğrulama, GitEnvironment'ın boşalttığı
+        // `GIT_ASKPASS`/`SSH_ASKPASS` değerlerini bilerek geri koyuyor (P06-T09).
+        if (command.Environment is { Count: > 0 } overrides)
+        {
+            foreach ((string name, string value) in overrides)
+            {
+                startInfo.Environment[name] = value;
+            }
+        }
+
         return startInfo;
     }
 

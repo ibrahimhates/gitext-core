@@ -99,6 +99,16 @@ public sealed record PushOptions
 
     /// <summary><c>--dry-run</c>: hiçbir şey gönderme, ne olacağını söyle.</summary>
     public bool DryRun { get; init; }
+
+    /// <summary>
+    /// Kullanıcının verdiği HTTPS kimlik bilgisi (P06-T09).
+    /// </summary>
+    /// <remarks>
+    /// <see langword="null"/> ise git kendi kanallarını (credential helper, SSH agent)
+    /// kullanır — ölçüldü, ikisi de bizim ortamımızda sorunsuz çalışıyor. Dolu olduğunda
+    /// değer <c>GIT_ASKPASS</c> üzerinden geçiriliyor, komut satırına <b>yazılmıyor</b>.
+    /// </remarks>
+    public GitCredentials? Credentials { get; init; }
 }
 
 /// <summary>Bir ref'in push sonrası durumu (P06-T08).</summary>
@@ -441,8 +451,13 @@ public sealed class PushWriter : IPushWriter
 
         try
         {
+            using AskPassSession? askPass = options.Credentials is { } credentials
+                ? AskPassSession.Create(credentials)
+                : null;
+
             GitResult result = await _writer
-                .RunAsync(workingDirectory, BuildArguments(options), cancellationToken)
+                .RunWithEnvironmentAsync(
+                    workingDirectory, BuildArguments(options), askPass?.Environment, cancellationToken)
                 .ConfigureAwait(false);
 
             standardOutput = result.GetStandardOutputText();

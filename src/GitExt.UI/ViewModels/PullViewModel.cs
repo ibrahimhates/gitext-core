@@ -38,6 +38,8 @@ public sealed class PullViewModel : ViewModelBase
     private readonly IRemoteReader _remotes;
     private readonly IFetchWriter _fetch;
     private readonly IPullWriter _pull;
+    private readonly IAuthenticationDiagnostics? _diagnostics;
+    private readonly IAuthenticationPrompt? _authentication;
 
     private string _workingDirectory = string.Empty;
     private string? _selectedRemote;
@@ -54,7 +56,12 @@ public sealed class PullViewModel : ViewModelBase
     private string? _recoveryCommand;
     private ResolvedPullStrategy? _configured;
 
-    public PullViewModel(IRemoteReader remotes, IFetchWriter fetch, IPullWriter pull)
+    public PullViewModel(
+        IRemoteReader remotes,
+        IFetchWriter fetch,
+        IPullWriter pull,
+        IAuthenticationDiagnostics? diagnostics = null,
+        IAuthenticationPrompt? authentication = null)
     {
         ArgumentNullException.ThrowIfNull(remotes);
         ArgumentNullException.ThrowIfNull(fetch);
@@ -63,6 +70,8 @@ public sealed class PullViewModel : ViewModelBase
         _remotes = remotes;
         _fetch = fetch;
         _pull = pull;
+        _diagnostics = diagnostics;
+        _authentication = authentication;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
     }
@@ -458,14 +467,11 @@ public sealed class PullViewModel : ViewModelBase
 
         try
         {
-            if (Action == PullAction.FetchOnly)
-            {
-                await RunFetchAsync().ConfigureAwait(true);
-            }
-            else
-            {
-                await RunPullAsync().ConfigureAwait(true);
-            }
+            await RunOnceAsync(null).ConfigureAwait(true);
+        }
+        catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
+        {
+            await HandleAuthenticationAsync(error).ConfigureAwait(true);
         }
         catch (GitException error)
         {
@@ -477,7 +483,48 @@ public sealed class PullViewModel : ViewModelBase
         }
     }
 
-    private async Task RunFetchAsync()
+    private Task RunOnceAsync(GitCredentials? credentials) =>
+        Action == PullAction.FetchOnly
+            ? RunFetchAsync(credentials)
+            : RunPullAsync(credentials);
+
+    /// <summary>
+    /// Kimlik doğrulama hatasını ele alır (P06-T09).
+    /// </summary>
+    /// <remarks>Gerekçe ve sınırları: <see cref="PushViewModel"/> üzerindeki not.</remarks>
+    private async Task HandleAuthenticationAsync(GitException error)
+    {
+        if (_diagnostics is null || _authentication is null)
+        {
+            Notice = error.Message;
+            return;
+        }
+
+        AuthenticationDiagnosis diagnosis = await _diagnostics
+            .DiagnoseAsync(_workingDirectory, SelectedRemote)
+            .ConfigureAwait(true);
+
+        GitCredentials? credentials = await _authentication
+            .ShowAsync(new AuthenticationViewModel(diagnosis))
+            .ConfigureAwait(true);
+
+        if (credentials is null)
+        {
+            Warning = diagnosis.Explanation;
+            return;
+        }
+
+        try
+        {
+            await RunOnceAsync(credentials).ConfigureAwait(true);
+        }
+        catch (GitException retry)
+        {
+            Warning = retry.Message;
+        }
+    }
+
+    private async Task RunFetchAsync(GitCredentials? credentials)
     {
         FetchResult result = await _fetch.FetchAsync(
             _workingDirectory,
@@ -487,6 +534,7 @@ public sealed class PullViewModel : ViewModelBase
                 Prune = Prune,
                 PruneTags = PruneTags,
                 Tags = Tags,
+                Credentials = credentials,
             }).ConfigureAwait(true);
 
         Notice = DescribeChanges(result.Changes);
@@ -499,7 +547,7 @@ public sealed class PullViewModel : ViewModelBase
         }
     }
 
-    private async Task RunPullAsync()
+    private async Task RunPullAsync(GitCredentials? credentials)
     {
         PullResult result = await _pull.PullAsync(
             _workingDirectory,
@@ -511,6 +559,7 @@ public sealed class PullViewModel : ViewModelBase
                 AutoStash = AutoStash,
                 Prune = Prune,
                 Tags = Tags,
+                Credentials = credentials,
             }).ConfigureAwait(true);
 
         Notice = result.AlreadyUpToDate

@@ -72,6 +72,24 @@ public sealed record GitCommand
     public long? MaximumOutputBytes { get; init; }
 
     /// <summary>
+    /// Bu çağrı için eklenecek ortam değişkenleri (P06-T09).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Yalnızca <b>kimlik doğrulama</b> için var: <c>GIT_ASKPASS</c> ve onun okuyacağı
+    /// gizli değer. Parola argüman olarak geçirilemez — komut satırı aynı makinedeki her
+    /// sürece <c>ps</c> ile görünür. Ortam değişkeni <c>/proc/&lt;pid&gt;/environ</c>
+    /// üzerinden yalnızca <b>aynı kullanıcıya</b> görünür; `gh` ve benzeri araçların da
+    /// kullandığı yol.
+    /// </para>
+    /// <para>
+    /// ⚠️ <see cref="ToDisplayString"/> bunları <b>yazmaz</b>: komut günlüğü ve "komutu
+    /// göster" alanı ekranda duruyor.
+    /// </para>
+    /// </remarks>
+    public IReadOnlyDictionary<string, string>? Environment { get; init; }
+
+    /// <summary>
     /// Kısa yol: çalışma dizini ve argümanlarla komut oluşturur.
     /// </summary>
     public static GitCommand Create(string workingDirectory, params string[] arguments) =>
