@@ -90,6 +90,9 @@ public sealed record PullOptions
     /// değer <c>GIT_ASKPASS</c> üzerinden geçiriliyor, komut satırına <b>yazılmıyor</b>.
     /// </remarks>
     public GitCredentials? Credentials { get; init; }
+
+    /// <summary>Canlı ilerleme bildirimi (P06-T10).</summary>
+    public IProgress<GitProgress>? Progress { get; init; }
 }
 
 /// <summary>Pull sonucu (P06-T07).</summary>
@@ -281,6 +284,7 @@ public sealed class PullWriter : IPullWriter
                     workingDirectory,
                     BuildArguments(options, strategy.Strategy),
                     askPass?.Environment,
+                    options.Progress,
                     cancellationToken)
                 .ConfigureAwait(false);
 

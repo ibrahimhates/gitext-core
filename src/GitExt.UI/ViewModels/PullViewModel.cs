@@ -55,6 +55,9 @@ public sealed class PullViewModel : ViewModelBase
     private string? _warning;
     private string? _recoveryCommand;
     private ResolvedPullStrategy? _configured;
+    private string? _progressText;
+    private double? _progressPercent;
+    private CancellationTokenSource? _cancellation;
 
     public PullViewModel(
         IRemoteReader remotes,
@@ -74,6 +77,7 @@ public sealed class PullViewModel : ViewModelBase
         _authentication = authentication;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
+        CancelCommand = new RelayCommand(Cancel, () => CanCancel);
     }
 
     /// <summary>Yapılandırılmış uzak depolar.</summary>
@@ -246,7 +250,9 @@ public sealed class PullViewModel : ViewModelBase
             if (SetProperty(ref _isBusy, value))
             {
                 OnPropertyChanged(nameof(CanRun));
+                OnPropertyChanged(nameof(CanCancel));
                 RunCommand.NotifyCanExecuteChanged();
+                CancelCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -371,6 +377,57 @@ public sealed class PullViewModel : ViewModelBase
 
     public IAsyncRelayCommand RunCommand { get; }
 
+    /// <summary>Canlı ilerleme metni; işlem yokken boş.</summary>
+    public string? ProgressText
+    {
+        get => _progressText;
+        private set
+        {
+            if (SetProperty(ref _progressText, value))
+            {
+                OnPropertyChanged(nameof(HasProgress));
+            }
+        }
+    }
+
+    public bool HasProgress => !string.IsNullOrEmpty(ProgressText);
+
+    /// <summary>Yüzde; git yüzde vermiyorsa <see langword="null"/> (belirsiz çubuk).</summary>
+    public double? ProgressPercent
+    {
+        get => _progressPercent;
+        private set
+        {
+            if (SetProperty(ref _progressPercent, value))
+            {
+                OnPropertyChanged(nameof(IsProgressIndeterminate));
+            }
+        }
+    }
+
+    public bool IsProgressIndeterminate => ProgressPercent is null;
+
+    /// <summary>
+    /// Çalışan işlemi iptal eder (P06-T10).
+    /// </summary>
+    /// <remarks>
+    /// 🔑 Süreç <b>gerçekten öldürülüyor</b> (<c>Kill(entireProcessTree: true)</c>) —
+    /// yalnızca beklemeyi bırakmak, arkada çalışmaya devam eden bir git bırakırdı.
+    /// Ölçüldü: yarıda kesilen bir fetch geride kilit bırakmıyor ve <c>fsck</c> temiz.
+    /// </remarks>
+    public IRelayCommand CancelCommand { get; }
+
+    public bool CanCancel => IsBusy;
+
+    private void Cancel() => _cancellation?.Cancel();
+
+    private IProgress<GitProgress> CreateProgress() => new Progress<GitProgress>(step =>
+    {
+        ProgressText = step.Describe();
+        ProgressPercent = step.Percent;
+    });
+
+
     /// <summary>Ekranı bir depo için doldurur.</summary>
     public async Task LoadAsync(
         string workingDirectory,
@@ -464,10 +521,20 @@ public sealed class PullViewModel : ViewModelBase
         Notice = null;
         Warning = null;
         RecoveryCommand = null;
+        ProgressText = null;
+        ProgressPercent = null;
+
+        _cancellation?.Dispose();
+        _cancellation = new CancellationTokenSource();
 
         try
         {
             await RunOnceAsync(null).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            // İptal bir hata değil; kullanıcı zaten ne olduğunu biliyor.
+            Notice = "İşlem iptal edildi.";
         }
         catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
         {
@@ -480,6 +547,8 @@ public sealed class PullViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
+            ProgressText = null;
+            ProgressPercent = null;
         }
     }
 
@@ -535,7 +604,9 @@ public sealed class PullViewModel : ViewModelBase
                 PruneTags = PruneTags,
                 Tags = Tags,
                 Credentials = credentials,
-            }).ConfigureAwait(true);
+                Progress = CreateProgress(),
+            },
+            _cancellation?.Token ?? CancellationToken.None).ConfigureAwait(true);
 
         Notice = DescribeChanges(result.Changes);
 
@@ -560,7 +631,9 @@ public sealed class PullViewModel : ViewModelBase
                 Prune = Prune,
                 Tags = Tags,
                 Credentials = credentials,
-            }).ConfigureAwait(true);
+                Progress = CreateProgress(),
+            },
+            _cancellation?.Token ?? CancellationToken.None).ConfigureAwait(true);
 
         Notice = result.AlreadyUpToDate
             ? "Zaten güncel."

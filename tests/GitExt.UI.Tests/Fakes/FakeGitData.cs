@@ -1431,6 +1431,18 @@ public sealed class FakePushWriter : IPushWriter
     /// <summary>Kimlik verilene kadar başarısız ol (P06-T09 tekrar-deneme akışı).</summary>
     public bool FailUntilCredentialsGiven { get; set; }
 
+    /// <summary>Çağrıda bildirilecek ilerleme adımları (P06-T10).</summary>
+    public IReadOnlyList<GitExt.Core.Git.GitProgress> ReportProgress { get; set; } = [];
+
+    /// <summary>Yazıcıya geçirilen ilerleme kanalı — geçirilmediyse null.</summary>
+    public IProgress<GitExt.Core.Git.GitProgress>? SeenProgress { get; private set; }
+
+    /// <summary>Yazıcıya geçirilen iptal jetonu.</summary>
+    public CancellationToken SeenToken { get; private set; }
+
+    /// <summary>Çağrıldığında iptal edilmiş gibi davran (P06-T10).</summary>
+    public bool CancelOnRun { get; set; }
+
     public Task<PushPlan> PlanAsync(
         string workingDirectory,
         string remote,
@@ -1444,6 +1456,18 @@ public sealed class FakePushWriter : IPushWriter
         CancellationToken cancellationToken = default)
     {
         Pushed.Add(options);
+        SeenProgress = options.Progress;
+        SeenToken = cancellationToken;
+
+        if (CancelOnRun)
+        {
+            throw new OperationCanceledException();
+        }
+
+        foreach (GitExt.Core.Git.GitProgress step in ReportProgress)
+        {
+            options.Progress?.Report(step);
+        }
 
         if (Failure is { } error && (!FailUntilCredentialsGiven || options.Credentials is null))
         {

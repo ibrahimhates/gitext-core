@@ -35,6 +35,7 @@ public interface IGitWriter
         string workingDirectory,
         IReadOnlyList<string> arguments,
         IReadOnlyDictionary<string, string>? environment,
+        IProgress<GitProgress>? progress = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -115,14 +116,15 @@ public sealed class GitWriter : IGitWriter
         string workingDirectory,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken = default) =>
-        RunCoreAsync(workingDirectory, arguments, null, null, cancellationToken);
+        RunCoreAsync(workingDirectory, arguments, null, null, null, cancellationToken);
 
     public Task<GitResult> RunWithEnvironmentAsync(
         string workingDirectory,
         IReadOnlyList<string> arguments,
         IReadOnlyDictionary<string, string>? environment,
+        IProgress<GitProgress>? progress = null,
         CancellationToken cancellationToken = default) =>
-        RunCoreAsync(workingDirectory, arguments, null, environment, cancellationToken);
+        RunCoreAsync(workingDirectory, arguments, null, environment, progress, cancellationToken);
 
     public Task<GitResult> RunAsync(
         string workingDirectory,
@@ -138,6 +140,7 @@ public sealed class GitWriter : IGitWriter
             arguments,
             (encoding ?? System.Text.Encoding.UTF8).GetBytes(standardInput),
             null,
+            null,
             cancellationToken);
     }
 
@@ -146,6 +149,7 @@ public sealed class GitWriter : IGitWriter
         IReadOnlyList<string> arguments,
         ReadOnlyMemory<byte>? standardInput,
         IReadOnlyDictionary<string, string>? environment,
+        IProgress<GitProgress>? progress,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
@@ -163,7 +167,7 @@ public sealed class GitWriter : IGitWriter
                 // akış devam edip `rev-parse HEAD`'i ayrıştırmaya çalıştı).
                 // Kilit yeniden denemesi de buna bağlı: hata fırlamazsa retry hiç tetiklenmez.
                 inner => _runner.RunCheckedAsync(
-                    BuildCommand(workingDirectory, arguments, standardInput, environment),
+                    BuildCommand(workingDirectory, arguments, standardInput, environment, progress),
                     inner),
                 _retryOptions,
                 token),
@@ -174,13 +178,15 @@ public sealed class GitWriter : IGitWriter
         string workingDirectory,
         IReadOnlyList<string> arguments,
         ReadOnlyMemory<byte>? standardInput,
-        IReadOnlyDictionary<string, string>? environment) =>
+        IReadOnlyDictionary<string, string>? environment,
+        IProgress<GitProgress>? progress) =>
         new()
         {
             WorkingDirectory = workingDirectory,
             Arguments = arguments,
             StandardInput = standardInput,
             Environment = environment,
+            Progress = progress,
 
             // ⚠️ Yazma komutu: `GIT_OPTIONAL_LOCKS=0` uygulanmaz. Bu bayrak yalnızca
             // "opsiyonel" kilitleri kapatır; yazmanın gerçek kilidi zaten alınmak zorunda.

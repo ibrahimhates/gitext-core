@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -255,7 +256,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
             Task<(byte[] Bytes, bool Truncated)> stdoutTask =
                 ReadAllBytesAsync(process, command.MaximumOutputBytes, cancellationToken);
 
-            Task<string> stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+            Task<string> stderrTask = ReadStandardErrorAsync(process, command.Progress, cancellationToken);
             Task stdinTask = WriteStandardInputAsync(process, command, cancellationToken);
 
             await Task.WhenAll(stdoutTask, stderrTask, stdinTask).ConfigureAwait(false);
@@ -286,6 +287,65 @@ public sealed class GitProcessRunner : IGitProcessRunner
             TryKill(process);
             throw;
         }
+    }
+
+    /// <summary>
+    /// stderr'i okur; ilerleme isteniyorsa <b>akış hâlinde</b>.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>ÖLÇÜLDÜ — ilerleme satırları <c>\r</c> ile ayrılıyor</b> (gerçek klonda 404
+    /// <c>\r</c>'ye karşılık 7 <c>\n</c>). Bu yüzden satır okuyucu değil <b>parça</b>
+    /// okuyucu kullanılıyor: <c>ReadLineAsync</c> ilk <c>\n</c>'e kadar bekler, yani
+    /// ilerleme ancak iş bittikten sonra görünürdü.
+    /// </remarks>
+    private static async Task<string> ReadStandardErrorAsync(
+        Process process,
+        IProgress<GitProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        if (progress is null)
+        {
+            return await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        StringBuilder all = new();
+        string remainder = string.Empty;
+        char[] chunk = System.Buffers.ArrayPool<char>.Shared.Rent(8 * 1024);
+
+        try
+        {
+            int read;
+
+            while ((read = await process.StandardError
+                       .ReadAsync(chunk.AsMemory(), cancellationToken)
+                       .ConfigureAwait(false)) > 0)
+            {
+                string text = new(chunk, 0, read);
+                all.Append(text);
+
+                (IReadOnlyList<string> lines, remainder) =
+                    GitProgressParser.SplitLines(remainder + text);
+
+                foreach (string line in lines)
+                {
+                    if (GitProgressParser.Parse(line) is { } step)
+                    {
+                        progress.Report(step);
+                    }
+                }
+            }
+
+            if (remainder.Length > 0 && GitProgressParser.Parse(remainder) is { } last)
+            {
+                progress.Report(last);
+            }
+        }
+        finally
+        {
+            System.Buffers.ArrayPool<char>.Shared.Return(chunk);
+        }
+
+        return all.ToString();
     }
 
     /// <summary>

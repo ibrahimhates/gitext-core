@@ -124,6 +124,9 @@ public sealed class PushViewModel : ViewModelBase
     private string? _advice;
     private PushPlan? _plan;
     private IReadOnlyList<BranchInfo> _localBranches = [];
+    private string? _progressText;
+    private double? _progressPercent;
+    private CancellationTokenSource? _cancellation;
 
     public PushViewModel(
         IRemoteReader remotes,
@@ -140,6 +143,7 @@ public sealed class PushViewModel : ViewModelBase
         _authentication = authentication;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
+        CancelCommand = new RelayCommand(Cancel, () => CanCancel);
     }
 
     /// <summary>Yapılandırılmış uzak depolar.</summary>
@@ -308,7 +312,9 @@ public sealed class PushViewModel : ViewModelBase
             if (SetProperty(ref _isBusy, value))
             {
                 OnPropertyChanged(nameof(CanRun));
+                OnPropertyChanged(nameof(CanCancel));
                 RunCommand.NotifyCanExecuteChanged();
+                CancelCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -400,6 +406,57 @@ public sealed class PushViewModel : ViewModelBase
         };
 
     public IAsyncRelayCommand RunCommand { get; }
+
+    /// <summary>Canlı ilerleme metni; işlem yokken boş.</summary>
+    public string? ProgressText
+    {
+        get => _progressText;
+        private set
+        {
+            if (SetProperty(ref _progressText, value))
+            {
+                OnPropertyChanged(nameof(HasProgress));
+            }
+        }
+    }
+
+    public bool HasProgress => !string.IsNullOrEmpty(ProgressText);
+
+    /// <summary>Yüzde; git yüzde vermiyorsa <see langword="null"/> (belirsiz çubuk).</summary>
+    public double? ProgressPercent
+    {
+        get => _progressPercent;
+        private set
+        {
+            if (SetProperty(ref _progressPercent, value))
+            {
+                OnPropertyChanged(nameof(IsProgressIndeterminate));
+            }
+        }
+    }
+
+    public bool IsProgressIndeterminate => ProgressPercent is null;
+
+    /// <summary>
+    /// Çalışan işlemi iptal eder (P06-T10).
+    /// </summary>
+    /// <remarks>
+    /// 🔑 Süreç <b>gerçekten öldürülüyor</b> (<c>Kill(entireProcessTree: true)</c>) —
+    /// yalnızca beklemeyi bırakmak, arkada çalışmaya devam eden bir git bırakırdı.
+    /// Ölçüldü: yarıda kesilen bir fetch geride kilit bırakmıyor ve <c>fsck</c> temiz.
+    /// </remarks>
+    public IRelayCommand CancelCommand { get; }
+
+    public bool CanCancel => IsBusy;
+
+    private void Cancel() => _cancellation?.Cancel();
+
+    private IProgress<GitProgress> CreateProgress() => new Progress<GitProgress>(step =>
+    {
+        ProgressText = step.Describe();
+        ProgressPercent = step.Percent;
+    });
+
 
     /// <summary>Ekranı bir depo için doldurur.</summary>
     public async Task LoadAsync(
@@ -620,14 +677,26 @@ public sealed class PushViewModel : ViewModelBase
         Notice = null;
         Warning = null;
         Advice = null;
+        ProgressText = null;
+        ProgressPercent = null;
+
+        _cancellation?.Dispose();
+        _cancellation = new CancellationTokenSource();
 
         try
         {
             PushResult result = await _push
-                .PushAsync(_workingDirectory, BuildOptions())
+                .PushAsync(
+                    _workingDirectory,
+                    BuildOptions() with { Progress = CreateProgress() },
+                    _cancellation.Token)
                 .ConfigureAwait(true);
 
             Report(result);
+        }
+        catch (OperationCanceledException)
+        {
+            Notice = "İşlem iptal edildi.";
         }
         catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
         {
@@ -640,6 +709,8 @@ public sealed class PushViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
+            ProgressText = null;
+            ProgressPercent = null;
         }
     }
 

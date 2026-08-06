@@ -90,6 +90,16 @@ public sealed record GitCommand
     public IReadOnlyDictionary<string, string>? Environment { get; init; }
 
     /// <summary>
+    /// Canlı ilerleme bildirimi (P06-T10).
+    /// </summary>
+    /// <remarks>
+    /// Dolu olduğunda <c>stderr</c> <b>akış hâlinde</b> okunur ve her ilerleme satırı
+    /// buraya gönderilir. Tam metin yine de biriktirilir — mevcut ayrıştırıcılar ona
+    /// bakıyor.
+    /// </remarks>
+    public IProgress<GitProgress>? Progress { get; init; }
+
+    /// <summary>
     /// Kısa yol: çalışma dizini ve argümanlarla komut oluşturur.
     /// </summary>
     public static GitCommand Create(string workingDirectory, params string[] arguments) =>

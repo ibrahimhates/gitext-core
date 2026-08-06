@@ -109,6 +109,9 @@ public sealed record PushOptions
     /// değer <c>GIT_ASKPASS</c> üzerinden geçiriliyor, komut satırına <b>yazılmıyor</b>.
     /// </remarks>
     public GitCredentials? Credentials { get; init; }
+
+    /// <summary>Canlı ilerleme bildirimi (P06-T10).</summary>
+    public IProgress<GitProgress>? Progress { get; init; }
 }
 
 /// <summary>Bir ref'in push sonrası durumu (P06-T08).</summary>
@@ -457,7 +460,11 @@ public sealed class PushWriter : IPushWriter
 
             GitResult result = await _writer
                 .RunWithEnvironmentAsync(
-                    workingDirectory, BuildArguments(options), askPass?.Environment, cancellationToken)
+                    workingDirectory,
+                    BuildArguments(options),
+                    askPass?.Environment,
+                    options.Progress,
+                    cancellationToken)
                 .ConfigureAwait(false);
 
             standardOutput = result.GetStandardOutputText();
