@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=gitext-core
+GenericName=Git GUI
+Comment=Cross-platform Git GUI
+Exec=gitext-core %f
+Icon=gitext-core
+Terminal=false
+Categories=Development;RevisionControl;
+Keywords=git;vcs;version control;
+StartupWMClass=gitext-core

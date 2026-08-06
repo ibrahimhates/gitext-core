@@ -92,8 +92,9 @@ the same codebase and the same release pipeline.
 
 ## Installation
 
-> **None of these are available yet.** No release has been published. This section documents the
-> intended distribution channels; every command will be verified before the first release ships.
+> **Available now: AppImage and the portable tarball** (Linux x86-64, from `v0.2.0`).
+> The other channels below are still planned — they are listed so the intended distribution
+> story is visible, not because they work yet.
 
 Distribution happens primarily through **GitHub Releases**, plus community package repositories.
 
@@ -108,12 +109,19 @@ Distribution happens primarily through **GitHub Releases**, plus community packa
 
 #### AppImage *(the universal option)*
 
-<!-- TODO(readme-04): Replace <version> once the first release is tagged. -->
+```bash
+curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v0.2.0/gitext-core-0.2.0-x86_64.AppImage
+chmod +x gitext-core-0.2.0-x86_64.AppImage
+./gitext-core-0.2.0-x86_64.AppImage
+```
+
+The AppImage is self-contained: no .NET runtime, no Avalonia packages, nothing to install.
+It still needs `git` on your `PATH` — see *Requirements* above.
+
+Check that it works without opening a window:
 
 ```bash
-curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v<version>/gitext-core-<version>-x86_64.AppImage
-chmod +x gitext-core-<version>-x86_64.AppImage
-./gitext-core-<version>-x86_64.AppImage
+./gitext-core-0.2.0-x86_64.AppImage --headless
 ```
 
 Optional desktop integration (menu entry, icon) via [Gear Lever](https://github.com/mijorus/gearlever) or `appimaged`.
@@ -156,9 +164,21 @@ sudo apt install ./gitext-core_<version>_amd64.deb
 #### Portable tarball
 
 ```bash
-tar -xzf gitext-core-<version>-linux-x64.tar.gz
+curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v0.2.0/gitext-core-0.2.0-linux-x64.tar.gz
+tar -xzf gitext-core-0.2.0-linux-x64.tar.gz
 ./gitext-core/gitext-core
 ```
+
+#### Building the packages yourself
+
+```bash
+build/linux/package.sh          # version comes from Directory.Build.props
+build/linux/package.sh 0.3.0    # or pass one explicitly
+```
+
+Both artifacts land in `dist/`. The AppImage step downloads `appimagetool` on first run;
+if that download fails the tarball is still produced and the script says so rather than
+failing silently.
 
 ### Windows
 

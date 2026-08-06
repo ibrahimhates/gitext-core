@@ -80,8 +80,9 @@ tabanından, aynı yayın hattıyla üretiliyor.
 
 ## Kurulum
 
-> **Bunların hiçbiri henüz mevcut değil.** Yayınlanmış sürüm yok. Bu bölüm hedeflenen dağıtım
-> kanallarını belgeliyor; her komut ilk sürüm çıkmadan önce doğrulanacak.
+> **Şu an hazır olanlar: AppImage ve taşınabilir tarball** (Linux x86-64, `v0.2.0`'dan itibaren).
+> Aşağıdaki diğer kanallar hâlâ planlanan durumda — çalıştıkları için değil, hedeflenen
+> dağıtım hikâyesi görünsün diye listeleniyorlar.
 
 Dağıtım öncelikli olarak **GitHub Releases** üzerinden, ayrıca topluluk paket depolarıyla yapılır.
 
@@ -98,9 +99,18 @@ Dağıtım öncelikli olarak **GitHub Releases** üzerinden, ayrıca topluluk pa
 #### AppImage *(evrensel seçenek)*
 
 ```bash
-curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v<sürüm>/gitext-core-<sürüm>-x86_64.AppImage
-chmod +x gitext-core-<sürüm>-x86_64.AppImage
-./gitext-core-<sürüm>-x86_64.AppImage
+curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v0.2.0/gitext-core-0.2.0-x86_64.AppImage
+chmod +x gitext-core-0.2.0-x86_64.AppImage
+./gitext-core-0.2.0-x86_64.AppImage
+```
+
+AppImage kendi kendine yeter: .NET çalışma zamanı, Avalonia paketi, kurulacak hiçbir şey yok.
+Yine de `PATH` üzerinde `git` ister — yukarıdaki *Gereksinimler*'e bakın.
+
+Pencere açmadan çalıştığını doğrulamak için:
+
+```bash
+./gitext-core-0.2.0-x86_64.AppImage --headless
 ```
 
 Masaüstü entegrasyonu (menü girdisi, ikon) için [Gear Lever](https://github.com/mijorus/gearlever)
@@ -135,9 +145,20 @@ sudo apt install ./gitext-core_<sürüm>_amd64.deb
 #### Taşınabilir arşiv
 
 ```bash
-tar -xzf gitext-core-<sürüm>-linux-x64.tar.gz
+curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v0.2.0/gitext-core-0.2.0-linux-x64.tar.gz
+tar -xzf gitext-core-0.2.0-linux-x64.tar.gz
 ./gitext-core/gitext-core
 ```
+
+#### Paketleri kendiniz üretmek
+
+```bash
+build/linux/package.sh          # sürüm Directory.Build.props'tan gelir
+build/linux/package.sh 0.3.0    # ya da elle verin
+```
+
+İkisi de `dist/` altına çıkar. AppImage adımı ilk çalıştırmada `appimagetool` indirir;
+indirme başarısız olursa tarball yine üretilir ve betik bunu **söyler**, sessizce geçmez.
 
 ### Windows
 
