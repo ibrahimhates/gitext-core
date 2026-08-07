@@ -150,6 +150,7 @@ public static class ServiceCollectionExtensions
         // önbelleğe aldığı için singleton; her istekte yenisi üretmek her taslak kaydında
         // fazladan bir `git rev-parse` demek olurdu.
         services.AddSingleton<IGitConfigReader, GitConfigReader>();
+        services.AddSingleton<IGitConfigWriter, GitConfigWriter>();
         services.AddSingleton<ICommitMessageReader, CommitMessageReader>();
         services.AddSingleton<ICommitMessageStore, CommitMessageStore>();
 
@@ -170,7 +171,16 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICommandRegistry, CommandRegistry>();
 
         services.AddSingleton<CommitListViewModel>();
-        services.AddSingleton<MainWindowViewModel>();
+        // Oturum hatırlayıcısı (P08-T16).
+        services.AddSingleton(provider => new SessionTracker(provider.GetRequiredService<ISettingsStore>()));
+
+        services.AddSingleton(provider =>
+        {
+            MainWindowViewModel model = ActivatorUtilities.CreateInstance<MainWindowViewModel>(provider);
+            model.Session = provider.GetRequiredService<SessionTracker>();
+
+            return model;
+        });
 
         services.AddSingleton(provider =>
         {
@@ -179,6 +189,15 @@ public static class ServiceCollectionExtensions
             // Kayıt yapıcıya geçirilemiyor: XAML tasarımcısı parametresiz yapıcı istiyor.
             // Bağlantı yine de burada — composition root'ta — kuruluyor (ADR-0004).
             window.AttachShortcuts(provider.GetRequiredService<ICommandRegistry>());
+
+            // Düzen pencere GÖSTERİLMEDEN önce uygulanıyor (P08-T13): sonrasına kalsaydı
+            // uygulama önce varsayılan boyutlarla açılıp gözle görülür biçimde yeniden
+            // yerleşirdi.
+            window.AttachLayout(provider.GetRequiredService<ISettingsStore>());
+
+            window.AttachSettings(
+                provider.GetRequiredService<IAppearanceService>(),
+                provider.GetRequiredService<IGitConfigWriter>());
 
             return window;
         });

@@ -7,6 +7,7 @@ using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.UI.Storage;
+using GitExt.UI.Settings;
 
 namespace GitExt.UI.ViewModels;
 
@@ -223,8 +224,27 @@ public partial class MainWindowViewModel : ViewModelBase
                 or nameof(CommitListViewModel.SelectedRow))
             {
                 NotifySelectionDependents();
+                RememberSelection();
             }
         };
+    }
+
+    /// <summary>
+    /// Seçili commit'i oturuma yazar (P08-T16).
+    /// </summary>
+    /// <remarks>
+    /// Her seçim değişiminde çağrılıyor ama diske her seferinde yazılmıyor: ayar deposunun
+    /// kaydı gecikmeli. Ok tuşuyla listede gezinen kullanıcı saniyede onlarca seçim
+    /// değiştiriyor ve her birini yazmak sürekli dosya yazmak demekti.
+    /// </remarks>
+    private void RememberSelection()
+    {
+        if (Session is { } session
+            && Commits.Repository is { } repository
+            && Commits.SelectedRow is { } row)
+        {
+            session.RememberSelectedCommit(repository.WorkingDirectory, row.Commit.Id.Value);
+        }
     }
 
     /// <summary>Commit geçmişi listesi.</summary>
@@ -1624,6 +1644,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Subtitle = "Depo açılmadı.";
 
+        // Depo bilerek kapatıldı: sonraki açılışta karşılama ekranı gelmeli, aynı depo
+        // değil. Kullanıcı "kapat" derken bunu kastediyor.
+        Session?.ForgetRepository();
+
         // `Commits.Close()` zaten `Repository = null` yapıyor ve abonelik bildirimleri
         // gönderiyor; buradaki çağrı yalnızca sıranın garantisi için duruyor (ikinci kez
         // bildirmek zararsız, eksik bildirmek değil).
@@ -1671,8 +1695,46 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        // Kapanışta açık olan depo yeniden açılıyor (P08-T16). Çalışma dizininden ÖNCE
+        // deneniyor: masaüstünden başlatıldığında çalışma dizini rastgele bir yer, oysa
+        // son depo kullanıcının bilerek açtığı yer.
+        if (Session?.LastRepository is { Length: > 0 } last
+            && await TryOpenQuietlyAsync(last, cancellationToken).ConfigureAwait(true))
+        {
+            return;
+        }
+
         await TryOpenQuietlyAsync(Directory.GetCurrentDirectory(), cancellationToken)
             .ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Oturum hatırlayıcısı (P08-T16). Verilmezse oturum durumu tutulmaz.
+    /// </summary>
+    /// <remarks>
+    /// Diğer görünüm bağımlılıkları gibi ayarlanabilir bir özellik: ViewModel testlerinin
+    /// çoğu oturum kalıcılığını umursamıyor ve zorunlu bir bağımlılık hepsini değiştirmeyi
+    /// gerektirirdi.
+    /// </remarks>
+    public SessionTracker? Session { get; set; }
+
+    /// <summary>
+    /// Deponun son seçili commit'ini geri yükler (P08-T16).
+    /// </summary>
+    /// <remarks>
+    /// <b>SHA bulunamazsa hiçbir şey yapılmıyor</b> ve varsayılan seçim (en yeni commit)
+    /// korunuyor. Commit gerçekten kaybolmuş olabilir: rebase'lenmiş, sıfırlanmış ya da
+    /// budanmış. Bulunamayan bir SHA için seçimi temizlemek, kullanıcıyı boş bir detay
+    /// paneliyle bırakırdı.
+    /// </remarks>
+    private void RestoreSelectedCommit(string workingDirectory)
+    {
+        if (Session?.SelectedCommit(workingDirectory) is not { Length: > 0 } sha)
+        {
+            return;
+        }
+
+        Commits.TryGoToCommit(sha);
     }
 
     /// <summary>
@@ -1695,6 +1757,9 @@ public partial class MainWindowViewModel : ViewModelBase
             // Kullanıcının verdiği yol değil, git'in çözdüğü kök kaydedilir: alt klasörden
             // açıldığında listede iki farklı girdi oluşmasın.
             await AddRecentAsync(opened.WorkingDirectory, cancellationToken).ConfigureAwait(true);
+
+            Session?.RememberRepository(opened.WorkingDirectory);
+            RestoreSelectedCommit(opened.WorkingDirectory);
         }
 
         await UpdateHeadStateAsync(cancellationToken).ConfigureAwait(true);
@@ -1789,16 +1854,22 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// Depo olmayabilecek bir yolu, başarısızlığı hata olarak göstermeden dener.
     /// </summary>
-    private async Task TryOpenQuietlyAsync(string path, CancellationToken cancellationToken)
+    /// <returns>Depo gerçekten açıldıysa <see langword="true"/>.</returns>
+    private async Task<bool> TryOpenQuietlyAsync(string path, CancellationToken cancellationToken)
     {
         await Commits.OpenAsync(path, cancellationToken).ConfigureAwait(true);
 
         UpdateWatcher();
 
+        bool opened = Commits.Repository is not null;
+
         if (Commits.Repository is { } repository)
         {
             Subtitle = $"{repository.WorkingDirectory} — {Commits.Rows.Count} commit";
             await AddRecentAsync(repository.WorkingDirectory, cancellationToken).ConfigureAwait(true);
+
+            Session?.RememberRepository(repository.WorkingDirectory);
+            RestoreSelectedCommit(repository.WorkingDirectory);
         }
         else
         {
@@ -1811,6 +1882,8 @@ public partial class MainWindowViewModel : ViewModelBase
         await UpdateHeadStateAsync(cancellationToken).ConfigureAwait(true);
 
         OnPropertyChanged(nameof(ShowWelcome));
+
+        return opened;
     }
 
     private async Task LoadRecentAsync(CancellationToken cancellationToken)

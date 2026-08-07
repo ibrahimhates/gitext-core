@@ -4,6 +4,8 @@ using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
+using GitExt.Core.Git;
+using GitExt.UI.Themes;
 using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
 
@@ -30,6 +32,23 @@ public partial class MainWindow : Window
     /// göz gezinmesiyle aynı yolu takip etmesi, sırayı ezberlemeyi gereksiz kılıyor.
     /// </remarks>
     private readonly PanelNavigator _panels = new();
+
+    private IAppearanceService? _appearance;
+
+    private IGitConfigWriter? _configWriter;
+
+    /// <summary>
+    /// Ayarlar ekranının bağımlılıklarını verir (P08-T15).
+    /// </summary>
+    /// <remarks>
+    /// Yapıcıya geçirilemiyor: <see cref="MainWindow"/>'un parametresiz yapıcısı XAML
+    /// tasarımcısının şartı. Bağlantı yine composition root'ta kuruluyor (ADR-0004).
+    /// </remarks>
+    public void AttachSettings(IAppearanceService appearance, IGitConfigWriter configWriter)
+    {
+        _appearance = appearance;
+        _configWriter = configWriter;
+    }
 
     public MainWindow()
     {
@@ -128,12 +147,15 @@ public partial class MainWindow : Window
             .Bind(CommandIds.HistoryReflog, model.ShowReflogCommand)
             .Bind(CommandIds.StashManage, model.ShowStashCommand)
             .Bind(CommandIds.ToolsCommandLog, model.ShowCommandLogCommand)
+            .Bind(CommandIds.ViewToggleLeftPanel, new RelayCommand(ToggleBranchPanel))
+            .Bind(CommandIds.ViewToggleBottomPanel, new RelayCommand(ToggleBottomPanel))
             .Bind(CommandIds.ViewFocusLeftPanel, new RelayCommand(() => _panels.FocusPanel(PanelBranches)))
             .Bind(CommandIds.ViewFocusCommitList, new RelayCommand(() => _panels.FocusPanel(PanelCommits)))
             .Bind(CommandIds.ViewFocusCommitDetails, new RelayCommand(() => _panels.FocusPanel(PanelDetails)))
             .Bind(CommandIds.ViewFocusDiff, new RelayCommand(() => _panels.FocusPanel(PanelDiff)))
             .Bind(CommandIds.ViewNextPanel, new RelayCommand(() => _panels.Move(HasPanelFocus, 1)))
             .Bind(CommandIds.ViewPreviousPanel, new RelayCommand(() => _panels.Move(HasPanelFocus, -1)))
+            .Bind(CommandIds.ToolsSettings, new AsyncRelayCommand(ShowSettingsAsync))
             .Bind(CommandIds.ToolsCommandPalette, new AsyncRelayCommand(ShowCommandPaletteAsync))
             .Bind(CommandIds.HelpShortcuts, new AsyncRelayCommand(ShowShortcutReferenceAsync))
             .Bind(CommandIds.HelpAbout, new RelayCommand(ShowAbout))
@@ -197,6 +219,29 @@ public partial class MainWindow : Window
 
         return CommandPaletteWindow.ShowAsync(
             new CommandPaletteViewModel(registry, shortcuts.Router),
+            this);
+    }
+
+    /// <summary>
+    /// Ayarlar ekranını açar (P08-T15).
+    /// </summary>
+    /// <remarks>
+    /// Açık deponun yolu geçiriliyor: yerel git ayarları ancak bir depo içinde yazılabiliyor
+    /// (ölçüldü — `--local` depo dışında `fatal` veriyor).
+    /// </remarks>
+    private Task ShowSettingsAsync()
+    {
+        if (_registry is not { } registry
+            || _settings is not { } settings
+            || _appearance is not { } appearance)
+        {
+            return Task.CompletedTask;
+        }
+
+        string? workingDirectory = (DataContext as MainWindowViewModel)?.Commits.Repository?.WorkingDirectory;
+
+        return SettingsWindow.ShowAsync(
+            new SettingsViewModel(appearance, settings, registry, _configWriter, workingDirectory),
             this);
     }
 

@@ -7,13 +7,13 @@
         Width="620" Height="420"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
-        SystemDecorations="BorderOnly">
+        WindowDecorations="BorderOnly">
 
     <Grid RowDefinitions="Auto,*" Margin="8">
 
         <TextBox Grid.Row="0"
                  Name="QueryBox"
-                 Watermark="Komut ara…"
+                 PlaceholderText="Komut ara…"
                  Text="{Binding Query}"
                  FontSize="{DynamicResource GitExtLargeFontSize}"
                  Margin="0,0,0,8" />

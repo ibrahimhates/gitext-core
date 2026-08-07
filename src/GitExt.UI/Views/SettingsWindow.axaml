@@ -1,0 +1,156 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        xmlns:views="using:GitExt.UI.Views"
+        x:Class="GitExt.UI.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Ayarlar"
+        Width="720" Height="620"
+        WindowStartupLocation="CenterOwner">
+
+    <TabControl Name="Sections" Margin="6">
+
+        <!-- ============================================================ Görünüm -->
+        <TabItem Header="Görünüm">
+            <StackPanel Margin="12" Spacing="14">
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Tema" FontWeight="SemiBold" />
+                    <ComboBox Name="ThemeBox"
+                              ItemsSource="{Binding Themes}"
+                              SelectedItem="{Binding Theme}"
+                              MinWidth="220" />
+                    <TextBlock Text="Varsayılan açık temadır. &quot;System&quot; işletim sisteminin tercihini izler."
+                               Opacity="0.65"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Renk paleti" FontWeight="SemiBold" />
+                    <ComboBox Name="PaletteBox"
+                              ItemsSource="{Binding Palettes}"
+                              SelectedItem="{Binding Palette}"
+                              MinWidth="220" />
+                    <TextBlock Text="&quot;ColorBlindSafe&quot; kırmızı/yeşil yerine mavi/turuncu ayrımı kullanır; grafik şeritleri de değişir."
+                               Opacity="0.65"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Yazı tipi" FontWeight="SemiBold" />
+
+                    <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" >
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Arayüz boyutu"
+                                   VerticalAlignment="Center" Margin="0,2" />
+                        <NumericUpDown Grid.Row="0" Grid.Column="1"
+                                       Name="UiFontSizeBox"
+                                       Value="{Binding UiFontSize}"
+                                       Minimum="8" Maximum="32" Increment="1"
+                                       MaxWidth="140" HorizontalAlignment="Left" Margin="0,2" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Kod boyutu"
+                                   VerticalAlignment="Center" Margin="0,2" />
+                        <NumericUpDown Grid.Row="1" Grid.Column="1"
+                                       Name="MonoFontSizeBox"
+                                       Value="{Binding MonospaceFontSize}"
+                                       Minimum="8" Maximum="32" Increment="1"
+                                       MaxWidth="140" HorizontalAlignment="Left" Margin="0,2" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Kod yazı tipi"
+                                   VerticalAlignment="Center" Margin="0,2" />
+                        <TextBox Grid.Row="2" Grid.Column="1"
+                                 Name="MonoFontBox"
+                                 Text="{Binding MonospaceFontFamily}"
+                                 PlaceholderText="Boş bırakılırsa platform varsayılanı"
+                                 Margin="0,2" />
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </TabItem>
+
+        <!-- ========================================================== Kısayollar -->
+        <TabItem Header="Kısayollar">
+            <views:ShortcutSettingsView Name="ShortcutSection" DataContext="{Binding Shortcuts}" />
+        </TabItem>
+
+        <!-- ================================================================= Git -->
+        <TabItem Header="Git">
+            <ScrollViewer>
+                <StackPanel Margin="12" Spacing="14">
+
+                    <TextBlock Text="Bu değerler git'in kendi yapılandırma dosyalarına yazılır."
+                               Opacity="0.7"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Global (bütün depolar)" FontWeight="SemiBold" />
+
+                        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="user.name"
+                                       VerticalAlignment="Center" Margin="0,3" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Name="GlobalNameBox"
+                                     Text="{Binding GlobalUserName}" Margin="0,3" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="user.email"
+                                       VerticalAlignment="Center" Margin="0,3" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="GlobalEmailBox"
+                                     Text="{Binding GlobalUserEmail}" Margin="0,3" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="core.editor"
+                                       VerticalAlignment="Center" Margin="0,3" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Name="GlobalEditorBox"
+                                     Text="{Binding GlobalEditor}" Margin="0,3" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!--
+                        🔴 Depo açık değilken yerel alanlar DEVRE DIŞI: git config -local
+                        depo dışında fatal veriyor (ölçüldü, çıkış kodu 128). Etkin
+                        bırakmak, kullanıcıya kaydedilmeyecek bir kutu sunmak olurdu.
+                    -->
+                    <StackPanel Spacing="6" IsEnabled="{Binding CanEditLocal}">
+                        <TextBlock Text="Yerel (yalnızca açık depo)" FontWeight="SemiBold" />
+
+                        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="user.name"
+                                       VerticalAlignment="Center" Margin="0,3" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Name="LocalNameBox"
+                                     Text="{Binding LocalUserName}" Margin="0,3" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="user.email"
+                                       VerticalAlignment="Center" Margin="0,3" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="LocalEmailBox"
+                                     Text="{Binding LocalUserEmail}" Margin="0,3" />
+                        </Grid>
+                    </StackPanel>
+
+                    <TextBlock Text="Bir alanı boşaltmak o ayarı siler (boş değere ayarlamaz)."
+                               Opacity="0.65"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Name="SaveGitButton" Content="Git ayarlarını kaydet"
+                                Command="{Binding SaveGitCommand}" />
+                    </StackPanel>
+
+                    <Border Name="GitErrorBanner"
+                            IsVisible="{Binding GitError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="{DynamicResource GitExtErrorBackgroundBrush}"
+                            BorderBrush="{DynamicResource GitExtErrorBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Padding="8,5">
+                        <TextBlock Text="{Binding GitError}"
+                                   Foreground="{DynamicResource GitExtErrorForegroundBrush}"
+                                   TextWrapping="Wrap"
+                                   FontSize="{DynamicResource GitExtSmallFontSize}" />
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
+</Window>

@@ -272,7 +272,8 @@
             RepoObjectsTree'siyle aynı yer (§ 9).
         -->
         <Grid Grid.Row="2"
-              ColumnDefinitions="Auto,Auto,*"
+              Name="MainSplitGrid"
+              ColumnDefinitions="220,4,*"
               IsVisible="{Binding !ShowWelcome}">
 
             <!--
@@ -280,21 +281,19 @@
                 olmadan klavye gezinmesi işe yaramaz — kullanıcı tuşların nereye gittiğini
                 göremez.
             -->
-            <Border Grid.Column="0" Classes="panel">
-                <views:RefTreeView Name="BranchPanel"
-                                   Width="220"
-                                   MinWidth="120"
-                                   DataContext="{Binding RefTree}" />
+            <Border Grid.Column="0" Name="BranchPanelHost" Classes="panel" MinWidth="120">
+                <views:RefTreeView Name="BranchPanel" DataContext="{Binding RefTree}" />
             </Border>
 
             <GridSplitter Name="BranchPanelSplitter"
                           Grid.Column="1"
                           Width="4"
                           ResizeDirection="Columns"
-                          Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+                          Background="{DynamicResource GitExtSeparatorBrush}" />
 
         <Grid Grid.Column="2"
-              RowDefinitions="*,Auto,Auto">
+              Name="RightSplitGrid"
+              RowDefinitions="*,4,220">
 
             <Border Grid.Row="0" Classes="panel">
                 <views:CommitListView Name="CommitList" DataContext="{Binding Commits}" />
@@ -316,9 +315,10 @@
             </Border>
 
             <GridSplitter Grid.Row="1"
+                          Name="BottomPanelSplitter"
                           Height="4"
                           ResizeDirection="Rows"
-                          Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                          Background="{DynamicResource GitExtSeparatorBrush}"
                           IsVisible="{Binding Commits.Details.HasCommit}" />
 
             <!--
@@ -327,7 +327,7 @@
                 aynısı P04-T16'nın ayrı penceresinde de kullanılacak.
             -->
             <TabControl Grid.Row="2"
-                        Height="220"
+                        Name="BottomPanel"
                         MinHeight="80"
                         Padding="0"
                         IsVisible="{Binding Commits.Details.HasCommit}">

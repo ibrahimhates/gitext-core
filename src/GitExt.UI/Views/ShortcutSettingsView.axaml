@@ -8,7 +8,7 @@
 
         <TextBox Grid.Row="0"
                  Name="FilterBox"
-                 Watermark="Komut veya kısayol ara…"
+                 PlaceholderText="Komut veya kısayol ara…"
                  Text="{Binding Filter}"
                  Margin="0,0,0,8" />
 
