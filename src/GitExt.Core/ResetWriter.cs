@@ -170,17 +170,17 @@ public sealed class ResetWriter : IResetWriter
         // okunuyor: insan biçimli çıktı ayrıştırmak ADR-0002'ye aykırı.
         GitResult dropped = await _runner.RunAsync(
             GitCommand.Create(
-                workingDirectory, "log", "--format=%H%x00%s%x00%x00", $"{target}..HEAD"),
+                workingDirectory, "log", "--format=%x1e%H%x00%s", $"{target}..HEAD"),
             cancellationToken).ConfigureAwait(false);
 
         List<string> commits = [];
 
         if (dropped.IsSuccess)
         {
-            foreach (string record in dropped.GetStandardOutputText().Split("\0\0"))
+            foreach (string record in dropped.GetStandardOutputText()
+                         .Split('\u001e', StringSplitOptions.RemoveEmptyEntries))
             {
-                string trimmed = record.TrimStart('\n', '\r');
-                string[] fields = trimmed.Split('\0');
+                string[] fields = record.Trim('\n', '\r').Split('\0');
 
                 if (fields.Length >= 2 && fields[0].Length > 0)
                 {

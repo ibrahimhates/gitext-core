@@ -26,8 +26,8 @@ public class ReflogReaderTests
     public void Alanlar_NUL_ile_ayriliyor()
     {
         string output =
-            "abc123\0HEAD@{0}\0reset: moving to HEAD~1\0konu\01786083979\0Yazar\0\0\n"
-            + "def456\0HEAD@{1}\0commit: c3\0c3\01786083978\0Yazar\0\0\n";
+            "\u001eabc123\0HEAD@{0}\0reset: moving to HEAD~1\0konu\01786083979\0Yazar\n"
+            + "\u001edef456\0HEAD@{1}\0commit: c3\0c3\01786083978\0Yazar\n";
 
         IReadOnlyList<ReflogEntry> entries = ReflogReader.Parse(output);
 
@@ -45,7 +45,7 @@ public class ReflogReaderTests
     {
         // 🔴 ÖLÇÜLDÜ: `%s` commit konusundaki sekmeyi olduğu gibi basıyor. TAB ayırıcı
         // kullanılsaydı bu satır fazladan alan üretir ve yazar adı yanlış okunurdu.
-        string output = "abc123\0HEAD@{0}\0commit: x\0konu\tsekmeli\01786083979\0Yazar\0\0\n";
+        string output = "\u001eabc123\0HEAD@{0}\0commit: x\0konu\tsekmeli\01786083979\0Yazar\n";
 
         IReadOnlyList<ReflogEntry> entries = ReflogReader.Parse(output);
 
@@ -55,9 +55,28 @@ public class ReflogReaderTests
     }
 
     [Fact]
+    public void BOS_ALANLI_kayit_IKIYE_BOLUNMUYOR()
+    {
+        // 🔴 ÖLÇÜLDÜ: kayıt ayracı NUL ÇİFTİ iken, boş bir alan (boş commit mesajı) iki
+        // NUL'u yan yana getiriyor ve ayraçtan ayırt edilemiyordu — kayıt ortasından
+        // ikiye bölünüyordu. Gerçek çıktıda görüldü: `<sha>\0\0T\0\0`.
+        // Ayraç artık \x1e (ASCII Record Separator).
+        string output =
+            "\u001eabc123\0HEAD@{0}\0commit: x\0\01786083979\0Yazar\n"
+            + "\u001edef456\0HEAD@{1}\0commit: y\0konu\01786083978\0Yazar\n";
+
+        IReadOnlyList<ReflogEntry> entries = ReflogReader.Parse(output);
+
+        entries.Count.ShouldBe(2, "boş konu kaydı bölmemeli");
+        entries[0].Subject.ShouldBeEmpty();
+        entries[0].AuthorName.ShouldBe("Yazar");
+        entries[1].ObjectId.ShouldBe("def456");
+    }
+
+    [Fact]
     public void Eksik_alanli_kayit_UYDURULMUYOR()
     {
-        string output = "abc123\0HEAD@{0}\0\0\n" + "def456\0HEAD@{1}\0commit: c\0k\01\0Y\0\0\n";
+        string output = "\u001eabc123\0HEAD@{0}\n" + "\u001edef456\0HEAD@{1}\0commit: c\0k\01\0Y\n";
 
         IReadOnlyList<ReflogEntry> entries = ReflogReader.Parse(output);
 

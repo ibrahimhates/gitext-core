@@ -232,7 +232,7 @@ public sealed class RebaseWriter : IRebaseWriter
 
         GitResult result = await _runner.RunAsync(
             GitCommand.Create(
-                workingDirectory, "log", "--reverse", "--format=%H%x00%s%x00%x00", range),
+                workingDirectory, "log", "--reverse", "--format=%x1e%H%x00%s", range),
             cancellationToken).ConfigureAwait(false);
 
         if (!result.IsSuccess)
@@ -242,9 +242,10 @@ public sealed class RebaseWriter : IRebaseWriter
 
         List<RebaseStep> steps = [];
 
-        foreach (string record in result.GetStandardOutputText().Split("\0\0"))
+        foreach (string record in result.GetStandardOutputText()
+                     .Split('\u001e', StringSplitOptions.RemoveEmptyEntries))
         {
-            string[] fields = record.TrimStart('\n', '\r').Split('\0');
+            string[] fields = record.Trim('\n', '\r').Split('\0');
 
             if (fields.Length >= 2 && fields[0].Length > 0)
             {

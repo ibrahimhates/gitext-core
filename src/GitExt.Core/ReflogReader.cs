@@ -122,10 +122,17 @@ public sealed class ReflogReader : IReflogReader
     /// <summary>Alan ayırıcı — NUL.</summary>
     private const char FieldSeparator = '\0';
 
-    /// <summary>Kayıt ayırıcı — iki NUL.</summary>
-    private const string RecordSeparator = "\0\0";
+    /// <summary>Kayıt ayırıcı — ASCII Record Separator (0x1e).</summary>
+    /// <remarks>
+    /// 🔴 <b>ÖLÇÜLDÜ — NUL ÇİFTİ kayıt ayracı olarak GÜVENLİ DEĞİL.</b> Bir alan boş
+    /// olduğunda (boş commit mesajı, boş etiketleyici) iki NUL yan yana geliyor ve ayraçtan
+    /// ayırt edilemiyor; kayıt ortadan ikiye bölünüyordu. Ayraç <c>%x1e</c> (ASCII Record
+    /// Separator) — git bunu <c>log</c> tabanlı komutlarda destekliyor ve alanların
+    /// içinde bulunamaz.
+    /// </remarks>
+    private const char RecordSeparator = '\u001e';
 
-    private const string Format = "%H%x00%gD%x00%gs%x00%s%x00%ct%x00%an%x00%x00";
+    private const string Format = "%x1e%H%x00%gD%x00%gs%x00%s%x00%ct%x00%an";
 
     private readonly IGitProcessRunner _runner;
 
@@ -184,11 +191,11 @@ public sealed class ReflogReader : IReflogReader
     {
         List<ReflogEntry> entries = [];
 
-        foreach (string record in output.Split(RecordSeparator, StringSplitOptions.None))
+        foreach (string record in output.Split(RecordSeparator, StringSplitOptions.RemoveEmptyEntries))
         {
-            // Kayıtlar arasında satır sonu kalıyor (format'ın sonundaki `%x00%x00` git'in
-            // eklediği `\n`den önce geliyor); baştaki boşluk temizleniyor.
-            string trimmed = record.TrimStart('\n', '\r');
+            // git her kaydın sonuna bir satır sonu ekliyor; kırpılmazsa SON alana
+            // (yazar adına) yapışır.
+            string trimmed = record.Trim('\n', '\r');
 
             if (trimmed.Length == 0)
             {
