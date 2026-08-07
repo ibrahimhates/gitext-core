@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitExt.UI.ViewModels"
+             x:Class="GitExt.UI.Views.ShortcutSettingsView"
+             x:DataType="vm:ShortcutSettingsViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="10">
+
+        <TextBox Grid.Row="0"
+                 Name="FilterBox"
+                 Watermark="Komut veya kısayol ara…"
+                 Text="{Binding Filter}"
+                 Margin="0,0,0,8" />
+
+        <!--
+            Çakışma uyarısı listenin ÜSTÜNDE: P08-T00/M10'da ölçüldü, Avalonia çakışan
+            ikinci kaydı sessizce hiç çalıştırmıyor. Kullanıcı "kısayolum çalışmıyor" der
+            ve sebebini göremez — o yüzden uyarı göz hizasında.
+        -->
+        <ItemsControl Grid.Row="1"
+                      Name="ConflictList"
+                      ItemsSource="{Binding ConflictMessages}"
+                      IsVisible="{Binding HasConflicts}"
+                      Margin="0,0,0,8">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                    <Border Background="{DynamicResource GitExtWarningBackgroundBrush}"
+                            BorderBrush="{DynamicResource GitExtWarningBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Padding="8,5"
+                            Margin="0,0,0,4">
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" />
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Grid.Row="2"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource GitExtBorderBrush}">
+            <ListBox Name="ShortcutList"
+                     ItemsSource="{Binding Rows}"
+                     SelectedItem="{Binding Selected}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ShortcutRow">
+                        <Grid ColumnDefinitions="*,140,120" Height="24">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Title}"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding GestureText}"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{DynamicResource GitExtMonospaceFont}"
+                                       FontWeight="{Binding IsCustomized,
+                                                    Converter={x:Static vm:BoldWhenTrue.Instance}}" />
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding ContextText}"
+                                       VerticalAlignment="Center"
+                                       Opacity="0.65"
+                                       FontSize="11" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+            <Button Name="CaptureButton"
+                    Content="Kısayol ata…"
+                    Command="{Binding BeginCaptureCommand}" />
+            <Button Name="ClearButton"
+                    Content="Kaldır"
+                    Command="{Binding ClearCommand}" />
+            <Button Name="ResetButton"
+                    Content="Varsayılana dön"
+                    Command="{Binding ResetCommand}" />
+            <Button Name="ResetAllButton"
+                    Content="Tümünü varsayılana döndür"
+                    Command="{Binding ResetAllCommand}" />
+        </StackPanel>
+
+        <!--
+            Yakalama katmanı listenin ÜSTÜNÜ kaplıyor: yakalama sırasında listeye basılan
+            tuş listede gezinmemeli, kısayol olarak okunmalı.
+        -->
+        <Border Grid.Row="2"
+                Name="CaptureOverlay"
+                IsVisible="{Binding IsCapturing}"
+                Background="{DynamicResource GitExtOverlayBrush}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                <TextBlock Name="CapturePrompt"
+                           Text="Yeni kısayola basın… (vazgeçmek için Escape)"
+                           HorizontalAlignment="Center"
+                           FontSize="14" />
+                <TextBlock Name="CaptureErrorText"
+                           Text="{Binding CaptureError}"
+                           IsVisible="{Binding CaptureError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Foreground="{DynamicResource GitExtErrorBrush}"
+                           HorizontalAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="420"
+                           FontSize="12" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

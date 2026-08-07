@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Headless;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using GitExt.UI.Tests;
 
@@ -29,5 +31,16 @@ public sealed class TestApp : Application
     public override void Initialize()
     {
         Styles.Add(new FluentTheme());
+
+        // Uygulamanın gerçek teması (P08-T07). Eklenmezse testler paletsiz çalışır ve
+        // `DynamicResource` bulamadığında SESSİZCE değer atamaz — yani tema kaynaklarının
+        // yanlış olduğu bir kod da yeşil test verirdi.
+        Styles.Add(new StyleInclude(new Uri("avares://GitExt.UI/Themes/GitExtTheme.axaml"))
+        {
+            Source = new Uri("avares://GitExt.UI/Themes/GitExtTheme.axaml"),
+        });
+
+        // Varsayılan açık tema — uygulamayla aynı (kullanıcı kararı, 2026-07-29).
+        RequestedThemeVariant = ThemeVariant.Light;
     }
 }

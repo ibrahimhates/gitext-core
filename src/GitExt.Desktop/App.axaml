@@ -6,14 +6,17 @@
     <!--
         Varsayılan AÇIK tema — GitExtensions'ın görsel kimliği bu ve hedef kitle oradan geliyor.
         Sistem koyu temada olsa bile varsayılan açıktır; "sistemi takip et" bilinçli bir
-        tercih olacak, varsayılan değil.
+        tercihtir, varsayılan değil.
 
-        GEÇİCİ: burada sabitlenmiş durumda. Üç durumlu ayar (Açık / Koyu / Sistemi takip et)
-        ve ayar dosyasında saklanması Faz 08'de gelecek — bkz. plans/08 → P08-T07, P08-T08.
+        Buradaki değer yalnızca **ilk kare** için: `ThemeService.ApplyStored()` açılışta
+        kullanıcının kaydettiği tercihi uyguluyor (P08-T08). Öncesinde bir varsayılan
+        yazılmasaydı, ayar okunana kadar geçen sürede uygulama sistem temasıyla açılıp
+        gözle görülür biçimde zıplardı.
     -->
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://GitExt.UI/Themes/GitExtTheme.axaml" />
     </Application.Styles>
 
 </Application>

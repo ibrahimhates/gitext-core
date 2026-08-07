@@ -2,6 +2,7 @@ using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.UI.Commands;
 using GitExt.UI.Settings;
+using GitExt.UI.Themes;
 using GitExt.UI.Storage;
 using GitExt.UI.ViewModels;
 using GitExt.UI.Views;
@@ -157,6 +158,12 @@ public static class ServiceCollectionExtensions
         // bir izleme tutardı (ölçüm: 11.512 dizinlik ağaçta 11.512 izleme). Örnek sınırı
         // bu makinede 1024 ve ölçümde 949. izleyicide `IOException` alındı.
         services.AddSingleton<IRepositoryWatcher>(_ => new RepositoryWatcher());
+
+        // Görünüm servisi (P08-T07…T10): tema, palet ve tipografi tek yerden uygulanıyor.
+        // `Application.Current` gerekiyor çünkü kaynak sözlüğü uygulama seviyesinde.
+        services.AddSingleton<IAppearanceService>(provider => new AppearanceService(
+            Avalonia.Application.Current!,
+            provider.GetRequiredService<ISettingsStore>()));
 
         // Komut kaydı (P08-T01). Kısayolların TEK kaynağı; ayar deposuna bağımlı çünkü
         // kullanıcının yeniden atamaları oradan geliyor.

@@ -28,7 +28,7 @@
                      IsReadOnly="True"
                      AcceptsReturn="True"
                      MaxHeight="120"
-                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontFamily="{DynamicResource GitExtMonospaceFont}"
                      FontSize="11" />
             <TextBlock Name="RecoveryNote"
                        FontSize="11"

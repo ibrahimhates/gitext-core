@@ -136,10 +136,10 @@
                                Classes.problem="{Binding SignatureIsProblem}">
                         <TextBlock.Styles>
                             <Style Selector="TextBlock.trusted">
-                                <Setter Property="Foreground" Value="#1E7A33" />
+                                <Setter Property="Foreground" Value="{DynamicResource GitExtSuccessBrush}" />
                             </Style>
                             <Style Selector="TextBlock.problem">
-                                <Setter Property="Foreground" Value="#B3261E" />
+                                <Setter Property="Foreground" Value="{DynamicResource GitExtErrorBrush}" />
                             </Style>
                         </TextBlock.Styles>
                     </TextBlock>

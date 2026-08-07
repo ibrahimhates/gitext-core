@@ -56,7 +56,7 @@
                                        VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1"
                                        Text="{Binding CommandLine}"
-                                       FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                       FontFamily="{DynamicResource GitExtMonospaceFont}"
                                        FontSize="11"
                                        TextTrimming="CharacterEllipsis"
                                        VerticalAlignment="Center" />
@@ -103,7 +103,7 @@
                  IsReadOnly="True"
                  AcceptsReturn="True"
                  TextWrapping="NoWrap"
-                 FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                 FontFamily="{DynamicResource GitExtMonospaceFont}"
                  FontSize="11"
                  Text="{Binding SelectedDetails}" />
     </Grid>

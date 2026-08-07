@@ -48,7 +48,7 @@
                            Classes.deleted="{Binding IsDeleted}"
                            Classes.conflicted="{Binding IsConflicted}"
                            Width="16"
-                           FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                           FontFamily="{DynamicResource GitExtMonospaceFont}"
                            FontSize="12"
                            VerticalAlignment="Center" />
 
@@ -67,18 +67,18 @@
             <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
         </Style>
         <Style Selector="TextBlock.status.added">
-            <Setter Property="Foreground" Value="#1A7F37" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtSuccessBrush}" />
         </Style>
         <Style Selector="TextBlock.status.deleted">
-            <Setter Property="Foreground" Value="#CF222E" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtDangerBrush}" />
         </Style>
         <Style Selector="TextBlock.status.conflicted">
-            <Setter Property="Foreground" Value="#BC4C00" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtAttentionBrush}" />
         </Style>
 
         <!-- Konu sayacı sınırı aşınca uyarı rengine geçiyor; commit'i ENGELLEMİYOR. -->
         <Style Selector="TextBlock.over">
-            <Setter Property="Foreground" Value="#BC4C00" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtAttentionBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
     </UserControl.Styles>
@@ -392,9 +392,9 @@
                         <Panel>
                             <controls:ColumnGuides Name="MessageGuides"
                                                    Columns="{Binding Message.GuideColumnsForBinding}"
-                                                   Stroke="#D0D7DE"
+                                                   Stroke="{DynamicResource GitExtBorderBrush}"
                                                    TextOffset="5"
-                                                   TextElement.FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                                   TextElement.FontFamily="{DynamicResource GitExtMonospaceFont}"
                                                    TextElement.FontSize="12" />
 
                             <TextBox Name="MessageBox"
@@ -405,7 +405,7 @@
                                      Background="Transparent"
                                      BorderThickness="0"
                                      Padding="4,0"
-                                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                     FontFamily="{DynamicResource GitExtMonospaceFont}"
                                      FontSize="12"
                                      VerticalContentAlignment="Top"
                                      PlaceholderText="Commit mesajı (Ctrl+Enter ile commit)" />

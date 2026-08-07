@@ -1,0 +1,151 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ===================================================================================
+        GitExt renk paleti (P08-T07)
+        ===================================================================================
+
+        HİÇBİR renk XAML görünümlerinin içine gömülmez. Faz 08'e girilirken 47 gömülü renk
+        vardı ve hepsi açık zemine göre seçilmişti; koyu temada okunmayacak olan tam da
+        onlardı. Tek kaynak burasıdır.
+
+        ⚠️ Kullanım kuralı: görünümlerde **DynamicResource** kullanılır, StaticResource DEĞİL.
+        P08-T00/M08b'de ölçüldü: `ThemeDictionaries` yalnızca dinamik kaynakla canlı
+        güncelleniyor; statik bağlama ilk temada donar ve tema geçişi ekranın bir kısmında
+        yarım kalır — yarım bir tema, temasızlıktan kötüdür (P08-T08).
+
+        Adlandırma: `GitExt<Amaç><Tür>Brush`. Amaç ANLAMDIR, renk değil: "Error" denir,
+        "Red" denmez — koyu temada aynı anlam farklı bir renkle karşılanıyor.
+
+        Açık tema değerleri GitHub'ın açık paletine yakın (mevcut kod zaten oradan gelmiş:
+        #E6FFEC / #FFEBE9 GitHub'ın diff renkleri). Koyu tema karşılıkları GitHub koyu
+        paletinden türetildi.
+    -->
+
+    <ResourceDictionary.ThemeDictionaries>
+
+        <!-- =========================================================== AÇIK (varsayılan) -->
+        <ResourceDictionary x:Key="Light">
+
+            <!-- Yapısal -->
+            <SolidColorBrush x:Key="GitExtBorderBrush" Color="#D0D7DE" />
+            <SolidColorBrush x:Key="GitExtSeparatorBrush" Color="#40808080" />
+            <SolidColorBrush x:Key="GitExtSubtleBackgroundBrush" Color="#20808080" />
+            <SolidColorBrush x:Key="GitExtMutedBrush" Color="#6B6B6B" />
+            <SolidColorBrush x:Key="GitExtAccentBrush" Color="#0969DA" />
+            <SolidColorBrush x:Key="GitExtOverlayBrush" Color="#E6FFFFFF" />
+
+            <!-- Durum renkleri -->
+            <SolidColorBrush x:Key="GitExtSuccessBrush" Color="#1A7F37" />
+            <SolidColorBrush x:Key="GitExtDangerBrush" Color="#CF222E" />
+            <SolidColorBrush x:Key="GitExtAttentionBrush" Color="#BC4C00" />
+            <SolidColorBrush x:Key="GitExtRenameBrush" Color="#5B4BB5" />
+
+            <!-- Hata şeridi -->
+            <SolidColorBrush x:Key="GitExtErrorBrush" Color="#B3261E" />
+            <SolidColorBrush x:Key="GitExtErrorBackgroundBrush" Color="#FBE0DE" />
+            <SolidColorBrush x:Key="GitExtErrorBorderBrush" Color="#E39D98" />
+            <SolidColorBrush x:Key="GitExtErrorForegroundBrush" Color="#6E1F1A" />
+
+            <!-- Uyarı şeridi -->
+            <SolidColorBrush x:Key="GitExtWarningBrush" Color="#8A5A00" />
+            <SolidColorBrush x:Key="GitExtWarningBackgroundBrush" Color="#FFF6D8" />
+            <SolidColorBrush x:Key="GitExtWarningBorderBrush" Color="#E0C169" />
+
+            <!-- Diff -->
+            <SolidColorBrush x:Key="GitExtDiffAddedBackgroundBrush" Color="#E6FFEC" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedBackgroundBrush" Color="#FFEBE9" />
+            <SolidColorBrush x:Key="GitExtDiffHunkHeaderBackgroundBrush" Color="#EEF2F7" />
+            <SolidColorBrush x:Key="GitExtDiffGutterBackgroundBrush" Color="#E9E9EF" />
+            <SolidColorBrush x:Key="GitExtDiffSelectionBorderBrush" Color="#0969DA" />
+            <SolidColorBrush x:Key="GitExtDiffAddedForegroundBrush" Color="#1A7F37" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedForegroundBrush" Color="#CF222E" />
+            <SolidColorBrush x:Key="GitExtDiffAddedWordBrush" Color="#ABF2BC" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedWordBrush" Color="#FFC9C6" />
+
+            <!-- Ref rozetleri -->
+            <SolidColorBrush x:Key="GitExtBadgeBackgroundBrush" Color="#EEEEEE" />
+            <SolidColorBrush x:Key="GitExtBadgeBorderBrush" Color="#CCCCCC" />
+            <SolidColorBrush x:Key="GitExtBadgeForegroundBrush" Color="#333333" />
+
+            <SolidColorBrush x:Key="GitExtBadgeLocalBackgroundBrush" Color="#DCEBF9" />
+            <SolidColorBrush x:Key="GitExtBadgeLocalBorderBrush" Color="#8FB8DC" />
+            <SolidColorBrush x:Key="GitExtBadgeLocalForegroundBrush" Color="#12395C" />
+
+            <SolidColorBrush x:Key="GitExtBadgeRemoteBackgroundBrush" Color="#EDE7F6" />
+            <SolidColorBrush x:Key="GitExtBadgeRemoteBorderBrush" Color="#B9A7DA" />
+            <SolidColorBrush x:Key="GitExtBadgeRemoteForegroundBrush" Color="#3B2A63" />
+
+            <SolidColorBrush x:Key="GitExtBadgeTagBackgroundBrush" Color="#FCF0D0" />
+            <SolidColorBrush x:Key="GitExtBadgeTagBorderBrush" Color="#E0C169" />
+            <SolidColorBrush x:Key="GitExtBadgeTagForegroundBrush" Color="#5C4409" />
+
+            <SolidColorBrush x:Key="GitExtBadgeHeadBackgroundBrush" Color="#FBE0DE" />
+            <SolidColorBrush x:Key="GitExtBadgeHeadBorderBrush" Color="#E39D98" />
+            <SolidColorBrush x:Key="GitExtBadgeHeadForegroundBrush" Color="#6E1F1A" />
+
+            <SolidColorBrush x:Key="GitExtStashBadgeBackgroundBrush" Color="#7D3C98" />
+            <SolidColorBrush x:Key="GitExtStashBadgeForegroundBrush" Color="#FFFFFF" />
+        </ResourceDictionary>
+
+        <!-- ======================================================================= KOYU -->
+        <ResourceDictionary x:Key="Dark">
+
+            <SolidColorBrush x:Key="GitExtBorderBrush" Color="#3D444D" />
+            <SolidColorBrush x:Key="GitExtSeparatorBrush" Color="#40A0A0A0" />
+            <SolidColorBrush x:Key="GitExtSubtleBackgroundBrush" Color="#20A0A0A0" />
+            <SolidColorBrush x:Key="GitExtMutedBrush" Color="#9198A1" />
+            <SolidColorBrush x:Key="GitExtAccentBrush" Color="#4493F8" />
+            <SolidColorBrush x:Key="GitExtOverlayBrush" Color="#E6161B22" />
+
+            <SolidColorBrush x:Key="GitExtSuccessBrush" Color="#3FB950" />
+            <SolidColorBrush x:Key="GitExtDangerBrush" Color="#F85149" />
+            <SolidColorBrush x:Key="GitExtAttentionBrush" Color="#D29922" />
+            <SolidColorBrush x:Key="GitExtRenameBrush" Color="#AB7DF8" />
+
+            <SolidColorBrush x:Key="GitExtErrorBrush" Color="#FF7B72" />
+            <SolidColorBrush x:Key="GitExtErrorBackgroundBrush" Color="#2D1416" />
+            <SolidColorBrush x:Key="GitExtErrorBorderBrush" Color="#6E2B28" />
+            <SolidColorBrush x:Key="GitExtErrorForegroundBrush" Color="#FFB4AE" />
+
+            <SolidColorBrush x:Key="GitExtWarningBrush" Color="#E3B341" />
+            <SolidColorBrush x:Key="GitExtWarningBackgroundBrush" Color="#2B2413" />
+            <SolidColorBrush x:Key="GitExtWarningBorderBrush" Color="#6B5A20" />
+
+            <SolidColorBrush x:Key="GitExtDiffAddedBackgroundBrush" Color="#12261E" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedBackgroundBrush" Color="#25171C" />
+            <SolidColorBrush x:Key="GitExtDiffHunkHeaderBackgroundBrush" Color="#1C2128" />
+            <SolidColorBrush x:Key="GitExtDiffGutterBackgroundBrush" Color="#22272E" />
+            <SolidColorBrush x:Key="GitExtDiffSelectionBorderBrush" Color="#4493F8" />
+            <SolidColorBrush x:Key="GitExtDiffAddedForegroundBrush" Color="#3FB950" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedForegroundBrush" Color="#F85149" />
+            <SolidColorBrush x:Key="GitExtDiffAddedWordBrush" Color="#1F4B2E" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedWordBrush" Color="#5A2027" />
+
+            <SolidColorBrush x:Key="GitExtBadgeBackgroundBrush" Color="#2A2F37" />
+            <SolidColorBrush x:Key="GitExtBadgeBorderBrush" Color="#444C56" />
+            <SolidColorBrush x:Key="GitExtBadgeForegroundBrush" Color="#D6DBE1" />
+
+            <SolidColorBrush x:Key="GitExtBadgeLocalBackgroundBrush" Color="#132C4A" />
+            <SolidColorBrush x:Key="GitExtBadgeLocalBorderBrush" Color="#2A5A8C" />
+            <SolidColorBrush x:Key="GitExtBadgeLocalForegroundBrush" Color="#A8CBF0" />
+
+            <SolidColorBrush x:Key="GitExtBadgeRemoteBackgroundBrush" Color="#2A2140" />
+            <SolidColorBrush x:Key="GitExtBadgeRemoteBorderBrush" Color="#584A7A" />
+            <SolidColorBrush x:Key="GitExtBadgeRemoteForegroundBrush" Color="#C7B7EC" />
+
+            <SolidColorBrush x:Key="GitExtBadgeTagBackgroundBrush" Color="#38300F" />
+            <SolidColorBrush x:Key="GitExtBadgeTagBorderBrush" Color="#75651F" />
+            <SolidColorBrush x:Key="GitExtBadgeTagForegroundBrush" Color="#E9D48A" />
+
+            <SolidColorBrush x:Key="GitExtBadgeHeadBackgroundBrush" Color="#3A1B1D" />
+            <SolidColorBrush x:Key="GitExtBadgeHeadBorderBrush" Color="#7A3733" />
+            <SolidColorBrush x:Key="GitExtBadgeHeadForegroundBrush" Color="#FFB4AE" />
+
+            <SolidColorBrush x:Key="GitExtStashBadgeBackgroundBrush" Color="#6B3486" />
+            <SolidColorBrush x:Key="GitExtStashBadgeForegroundBrush" Color="#FFFFFF" />
+        </ResourceDictionary>
+
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

@@ -40,19 +40,19 @@
 
       <TextBox Grid.Column="2" Name="DiffBox"
                Text="{Binding Diff}" IsReadOnly="True" AcceptsReturn="True"
-               FontFamily="monospace" TextWrapping="NoWrap" />
+               FontFamily="{DynamicResource GitExtMonospaceFont}" TextWrapping="NoWrap" />
     </Grid>
 
     <StackPanel Grid.Row="2" Margin="0,10,0,0" Spacing="6">
       <TextBlock Name="NoticeLabel" Text="{Binding Notice}" TextWrapping="Wrap"
                  IsVisible="{Binding Notice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-      <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="#c0392b" TextWrapping="Wrap"
+      <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="{DynamicResource GitExtErrorBrush}" TextWrapping="Wrap"
                  IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       <StackPanel Orientation="Horizontal" Spacing="6">
         <Button Name="ApplyButton" Content="Apply" Command="{Binding ApplyCommand}" />
         <Button Name="PopButton" Content="Pop" Command="{Binding PopCommand}" />
         <Button Name="DropButton" Content="Drop" Command="{Binding DropCommand}" />
-        <Border Width="1" Background="#40808080" Margin="4,2" />
+        <Border Width="1" Background="{DynamicResource GitExtSeparatorBrush}" Margin="4,2" />
         <TextBox Name="BranchNameBox" Width="160" PlaceholderText="New branch name" />
         <Button Name="BranchButton" Content="Branch from stash" Command="{Binding BranchCommand}" />
         <Button Name="CloseButton" Content="Close" Click="OnClose" />

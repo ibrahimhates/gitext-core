@@ -28,7 +28,7 @@
                 <TextBlock Text="Geri getirmek için:" FontSize="11" Opacity="0.85" />
                 <TextBox Name="RecoveryCommand"
                          IsReadOnly="True"
-                         FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                         FontFamily="{DynamicResource GitExtMonospaceFont}"
                          FontSize="11" />
                 <TextBlock Name="RecoveryNote"
                            FontSize="11"

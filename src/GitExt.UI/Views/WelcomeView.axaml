@@ -123,8 +123,8 @@
             <!-- Açma başarısız olduysa sebebi burada; ekrandan ayrılmadan görünür. -->
             <Border Grid.Row="1"
                     IsVisible="{Binding Commits.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Background="#FBE0DE"
-                    BorderBrush="#E39D98"
+                    Background="{DynamicResource GitExtErrorBackgroundBrush}"
+                    BorderBrush="{DynamicResource GitExtErrorBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="4"
                     Padding="10,7"
@@ -132,7 +132,7 @@
                 <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Commits.ErrorMessage}"
                                FontSize="12"
-                               Foreground="#6E1F1A"
+                               Foreground="{DynamicResource GitExtErrorForegroundBrush}"
                                TextWrapping="Wrap" />
 
                     <!--

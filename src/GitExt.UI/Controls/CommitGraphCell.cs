@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using GitExt.Graph;
+using GitExt.UI.Themes;
 
 namespace GitExt.UI.Controls;
 
@@ -127,23 +128,38 @@ public sealed class CommitGraphCell : Control
     }
 
     /// <summary>
-    /// Palet verilmediğinde kullanılan geçici renkler.
+    /// Palet ne özellikten ne kaynaktan gelmediğinde kullanılan renkler.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Bu palet <b>renk körlüğü açısından doğrulanmadı</b>. Faz 08 (P08-T09) bunu
-    /// erişilebilir bir paletle değiştirecek.
+    /// Yalnızca son çare: normalde palet <see cref="GraphPalettes.ResourceKey"/> anahtarıyla
+    /// kaynaklardan geliyor ve temaya göre değişiyor (P08-T09).
     /// </remarks>
-    public static IReadOnlyList<Color> DefaultPalette { get; } =
-    [
-        Color.FromRgb(0x45, 0x7B, 0x9D),
-        Color.FromRgb(0xE6, 0x3A, 0x35),
-        Color.FromRgb(0x2A, 0x9D, 0x8F),
-        Color.FromRgb(0xE9, 0xC4, 0x6A),
-        Color.FromRgb(0x8E, 0x7D, 0xBE),
-        Color.FromRgb(0xF4, 0xA2, 0x61),
-        Color.FromRgb(0x26, 0x46, 0x53),
-        Color.FromRgb(0xB5, 0x65, 0x76),
-    ];
+    public static IReadOnlyList<Color> DefaultPalette => GraphPalettes.LightDefault;
+
+    /// <summary>
+    /// Yürürlükteki palet: özellik → kaynak → son çare.
+    /// </summary>
+    /// <remarks>
+    /// Kaynaktan okumak zorunlu, çünkü palet <b>hem temaya hem kullanıcının renk körlüğü
+    /// tercihine</b> bağlı ve ikisi de çalışma sırasında değişebiliyor. Sabit bir liste,
+    /// koyu temaya geçen kullanıcıyı açık zemine göre seçilmiş — bazıları neredeyse
+    /// görünmez — şeritlerle bırakırdı.
+    /// </remarks>
+    private IReadOnlyList<Color> EffectivePalette
+    {
+        get
+        {
+            if (Palette is { Count: > 0 } custom)
+            {
+                return custom;
+            }
+
+            return this.TryFindResource(GraphPalettes.ResourceKey, ActualThemeVariant, out object? value)
+                && value is IReadOnlyList<Color> { Count: > 0 } fromResources
+                ? fromResources
+                : DefaultPalette;
+        }
+    }
 
     /// <summary>
     /// Renk indeksinden fırça/kalem önbelleği.
@@ -171,7 +187,7 @@ public sealed class CommitGraphCell : Control
             return;
         }
 
-        IReadOnlyList<Color> palette = Palette is { Count: > 0 } custom ? custom : DefaultPalette;
+        IReadOnlyList<Color> palette = EffectivePalette;
 
         double height = Bounds.Height;
         double centerY = height / 2;

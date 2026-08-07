@@ -23,15 +23,16 @@ namespace GitExt.UI.Controls;
 /// <c>Border</c>+<c>TextBlock</c> yerine tek <c>TextBlock</c>).
 /// </para>
 /// <para>
-/// Renkler burada sabit; Faz 08'de tema kaynak sözlüğüne taşınacak (satır arka planlarıyla
-/// aynı gerekçe). <b>Değerleri <c>DiffView.axaml</c>'deki satır renkleriyle uyumlu
-/// tutun.</b>
+/// Renkler <b>tema kaynak sözlüğünden</b> geliyor (P08-T07): <c>GitExtDiffAddedWordBrush</c>
+/// ve <c>GitExtDiffRemovedWordBrush</c>. Sabit yazılsalardı koyu temada okunmazlardı —
+/// satır arka planları temayla değişip satır içi vurgular değişmeyince, vurgu zeminden
+/// ayırt edilemez hâle gelirdi.
 /// </para>
 /// </remarks>
 public static class DiffTextPresenter
 {
-    private static readonly IBrush _addedBrush = new SolidColorBrush(Color.Parse("#ABF2BC"));
-    private static readonly IBrush _removedBrush = new SolidColorBrush(Color.Parse("#FFC9C6"));
+    private const string AddedBrushKey = "GitExtDiffAddedWordBrush";
+    private const string RemovedBrushKey = "GitExtDiffRemovedWordBrush";
 
     /// <summary>Çizilecek parçalar.</summary>
     public static readonly AttachedProperty<IReadOnlyList<DiffSegment>?> SegmentsProperty =
@@ -82,11 +83,25 @@ public static class DiffTextPresenter
             {
                 Background = segment.Kind switch
                 {
-                    DiffLineKind.Added => _addedBrush,
-                    DiffLineKind.Removed => _removedBrush,
+                    DiffLineKind.Added => Resolve(target, AddedBrushKey),
+                    DiffLineKind.Removed => Resolve(target, RemovedBrushKey),
                     _ => null,
                 },
             });
         }
     }
+
+    /// <summary>
+    /// Fırçayı kontrolün <b>yürürlükteki temasına</b> göre çözer.
+    /// </summary>
+    /// <remarks>
+    /// <c>ActualThemeVariant</c> ile sorulmak zorunda: P08-T00/M07b'de ölçüldü, uygulama
+    /// "sistemi takip et" modundayken bile bu değer <b>somut</b> bir varyanta çözülüyor,
+    /// dolayısıyla doğru sözlüğe bakılıyor. Anahtar bulunamazsa <see langword="null"/> —
+    /// vurgusuz ama okunur bir satır, yanlış renkli bir satırdan iyidir.
+    /// </remarks>
+    private static IBrush? Resolve(TextBlock target, string key) =>
+        target.TryFindResource(key, target.ActualThemeVariant, out object? value)
+            ? value as IBrush
+            : null;
 }

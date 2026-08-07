@@ -23,7 +23,7 @@
                    IsChecked="{Binding IsHard}" />
     </StackPanel>
 
-    <Border Background="#20808080" CornerRadius="4" Padding="8">
+    <Border Background="{DynamicResource GitExtSubtleBackgroundBrush}" CornerRadius="4" Padding="8">
       <TextBlock Name="ModeDescriptionLabel" Text="{Binding ModeDescription}" TextWrapping="Wrap" />
     </Border>
 
@@ -33,12 +33,12 @@
               IsVisible="{Binding RequiresConfirmation}"
               Content="I understand that uncommitted changes will be lost permanently" />
 
-    <TextBlock Name="CommandLabel" FontFamily="monospace" FontSize="11" Opacity="0.7"
+    <TextBlock Name="CommandLabel" FontFamily="{DynamicResource GitExtMonospaceFont}" FontSize="11" Opacity="0.7"
                Text="{Binding CommandLine}" />
 
     <TextBlock Name="ResultLabel" Text="{Binding Result}" TextWrapping="Wrap"
                IsVisible="{Binding Result, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-    <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="#c0392b" TextWrapping="Wrap"
+    <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="{DynamicResource GitExtErrorBrush}" TextWrapping="Wrap"
                IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">

@@ -22,12 +22,12 @@
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:ReflogRowViewModel">
           <Grid ColumnDefinitions="80,140,*,140">
-            <TextBlock Grid.Column="0" Text="{Binding ShortId}" FontFamily="monospace" />
+            <TextBlock Grid.Column="0" Text="{Binding ShortId}" FontFamily="{DynamicResource GitExtMonospaceFont}" />
             <TextBlock Grid.Column="1" Text="{Binding Selector}" Opacity="0.7" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
               <TextBlock Text="{Binding Message}" TextTrimming="CharacterEllipsis" />
               <!-- Kayıp commit'ler öne çıkarılıyor: tarayıcının asıl işi bunları bulmak. -->
-              <Border Background="#7d3c98" CornerRadius="3" Padding="4,0"
+              <Border Background="{DynamicResource GitExtStashBadgeBackgroundBrush}" CornerRadius="3" Padding="4,0"
                       IsVisible="{Binding IsUnreachable}">
                 <TextBlock Text="lost" Foreground="White" FontSize="10" />
               </Border>
@@ -39,12 +39,12 @@
     </ListBox>
 
     <StackPanel Grid.Row="2" Margin="0,10,0,0" Spacing="6">
-      <TextBlock Name="RecoveryLabel" FontFamily="monospace" Opacity="0.8"
+      <TextBlock Name="RecoveryLabel" FontFamily="{DynamicResource GitExtMonospaceFont}" Opacity="0.8"
                  Text="{Binding SelectedRecoveryCommand}"
                  IsVisible="{Binding HasSelection}" />
       <TextBlock Name="NoticeLabel" Text="{Binding Notice}" TextWrapping="Wrap"
                  IsVisible="{Binding Notice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-      <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="#c0392b" TextWrapping="Wrap"
+      <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="{DynamicResource GitExtErrorBrush}" TextWrapping="Wrap"
                  IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       <StackPanel Orientation="Horizontal" Spacing="6">
         <Button Name="ReturnButton" Content="Reset to this commit" Command="{Binding ReturnCommand}" />

@@ -5,56 +5,56 @@
         Ref rozeti stilleri (P03-T12). Hem commit listesi hem detay paneli kullanıyor;
         iki yerde kopyalamak, birinde değişip diğerinde unutulmak demekti.
 
-        Renkler AÇIK tema için seçildi — varsayılan tema açık (GitExtensions kimliği).
-        Faz 08'de tema kaynak sözlüğüne taşınacak ve koyu tema için ayrı değerler alacak.
+        Renkler artık burada DEĞİL: hepsi Themes/Palette.axaml'de, açık ve koyu için ayrı
+        (P08-T07). Buradaki stiller yalnızca hangi rozetin hangi anlamı taşıdığını söylüyor.
     -->
 
     <Style Selector="Border.badge">
         <Setter Property="CornerRadius" Value="3" />
         <Setter Property="Padding" Value="5,1" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Background" Value="#EEEEEE" />
-        <Setter Property="BorderBrush" Value="#CCCCCC" />
+        <Setter Property="Background" Value="{DynamicResource GitExtBadgeBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GitExtBadgeBorderBrush}" />
     </Style>
 
     <Style Selector="Border.badge > TextBlock">
-        <Setter Property="Foreground" Value="#333333" />
+        <Setter Property="Foreground" Value="{DynamicResource GitExtBadgeForegroundBrush}" />
     </Style>
 
     <!-- Yerel dal: mavi -->
     <Style Selector="Border.badge.local">
-        <Setter Property="Background" Value="#DCEBF9" />
-        <Setter Property="BorderBrush" Value="#8FB8DC" />
+        <Setter Property="Background" Value="{DynamicResource GitExtBadgeLocalBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GitExtBadgeLocalBorderBrush}" />
     </Style>
     <Style Selector="Border.badge.local > TextBlock">
-        <Setter Property="Foreground" Value="#12395C" />
+        <Setter Property="Foreground" Value="{DynamicResource GitExtBadgeLocalForegroundBrush}" />
     </Style>
 
     <!-- Uzak dal: mor, daha soluk (yerel olandan ayrışsın) -->
     <Style Selector="Border.badge.remote">
-        <Setter Property="Background" Value="#EDE7F6" />
-        <Setter Property="BorderBrush" Value="#B9A7DA" />
+        <Setter Property="Background" Value="{DynamicResource GitExtBadgeRemoteBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GitExtBadgeRemoteBorderBrush}" />
     </Style>
     <Style Selector="Border.badge.remote > TextBlock">
-        <Setter Property="Foreground" Value="#3B2A63" />
+        <Setter Property="Foreground" Value="{DynamicResource GitExtBadgeRemoteForegroundBrush}" />
     </Style>
 
     <!-- Tag: sarı/amber -->
     <Style Selector="Border.badge.tag">
-        <Setter Property="Background" Value="#FCF0D0" />
-        <Setter Property="BorderBrush" Value="#E0C169" />
+        <Setter Property="Background" Value="{DynamicResource GitExtBadgeTagBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GitExtBadgeTagBorderBrush}" />
     </Style>
     <Style Selector="Border.badge.tag > TextBlock">
-        <Setter Property="Foreground" Value="#5C4409" />
+        <Setter Property="Foreground" Value="{DynamicResource GitExtBadgeTagForegroundBrush}" />
     </Style>
 
     <!-- HEAD (detached): kırmızı, dikkat çekici -->
     <Style Selector="Border.badge.head">
-        <Setter Property="Background" Value="#FBE0DE" />
-        <Setter Property="BorderBrush" Value="#E39D98" />
+        <Setter Property="Background" Value="{DynamicResource GitExtBadgeHeadBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GitExtBadgeHeadBorderBrush}" />
     </Style>
     <Style Selector="Border.badge.head > TextBlock">
-        <Setter Property="Foreground" Value="#6E1F1A" />
+        <Setter Property="Foreground" Value="{DynamicResource GitExtBadgeHeadForegroundBrush}" />
     </Style>
 
     <!-- Checkout edilmiş dal: kalın yazı — nerede olduğun bir bakışta belli olsun -->

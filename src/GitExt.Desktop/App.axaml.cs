@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using GitExt.UI.Settings;
+using GitExt.UI.Themes;
 using GitExt.UI.ViewModels;
 using GitExt.UI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,11 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Kayıtlı görünüm ayarları pencere AÇILMADAN önce uygulanıyor (P08-T07…T10):
+        // sonrasına kalsaydı uygulama önce varsayılan tema ve yazı tipiyle açılıp gözle
+        // görülür biçimde zıplardı.
+        _services.GetRequiredService<IAppearanceService>().ApplyStored();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             MainWindow window = _services.GetRequiredService<MainWindow>();

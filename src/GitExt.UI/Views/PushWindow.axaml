@@ -220,7 +220,7 @@
             <TextBox Name="CommandPreviewBox"
                      IsReadOnly="True"
                      IsTabStop="False"
-                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontFamily="{DynamicResource GitExtMonospaceFont}"
                      FontSize="11"
                      Text="{Binding CommandPreview}" />
         </StackPanel>

@@ -54,7 +54,7 @@
                                  Text="{Binding BaseText}"
                                  IsReadOnly="True"
                                  AcceptsReturn="True"
-                                 FontFamily="monospace"
+                                 FontFamily="{DynamicResource GitExtMonospaceFont}"
                                  TextWrapping="NoWrap" />
                     </Grid>
 
@@ -64,7 +64,7 @@
                                  Text="{Binding OursText}"
                                  IsReadOnly="True"
                                  AcceptsReturn="True"
-                                 FontFamily="monospace"
+                                 FontFamily="{DynamicResource GitExtMonospaceFont}"
                                  TextWrapping="NoWrap" />
                     </Grid>
 
@@ -74,7 +74,7 @@
                                  Text="{Binding TheirsText}"
                                  IsReadOnly="True"
                                  AcceptsReturn="True"
-                                 FontFamily="monospace"
+                                 FontFamily="{DynamicResource GitExtMonospaceFont}"
                                  TextWrapping="NoWrap" />
                     </Grid>
                 </Grid>
@@ -86,7 +86,7 @@
                     <TextBox Grid.Row="1" Name="MergedBox"
                              Text="{Binding MergedText}"
                              AcceptsReturn="True"
-                             FontFamily="monospace"
+                             FontFamily="{DynamicResource GitExtMonospaceFont}"
                              TextWrapping="NoWrap" />
                 </Grid>
             </Grid>
@@ -96,7 +96,7 @@
 
             <TextBlock Name="ErrorLabel"
                        Text="{Binding Error}"
-                       Foreground="#c0392b"
+                       Foreground="{DynamicResource GitExtErrorBrush}"
                        TextWrapping="Wrap"
                        IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
@@ -108,7 +108,7 @@
                 <Button Name="RemoveButton" Content="Delete file" Command="{Binding RemoveCommand}" />
                 <Button Name="MergeToolButton" Content="Open merge tool" Command="{Binding OpenMergeToolCommand}" />
 
-                <Border Width="1" Background="#40808080" Margin="4,2" />
+                <Border Width="1" Background="{DynamicResource GitExtSeparatorBrush}" Margin="4,2" />
 
                 <!-- Devam yalnızca hepsi çözülünce etkin: erken çalıştırmak rc=128. -->
                 <Button Name="ContinueButton"

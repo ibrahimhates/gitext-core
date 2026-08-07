@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="using:System">
+
+    <!--
+        Tipografi (P08-T10).
+
+        Yazı tipi ailesi ve boyutlar TEMADAN BAĞIMSIZ: açık/koyu geçişi yazıyı değiştirmemeli.
+        Bu yüzden `ThemeDictionaries` içinde değiller.
+
+        Değerler çalışma zamanında `TypographyService` tarafından üzerine yazılıyor
+        (kullanıcı ayarı, P08-T14). Buradakiler yalnızca ayar okunmadan önceki ilk kare için.
+
+        ⚠️ Sabit genişlikli aile bir LİSTE: "monospace" tek başına Linux'ta çalışır ama
+        Windows ve macOS'ta karşılığı yoktur. Sıra önemli — bulunan ilk aile kullanılıyor.
+    -->
+
+    <FontFamily x:Key="GitExtMonospaceFont">Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace</FontFamily>
+
+    <sys:Double x:Key="GitExtUiFontSize">12</sys:Double>
+    <sys:Double x:Key="GitExtMonospaceFontSize">12</sys:Double>
+
+    <!-- Türetilmiş boyutlar: kullanıcı ana boyutu değiştirdiğinde bunlar da kayar. -->
+    <sys:Double x:Key="GitExtSmallFontSize">11</sys:Double>
+    <sys:Double x:Key="GitExtLargeFontSize">14</sys:Double>
+</ResourceDictionary>

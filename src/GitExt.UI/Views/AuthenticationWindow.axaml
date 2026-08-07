@@ -30,7 +30,7 @@
             <TextBox Name="UrlBox"
                      IsReadOnly="True"
                      IsTabStop="False"
-                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontFamily="{DynamicResource GitExtMonospaceFont}"
                      FontSize="11"
                      Text="{Binding Url}" />
         </StackPanel>
@@ -42,7 +42,7 @@
                     <DataTemplate DataType="x:String">
                         <TextBox IsReadOnly="True"
                                  Margin="0,0,0,3"
-                                 FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                 FontFamily="{DynamicResource GitExtMonospaceFont}"
                                  FontSize="11"
                                  Text="{Binding}" />
                     </DataTemplate>

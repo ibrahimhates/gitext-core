@@ -1,0 +1,43 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Renk körlüğü uyumlu diff renkleri (P08-T09).
+
+        Bu sözlük varsayılan paletin ÜSTÜNE bindiriliyor; yalnızca kırmızı/yeşil ayrımına
+        dayanan anahtarları değiştiriyor. Ötekiler olduğu gibi kalıyor — hepsini yeniden
+        tanımlamak, birinin unutulup iki palet arasında sessizce ayrışması demekti.
+
+        Ayrım kırmızı/yeşil yerine MAVİ/TURUNCU: deuteranopi ve protanopide kırmızı ile
+        yeşil aynı görünüyor, mavi ile turuncu ayrışıyor. Renk tek başına da taşımıyor —
+        eklenen/çıkarılan satırın `+`/`-` öneki zaten var (P04).
+    -->
+
+    <ResourceDictionary.ThemeDictionaries>
+
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="GitExtSuccessBrush" Color="#0B5FBF" />
+            <SolidColorBrush x:Key="GitExtDangerBrush" Color="#B35C00" />
+
+            <SolidColorBrush x:Key="GitExtDiffAddedBackgroundBrush" Color="#DDEBFF" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedBackgroundBrush" Color="#FFEBD6" />
+            <SolidColorBrush x:Key="GitExtDiffAddedForegroundBrush" Color="#0B5FBF" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedForegroundBrush" Color="#B35C00" />
+            <SolidColorBrush x:Key="GitExtDiffAddedWordBrush" Color="#B8D4FF" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedWordBrush" Color="#FFD4A8" />
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="GitExtSuccessBrush" Color="#6CB6FF" />
+            <SolidColorBrush x:Key="GitExtDangerBrush" Color="#E3A857" />
+
+            <SolidColorBrush x:Key="GitExtDiffAddedBackgroundBrush" Color="#10233C" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedBackgroundBrush" Color="#33230F" />
+            <SolidColorBrush x:Key="GitExtDiffAddedForegroundBrush" Color="#6CB6FF" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedForegroundBrush" Color="#E3A857" />
+            <SolidColorBrush x:Key="GitExtDiffAddedWordBrush" Color="#1E3C63" />
+            <SolidColorBrush x:Key="GitExtDiffRemovedWordBrush" Color="#58411A" />
+        </ResourceDictionary>
+
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

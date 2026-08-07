@@ -24,25 +24,25 @@
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="#6B6B6B" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtMutedBrush}" />
         </Style>
         <Style Selector="TextBlock.status.added">
-            <Setter Property="Foreground" Value="#1E7A33" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtSuccessBrush}" />
         </Style>
         <Style Selector="TextBlock.status.deleted">
-            <Setter Property="Foreground" Value="#B3261E" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtErrorBrush}" />
         </Style>
         <Style Selector="TextBlock.status.renamed">
-            <Setter Property="Foreground" Value="#5B4BB5" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtRenameBrush}" />
         </Style>
 
         <Style Selector="TextBlock.added-count">
-            <Setter Property="Foreground" Value="#1E7A33" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtSuccessBrush}" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style Selector="TextBlock.removed-count">
-            <Setter Property="Foreground" Value="#B3261E" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtErrorBrush}" />
             <Setter Property="FontSize" Value="11" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
@@ -67,17 +67,17 @@
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
         <Style Selector="ListBoxItem:selected Border.line">
-            <Setter Property="BorderBrush" Value="#0969DA" />
+            <Setter Property="BorderBrush" Value="{DynamicResource GitExtDiffSelectionBorderBrush}" />
         </Style>
 
         <Style Selector="Border.line.added">
-            <Setter Property="Background" Value="#E6FFEC" />
+            <Setter Property="Background" Value="{DynamicResource GitExtDiffAddedBackgroundBrush}" />
         </Style>
         <Style Selector="Border.line.removed">
-            <Setter Property="Background" Value="#FFEBE9" />
+            <Setter Property="Background" Value="{DynamicResource GitExtDiffRemovedBackgroundBrush}" />
         </Style>
         <Style Selector="Border.line.hunk">
-            <Setter Property="Background" Value="#EEF2F7" />
+            <Setter Property="Background" Value="{DynamicResource GitExtDiffHunkHeaderBackgroundBrush}" />
         </Style>
 
         <!--
@@ -91,7 +91,7 @@
             AYRI boyanıyor — aksi hâlde kullanıcı olmayan bir satırı var sanar.
         -->
         <Style Selector="Border.line.filler">
-            <Setter Property="Background" Value="#E9E9EF" />
+            <Setter Property="Background" Value="{DynamicResource GitExtDiffGutterBackgroundBrush}" />
         </Style>
 
         <Style Selector="TextBlock.gutter">
@@ -113,7 +113,7 @@
             düşüyor (dört farklı ad da aynı genişliği verdi). Gerçek pencerede kontrol edildi.
         -->
         <Style Selector="TextBlock.code">
-            <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace" />
+            <Setter Property="FontFamily" Value="{DynamicResource GitExtMonospaceFont}" />
             <Setter Property="VerticalAlignment" Value="Top" />
         </Style>
 

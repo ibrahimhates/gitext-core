@@ -145,7 +145,7 @@
             <TextBox Name="CommandPreviewBox"
                      IsReadOnly="True"
                      IsTabStop="False"
-                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontFamily="{DynamicResource GitExtMonospaceFont}"
                      FontSize="11"
                      Text="{Binding CommandPreview}" />
         </StackPanel>
@@ -166,7 +166,7 @@
                 <TextBlock Text="Geri almak için:" FontSize="11" Opacity="0.8" />
                 <TextBox Name="RecoveryCommandBox"
                          IsReadOnly="True"
-                         FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                         FontFamily="{DynamicResource GitExtMonospaceFont}"
                          FontSize="11"
                          Text="{Binding RecoveryCommand}" />
             </StackPanel>

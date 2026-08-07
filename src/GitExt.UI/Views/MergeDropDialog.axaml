@@ -20,7 +20,7 @@
             <TextBox Name="CommandBox"
                      IsReadOnly="True"
                      IsTabStop="False"
-                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                     FontFamily="{DynamicResource GitExtMonospaceFont}"
                      FontSize="11" />
         </StackPanel>
 

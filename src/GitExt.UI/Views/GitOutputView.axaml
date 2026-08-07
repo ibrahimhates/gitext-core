@@ -28,7 +28,7 @@
         <SelectableTextBlock Grid.Row="1"
                              Text="{Binding CommandLine}"
                              IsVisible="{Binding HasCommandLine}"
-                             FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                             FontFamily="{DynamicResource GitExtMonospaceFont}"
                              FontSize="11"
                              Opacity="0.75"
                              TextWrapping="Wrap"
@@ -68,7 +68,7 @@
 
                 <SelectableTextBlock Name="FinalMessageText"
                                      Text="{Binding FinalMessage}"
-                                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                     FontFamily="{DynamicResource GitExtMonospaceFont}"
                                      FontSize="12"
                                      Padding="8"
                                      TextWrapping="Wrap" />
@@ -90,7 +90,7 @@
                 -->
                 <SelectableTextBlock Name="OutputText"
                                      Text="{Binding Output}"
-                                     FontFamily="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"
+                                     FontFamily="{DynamicResource GitExtMonospaceFont}"
                                      FontSize="12"
                                      Padding="8"
                                      TextWrapping="NoWrap" />
