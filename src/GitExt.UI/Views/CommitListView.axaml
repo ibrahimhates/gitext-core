@@ -129,8 +129,10 @@
                     <MenuItem Header="Dala geç (chec_kout)…" Click="OnCheckoutClick" />
                     <MenuItem Name="MenuContextPush" Header="Dalı pus_hla…" Click="OnPushClick" />
                     <MenuItem Name="MenuContextMerge" Header="Mevcut dala _birleştir…" Click="OnMergeClick" />
-                    <MenuItem Header="Mevcut dalı buna _rebase et" IsEnabled="False" />
-                    <MenuItem Header="Mevcut dalı buraya sıfırla…" IsEnabled="False" />
+                    <MenuItem Name="MenuContextRebase" Header="Mevcut dalı buna _rebase et"
+                              Click="OnRebaseClick" />
+                    <MenuItem Name="MenuContextReset" Header="Mevcut dalı buraya sıfırla…"
+                              Click="OnResetClick" />
                     <Separator />
 
                     <MenuItem Header="Değişiklikleri sıfırla" IsEnabled="False" />
@@ -146,8 +148,8 @@
                     <Separator />
 
                     <MenuItem Header="Bu commit'e geç…" Click="OnCheckoutClick" />
-                    <MenuItem Header="Bu commit'i geri al…" IsEnabled="False" />
-                    <MenuItem Header="Bu commit'i cherry pick'le…" IsEnabled="False" />
+                    <MenuItem Name="MenuContextRevert" Header="Bu commit'i geri al…" Click="OnRevertClick" />
+                    <MenuItem Name="MenuContextCherryPick" Header="Bu commit'i cherry pick'le…" Click="OnCherryPickClick" />
                     <MenuItem Header="Bu commit'i arşivle…" IsEnabled="False" />
                     <Separator />
 

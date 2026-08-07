@@ -371,6 +371,42 @@ public partial class CommitListView : UserControl
         }
     }
 
+    /// <remarks>
+    /// Bağlam menüsü ana menüyle <b>aynı komutu</b> çağırıyor. İkinci bir yol açmak,
+    /// birinin korumasız kalması demekti — P06-T13'ün dersi.
+    /// </remarks>
+    private async void OnRebaseClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.RebaseCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnResetClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.ResetCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnCherryPickClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.CherryPickCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnRevertClick(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
+        {
+            await model.RevertCommand.ExecuteAsync(null);
+        }
+    }
+
     private async void OnCheckoutClick(object? sender, RoutedEventArgs e)
     {
         if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)

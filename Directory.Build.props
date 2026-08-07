@@ -32,7 +32,7 @@
     <NuGetLockFilePath Condition="'$(RuntimeIdentifier)' != ''">$(MSBuildProjectDirectory)/obj/packages.$(RuntimeIdentifier).lock.json</NuGetLockFilePath>
 
     <!-- Sürüm CI'da git tag'inden -p:Version= ile geçilir; burada yalnızca taban değer. -->
-    <VersionPrefix>0.2.0</VersionPrefix>
+    <VersionPrefix>0.3.0</VersionPrefix>
 
     <Product>gitext-core</Product>
     <Company>gitext-core contributors</Company>
