@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitExt.Core.Model;
+using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -53,6 +54,8 @@ public partial class CommitListView : UserControl
     private bool _awaitingFirstRows;
 
     private CommitListViewModel? _watched;
+
+    private ShortcutDispatcher? _dispatcher;
 
     public CommitListView()
     {
@@ -130,6 +133,33 @@ public partial class CommitListView : UserControl
             DispatcherPriority.Loaded);
     }
 
+    /// <summary>Bağlam kısayollarını komut kaydına bağlar (P08-T01).</summary>
+    public void AttachShortcuts(ICommandRegistry registry)
+    {
+        ShortcutDispatcher dispatcher = new(registry, CommandContext.CommitList);
+
+        // Arama kutusu odaktayken çalışması gerekenler.
+        dispatcher.Bind(CommandIds.CommitListFind, () =>
+        {
+            FocusSearch();
+            ShaSearchBox.SelectAll();
+        });
+
+        dispatcher.Bind(CommandIds.CommitListCompareToWorkingDirectory,
+            () => Compare(againstSelected: false));
+        dispatcher.Bind(CommandIds.CommitListCompareSelected,
+            () => Compare(againstSelected: true));
+
+        // 🔴 Gezinme kısayolları arama kutusundayken ÇALIŞMAZ: PgDn ile metin içinde
+        // gezinmek isteyen kullanıcının listesi kaymamalı.
+        dispatcher.Bind(CommandIds.CommitListPageDown, () => Navigate(m => m.MoveSelection(PageSize())));
+        dispatcher.Bind(CommandIds.CommitListPageUp, () => Navigate(m => m.MoveSelection(-PageSize())));
+        dispatcher.Bind(CommandIds.CommitListGoToParent, () => Navigate(m => m.GoToParent()));
+        dispatcher.Bind(CommandIds.CommitListGoToChild, () => Navigate(m => m.GoToChild()));
+
+        _dispatcher = dispatcher;
+    }
+
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
         CommitListViewModel? viewModel = ViewModel;
@@ -139,31 +169,50 @@ public partial class CommitListView : UserControl
             return;
         }
 
-        if (e.Key is Key.F && e.KeyModifiers.HasFlag(KeyModifiers.Control))
-        {
-            FocusSearch();
-            ShaSearchBox.SelectAll();
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+D: seçili commit'leri karşılaştır (P04-T16).
-        if (e.Key is Key.D && e.KeyModifiers.HasFlag(KeyModifiers.Control))
-        {
-            OpenComparison(viewModel, e.KeyModifiers.HasFlag(KeyModifiers.Shift));
-            e.Handled = true;
-            return;
-        }
-
-        // Arama kutusunda yazarken gezinme tuşları kutuya ait: PgDn ile metin içinde
-        // gezinmek isteyen kullanıcının listesi kaymamalı.
-        if (ShaSearchBox.IsFocused)
+        // Arama kutusunun kendi Enter/Escape davranışı kısayol değil; yeniden atanabilir
+        // olmaları anlamsız olurdu.
+        if (ShaSearchBox.IsFocused && e.Key is Key.Enter or Key.Escape)
         {
             HandleSearchKey(viewModel, e);
             return;
         }
 
-        HandleNavigationKey(viewModel, e);
+        _dispatcher?.Handle(e);
+    }
+
+    private bool Compare(bool againstSelected)
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return false;
+        }
+
+        OpenComparison(viewModel, againstSelected);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Gezinme kısayolunu çalıştırır ve odağı seçili satıra taşır.
+    /// </summary>
+    /// <remarks>
+    /// Hedef bulunamasa bile tuş <b>tüketilir</b>: aksi halde <c>ScrollViewer</c> görünümü
+    /// seçimden koparıp kaydırır, ya da <c>ListBox</c> seçimi bir satır oynatır — kullanıcı
+    /// "ebeveyne git" isterken sessizce başka bir commit'e düşer.
+    /// </remarks>
+    private bool Navigate(Func<CommitListViewModel, bool> move)
+    {
+        if (ShaSearchBox.IsFocused || ViewModel is not { } viewModel)
+        {
+            return false;
+        }
+
+        if (move(viewModel))
+        {
+            FocusSelectedRow();
+        }
+
+        return true;
     }
 
     private void HandleSearchKey(CommitListViewModel viewModel, KeyEventArgs e)
@@ -186,42 +235,6 @@ public partial class CommitListView : UserControl
 
             default:
                 break;
-        }
-    }
-
-    private void HandleNavigationKey(CommitListViewModel viewModel, KeyEventArgs e)
-    {
-        bool alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
-
-        bool moved = e.Key switch
-        {
-            Key.PageDown => viewModel.MoveSelection(PageSize()),
-            Key.PageUp => viewModel.MoveSelection(-PageSize()),
-
-            // Alt+↓ daha eskiye (ebeveyn), Alt+↑ daha yeniye (çocuk) gider.
-            // Yön ekrandakiyle aynı: eski commit'ler aşağıda.
-            Key.Down when alt => viewModel.GoToParent(),
-            Key.Up when alt => viewModel.GoToChild(),
-
-            _ => false,
-        };
-
-        // Hedef bulunamasa bile tuş tüketilir: aksi halde ScrollViewer görünümü seçimden
-        // koparıp kaydırır, ya da Alt+↓ ListBox'a düşüp seçimi bir satır aşağı kaydırır —
-        // kullanıcı "ebeveyne git" isterken sessizce başka bir commit'e düşer.
-        bool ours = e.Key is Key.PageDown or Key.PageUp
-            || (alt && e.Key is Key.Down or Key.Up);
-
-        if (!ours)
-        {
-            return;
-        }
-
-        e.Handled = true;
-
-        if (moved)
-        {
-            FocusSelectedRow();
         }
     }
 

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using GitExt.UI.Settings;
 using GitExt.UI.ViewModels;
 using GitExt.UI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,6 +60,12 @@ public partial class App : Application
             {
                 window.Opened += ReportStartupTime;
             }
+
+            // Bekleyen ayar kaydı diske yazılmadan çıkılmamalı (P08-T14). Kayıt gecikmeli:
+            // pencereyi yeniden boyutlandırıp hemen kapatan bir kullanıcı, gecikme dolmadan
+            // çıktığı için düzenini KAYBEDERDİ.
+            desktop.ShutdownRequested += (_, _) =>
+                _services.GetRequiredService<ISettingsStore>().FlushAsync().GetAwaiter().GetResult();
 
             desktop.MainWindow = window;
         }

@@ -29,7 +29,7 @@
 
             <MenuItem Header="_Başlangıç">
                 <MenuItem Name="MenuCreateRepository" Header="Yeni depo oluştur…" IsEnabled="False" />
-                <MenuItem Name="MenuOpen" Header="_Aç…" Click="OnOpenClick" />
+                <MenuItem Name="MenuOpen" Header="_Aç…" />
                 <MenuItem Name="MenuClone" Header="Depo k_lonla…" IsEnabled="False" />
                 <Separator />
                 <MenuItem Name="MenuRecentRepositories"
@@ -48,7 +48,7 @@
                     </MenuItem.Styles>
                 </MenuItem>
                 <Separator />
-                <MenuItem Name="MenuExit" Header="Çı_kış" Click="OnExitClick" />
+                <MenuItem Name="MenuExit" Header="Çı_kış" />
             </MenuItem>
 
             <MenuItem Header="_Pano">
@@ -58,15 +58,16 @@
             </MenuItem>
 
             <MenuItem Header="_Depo" IsEnabled="{Binding HasRepository}">
-                <MenuItem Name="MenuRepositoryRefresh"
-                          Header="_Yenile"
-                          InputGesture="F5"
-                          Command="{Binding RefreshCommand}" />
+                <!--
+                    🔴 Buradaki `InputGesture="F5"` KALDIRILDI. P08-T00/M03'te ölçüldü:
+                    `InputGesture` komutu çalıştırmıyor, yalnızca etiket çiziyor — yani
+                    F5 ölü bir tuştu. Hem etiket hem gerçek bağlama artık komut kaydından
+                    geliyor (GlobalShortcuts).
+                -->
+                <MenuItem Name="MenuRepositoryRefresh" Header="_Yenile" />
                 <MenuItem Name="MenuFileExplorer" Header="Dosya _gezgini" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuRemotes"
-                          Header="Uzak _depolar…"
-                          Command="{Binding ManageRemotesCommand}" />
+                <MenuItem Name="MenuRemotes" Header="Uzak _depolar…" />
                 <Separator />
                 <MenuItem Name="MenuSubmodules" Header="Alt modülleri yö_net…" IsEnabled="False" />
                 <MenuItem Name="MenuWorktrees" Header="Ça_lışma ağaçlarını yönet…" IsEnabled="False" />
@@ -74,55 +75,46 @@
                 <MenuItem Name="MenuEditGitignore" Header=".git_ignore düzenle" IsEnabled="False" />
                 <MenuItem Name="MenuRepositorySettings" Header="Depo aya_rları…" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuCloseRepository"
-                          Header="_Kapat (panoya dön)"
-                          Command="{Binding CloseRepositoryCommand}" />
+                <MenuItem Name="MenuCloseRepository" Header="_Kapat (panoya dön)" />
             </MenuItem>
 
             <MenuItem Header="_Komutlar" IsEnabled="{Binding HasRepository}">
                 <!-- Faz 05 -->
-                <MenuItem Name="MenuCommit" Header="_Commit…" Click="OnCommitClick" />
+                <MenuItem Name="MenuCommit" Header="_Commit…" />
                 <MenuItem Name="MenuUndoLastCommit" Header="Son commit'i _geri al…" IsEnabled="False" />
                 <!-- Faz 06 -->
-                <MenuItem Name="MenuPull" Header="Pull_/Fetch…" Command="{Binding PullCommand}" />
-                <MenuItem Name="MenuPush" Header="_Push…" Command="{Binding PushCommand}" />
+                <MenuItem Name="MenuPull" Header="Pull_/Fetch…" />
+                <MenuItem Name="MenuPush" Header="_Push…" />
                 <Separator />
-                <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" Command="{Binding ShowStashCommand}" />
+                <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" />
                 <MenuItem Name="MenuResetChanges" Header="Değişiklikleri sıfı_rla…" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuCreateBranch" Header="_Dal oluştur…"
-                          Command="{Binding CreateBranchCommand}" />
-                <MenuItem Name="MenuDeleteBranch" Header="Da_l sil…"
-                          Command="{Binding DeleteBranchCommand}" />
-                <MenuItem Name="MenuCheckoutBranch" Header="Dala geç (chec_kout)…"
-                          Command="{Binding CheckoutCommand}" />
-                <MenuItem Name="MenuMerge" Header="Dalları _birleştir…" Command="{Binding MergeCommand}" />
-                <MenuItem Name="MenuRebase" Header="R_ebase…" Command="{Binding RebaseCommand}" />
+                <MenuItem Name="MenuCreateBranch" Header="_Dal oluştur…" />
+                <MenuItem Name="MenuDeleteBranch" Header="Da_l sil…" />
+                <MenuItem Name="MenuCheckoutBranch" Header="Dala geç (chec_kout)…" />
+                <MenuItem Name="MenuMerge" Header="Dalları _birleştir…" />
+                <MenuItem Name="MenuRebase" Header="R_ebase…" />
                 <Separator />
                 <MenuItem Name="MenuCreateTag" Header="Etiket oluş_tur…" IsEnabled="False" />
                 <MenuItem Name="MenuDeleteTag" Header="Etiket si_l…" IsEnabled="False" />
                 <Separator />
                 <!-- Faz 07 -->
-                <MenuItem Name="MenuCherryPick" Header="Cherr_y pick…" Command="{Binding CherryPickCommand}" />
+                <MenuItem Name="MenuCherryPick" Header="Cherr_y pick…" />
                 <MenuItem Name="MenuCheckoutRevision" Header="Revizyona geç…" IsEnabled="False" />
-                <MenuItem Name="MenuRevert" Header="Commit'i ge_ri al (revert)…"
-                          Command="{Binding RevertCommand}" />
-                <MenuItem Name="MenuResetToCommit" Header="Bu commit'e _sıfırla…"
-                          Command="{Binding ResetCommand}" />
+                <MenuItem Name="MenuRevert" Header="Commit'i ge_ri al (revert)…" />
+                <MenuItem Name="MenuResetToCommit" Header="Bu commit'e _sıfırla…" />
                 <MenuItem Name="MenuBisect" Header="B_isect…" IsEnabled="False" />
-                <MenuItem Name="MenuReflog" Header="Reflo_g'u göster…" Command="{Binding ShowReflogCommand}" />
+                <MenuItem Name="MenuReflog" Header="Reflo_g'u göster…" />
             </MenuItem>
 
             <MenuItem Header="_Araçlar">
-                <MenuItem Name="MenuCommandLog"
-                          Header="Git komut _günlüğü…"
-                          Command="{Binding ShowCommandLogCommand}" />
+                <MenuItem Name="MenuCommandLog" Header="Git komut _günlüğü…" />
                 <Separator />
                 <MenuItem Name="MenuSettings" Header="Aya_rlar…" IsEnabled="False" />
             </MenuItem>
 
             <MenuItem Header="_Yardım">
-                <MenuItem Name="MenuAbout" Header="_Hakkında" Click="OnAboutClick" />
+                <MenuItem Name="MenuAbout" Header="_Hakkında" />
             </MenuItem>
         </Menu>
 
@@ -298,7 +290,7 @@
         <Grid Grid.Column="2"
               RowDefinitions="*,Auto,Auto">
 
-            <views:CommitListView Grid.Row="0" DataContext="{Binding Commits}" />
+            <views:CommitListView Name="CommitList" Grid.Row="0" DataContext="{Binding Commits}" />
 
             <!-- Depo açık ama hiç commit yok: yeni `git init`. Boş ekran değil, açıklama. -->
             <Border Grid.Row="0"
@@ -337,7 +329,7 @@
                 </TabItem>
 
                 <TabItem Header="Değişiklikler" FontSize="12">
-                    <views:DiffView DataContext="{Binding Commits.Diff}" />
+                    <views:DiffView Name="ChangesDiff" DataContext="{Binding Commits.Diff}" />
                 </TabItem>
             </TabControl>
         </Grid>

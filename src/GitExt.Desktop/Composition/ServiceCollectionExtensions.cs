@@ -1,5 +1,7 @@
 using GitExt.Core;
 using GitExt.Core.Git;
+using GitExt.UI.Commands;
+using GitExt.UI.Settings;
 using GitExt.UI.Storage;
 using GitExt.UI.ViewModels;
 using GitExt.UI.Views;
@@ -129,6 +131,17 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICommitSignatureReader, CommitSignatureReader>();
         services.AddSingleton<IDiffReader, DiffReader>();
         services.AddSingleton<IRecentRepositoryStore>(_ => new RecentRepositoryStore());
+
+        // Ayarlar (P08-T14). Pencere açılmadan ÖNCE okunmuş olmak zorunda: tema, yazı tipi
+        // ve panel düzeni buradan geliyor; sonradan okunsaydı uygulama önce yanlış temayla
+        // açılıp gözle görülür biçimde zıplardı. GitExecutable ile aynı gerekçeyle senkron.
+        services.AddSingleton<ISettingsStore>(_ =>
+        {
+            SettingsStore store = new();
+            store.LoadAsync().GetAwaiter().GetResult();
+
+            return store;
+        });
         services.AddSingleton<IStatusReader, StatusReader>();
         services.AddSingleton<IObjectReader, ObjectReader>();
 
@@ -145,9 +158,23 @@ public static class ServiceCollectionExtensions
         // bu makinede 1024 ve ölçümde 949. izleyicide `IOException` alındı.
         services.AddSingleton<IRepositoryWatcher>(_ => new RepositoryWatcher());
 
+        // Komut kaydı (P08-T01). Kısayolların TEK kaynağı; ayar deposuna bağımlı çünkü
+        // kullanıcının yeniden atamaları oradan geliyor.
+        services.AddSingleton<ICommandRegistry, CommandRegistry>();
+
         services.AddSingleton<CommitListViewModel>();
         services.AddSingleton<MainWindowViewModel>();
-        services.AddSingleton<MainWindow>();
+
+        services.AddSingleton(provider =>
+        {
+            MainWindow window = new();
+
+            // Kayıt yapıcıya geçirilemiyor: XAML tasarımcısı parametresiz yapıcı istiyor.
+            // Bağlantı yine de burada — composition root'ta — kuruluyor (ADR-0004).
+            window.AttachShortcuts(provider.GetRequiredService<ICommandRegistry>());
+
+            return window;
+        });
 
         return services;
     }

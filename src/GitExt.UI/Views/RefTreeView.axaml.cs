@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using CommunityToolkit.Mvvm.Input;
+using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -28,6 +30,62 @@ public partial class RefTreeView : UserControl
 
     /// <summary>Sürüklenen dalın adı; sürükleme yokken boş.</summary>
     private string _dragged = string.Empty;
+
+    private ShortcutDispatcher? _dispatcher;
+
+    /// <summary>
+    /// Bağlam kısayollarını komut kaydına bağlar (P08-T01).
+    /// </summary>
+    /// <remarks>
+    /// <c>Delete</c> ve <c>F2</c> GitExtensions'ın <c>RepoObjectsTree</c>'siyle aynı
+    /// (<c>Command.Delete</c>, <c>Command.Rename</c>). İkisi de <b>çıplak tuş</b>, bu yüzden
+    /// yalnızca bu panelin bağlamında geçerli — küresel olsalardı her metin kutusunda
+    /// silme tuşunu ele geçirirlerdi (P08-T00/M11).
+    /// </remarks>
+    public void AttachShortcuts(ICommandRegistry registry)
+    {
+        ShortcutDispatcher dispatcher = new(registry, CommandContext.RefTree);
+
+        dispatcher.Bind(CommandIds.RefTreeDelete, () => Invoke(m => m.DeleteBranchCommand));
+        dispatcher.Bind(CommandIds.RefTreeRename, () => Invoke(m => m.RenameBranchCommand));
+
+        _dispatcher = dispatcher;
+
+        // Tünelleme: ağaç kabaran tuşu kendi gezinmesi için yutabiliyor.
+        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        // Ağaçta yeniden adlandırma kutusu açıkken kısayollar devre dışı: `Delete` orada
+        // metin siler, dal değil.
+        if (e.Source is TextBox)
+        {
+            return;
+        }
+
+        _dispatcher?.Handle(e);
+    }
+
+    private bool Invoke(Func<MainWindowViewModel, IAsyncRelayCommand> select)
+    {
+        if (Commands is not { } model)
+        {
+            return false;
+        }
+
+        IAsyncRelayCommand command = select(model);
+
+        if (!command.CanExecute(null))
+        {
+            // Yapılamayan bir komut için tuşu yutmak, kullanıcıya sessiz bir duvar olurdu.
+            return false;
+        }
+
+        _ = command.ExecuteAsync(null);
+
+        return true;
+    }
 
     /// <summary>Sürüklemenin başlaması için gereken en küçük hareket.</summary>
     /// <remarks>

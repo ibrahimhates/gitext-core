@@ -92,6 +92,10 @@ public class DiffKeyboardTests
         await viewModel.ShowCommitAsync("/tmp/depo", CommitId.Parse(FakeGitData.Sha(7)));
 
         DiffView view = new() { DataContext = viewModel };
+
+        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
+        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
 
         window.Show();
@@ -101,16 +105,16 @@ public class DiffKeyboardTests
     }
 
     [AvaloniaFact]
-    public async Task Ctrl_asagi_sonraki_degisiklige_gider()
+    public async Task Alt_asagi_sonraki_degisiklige_gider()
     {
         Harness harness = await CreateAsync();
         harness.FocusList();
 
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
 
         harness.ViewModel.Lines[harness.ViewModel.CurrentLineIndex].Text.ShouldBe("iki eski");
 
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
 
         harness.ViewModel.Lines[harness.ViewModel.CurrentLineIndex].Text.ShouldBe("dort yeni");
 
@@ -118,19 +122,19 @@ public class DiffKeyboardTests
     }
 
     [AvaloniaFact]
-    public async Task Son_degisiklikten_sonra_Ctrl_asagi_tuketilmez()
+    public async Task Son_degisiklikten_sonra_Alt_asagi_tuketilmez()
     {
         // Tüketilseydi kullanıcıya sessiz bir duvar olurdu; listenin kendi davranışı
         // devralabilmeli.
         Harness harness = await CreateAsync();
         harness.FocusList();
 
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
 
         int last = harness.ViewModel.CurrentLineIndex;
 
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
 
         harness.ViewModel.CurrentLineIndex.ShouldBe(last);
 
@@ -138,16 +142,16 @@ public class DiffKeyboardTests
     }
 
     [AvaloniaFact]
-    public async Task Alt_asagi_sonraki_dosyaya_gecer()
+    public async Task Alt_saga_sonraki_dosyaya_gecer()
     {
         Harness harness = await CreateAsync(Sample("a.cs"), Sample("b.cs"));
         harness.FocusList();
 
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
+        harness.Press(PhysicalKey.ArrowRight, RawInputModifiers.Alt);
 
         harness.ViewModel.SelectedFile!.Name.ShouldBe("b.cs");
 
-        harness.Press(PhysicalKey.ArrowUp, RawInputModifiers.Alt);
+        harness.Press(PhysicalKey.ArrowLeft, RawInputModifiers.Alt);
 
         harness.ViewModel.SelectedFile!.Name.ShouldBe("a.cs");
 
@@ -193,7 +197,7 @@ public class DiffKeyboardTests
         harness.FocusList();
 
         harness.Press(PhysicalKey.F, RawInputModifiers.Control);
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
 
         harness.ViewModel.CurrentLineIndex.ShouldBe(-1);
 
@@ -241,7 +245,7 @@ public class DiffKeyboardTests
 
         harness.FocusList();
 
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
 
         SideBySideLineRow row = harness.ViewModel.SideLines[harness.ViewModel.CurrentLineIndex];
 
@@ -260,7 +264,7 @@ public class DiffKeyboardTests
         // gelir — bu yüzden yukarıdaki testler önce `FocusList()` çağırıyor.
         Harness harness = await CreateAsync();
 
-        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Control);
+        harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
 
         harness.ViewModel.CurrentLineIndex.ShouldBe(-1);
 

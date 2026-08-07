@@ -2,7 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
+using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -12,6 +14,9 @@ namespace GitExt.UI.Views;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private ICommandRegistry? _registry;
+    private GlobalShortcuts? _shortcuts;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -51,7 +56,95 @@ public partial class MainWindow : Window
                 model.SequencerPrompt = new DialogSequencerPrompt(this);
                 model.RebasePrompt = new DialogRebasePrompt(this);
             }
+
+            BuildShortcuts();
         };
+    }
+
+    /// <summary>
+    /// Küresel kısayolları kurar (P08-T01).
+    /// </summary>
+    /// <remarks>
+    /// Kayıt yapıcıya değil buraya geliyor: <see cref="MainWindow"/>'un parametresiz yapıcısı
+    /// XAML tasarımcısının şartı. DI bunu açıkça çağırıyor, dolayısıyla bağlantı hâlâ
+    /// composition root'ta ve Service Locator kullanılmıyor (ADR-0004).
+    /// </remarks>
+    public void AttachShortcuts(ICommandRegistry registry)
+    {
+        _registry = registry;
+
+        BuildShortcuts();
+    }
+
+    private void BuildShortcuts()
+    {
+        if (_registry is not { } registry || DataContext is not MainWindowViewModel model)
+        {
+            return;
+        }
+
+        _shortcuts?.Dispose();
+
+        GlobalShortcuts shortcuts = new(this, registry);
+
+        shortcuts
+            .Bind(CommandIds.RepositoryOpen, new AsyncRelayCommand(OpenRepositoryAsync))
+            .Bind(CommandIds.RepositoryClose, model.CloseRepositoryCommand)
+            .Bind(CommandIds.RepositoryRefresh, model.RefreshCommand)
+            .Bind(CommandIds.RepositoryRemotes, model.ManageRemotesCommand)
+            .Bind(CommandIds.CommitShow, new AsyncRelayCommand(ShowCommitAsync))
+            .Bind(CommandIds.RemotePull, model.PullCommand)
+            .Bind(CommandIds.RemotePush, model.PushCommand)
+            .Bind(CommandIds.BranchCreate, model.CreateBranchCommand)
+            .Bind(CommandIds.BranchDelete, model.DeleteBranchCommand)
+            .Bind(CommandIds.BranchCheckout, model.CheckoutCommand)
+            .Bind(CommandIds.BranchMerge, model.MergeCommand)
+            .Bind(CommandIds.HistoryRebase, model.RebaseCommand)
+            .Bind(CommandIds.HistoryCherryPick, model.CherryPickCommand)
+            .Bind(CommandIds.HistoryRevert, model.RevertCommand)
+            .Bind(CommandIds.HistoryReset, model.ResetCommand)
+            .Bind(CommandIds.HistoryReflog, model.ShowReflogCommand)
+            .Bind(CommandIds.StashManage, model.ShowStashCommand)
+            .Bind(CommandIds.ToolsCommandLog, model.ShowCommandLogCommand)
+            .Bind(CommandIds.HelpAbout, new RelayCommand(ShowAbout))
+            .Bind(CommandIds.AppExit, new RelayCommand(Close));
+
+        // Menü etiketleri de kayıttan besleniyor: P08-T00/M03'te ölçüldü, `InputGesture`
+        // komutu ÇALIŞTIRMIYOR — yalnızca yazı. Aynı kaynaktan gelmezlerse menüde yazan
+        // kısayol ile çalışan kısayol sessizce ayrışır.
+        shortcuts
+            .BindMenu(CommandIds.RepositoryOpen, MenuOpen)
+            .BindMenu(CommandIds.RepositoryClose, MenuCloseRepository)
+            .BindMenu(CommandIds.RepositoryRefresh, MenuRepositoryRefresh)
+            .BindMenu(CommandIds.RepositoryRemotes, MenuRemotes)
+            .BindMenu(CommandIds.CommitShow, MenuCommit)
+            .BindMenu(CommandIds.RemotePull, MenuPull)
+            .BindMenu(CommandIds.RemotePush, MenuPush)
+            .BindMenu(CommandIds.BranchCreate, MenuCreateBranch)
+            .BindMenu(CommandIds.BranchDelete, MenuDeleteBranch)
+            .BindMenu(CommandIds.BranchCheckout, MenuCheckoutBranch)
+            .BindMenu(CommandIds.BranchMerge, MenuMerge)
+            .BindMenu(CommandIds.HistoryRebase, MenuRebase)
+            .BindMenu(CommandIds.HistoryCherryPick, MenuCherryPick)
+            .BindMenu(CommandIds.HistoryRevert, MenuRevert)
+            .BindMenu(CommandIds.HistoryReset, MenuResetToCommit)
+            .BindMenu(CommandIds.HistoryReflog, MenuReflog)
+            .BindMenu(CommandIds.StashManage, MenuStashes)
+            .BindMenu(CommandIds.TagCreate, MenuCreateTag)
+            .BindMenu(CommandIds.ToolsCommandLog, MenuCommandLog)
+            .BindMenu(CommandIds.ToolsSettings, MenuSettings)
+            .BindMenu(CommandIds.HelpAbout, MenuAbout)
+            .BindMenu(CommandIds.AppExit, MenuExit);
+
+        shortcuts.Apply();
+
+        _shortcuts = shortcuts;
+
+        // Panel kısayolları pencereye DEĞİL, panelin kendisine bağlanıyor (P08-T00/M11:
+        // pencere bağlaması tuşu odaklı kontrolden koşulsuz çalar).
+        CommitList.AttachShortcuts(registry);
+        ChangesDiff.AttachShortcuts(registry);
+        BranchPanel.AttachShortcuts(registry);
     }
 
     /// <summary>Çakışma çözüm ekranını gerçek bir pencereyle gösterir (P07-T03).</summary>
@@ -268,7 +361,7 @@ public partial class MainWindow : Window
     /// Klasör seçici kod arkasında: <c>IStorageProvider</c> pencereye bağlıdır ve
     /// ViewModel'ın pencereyi tanıması katman kuralını bozardı.
     /// </remarks>
-    private async void OnOpenClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async Task OpenRepositoryAsync()
     {
         if (DataContext is not MainWindowViewModel viewModel)
         {
@@ -291,9 +384,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnExitClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
-
-    private void OnAboutClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private void ShowAbout()
     {
         // Tam "Hakkında" penceresi Faz 08'in işi (P08-T21); şimdilik sürüm bilgisi başlıkta.
         Title = $"gitext-core — {typeof(MainWindow).Assembly.GetName().Version}";
@@ -351,7 +442,7 @@ public partial class MainWindow : Window
     /// (<c>commandsToolStripMenuItem.DropDownItems</c>). Modal açılıyor; kapanınca commit
     /// listesi yenileniyor çünkü bu ekranda yeni bir commit oluşmuş olabilir.
     /// </remarks>
-    private async void OnCommitClick(object? sender, RoutedEventArgs e)
+    private async Task ShowCommitAsync()
     {
         if (DataContext is not MainWindowViewModel model
             || model.CreateWorkingTree() is not { } workingTree)
@@ -360,7 +451,7 @@ public partial class MainWindow : Window
         }
 
         await workingTree.OpenAsync(model.Commits.Repository?.WorkingDirectory);
-        await WorkingTreeWindow.Open(workingTree, this);
+        await WorkingTreeWindow.Open(workingTree, this, _registry);
         await model.RefreshAsync();
     }
 }

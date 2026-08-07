@@ -192,6 +192,10 @@ public class CompareWindowTests
         CommitListViewModel list = await LoadedListAsync(10);
 
         CommitListView view = new() { DataContext = list };
+
+        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
+        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -225,6 +229,10 @@ public class CompareWindowTests
         CommitListViewModel list = await LoadedListAsync(10);
 
         CommitListView view = new() { DataContext = list };
+
+        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
+        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();
         Dispatcher.UIThread.RunJobs();

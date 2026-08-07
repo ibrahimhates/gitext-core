@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitExt.Core;
+using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -12,8 +13,9 @@ namespace GitExt.UI.Views;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Klavye kısayolları: <c>Space</c> seçili dosyayı karşı tarafa taşır (stage/unstage),
-/// <c>Ctrl+Space</c> tümünü, <c>F5</c> yeniler.
+/// Klavye kısayolları artık komut kaydından geliyor (P08-T01/T02): <c>Space</c> seçili
+/// dosyayı karşı tarafa taşır, <c>Ctrl+Shift+S</c>/<c>Ctrl+Shift+U</c> tümünü,
+/// <c>Ctrl+Enter</c> commit atar. <c>F5</c> artık <b>küresel</b> bir komut.
 /// </para>
 /// <para>
 /// ⚠️ <b>Odak, bu ekranın en kırılgan yeri.</b> Her stage/unstage işleminden sonra iki liste
@@ -33,6 +35,10 @@ public partial class WorkingTreeView : UserControl
         // Tünelleme: içteki `ScrollViewer` kabaran tuş olayını yutuyor (Faz 03'te ölçüldü).
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
+
+    private ShortcutDispatcher? _dispatcher;
+
+    private ICommandRegistry? _registry;
 
     private WorkingTreeViewModel? ViewModel => DataContext as WorkingTreeViewModel;
 
@@ -78,47 +84,54 @@ public partial class WorkingTreeView : UserControl
             return;
         }
 
-        bool control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
-
         // 🔴 Metin kutusundayken liste kısayolları ÇALIŞMAMALI. Tünelleme fazında
         // yakaladığımız için `Space` tuşu commit mesajına boşluk yazmak yerine dosya
         // stage'lerdi — mesaj yazan kullanıcı farkında olmadan index'i değiştirirdi.
-        // Ctrl+Enter bilinçli istisna: commit kısayolu zaten mesaj kutusundan verilir.
-        if (e.Source is TextBox && !(control && e.Key == Key.Enter))
+        // Commit kısayolu bilinçli istisna: commit zaten mesaj kutusundan verilir.
+        bool isCommit = _registry?.GetGesture(CommandIds.WorkingTreeCommit) is { } commit
+            && commit.Matches(e);
+
+        if (e.Source is TextBox && !isCommit)
         {
             return;
         }
 
-        switch (e.Key)
+        // F5 artık KÜRESEL (P08-T02): burada da yakalasaydık aynı jest iki bağlamda
+        // kayıtlı olurdu ve çakışma tespiti onu haklı olarak raporlardı.
+        _dispatcher?.Handle(e);
+    }
+
+    /// <summary>Bağlam kısayollarını komut kaydına bağlar (P08-T01).</summary>
+    public void AttachShortcuts(ICommandRegistry registry)
+    {
+        _registry = registry;
+
+        ShortcutDispatcher dispatcher = new(registry, CommandContext.WorkingTree);
+
+        dispatcher.Bind(CommandIds.WorkingTreeToggleStage, () => WithModel(m =>
+            m.IsStagedListActive ? m.UnstageSelectedAsync() : m.StageSelectedAsync()));
+
+        dispatcher.Bind(CommandIds.WorkingTreeStageAll, () => WithModel(m => m.StageAllAsync()));
+        dispatcher.Bind(CommandIds.WorkingTreeUnstageAll, () => WithModel(m => m.UnstageAllAsync()));
+
+        // 🔴 ÖLÇÜLDÜ (P05-T12): `AcceptsReturn` açık bir `TextBox` Ctrl+Enter'ı da düz Enter
+        // gibi işleyip SATIR SONU EKLİYOR. Tünelleme fazında yakalanıp `Handled`
+        // işaretlenmezse commit atılırken mesaja bir de boş satır girerdi.
+        dispatcher.Bind(CommandIds.WorkingTreeCommit, () => WithModel(m => m.CommitAsync()));
+
+        _dispatcher = dispatcher;
+    }
+
+    private bool WithModel(Func<WorkingTreeViewModel, Task> operation)
+    {
+        if (ViewModel is not { } model)
         {
-            case Key.Space when control:
-                Run(model.IsStagedListActive ? model.UnstageAllAsync() : model.StageAllAsync());
-                e.Handled = true;
-                break;
-
-            case Key.Space:
-                Run(model.IsStagedListActive
-                    ? model.UnstageSelectedAsync()
-                    : model.StageSelectedAsync());
-                e.Handled = true;
-                break;
-
-            case Key.Enter when control:
-                // 🔴 ÖLÇÜLDÜ (P05-T12): `AcceptsReturn` açık bir `TextBox` Ctrl+Enter'ı da
-                // düz Enter gibi işleyip SATIR SONU EKLİYOR. Tünelleme fazında yakalanıp
-                // `Handled` işaretlenmezse commit atılırken mesaja bir de boş satır girerdi.
-                Run(model.CommitAsync());
-                e.Handled = true;
-                break;
-
-            case Key.F5:
-                Run(model.RefreshAsync());
-                e.Handled = true;
-                break;
-
-            default:
-                break;
+            return false;
         }
+
+        Run(operation(model));
+
+        return true;
     }
 
     private void OnStageClick(object? sender, RoutedEventArgs e) =>

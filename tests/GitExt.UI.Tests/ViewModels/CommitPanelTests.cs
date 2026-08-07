@@ -219,6 +219,10 @@ public class CommitPanelTests
         Harness harness = await CreateAsync(Unstaged("a.txt"));
 
         WorkingTreeView view = new() { DataContext = harness.Model };
+
+        // P08-T01: kısayollar komut kaydından geliyor.
+        view.AttachShortcuts(TestCommands.Registry());
+
         Window window = new() { Width = 900, Height = 600, Content = view };
 
         window.Show();
@@ -246,6 +250,10 @@ public class CommitPanelTests
         harness.Model.Message.Text = "konu";
 
         WorkingTreeView view = new() { DataContext = harness.Model };
+
+        // P08-T01: kısayollar komut kaydından geliyor.
+        view.AttachShortcuts(TestCommands.Registry());
+
         Window window = new() { Width = 900, Height = 600, Content = view };
 
         window.Show();

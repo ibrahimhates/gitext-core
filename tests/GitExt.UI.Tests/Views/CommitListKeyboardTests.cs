@@ -76,6 +76,10 @@ public class CommitListKeyboardTests
 
         CommitListView view = new() { DataContext = viewModel };
 
+        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
+        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        view.AttachShortcuts(TestCommands.Registry());
+
         // Yükseklik bilinçli olarak sabit: sayfa boyutu görünür alandan hesaplanıyor,
         // pencere ölçülmezse test anlamını yitirir.
         Window window = new() { Width = 900, Height = 300, Content = view };
@@ -199,6 +203,10 @@ public class CommitListKeyboardTests
             new FakeCommitSignatureReader(),new FakeDiffReader());
 
         CommitListView view = new() { DataContext = viewModel };
+
+        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
+        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -232,6 +240,10 @@ public class CommitListKeyboardTests
             new FakeCommitSignatureReader(),new FakeDiffReader());
 
         CommitListView view = new() { DataContext = viewModel };
+
+        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
+        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();
         Dispatcher.UIThread.RunJobs();

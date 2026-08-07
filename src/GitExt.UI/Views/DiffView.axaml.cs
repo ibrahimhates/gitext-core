@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -26,7 +27,56 @@ public partial class DiffView : UserControl
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
 
+    private ShortcutDispatcher? _dispatcher;
+
     private DiffViewModel? Model => DataContext as DiffViewModel;
+
+    /// <summary>
+    /// Bağlam kısayollarını komut kaydına bağlar (P08-T01).
+    /// </summary>
+    /// <remarks>
+    /// Kayıt verilmezse görünüm <b>kısayolsuz</b> çalışır: <see cref="DiffView"/> bağımsız bir
+    /// bileşen ve karşılaştırma penceresinde de kullanılıyor; orada kısayol kaydı olmayabilir.
+    /// </remarks>
+    public void AttachShortcuts(ICommandRegistry registry)
+    {
+        ShortcutDispatcher dispatcher = new(registry, CommandContext.Diff);
+
+        // 🔴 Arama kutusundayken gezinme ve çıplak harf kısayolları ÇALIŞMAMALI: `S`
+        // kısayolu metin kutusuna yazarken satır stage'lerdi. Bu koşul kısayol dağıtımının
+        // ÖNÜNDE duruyor, tek tek komutların içinde değil — biri unutulursa sessizce
+        // yazmayı bozardı.
+        dispatcher.Bind(CommandIds.DiffNextChange, () => WhenNotSearching(m => Move(m.GoToNextChange())));
+        dispatcher.Bind(CommandIds.DiffPreviousChange, () => WhenNotSearching(m => Move(m.GoToPreviousChange())));
+        dispatcher.Bind(CommandIds.DiffNextHunk, () => WhenNotSearching(m => Move(m.GoToNextHunk())));
+        dispatcher.Bind(CommandIds.DiffPreviousHunk, () => WhenNotSearching(m => Move(m.GoToPreviousHunk())));
+        dispatcher.Bind(CommandIds.DiffNextFile, () => WhenNotSearching(m => Move(m.GoToNextFile())));
+        dispatcher.Bind(CommandIds.DiffPreviousFile, () => WhenNotSearching(m => Move(m.GoToPreviousFile())));
+
+        dispatcher.Bind(CommandIds.DiffStageLines,
+            () => WhenNotSearching(m => Started(m.StageSelectionAsync(SelectedLineIndices()))));
+        dispatcher.Bind(CommandIds.DiffUnstageLines,
+            () => WhenNotSearching(m => Started(m.UnstageSelectionAsync(SelectedLineIndices()))));
+        dispatcher.Bind(CommandIds.DiffResetLines,
+            () => WhenNotSearching(m => Started(m.DiscardSelectionAsync(SelectedLineIndices()))));
+
+        dispatcher.Bind(CommandIds.DiffCopyCode,
+            () => WhenNotSearching(m => Started(CopyAsync(m, DiffCopyMode.Code))));
+        dispatcher.Bind(CommandIds.DiffCopyPatch,
+            () => WhenNotSearching(m => Started(CopyAsync(m, DiffCopyMode.Patch))));
+
+        dispatcher.Bind(CommandIds.DiffFind, () =>
+        {
+            LineSearch.Focus();
+            LineSearch.SelectAll();
+        });
+
+        // Bul/önceki-sonraki arama kutusunda DA çalışır — aramaya devam etmenin yolu bu.
+        dispatcher.Bind(CommandIds.DiffFindNext, () => Find(next: true));
+        dispatcher.Bind(CommandIds.DiffFindPrevious, () => Find(next: false));
+
+        _dispatcher = dispatcher;
+    }
 
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
@@ -35,79 +85,74 @@ public partial class DiffView : UserControl
             return;
         }
 
-        bool control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
-        bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
-
-        // Arama kutusundayken gezinme tuşları metne müdahale etmemeli; yalnızca
-        // Enter/Escape ve F3 anlamlı.
         bool inSearchBox = LineSearch.IsFocused;
 
+        // Kayda girmeyen iki tuş: ikisi de arama kutusuna ait ve yeniden atanabilir olmaları
+        // anlamsız (Enter "onayla", Escape "vazgeç" — bunlar kısayol değil, kutu davranışı).
         switch (e.Key)
         {
-            case Key.Down when control && !inSearchBox:
-                Move(model.GoToNextChange(), e);
-                break;
-
-            case Key.Up when control && !inSearchBox:
-                Move(model.GoToPreviousChange(), e);
-                break;
-
-            case Key.PageDown when control && !inSearchBox:
-                Move(model.GoToNextHunk(), e);
-                break;
-
-            case Key.PageUp when control && !inSearchBox:
-                Move(model.GoToPreviousHunk(), e);
-                break;
-
-            case Key.Down when e.KeyModifiers.HasFlag(KeyModifiers.Alt) && !inSearchBox:
-                Move(model.GoToNextFile(), e);
-                break;
-
-            case Key.Up when e.KeyModifiers.HasFlag(KeyModifiers.Alt) && !inSearchBox:
-                Move(model.GoToPreviousFile(), e);
-                break;
-
-            case Key.F when control:
-                LineSearch.Focus();
-                LineSearch.SelectAll();
-                e.Handled = true;
-                break;
-
             case Key.Enter when inSearchBox:
                 // Odak kutuda KALIR: kullanıcı aramaya devam edebilmeli.
-                Move(shift ? model.FindPrevious() : model.FindNext(), e, keepFocus: true);
-                break;
-
-            case Key.F3:
-                Move(shift ? model.FindPrevious() : model.FindNext(), e, keepFocus: inSearchBox);
-                break;
+                Move(model.FindNext(), e, keepFocus: true);
+                return;
 
             case Key.Escape when inSearchBox:
                 FocusLines();
                 e.Handled = true;
-                break;
+                return;
 
-            case Key.S when control && !inSearchBox:
-                // GitExtensions'ta da stage/unstage kısayolu var (`Command.StageLines` /
-                // `Command.UnstageLines`) ve ikisi birbirini dışlıyor: hangi taraf
-                // görüntüleniyorsa o çalışıyor.
-                _ = model.StageSelectionAsync(SelectedLineIndices());
-                e.Handled = true;
-                break;
-
-            case Key.U when control && !inSearchBox:
-                _ = model.UnstageSelectionAsync(SelectedLineIndices());
-                e.Handled = true;
-                break;
-
-            case Key.C when control && !inSearchBox:
-                // Ctrl+Shift+C yamayı önekleriyle kopyalar; düz Ctrl+C yalnızca kodu.
-                _ = CopyAsync(model, shift ? DiffCopyMode.Patch : DiffCopyMode.Code);
-                e.Handled = true;
+            default:
                 break;
         }
+
+        _dispatcher?.Handle(e);
     }
+
+    /// <summary>Arama kutusunda değilken çalışır; kutudayken olayı tüketmez.</summary>
+    private bool WhenNotSearching(Func<DiffViewModel, bool> action) =>
+        !LineSearch.IsFocused && Model is { } model && action(model);
+
+    /// <summary>Gezinmeyi çalıştırır, satırı görünür yapar ve odağı listeye geri verir.</summary>
+    private bool Move(bool moved)
+    {
+        if (moved)
+        {
+            ScrollCurrentIntoView();
+            FocusLines();
+        }
+
+        return moved;
+    }
+
+    private bool Find(bool next)
+    {
+        if (Model is not { } model)
+        {
+            return false;
+        }
+
+        bool inSearchBox = LineSearch.IsFocused;
+        bool moved = next ? model.FindNext() : model.FindPrevious();
+
+        if (moved)
+        {
+            ScrollCurrentIntoView();
+
+            if (!inSearchBox)
+            {
+                FocusLines();
+            }
+        }
+
+        return moved;
+    }
+
+    /// <summary>Başlatılmış bir işi "tüketildi" olarak bildirir.</summary>
+    /// <remarks>
+    /// İşlem asenkron; sonucunu beklemek tuş olayını bloke ederdi. Tuşun tüketilmesi
+    /// <b>işin başlatılmış olmasına</b> bağlı, bitmesine değil.
+    /// </remarks>
+    private static bool Started(Task operation) => operation is not null;
 
     /// <summary>
     /// Gezinme başarılıysa olayı tüketir, satırı görünür yapar ve odağı listede tutar.

@@ -13,5 +13,5 @@
         MinWidth="640" MinHeight="420"
         WindowStartupLocation="CenterOwner">
 
-    <views:WorkingTreeView />
+    <views:WorkingTreeView Name="Files" />
 </Window>

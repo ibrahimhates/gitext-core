@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -36,12 +37,17 @@ public partial class WorkingTreeWindow : Window
     }
 
     /// <summary>Commit ekranını sahibinin üstünde <b>modal</b> açar.</summary>
-    internal static Task Open(WorkingTreeViewModel viewModel, Window owner)
+    internal static Task Open(WorkingTreeViewModel viewModel, Window owner, ICommandRegistry? registry = null)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(owner);
 
         WorkingTreeWindow window = new() { DataContext = viewModel };
+
+        if (registry is not null)
+        {
+            window.GetControl<WorkingTreeView>("Files").AttachShortcuts(registry);
+        }
 
         // Onay diyaloğu bu pencerenin üstünde açılacak; sahip pencere ancak burada belli
         // oluyor (P05-T15).
