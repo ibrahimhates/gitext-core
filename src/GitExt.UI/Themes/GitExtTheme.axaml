@@ -16,4 +16,23 @@
     </Styles.Resources>
 
     <StyleInclude Source="avares://GitExt.UI/Styles/RefBadgeStyles.axaml" />
+
+    <!--
+        Odak göstergesi (P08-T05). Odaklı panelin kenarlığı vurgulanıyor.
+
+        🔴 Gösterge olmadan klavye gezinmesi işe yaramaz: kullanıcı tuşlarının nereye
+        gittiğini göremez ve `F6` bastığında bir şey olup olmadığını anlayamaz.
+
+        `:focus-within` kullanılıyor, `:focus` değil — P08-T00/M09'da ölçüldü, odak
+        neredeyse her zaman panelin İÇİNDEKİ bir öğede (bir `ListBoxItem`, bir `TextBox`);
+        panelin kendisi hiç odak almıyor.
+    -->
+    <Style Selector="Border.panel">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Border.panel:focus-within">
+        <Setter Property="BorderBrush" Value="{DynamicResource GitExtAccentBrush}" />
+    </Style>
 </Styles>

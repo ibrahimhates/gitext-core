@@ -6,7 +6,8 @@
              mc:Ignorable="d"
              d:DesignWidth="900" d:DesignHeight="220"
              x:Class="GitExt.UI.Views.CommitDetailsView"
-             x:DataType="vm:CommitDetailsViewModel">
+             x:DataType="vm:CommitDetailsViewModel"
+             Focusable="True">
 
     <UserControl.Styles>
         <StyleInclude Source="avares://GitExt.UI/Styles/RefBadgeStyles.axaml" />

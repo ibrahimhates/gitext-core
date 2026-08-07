@@ -14,8 +14,22 @@ namespace GitExt.UI.Views;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private const string PanelBranches = "branches";
+    private const string PanelCommits = "commits";
+    private const string PanelDetails = "details";
+    private const string PanelDiff = "diff";
+
     private ICommandRegistry? _registry;
     private GlobalShortcuts? _shortcuts;
+
+    /// <summary>
+    /// Panel gezinme sırası (P08-T05).
+    /// </summary>
+    /// <remarks>
+    /// Sıra ekrandaki yerleşimi izliyor: soldan sağa, üstten aşağı. Klavye gezinmesinin
+    /// göz gezinmesiyle aynı yolu takip etmesi, sırayı ezberlemeyi gereksiz kılıyor.
+    /// </remarks>
+    private readonly PanelNavigator _panels = new();
 
     public MainWindow()
     {
@@ -23,6 +37,14 @@ public partial class MainWindow : Window
 
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
+
+        // 🔴 Görünmeyen panel atlanıyor: gizli bir panele odak vermek, odağın kaybolması
+        // demektir — tuşlar hiçbir yere gitmez ve ekranda hiçbir şey değişmez.
+        _panels
+            .Add(PanelBranches, () => BranchPanel.IsEffectivelyVisible, () => BranchPanel.FocusPanel())
+            .Add(PanelCommits, () => CommitList.IsEffectivelyVisible, () => CommitList.FocusPanel())
+            .Add(PanelDetails, () => Details.IsEffectivelyVisible, () => Details.FocusPanel())
+            .Add(PanelDiff, () => ChangesDiff.IsEffectivelyVisible, () => ChangesDiff.FocusPanel());
 
         // Diyalog bir sahip pencere istiyor; ViewModel'ın `Window` tanıması katman kuralını
         // bozardı (P05-T15'teki onay diyaloğuyla aynı desen).
@@ -106,6 +128,14 @@ public partial class MainWindow : Window
             .Bind(CommandIds.HistoryReflog, model.ShowReflogCommand)
             .Bind(CommandIds.StashManage, model.ShowStashCommand)
             .Bind(CommandIds.ToolsCommandLog, model.ShowCommandLogCommand)
+            .Bind(CommandIds.ViewFocusLeftPanel, new RelayCommand(() => _panels.FocusPanel(PanelBranches)))
+            .Bind(CommandIds.ViewFocusCommitList, new RelayCommand(() => _panels.FocusPanel(PanelCommits)))
+            .Bind(CommandIds.ViewFocusCommitDetails, new RelayCommand(() => _panels.FocusPanel(PanelDetails)))
+            .Bind(CommandIds.ViewFocusDiff, new RelayCommand(() => _panels.FocusPanel(PanelDiff)))
+            .Bind(CommandIds.ViewNextPanel, new RelayCommand(() => _panels.Move(HasPanelFocus, 1)))
+            .Bind(CommandIds.ViewPreviousPanel, new RelayCommand(() => _panels.Move(HasPanelFocus, -1)))
+            .Bind(CommandIds.ToolsCommandPalette, new AsyncRelayCommand(ShowCommandPaletteAsync))
+            .Bind(CommandIds.HelpShortcuts, new AsyncRelayCommand(ShowShortcutReferenceAsync))
             .Bind(CommandIds.HelpAbout, new RelayCommand(ShowAbout))
             .Bind(CommandIds.AppExit, new RelayCommand(Close));
 
@@ -141,11 +171,39 @@ public partial class MainWindow : Window
         _shortcuts = shortcuts;
 
         // Panel kısayolları pencereye DEĞİL, panelin kendisine bağlanıyor (P08-T00/M11:
-        // pencere bağlaması tuşu odaklı kontrolden koşulsuz çalar).
-        CommitList.AttachShortcuts(registry);
-        ChangesDiff.AttachShortcuts(registry);
-        BranchPanel.AttachShortcuts(registry);
+        // pencere bağlaması tuşu odaklı kontrolden koşulsuz çalar). Panellerin dağıtıcıları
+        // yönlendiriciye de kaydediliyor: komut paleti onları da çalıştırabilmeli.
+        shortcuts.Router.Register(CommitList.AttachShortcuts(registry));
+        shortcuts.Router.Register(ChangesDiff.AttachShortcuts(registry));
+        shortcuts.Router.Register(BranchPanel.AttachShortcuts(registry));
     }
+
+    /// <summary>Panelin şu an odağı taşıyıp taşımadığı.</summary>
+    private bool HasPanelFocus(string id) => id switch
+    {
+        PanelBranches => PanelNavigator.ContainsFocus(BranchPanel),
+        PanelCommits => PanelNavigator.ContainsFocus(CommitList),
+        PanelDetails => PanelNavigator.ContainsFocus(Details),
+        PanelDiff => PanelNavigator.ContainsFocus(ChangesDiff),
+        _ => false,
+    };
+
+    private Task ShowCommandPaletteAsync()
+    {
+        if (_registry is not { } registry || _shortcuts is not { } shortcuts)
+        {
+            return Task.CompletedTask;
+        }
+
+        return CommandPaletteWindow.ShowAsync(
+            new CommandPaletteViewModel(registry, shortcuts.Router),
+            this);
+    }
+
+    private Task ShowShortcutReferenceAsync() =>
+        _registry is { } registry
+            ? ShortcutReferenceWindow.ShowAsync(new ShortcutReferenceViewModel(registry), this)
+            : Task.CompletedTask;
 
     /// <summary>Çakışma çözüm ekranını gerçek bir pencereyle gösterir (P07-T03).</summary>
     private sealed class DialogConflictPrompt : IConflictPrompt

@@ -275,11 +275,17 @@
               ColumnDefinitions="Auto,Auto,*"
               IsVisible="{Binding !ShowWelcome}">
 
-            <views:RefTreeView Name="BranchPanel"
-                               Grid.Column="0"
-                               Width="220"
-                               MinWidth="120"
-                               DataContext="{Binding RefTree}" />
+            <!--
+                Odak halkası (P08-T05): odaklı panelin kenarlığı vurgulanıyor. Gösterge
+                olmadan klavye gezinmesi işe yaramaz — kullanıcı tuşların nereye gittiğini
+                göremez.
+            -->
+            <Border Grid.Column="0" Classes="panel">
+                <views:RefTreeView Name="BranchPanel"
+                                   Width="220"
+                                   MinWidth="120"
+                                   DataContext="{Binding RefTree}" />
+            </Border>
 
             <GridSplitter Name="BranchPanelSplitter"
                           Grid.Column="1"
@@ -290,7 +296,9 @@
         <Grid Grid.Column="2"
               RowDefinitions="*,Auto,Auto">
 
-            <views:CommitListView Name="CommitList" Grid.Row="0" DataContext="{Binding Commits}" />
+            <Border Grid.Row="0" Classes="panel">
+                <views:CommitListView Name="CommitList" DataContext="{Binding Commits}" />
+            </Border>
 
             <!-- Depo açık ama hiç commit yok: yeni `git init`. Boş ekran değil, açıklama. -->
             <Border Grid.Row="0"
@@ -325,11 +333,15 @@
                         IsVisible="{Binding Commits.Details.HasCommit}">
 
                 <TabItem Header="Detay" FontSize="12">
-                    <views:CommitDetailsView DataContext="{Binding Commits.Details}" />
+                    <Border Classes="panel">
+                        <views:CommitDetailsView Name="Details" DataContext="{Binding Commits.Details}" />
+                    </Border>
                 </TabItem>
 
                 <TabItem Header="Değişiklikler" FontSize="12">
-                    <views:DiffView Name="ChangesDiff" DataContext="{Binding Commits.Diff}" />
+                    <Border Classes="panel">
+                        <views:DiffView Name="ChangesDiff" DataContext="{Binding Commits.Diff}" />
+                    </Border>
                 </TabItem>
             </TabControl>
         </Grid>

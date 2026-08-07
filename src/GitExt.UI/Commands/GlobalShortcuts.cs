@@ -36,6 +36,15 @@ public sealed class GlobalShortcuts : IDisposable
         _registry.Changed += OnRegistryChanged;
     }
 
+    /// <summary>
+    /// Komut kimliğini çalıştıracak yere ileten yönlendirici.
+    /// </summary>
+    /// <remarks>
+    /// Komut paleti buradan besleniyor: kısayolla palet <b>aynı</b> yürütme yolunu
+    /// kullanmasaydı bir komut birinde çalışıp diğerinde çalışmayabilirdi.
+    /// </remarks>
+    public CommandRouter Router { get; } = new();
+
     /// <summary>Komutu bir kimliğe bağlar.</summary>
     public GlobalShortcuts Bind(string commandId, ICommand command)
     {
@@ -45,6 +54,7 @@ public sealed class GlobalShortcuts : IDisposable
         }
 
         _commands[commandId] = command;
+        Router.Register(commandId, command);
 
         return this;
     }

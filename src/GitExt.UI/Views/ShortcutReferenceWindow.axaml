@@ -1,0 +1,74 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.ShortcutReferenceWindow"
+        x:DataType="vm:ShortcutReferenceViewModel"
+        Title="Klavye kısayolları"
+        Width="640" Height="620"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="Auto,Auto,*" Margin="10">
+
+        <TextBox Grid.Row="0"
+                 Name="FilterBox"
+                 Watermark="Kısayol veya komut ara…"
+                 Text="{Binding Filter}"
+                 Margin="0,0,0,8" />
+
+        <ItemsControl Grid.Row="1"
+                      Name="ConflictList"
+                      ItemsSource="{Binding ConflictMessages}"
+                      IsVisible="{Binding HasConflicts}"
+                      Margin="0,0,0,8">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                    <Border Background="{DynamicResource GitExtWarningBackgroundBrush}"
+                            BorderBrush="{DynamicResource GitExtWarningBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Padding="8,5"
+                            Margin="0,0,0,4">
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap"
+                                   FontSize="{DynamicResource GitExtSmallFontSize}" />
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <ScrollViewer Grid.Row="2">
+            <ItemsControl Name="GroupList" ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ShortcutReferenceGroup">
+                        <StackPanel Margin="0,0,0,14">
+                            <TextBlock Text="{Binding Title}"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,4" />
+
+                            <Border BorderThickness="1"
+                                    BorderBrush="{DynamicResource GitExtBorderBrush}"
+                                    CornerRadius="3">
+                                <ItemsControl ItemsSource="{Binding Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ShortcutRow">
+                                            <Grid ColumnDefinitions="*,150" Margin="8,3">
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Title}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding GestureText}"
+                                                           FontFamily="{DynamicResource GitExtMonospaceFont}"
+                                                           FontWeight="{Binding IsCustomized,
+                                                                        Converter={x:Static vm:BoldWhenTrue.Instance}}"
+                                                           Opacity="0.85" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</Window>

@@ -134,7 +134,7 @@ public partial class CommitListView : UserControl
     }
 
     /// <summary>Bağlam kısayollarını komut kaydına bağlar (P08-T01).</summary>
-    public void AttachShortcuts(ICommandRegistry registry)
+    public ShortcutDispatcher AttachShortcuts(ICommandRegistry registry)
     {
         ShortcutDispatcher dispatcher = new(registry, CommandContext.CommitList);
 
@@ -158,6 +158,8 @@ public partial class CommitListView : UserControl
         dispatcher.Bind(CommandIds.CommitListGoToChild, () => Navigate(m => m.GoToChild()));
 
         _dispatcher = dispatcher;
+
+        return dispatcher;
     }
 
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
@@ -237,6 +239,16 @@ public partial class CommitListView : UserControl
                 break;
         }
     }
+
+    /// <summary>
+    /// Panele odaklanır (P08-T05).
+    /// </summary>
+    /// <remarks>
+    /// Seçili satır varsa oraya; yoksa arama kutusuna. Hiçbirine odaklanamazsak
+    /// <see langword="false"/> dönüyoruz ki gezinme <b>bir sonraki panele</b> geçsin —
+    /// odaklanamayan bir panelde durmak, tuşların hiçbir yere gitmemesi demekti.
+    /// </remarks>
+    public bool FocusPanel() => FocusSelectedRow() || ShaSearchBox.Focus();
 
     /// <summary>Arama kutusuna odaklanır (<c>Ctrl+F</c>).</summary>
     public void FocusSearch() => ShaSearchBox.Focus();

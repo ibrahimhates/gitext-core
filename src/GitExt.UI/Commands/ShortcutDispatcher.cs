@@ -91,4 +91,11 @@ public sealed class ShortcutDispatcher
 
     /// <summary>Bu bağlamda gerçekten bir işleyicisi olan komutlar.</summary>
     public IReadOnlyCollection<string> BoundCommands => _handlers.Keys;
+
+    /// <summary>
+    /// Komutu tuşa basılmış gibi çalıştırır (komut paletinin yolu).
+    /// </summary>
+    /// <returns>Bağlıysa ve işleyici işi üstlendiyse <see langword="true"/>.</returns>
+    public bool TryInvoke(string commandId) =>
+        _handlers.TryGetValue(commandId, out Func<bool>? handler) && handler();
 }

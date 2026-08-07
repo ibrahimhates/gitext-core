@@ -38,7 +38,7 @@ public partial class DiffView : UserControl
     /// Kayıt verilmezse görünüm <b>kısayolsuz</b> çalışır: <see cref="DiffView"/> bağımsız bir
     /// bileşen ve karşılaştırma penceresinde de kullanılıyor; orada kısayol kaydı olmayabilir.
     /// </remarks>
-    public void AttachShortcuts(ICommandRegistry registry)
+    public ShortcutDispatcher AttachShortcuts(ICommandRegistry registry)
     {
         ShortcutDispatcher dispatcher = new(registry, CommandContext.Diff);
 
@@ -76,6 +76,23 @@ public partial class DiffView : UserControl
         dispatcher.Bind(CommandIds.DiffFindPrevious, () => Find(next: false));
 
         _dispatcher = dispatcher;
+
+        return dispatcher;
+    }
+
+    /// <summary>
+    /// Panele odaklanır (P08-T05).
+    /// </summary>
+    /// <remarks>
+    /// Odaklanacak satır yoksa <see langword="false"/> dönüyor ki panel gezinmesi burada
+    /// takılmasın: boş bir diff paneline odak vermek, tuşların hiçbir yere gitmemesi demekti.
+    /// </remarks>
+    public bool FocusPanel()
+    {
+        ListBox list = ActiveList;
+
+        return list.ItemCount > 0
+            && list.ContainerFromIndex(Math.Max(0, list.SelectedIndex))?.Focus() == true;
     }
 
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)

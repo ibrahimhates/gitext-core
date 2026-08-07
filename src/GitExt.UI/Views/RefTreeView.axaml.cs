@@ -42,7 +42,7 @@ public partial class RefTreeView : UserControl
     /// yalnızca bu panelin bağlamında geçerli — küresel olsalardı her metin kutusunda
     /// silme tuşunu ele geçirirlerdi (P08-T00/M11).
     /// </remarks>
-    public void AttachShortcuts(ICommandRegistry registry)
+    public ShortcutDispatcher AttachShortcuts(ICommandRegistry registry)
     {
         ShortcutDispatcher dispatcher = new(registry, CommandContext.RefTree);
 
@@ -53,7 +53,12 @@ public partial class RefTreeView : UserControl
 
         // Tünelleme: ağaç kabaran tuşu kendi gezinmesi için yutabiliyor.
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+
+        return dispatcher;
     }
+
+    /// <summary>Panele odaklanır (P08-T05).</summary>
+    public bool FocusPanel() => RefTree.Focus();
 
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {

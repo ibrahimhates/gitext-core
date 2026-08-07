@@ -102,7 +102,7 @@ public partial class WorkingTreeView : UserControl
     }
 
     /// <summary>Bağlam kısayollarını komut kaydına bağlar (P08-T01).</summary>
-    public void AttachShortcuts(ICommandRegistry registry)
+    public ShortcutDispatcher AttachShortcuts(ICommandRegistry registry)
     {
         _registry = registry;
 
@@ -120,6 +120,8 @@ public partial class WorkingTreeView : UserControl
         dispatcher.Bind(CommandIds.WorkingTreeCommit, () => WithModel(m => m.CommitAsync()));
 
         _dispatcher = dispatcher;
+
+        return dispatcher;
     }
 
     private bool WithModel(Func<WorkingTreeViewModel, Task> operation)

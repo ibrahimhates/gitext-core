@@ -116,6 +116,35 @@ public class GlobalShortcutTests
     }
 
     /// <summary>
+    /// <c>F6</c> odağı bir sonraki panele taşıyor (P08-T05).
+    /// </summary>
+    /// <remarks>
+    /// P08-T00/M09'da ölçüldü: <c>F6</c> Avalonia'da varsayılan olarak <b>hiçbir şey
+    /// yapmıyor</b>. Bağlanmasaydı sessizce ölü bir tuş olurdu — tam da <c>F5</c>'in Faz 08
+    /// öncesindeki hâli.
+    /// </remarks>
+    [AvaloniaFact]
+    public async Task F6_odagi_sonraki_panele_tasiyor()
+    {
+        (MainWindow window, _) = await ShowAsync();
+
+        window.GetControl<CommitListView>("CommitList").FocusPanel();
+        Dispatcher.UIThread.RunJobs();
+
+        PanelNavigator.ContainsFocus(window.GetControl<CommitListView>("CommitList"))
+            .ShouldBeTrue("başlangıç odağı commit listesinde olmalı");
+
+        window.KeyPressQwerty(PhysicalKey.F6, RawInputModifiers.None);
+        window.KeyReleaseQwerty(PhysicalKey.F6, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+
+        PanelNavigator.ContainsFocus(window.GetControl<CommitListView>("CommitList"))
+            .ShouldBeFalse("odak commit listesinden çıkmalı");
+
+        window.Close();
+    }
+
+    /// <summary>
     /// Menüde yazan kısayol ile gerçekten çalışan kısayol <b>aynı kaynaktan</b> geliyor.
     /// </summary>
     /// <remarks>

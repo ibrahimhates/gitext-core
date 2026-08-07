@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.CommandPaletteWindow"
+        x:DataType="vm:CommandPaletteViewModel"
+        Title="Komut paleti"
+        Width="620" Height="420"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        SystemDecorations="BorderOnly">
+
+    <Grid RowDefinitions="Auto,*" Margin="8">
+
+        <TextBox Grid.Row="0"
+                 Name="QueryBox"
+                 Watermark="Komut ara…"
+                 Text="{Binding Query}"
+                 FontSize="{DynamicResource GitExtLargeFontSize}"
+                 Margin="0,0,0,8" />
+
+        <Border Grid.Row="1"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource GitExtBorderBrush}">
+
+            <Panel>
+                <ListBox Name="ResultList"
+                         ItemsSource="{Binding Results}"
+                         SelectedIndex="{Binding SelectedIndex}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CommandPaletteItem">
+                            <Grid ColumnDefinitions="*,Auto" Height="26">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding Title}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               Opacity="{Binding CanRun,
+                                                         Converter={x:Static vm:OpacityWhenTrue.Instance}}" />
+                                    <TextBlock Text="{Binding Category}"
+                                               VerticalAlignment="Center"
+                                               Opacity="0.5"
+                                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding GestureText}"
+                                           VerticalAlignment="Center"
+                                           Opacity="0.7"
+                                           FontFamily="{DynamicResource GitExtMonospaceFont}"
+                                           FontSize="{DynamicResource GitExtSmallFontSize}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Boş sonuç sessiz kalmıyor: kullanıcı yazdığını mı yanlış yazdı, komut mu yok? -->
+                <TextBlock Name="EmptyLabel"
+                           Text="Eşleşen komut yok."
+                           IsVisible="{Binding IsEmpty}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Opacity="0.6" />
+            </Panel>
+        </Border>
+    </Grid>
+</Window>
