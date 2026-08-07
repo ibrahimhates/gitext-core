@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.SequencerDialog"
+        x:DataType="vm:SequencerViewModel"
+        Title="{Binding Title}" Width="560" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner">
+
+  <StackPanel Margin="16" Spacing="10">
+
+    <TextBlock Name="SummaryLabel" Text="{Binding Summary}" FontWeight="Bold" />
+
+    <CheckBox Name="NoCommitBox" Content="Stage the changes without committing"
+              IsChecked="{Binding NoCommit}" />
+
+    <CheckBox Name="RecordOriginBox" Content="Record the source commit in the message (-x)"
+              IsChecked="{Binding RecordOrigin}"
+              IsVisible="{Binding SupportsRecordOrigin}" />
+
+    <!--
+      Merge commit'inde ebeveyn seçimi ZORUNLU: ölçümde -m olmadan rc=128
+      ("is a merge but no -m option was given").
+    -->
+    <StackPanel Name="MainlinePanel" Spacing="4" IsVisible="{Binding IsMergeCommit}">
+      <TextBlock Text="This is a merge commit. Which parent is the mainline?" TextWrapping="Wrap" />
+      <NumericUpDown Name="MainlineBox" Minimum="1" Increment="1"
+                     Maximum="{Binding ParentCount}"
+                     Value="{Binding MainlineParent}" />
+    </StackPanel>
+
+    <TextBlock Name="CommandLabel" FontFamily="monospace" FontSize="11" Opacity="0.7"
+               Text="{Binding CommandLine}" TextWrapping="Wrap" />
+
+    <TextBlock Name="ResultLabel" Text="{Binding Result}" TextWrapping="Wrap"
+               IsVisible="{Binding Result, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="#c0392b" TextWrapping="Wrap"
+               IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+      <Button Name="RunButton" Content="Run" Command="{Binding RunCommand}" IsDefault="True" />
+      <Button Name="CancelButton" Content="Close" Click="OnClose" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

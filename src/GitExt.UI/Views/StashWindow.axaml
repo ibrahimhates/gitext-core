@@ -1,0 +1,62 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.StashWindow"
+        x:DataType="vm:StashViewModel"
+        Title="Stashes" Width="900" Height="560"
+        WindowStartupLocation="CenterOwner">
+
+  <!-- Yerleşim GitExtensions FormStash'ten (§ 9): solda liste, sağda diff, altta eylemler. -->
+  <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
+      <TextBox Name="MessageBox" Width="280"
+               PlaceholderText="Stash message (optional)"
+               Text="{Binding NewMessage}" />
+      <CheckBox Name="UntrackedBox" Content="Include untracked" IsChecked="{Binding IncludeUntracked}" />
+      <CheckBox Name="KeepIndexBox" Content="Keep index" IsChecked="{Binding KeepIndex}" />
+      <Button Name="PushButton" Content="Stash changes" Command="{Binding PushCommand}" />
+    </StackPanel>
+
+    <Grid Grid.Row="1" ColumnDefinitions="300,4,*">
+      <ListBox Grid.Column="0" Name="StashList"
+               ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:StashRowViewModel">
+            <StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="{Binding Selector}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Badge}" FontSize="10" Opacity="0.7"
+                           IsVisible="{Binding HasBadge}" />
+              </StackPanel>
+              <TextBlock Text="{Binding Message}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding Timestamp}" FontSize="10" Opacity="0.6" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <GridSplitter Grid.Column="1" Background="Transparent" />
+
+      <TextBox Grid.Column="2" Name="DiffBox"
+               Text="{Binding Diff}" IsReadOnly="True" AcceptsReturn="True"
+               FontFamily="monospace" TextWrapping="NoWrap" />
+    </Grid>
+
+    <StackPanel Grid.Row="2" Margin="0,10,0,0" Spacing="6">
+      <TextBlock Name="NoticeLabel" Text="{Binding Notice}" TextWrapping="Wrap"
+                 IsVisible="{Binding Notice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="#c0392b" TextWrapping="Wrap"
+                 IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <Button Name="ApplyButton" Content="Apply" Command="{Binding ApplyCommand}" />
+        <Button Name="PopButton" Content="Pop" Command="{Binding PopCommand}" />
+        <Button Name="DropButton" Content="Drop" Command="{Binding DropCommand}" />
+        <Border Width="1" Background="#40808080" Margin="4,2" />
+        <TextBox Name="BranchNameBox" Width="160" PlaceholderText="New branch name" />
+        <Button Name="BranchButton" Content="Branch from stash" Command="{Binding BranchCommand}" />
+        <Button Name="CloseButton" Content="Close" Click="OnClose" />
+      </StackPanel>
+    </StackPanel>
+  </Grid>
+</Window>

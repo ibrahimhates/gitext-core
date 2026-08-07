@@ -67,6 +67,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IWorkingTreeWriter? _workingTreeWriter;
     private readonly IBranchWriter? _branchWriter;
     private readonly IInProgressOperationReader? _operations;
+
+    /// <summary>Faz 07 servisleri; bkz. <see cref="AdvancedOperationServices"/>.</summary>
+    private readonly AdvancedOperationServices _advanced;
     private readonly IRemoteReader? _remoteReader;
     private readonly IRemoteWriter? _remoteWriter;
     private readonly IFetchWriter? _fetchWriter;
@@ -126,7 +129,8 @@ public partial class MainWindowViewModel : ViewModelBase
         IPushWriter? pushWriter = null,
         IAuthenticationDiagnostics? authenticationDiagnostics = null,
         IMergeWriter? mergeWriter = null,
-        IGitCommandLog? commandLog = null)
+        IGitCommandLog? commandLog = null,
+        AdvancedOperationServices? advanced = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
         ArgumentNullException.ThrowIfNull(recentStore);
@@ -149,6 +153,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _authDiagnostics = authenticationDiagnostics;
         _mergeWriter = mergeWriter;
         _commandLog = commandLog;
+        _advanced = advanced ?? new AdvancedOperationServices();
 
         if (_watcher is not null)
         {
@@ -184,6 +189,16 @@ public partial class MainWindowViewModel : ViewModelBase
         ShowCommandLogCommand = new AsyncRelayCommand(ShowCommandLogAsync, () => CanShowCommandLog);
         AbortMergeCommand = new AsyncRelayCommand(AbortMergeAsync, () => CanAbortMerge);
 
+        // ---------------------------------------------------------- Faz 07
+        AbortOperationCommand = new AsyncRelayCommand(AbortOperationAsync, () => CanAbortOperation);
+        ResolveConflictsCommand = new AsyncRelayCommand(ResolveConflictsAsync, () => CanResolveConflicts);
+        ShowStashCommand = new AsyncRelayCommand(ShowStashAsync, () => CanShowStash);
+        ShowReflogCommand = new AsyncRelayCommand(ShowReflogAsync, () => CanShowReflog);
+        ResetCommand = new AsyncRelayCommand(ResetAsync, () => CanReset);
+        CherryPickCommand = new AsyncRelayCommand(CherryPickAsync, () => CanCherryPick);
+        RevertCommand = new AsyncRelayCommand(RevertAsync, () => CanRevert);
+        RebaseCommand = new AsyncRelayCommand(RebaseAsync, () => CanRebase);
+
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
 
@@ -199,6 +214,15 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(ShowWelcome));
                 NotifyRepositoryDependents();
+            }
+
+            // Faz 07: reset/cherry-pick/revert SEÇİLİ commit üzerinde çalışıyor. Seçim
+            // değiştiğinde bildirmezsek menü öğeleri, gerçekte kullanılabilir oldukları
+            // hâlde soluk kalırdı — P06'da `HasRepository` ile yaşanan hatanın aynısı.
+            if (e.PropertyName is nameof(CommitListViewModel.SelectedIndex)
+                or nameof(CommitListViewModel.SelectedRow))
+            {
+                NotifySelectionDependents();
             }
         };
     }
@@ -299,6 +323,307 @@ public partial class MainWindowViewModel : ViewModelBase
     /// kalması demekti (P06-T02'nin kuralı: değişiklikleri kaybettirecek hiçbir yol olmamalı).
     /// </remarks>
     public Task CheckoutRefAsync(string refName) => CheckoutCoreAsync(refName);
+
+    /// <summary>Seçili commit'e bağlı komutların etkinliğini yeniler (P07-T06 … T08).</summary>
+    private void NotifySelectionDependents()
+    {
+        OnPropertyChanged(nameof(CanReset));
+        OnPropertyChanged(nameof(CanCherryPick));
+        OnPropertyChanged(nameof(CanRevert));
+        ResetCommand.NotifyCanExecuteChanged();
+        CherryPickCommand.NotifyCanExecuteChanged();
+        RevertCommand.NotifyCanExecuteChanged();
+    }
+
+    // ===================================================== Faz 07 komutları
+
+    /// <summary>Çakışma çözüm ekranını gösteren taraf (P07-T03).</summary>
+    public IConflictPrompt? ConflictPrompt { get; set; }
+
+    /// <summary>Stash ekranını gösteren taraf (P07-T13).</summary>
+    public IStashPrompt? StashPrompt { get; set; }
+
+    /// <summary>Reflog tarayıcısını gösteren taraf (P07-T14).</summary>
+    public IReflogPrompt? ReflogPrompt { get; set; }
+
+    /// <summary>Reset diyaloğunu gösteren taraf (P07-T06).</summary>
+    public IResetPrompt? ResetPrompt { get; set; }
+
+    /// <summary>Cherry-pick / revert diyaloğunu gösteren taraf (P07-T07, P07-T08).</summary>
+    public ISequencerPrompt? SequencerPrompt { get; set; }
+
+    /// <summary>Rebase ekranını gösteren taraf (P07-T09, P07-T10).</summary>
+    public IRebasePrompt? RebasePrompt { get; set; }
+
+    public IAsyncRelayCommand AbortOperationCommand { get; }
+
+    public IAsyncRelayCommand ResolveConflictsCommand { get; }
+
+    public IAsyncRelayCommand ShowStashCommand { get; }
+
+    public IAsyncRelayCommand ShowReflogCommand { get; }
+
+    public IAsyncRelayCommand ResetCommand { get; }
+
+    public IAsyncRelayCommand CherryPickCommand { get; }
+
+    public IAsyncRelayCommand RevertCommand { get; }
+
+    public IAsyncRelayCommand RebaseCommand { get; }
+
+    private string? RepositoryPathOrNull =>
+        Commits.Repository?.WorkingDirectory is { Length: > 0 } path ? path : null;
+
+    private string? SelectedCommitId => Commits.SelectedRow?.Commit.Id.ToString();
+
+    /// <summary>
+    /// Süren <b>herhangi bir</b> işlem iptal edilebilir mi? (P07-T11)
+    /// </summary>
+    /// <remarks>
+    /// P06-T12'de bu yalnızca merge içindi; rebase/cherry-pick/revert'in iptali farklı
+    /// komutlar olduğu için bilinçli olarak dışarıda bırakılmıştı. Faz 07'de
+    /// <see cref="IConflictResolver"/> doğru fiili <b>durum dosyalarından</b> seçiyor,
+    /// dolayısıyla artık hepsi sunulabiliyor.
+    /// </remarks>
+    public bool CanAbortOperation =>
+        _advanced.Resolver is not null
+        && RepositoryPathOrNull is not null
+        && CurrentOperation is not (InProgressOperation.None or InProgressOperation.Bisect);
+
+    /// <summary>Çakışma çözüm ekranı açılabilir mi? (P07-T03)</summary>
+    public bool CanResolveConflicts =>
+        _advanced.Conflicts is not null
+        && _advanced.Resolver is not null
+        && ConflictPrompt is not null
+        && RepositoryPathOrNull is not null;
+
+    public bool CanShowStash =>
+        _advanced.Stash is not null && StashPrompt is not null && RepositoryPathOrNull is not null;
+
+    public bool CanShowReflog =>
+        _advanced.Reflog is not null && ReflogPrompt is not null && RepositoryPathOrNull is not null;
+
+    public bool CanReset =>
+        _advanced.Reset is not null
+        && ResetPrompt is not null
+        && RepositoryPathOrNull is not null
+        && SelectedCommitId is not null;
+
+    public bool CanCherryPick =>
+        _advanced.Sequencer is not null
+        && SequencerPrompt is not null
+        && RepositoryPathOrNull is not null
+        && SelectedCommitId is not null;
+
+    public bool CanRevert => CanCherryPick;
+
+    public bool CanRebase =>
+        _advanced.Rebase is not null && RebasePrompt is not null && RepositoryPathOrNull is not null;
+
+    /// <summary>
+    /// Süren işlemi iptal eder (P07-T11).
+    /// </summary>
+    /// <remarks>
+    /// 🔑 Onay şart: iptal çalışma ağacını işlem ÖNCESİNE döndürüyor, yani çakışmaları
+    /// çözerken yazılan her şey gider (P06-T12'de ölçüldü). Onay ekranında çözülmemiş
+    /// dosyalar listeleniyor.
+    /// </remarks>
+    private async Task AbortOperationAsync()
+    {
+        if (_advanced.Resolver is not { } resolver || RepositoryPathOrNull is not { } path)
+        {
+            return;
+        }
+
+        IReadOnlyList<string> conflicted = await ReadConflictedAsync(path).ConfigureAwait(true);
+
+        if (MergeAbortConfirmer is { } confirmer
+            && !await confirmer.ConfirmAsync(conflicted).ConfigureAwait(true))
+        {
+            return;
+        }
+
+        try
+        {
+            using (_watcher?.Suspend())
+            {
+                await resolver.AbortAsync(path).ConfigureAwait(true);
+            }
+
+            BranchNotice = "İşlem iptal edildi; çalışma ağacı önceki hâline döndü.";
+        }
+        catch (GitException error)
+        {
+            BranchNotice = error.Message;
+        }
+        catch (InvalidOperationException error)
+        {
+            BranchNotice = error.Message;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Çakışma çözüm ekranını açar (P07-T03, P07-T05).</summary>
+    private async Task ResolveConflictsAsync()
+    {
+        if (_advanced.Conflicts is not { } reader
+            || _advanced.Resolver is not { } resolver
+            || ConflictPrompt is not { } prompt
+            || RepositoryPathOrNull is not { } path)
+        {
+            return;
+        }
+
+        ConflictViewModel model = new(path, reader, resolver, _advanced.MergeTools);
+        await model.RefreshAsync().ConfigureAwait(true);
+
+        using (_watcher?.Suspend())
+        {
+            await prompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Stash ekranını açar (P07-T13).</summary>
+    private async Task ShowStashAsync()
+    {
+        if (_advanced.Stash is not { } stash
+            || StashPrompt is not { } prompt
+            || RepositoryPathOrNull is not { } path)
+        {
+            return;
+        }
+
+        StashViewModel model = new(path, stash);
+        await model.RefreshAsync().ConfigureAwait(true);
+
+        using (_watcher?.Suspend())
+        {
+            await prompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Reflog tarayıcısını açar (P07-T14).</summary>
+    private async Task ShowReflogAsync()
+    {
+        if (_advanced.Reflog is not { } reflog
+            || ReflogPrompt is not { } prompt
+            || RepositoryPathOrNull is not { } path)
+        {
+            return;
+        }
+
+        ReflogViewModel model = new(path, reflog, _advanced.Reset);
+        await model.RefreshAsync().ConfigureAwait(true);
+
+        using (_watcher?.Suspend())
+        {
+            await prompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Reset diyaloğunu açar (P07-T06).</summary>
+    private async Task ResetAsync()
+    {
+        if (_advanced.Reset is not { } reset
+            || ResetPrompt is not { } prompt
+            || RepositoryPathOrNull is not { } path
+            || SelectedCommitId is not { } commit)
+        {
+            return;
+        }
+
+        ResetViewModel model = new(path, reset, commit);
+        await model.LoadAsync().ConfigureAwait(true);
+
+        using (_watcher?.Suspend())
+        {
+            await prompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        if (model.Result is { Length: > 0 } notice)
+        {
+            BranchNotice = notice;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    private Task CherryPickAsync() => RunSequencerAsync(SequencerOperation.CherryPick);
+
+    private Task RevertAsync() => RunSequencerAsync(SequencerOperation.Revert);
+
+    /// <summary>Cherry-pick / revert diyaloğunu açar (P07-T07, P07-T08).</summary>
+    private async Task RunSequencerAsync(SequencerOperation operation)
+    {
+        if (_advanced.Sequencer is not { } sequencer
+            || SequencerPrompt is not { } prompt
+            || RepositoryPathOrNull is not { } path
+            || SelectedCommitId is not { } commit)
+        {
+            return;
+        }
+
+        SequencerViewModel model = new(path, sequencer, operation, [commit]);
+        await model.LoadAsync().ConfigureAwait(true);
+
+        using (_watcher?.Suspend())
+        {
+            await prompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        if (model.Result is { Length: > 0 } notice)
+        {
+            BranchNotice = notice;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+
+        // Çakışmayla durduysa kullanıcıyı çözüm ekranına götürüyoruz: yarım kalmış bir
+        // işlemi bulup çıkış yolunu aramak zorunda bırakmak, fazın kuralına aykırı.
+        if (model.HasConflicts)
+        {
+            await ResolveConflictsAsync().ConfigureAwait(true);
+        }
+    }
+
+    /// <summary>Rebase ekranını açar (P07-T09, P07-T10).</summary>
+    private async Task RebaseAsync()
+    {
+        if (_advanced.Rebase is not { } rebase
+            || RebasePrompt is not { } prompt
+            || RepositoryPathOrNull is not { } path)
+        {
+            return;
+        }
+
+        // Varsayılan hedef: seçili commit varsa o, yoksa mevcut dalın yukarısı boş.
+        RebaseViewModel model = new(path, rebase, SelectedCommitId ?? string.Empty);
+        await model.LoadAsync().ConfigureAwait(true);
+
+        using (_watcher?.Suspend())
+        {
+            await prompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        if (model.Result is { Length: > 0 } notice)
+        {
+            BranchNotice = notice;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+
+        if (model.HasConflicts)
+        {
+            await ResolveConflictsAsync().ConfigureAwait(true);
+        }
+    }
 
     /// <summary>Git komut günlüğünü açar (P06-T16).</summary>
     public IAsyncRelayCommand ShowCommandLogCommand { get; }
@@ -532,6 +857,22 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanPush));
         OnPropertyChanged(nameof(CanMerge));
         OnPropertyChanged(nameof(CanAbortMerge));
+        OnPropertyChanged(nameof(CanAbortOperation));
+        OnPropertyChanged(nameof(CanResolveConflicts));
+        OnPropertyChanged(nameof(CanShowStash));
+        OnPropertyChanged(nameof(CanShowReflog));
+        OnPropertyChanged(nameof(CanReset));
+        OnPropertyChanged(nameof(CanCherryPick));
+        OnPropertyChanged(nameof(CanRevert));
+        OnPropertyChanged(nameof(CanRebase));
+        AbortOperationCommand.NotifyCanExecuteChanged();
+        ResolveConflictsCommand.NotifyCanExecuteChanged();
+        ShowStashCommand.NotifyCanExecuteChanged();
+        ShowReflogCommand.NotifyCanExecuteChanged();
+        ResetCommand.NotifyCanExecuteChanged();
+        CherryPickCommand.NotifyCanExecuteChanged();
+        RevertCommand.NotifyCanExecuteChanged();
+        RebaseCommand.NotifyCanExecuteChanged();
 
         CreateBranchCommand.NotifyCanExecuteChanged();
         CheckoutCommand.NotifyCanExecuteChanged();

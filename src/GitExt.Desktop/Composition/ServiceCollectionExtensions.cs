@@ -83,6 +83,46 @@ public static class ServiceCollectionExtensions
         // (`--squash` çıkış kodu 0 verip HEAD'i ilerletmiyor), o yüzden okuyucuya bağımlı.
         services.AddSingleton<IMergeWriter, MergeWriter>();
 
+        // ------------------------------------------------- Faz 07: ileri operasyonlar
+        //
+        // Geçmişi değiştiren her yazıcı ISafetyPointRecorder'a bağımlı: faz kuralı
+        // gereği işlem ÖNCESİ konum kaydedilip kullanıcıya geri alma yolu sunuluyor.
+        // Bağımlılığın açık olması, birinin bunu atlamasını derleme hatası yapıyor.
+        services.AddSingleton<ISafetyPointRecorder, SafetyPointRecorder>();
+        services.AddSingleton<IReflogReader, ReflogReader>();
+        services.AddSingleton<IConflictReader, ConflictReader>();
+        services.AddSingleton<IConflictResolver, ConflictResolver>();
+        services.AddSingleton<IMergeToolRunner, MergeToolRunner>();
+        services.AddSingleton<IResetWriter, ResetWriter>();
+        services.AddSingleton<ISequencerWriter, SequencerWriter>();
+        services.AddSingleton<IRebaseWriter, RebaseWriter>();
+        services.AddSingleton<IStashWriter, StashWriter>();
+        services.AddSingleton<IBlameReader, BlameReader>();
+        services.AddSingleton<IFileHistoryReader, FileHistoryReader>();
+        services.AddSingleton<ITagWriter, TagWriter>();
+        services.AddSingleton<IWorkTreeReader, WorkTreeReader>();
+        services.AddSingleton<ISubmoduleReader, SubmoduleReader>();
+        services.AddSingleton<ISearchReader, SearchReader>();
+
+        // Ekranlara tek demet olarak geçiyorlar; gerekçesi AdvancedOperationServices'te.
+        services.AddSingleton(provider => new AdvancedOperationServices
+        {
+            Conflicts = provider.GetRequiredService<IConflictReader>(),
+            Resolver = provider.GetRequiredService<IConflictResolver>(),
+            MergeTools = provider.GetRequiredService<IMergeToolRunner>(),
+            Reset = provider.GetRequiredService<IResetWriter>(),
+            Sequencer = provider.GetRequiredService<ISequencerWriter>(),
+            Rebase = provider.GetRequiredService<IRebaseWriter>(),
+            Stash = provider.GetRequiredService<IStashWriter>(),
+            Reflog = provider.GetRequiredService<IReflogReader>(),
+            Blame = provider.GetRequiredService<IBlameReader>(),
+            FileHistory = provider.GetRequiredService<IFileHistoryReader>(),
+            Tags = provider.GetRequiredService<ITagWriter>(),
+            WorkTrees = provider.GetRequiredService<IWorkTreeReader>(),
+            Submodules = provider.GetRequiredService<ISubmoduleReader>(),
+            Search = provider.GetRequiredService<ISearchReader>(),
+        });
+
         services.AddSingleton<IRepositoryLocator, RepositoryLocator>();
         services.AddSingleton<ICommitLogReader, CommitLogReader>();
         services.AddSingleton<IRefReader, RefReader>();

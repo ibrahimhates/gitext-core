@@ -87,7 +87,7 @@
                 <MenuItem Name="MenuPull" Header="Pull_/Fetch…" Command="{Binding PullCommand}" />
                 <MenuItem Name="MenuPush" Header="_Push…" Command="{Binding PushCommand}" />
                 <Separator />
-                <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" IsEnabled="False" />
+                <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" Command="{Binding ShowStashCommand}" />
                 <MenuItem Name="MenuResetChanges" Header="Değişiklikleri sıfı_rla…" IsEnabled="False" />
                 <Separator />
                 <MenuItem Name="MenuCreateBranch" Header="_Dal oluştur…"
@@ -97,16 +97,20 @@
                 <MenuItem Name="MenuCheckoutBranch" Header="Dala geç (chec_kout)…"
                           Command="{Binding CheckoutCommand}" />
                 <MenuItem Name="MenuMerge" Header="Dalları _birleştir…" Command="{Binding MergeCommand}" />
-                <MenuItem Name="MenuRebase" Header="R_ebase…" IsEnabled="False" />
+                <MenuItem Name="MenuRebase" Header="R_ebase…" Command="{Binding RebaseCommand}" />
                 <Separator />
                 <MenuItem Name="MenuCreateTag" Header="Etiket oluş_tur…" IsEnabled="False" />
                 <MenuItem Name="MenuDeleteTag" Header="Etiket si_l…" IsEnabled="False" />
                 <Separator />
                 <!-- Faz 07 -->
-                <MenuItem Name="MenuCherryPick" Header="Cherr_y pick…" IsEnabled="False" />
+                <MenuItem Name="MenuCherryPick" Header="Cherr_y pick…" Command="{Binding CherryPickCommand}" />
                 <MenuItem Name="MenuCheckoutRevision" Header="Revizyona geç…" IsEnabled="False" />
+                <MenuItem Name="MenuRevert" Header="Commit'i ge_ri al (revert)…"
+                          Command="{Binding RevertCommand}" />
+                <MenuItem Name="MenuResetToCommit" Header="Bu commit'e _sıfırla…"
+                          Command="{Binding ResetCommand}" />
                 <MenuItem Name="MenuBisect" Header="B_isect…" IsEnabled="False" />
-                <MenuItem Name="MenuReflog" Header="Reflo_g'u göster…" IsEnabled="False" />
+                <MenuItem Name="MenuReflog" Header="Reflo_g'u göster…" Command="{Binding ShowReflogCommand}" />
             </MenuItem>
 
             <MenuItem Header="_Araçlar">
@@ -236,23 +240,31 @@
                 Margin="10,6"
                 ZIndex="9">
             <!--
-                P06-T12: süren merge'den çıkış aynı şeritten. Düğme yalnızca merge'de
-                görünüyor — rebase/cherry-pick/revert'in iptali farklı komutlar ve
-                Faz 07'nin konusu; yanlış komutu sunmak yarım bir işi bozardı.
+                P07-T11: yarım kalmış HER operasyondan çıkış yolu aynı şeritten.
+                P06-T12'de yalnızca merge sunuluyordu, çünkü diğerlerinin iptali farklı
+                komutlar. Faz 07'de doğru fiili IConflictResolver DURUM DOSYALARINDAN
+                seçiyor, dolayısıyla rebase/cherry-pick/revert de buradan iptal edilebiliyor.
+                Bisect dışarıda: onun bir iptali yok, "reset"i bambaşka bir şey.
             -->
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Name="OperationText"
                            Grid.Column="0"
                            Text="{Binding OperationText}"
                            TextWrapping="Wrap"
                            VerticalAlignment="Center"
                            FontSize="12" />
-                <Button Name="AbortMergeButton"
+                <Button Name="ResolveConflictsButton"
                         Grid.Column="1"
-                        Content="Birleştirmeyi iptal et"
+                        Content="Çakışmaları çöz…"
                         Margin="8,0,0,0"
-                        IsVisible="{Binding CanAbortMerge}"
-                        Command="{Binding AbortMergeCommand}" />
+                        IsVisible="{Binding CanResolveConflicts}"
+                        Command="{Binding ResolveConflictsCommand}" />
+                <Button Name="AbortOperationButton"
+                        Grid.Column="2"
+                        Content="İşlemi iptal et"
+                        Margin="8,0,0,0"
+                        IsVisible="{Binding CanAbortOperation}"
+                        Command="{Binding AbortOperationCommand}" />
             </Grid>
         </Border>
 

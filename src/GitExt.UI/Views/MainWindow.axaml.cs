@@ -42,8 +42,76 @@ public partial class MainWindow : Window
                 model.MergeDropConfirmer = new DialogMergeDropConfirmer(this);
                 model.CommandLogPrompt = new DialogCommandLogPrompt(this);
                 model.MergeAbortConfirmer = new DialogMergeAbortConfirmer(this);
+
+                // Faz 07 ekranları.
+                model.ConflictPrompt = new DialogConflictPrompt(this);
+                model.StashPrompt = new DialogStashPrompt(this);
+                model.ReflogPrompt = new DialogReflogPrompt(this);
+                model.ResetPrompt = new DialogResetPrompt(this);
+                model.SequencerPrompt = new DialogSequencerPrompt(this);
+                model.RebasePrompt = new DialogRebasePrompt(this);
             }
         };
+    }
+
+    /// <summary>Çakışma çözüm ekranını gerçek bir pencereyle gösterir (P07-T03).</summary>
+    private sealed class DialogConflictPrompt : IConflictPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogConflictPrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(ConflictViewModel model) => ConflictWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Stash ekranını gerçek bir pencereyle gösterir (P07-T13).</summary>
+    private sealed class DialogStashPrompt : IStashPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogStashPrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(StashViewModel model) => StashWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Reflog tarayıcısını gerçek bir pencereyle gösterir (P07-T14).</summary>
+    private sealed class DialogReflogPrompt : IReflogPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogReflogPrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(ReflogViewModel model) => ReflogWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Reset diyaloğunu gerçek bir pencereyle gösterir (P07-T06).</summary>
+    private sealed class DialogResetPrompt : IResetPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogResetPrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(ResetViewModel model) => ResetDialog.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Cherry-pick / revert diyaloğunu gösterir (P07-T07, P07-T08).</summary>
+    private sealed class DialogSequencerPrompt : ISequencerPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogSequencerPrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(SequencerViewModel model) => SequencerDialog.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Rebase ekranını gerçek bir pencereyle gösterir (P07-T09, P07-T10).</summary>
+    private sealed class DialogRebasePrompt : IRebasePrompt
+    {
+        private readonly Window _owner;
+
+        public DialogRebasePrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(RebaseViewModel model) => RebaseWindow.ShowAsync(model, _owner);
     }
 
     /// <summary>Pull/Fetch ekranını gerçek bir pencereyle gösterir (P06-T06, T07).</summary>
