@@ -363,6 +363,17 @@ public sealed class FetchWriter : IFetchWriter
         else
         {
             arguments.Add("--all");
+
+            // 🔴 ÖLÇÜLDÜ: git çoklu remote fetch'ini VARSAYILAN OLARAK SIRALI yapıyor
+            // ("By default fetches are performed sequentially, not in parallel").
+            // Üç yerel remote'lu bir depoda `-j1` 47 ms, `-j3` 20 ms — 2.4×. Yerelde
+            // bile bu; ağ üzerinden her remote'un el sıkışmasını sırayla beklemek
+            // farkı çok daha büyütüyor.
+            //
+            // 0 = "makul bir varsayılan": iş sayısını git seçiyor. Sabit bir sayı
+            // yazmak, iki remote'lu bir depoda gereksiz iş parçacığı, on remote'lu
+            // birinde gereksiz sıralılık üretirdi.
+            arguments.Add("--jobs=0");
         }
 
         return arguments;
@@ -372,18 +383,35 @@ public sealed class FetchWriter : IFetchWriter
     /// <c>--all</c>'da kısmi başarısızlıkları toplar.
     /// </summary>
     /// <remarks>
-    /// git her başarısız remote için <c>error: could not fetch &lt;ad&gt;</c> yazıyor
-    /// (ölçüldü). Bu <b>tek</b> makine-dostu iz; öncesindeki <c>fatal:</c> satırları
-    /// ayrıntı olarak taşınıyor.
+    /// <para>
+    /// git her başarısız remote için "could not fetch" içeren bir satır yazıyor; bu
+    /// <b>tek</b> makine-dostu iz, öncesindeki <c>fatal:</c> satırları ayrıntı olarak
+    /// taşınıyor.
+    /// </para>
+    /// <para>
+    /// 🔴 <b>Satırın biçimi sıralı ve paralel fetch'te AYNI DEĞİL</b> (P09-T13'te
+    /// ölçüldü):
+    /// </para>
+    /// <code>
+    /// -j1  →  error: could not fetch bozuk
+    /// -j0  →  could not fetch 'bozuk' (exit code: 128)
+    /// </code>
+    /// <para>
+    /// Paralel biçimde <c>error:</c> öneki yok ve ad tırnaklı. Yalnızca sıralı biçimi
+    /// tanıyan bir ayrıştırıcı, paralel fetch'te başarısızlığı <b>hiç görmez</b>: git
+    /// 1 ile çıkar, istisna yakalanmaz ve kullanıcı — gerçekten gelmiş değişiklikler
+    /// varken — yalnızca bir hata görürdü. Bu kod paralelleştirmenin ilk denemesinde
+    /// tam olarak böyle kırıldı; testin yakalaması sayesinde bulundu.
+    /// </para>
     /// </remarks>
-    private static IReadOnlyList<FetchFailure> ParseFailures(string standardError)
+    internal static IReadOnlyList<FetchFailure> ParseFailures(string standardError)
     {
         if (string.IsNullOrEmpty(standardError))
         {
             return [];
         }
 
-        const string marker = "error: could not fetch ";
+        const string marker = "could not fetch ";
         List<FetchFailure> failures = [];
         string detail = string.Empty;
 
@@ -394,19 +422,62 @@ public sealed class FetchWriter : IFetchWriter
             if (line.StartsWith("fatal:", StringComparison.Ordinal))
             {
                 detail = line["fatal:".Length..].Trim();
+                continue;
             }
-            else if (line.StartsWith(marker, StringComparison.Ordinal))
+
+            int markerIndex = line.IndexOf(marker, StringComparison.Ordinal);
+
+            if (markerIndex < 0)
             {
-                string name = line[marker.Length..].Trim();
-
-                failures.Add(new FetchFailure(
-                    name,
-                    detail.Length > 0 ? detail : "Uzak depoya ulaşılamadı."));
-
-                detail = string.Empty;
+                continue;
             }
+
+            // Önek `error: ` olabilir ya da hiç olmayabilir; ikisinde de ad işaretten
+            // sonra başlıyor.
+            string name = ExtractRemoteName(line[(markerIndex + marker.Length)..]);
+
+            if (name.Length == 0)
+            {
+                continue;
+            }
+
+            failures.Add(new FetchFailure(
+                name,
+                detail.Length > 0 ? detail : "Uzak depoya ulaşılamadı."));
+
+            detail = string.Empty;
         }
 
         return failures;
+    }
+
+    /// <summary>
+    /// İşaretten sonraki kalıntıdan remote adını ayıklar.
+    /// </summary>
+    /// <remarks>
+    /// Sıralı biçimde ad satırın geri kalanının tamamı; paralel biçimde tırnak içinde
+    /// ve ardından <c>(exit code: N)</c> geliyor. Tırnakları soymadan alınan ad,
+    /// kullanıcıya <c>'bozuk' (exit code: 128)</c> diye gösterilirdi.
+    /// </remarks>
+    private static string ExtractRemoteName(string rest)
+    {
+        rest = rest.Trim();
+
+        if (rest.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        if (rest[0] is '\'' or '"')
+        {
+            char quote = rest[0];
+            int end = rest.IndexOf(quote, 1);
+
+            return end > 1 ? rest[1..end] : string.Empty;
+        }
+
+        int space = rest.IndexOf(' ', StringComparison.Ordinal);
+
+        return space < 0 ? rest : rest[..space];
     }
 }

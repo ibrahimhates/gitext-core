@@ -330,4 +330,63 @@ public class FetchWriterTests
         result.Changes.ShouldNotContain(change => change.IsTag);
         harness.Local.Git("tag").Trim().ShouldBeEmpty();
     }
+
+    // ================================================= P09-T13 paralel fetch
+
+    /// <summary>
+    /// Başarısızlık satırı sıralı ve paralel fetch'te farklı biçimde geliyor (P09-T13).
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>ÖLÇÜLDÜ.</b> Aynı bozuk remote, iki modda iki farklı satır üretiyor:
+    /// <code>
+    /// -j1  →  error: could not fetch bozuk
+    /// -j0  →  could not fetch 'bozuk' (exit code: 128)
+    /// </code>
+    /// Paralel biçimde <c>error:</c> öneki yok ve ad tırnaklı. Yalnızca sıralı biçimi
+    /// tanıyan ayrıştırıcı, paralel fetch'te başarısızlığı hiç görmez: git 1 ile çıkar,
+    /// kısmi başarı yakalanmaz ve gerçekten gelmiş değişiklikler kullanıcıdan gizlenir.
+    /// Paralelleştirme ilk denemede tam olarak böyle kırıldı.
+    /// </remarks>
+    [Theory]
+    [InlineData("error: could not fetch bozuk", "bozuk")]
+    [InlineData("could not fetch 'bozuk' (exit code: 128)", "bozuk")]
+    [InlineData("could not fetch \"bozuk\" (exit code: 128)", "bozuk")]
+    public void Basarisizlik_satiri_her_iki_bicimde_de_okunuyor(string line, string expected)
+    {
+        IReadOnlyList<FetchFailure> failures = FetchWriter.ParseFailures(
+            "fatal: '/yok' does not appear to be a git repository\n" + line + "\n");
+
+        failures.Single().Remote.ShouldBe(expected);
+    }
+
+    /// <remarks>
+    /// Remote adı tırnaklardan ve <c>(exit code: N)</c> kuyruğundan arındırılmalı;
+    /// arındırılmazsa kullanıcıya remote adı diye <c>'bozuk' (exit code: 128)</c>
+    /// gösterilirdi.
+    /// </remarks>
+    [Fact]
+    public void Paralel_bicimde_ad_tirnaklardan_ariniyor()
+    {
+        IReadOnlyList<FetchFailure> failures = FetchWriter.ParseFailures(
+            "could not fetch 'origin' (exit code: 128)\n");
+
+        failures.Single().Remote.ShouldBe("origin");
+        failures.Single().Remote.ShouldNotContain("exit code");
+    }
+
+    /// <remarks>
+    /// Birden çok remote başarısız olduğunda her biri ayrı kayıt olmalı; paralel modda
+    /// satırlar araya karışabiliyor.
+    /// </remarks>
+    [Fact]
+    public void Birden_cok_basarisiz_remote_ayri_ayri_okunuyor()
+    {
+        IReadOnlyList<FetchFailure> failures = FetchWriter.ParseFailures(
+            "fatal: 'bir' does not appear to be a git repository\n"
+            + "could not fetch 'bir' (exit code: 128)\n"
+            + "fatal: 'iki' does not appear to be a git repository\n"
+            + "could not fetch 'iki' (exit code: 128)\n");
+
+        failures.Select(f => f.Remote).ShouldBe(["bir", "iki"]);
+    }
 }
