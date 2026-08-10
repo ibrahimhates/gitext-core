@@ -162,7 +162,7 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
 
         if (row is null)
         {
-            HasCommit = false;
+            Clear();
             return;
         }
 
@@ -277,6 +277,45 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
         {
             SignatureDetail = null;
         }
+    }
+
+    /// <summary>
+    /// Gösterilen commit'e ait her şeyi bırakır (P09-T10).
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>Yalnızca <see cref="HasCommit"/>'i kapatmak yetmiyordu.</b> Panel gizlenirken
+    /// <see cref="Badges"/> ve <see cref="Parents"/> kapatılan deponun nesnelerini
+    /// tutmaya devam ediyordu; rozet listesi satırın kendisine ait olduğu için satır da,
+    /// dolayısıyla commit'i de bellekte kalıyordu. Depolar arasında geçen uzun bir
+    /// oturumda her geçiş bir öncekini biriktirirdi.
+    /// <para>
+    /// Görünmeyen bir panelin eski veriyi tutması gözle fark edilmiyor — sızıntıyı
+    /// bulan şey <c>MemoryStressTests</c>'in zayıf referans ölçümü oldu.
+    /// </para>
+    /// </remarks>
+    private void Clear()
+    {
+        HasCommit = false;
+
+        FullId = string.Empty;
+        Subject = string.Empty;
+        Body = string.Empty;
+        HasBody = false;
+
+        AuthorText = string.Empty;
+        AuthorDate = string.Empty;
+        AuthorOriginalDate = null;
+
+        CommitterText = string.Empty;
+        CommitterDate = string.Empty;
+        CommitterOriginalDate = null;
+        CommitterDiffersFromAuthor = false;
+
+        Parents = [];
+        HasParents = false;
+
+        Badges = [];
+        HasBadges = false;
     }
 
     private void ClearSignature()

@@ -53,6 +53,7 @@ internal class Program
         typeof(ModelBenchmarks),
         typeof(MultiMergeBenchmarks),
         typeof(ParserBenchmarks),
+        typeof(RenderCacheBenchmarks),
     ];
 
     private static int Main(string[] args)
