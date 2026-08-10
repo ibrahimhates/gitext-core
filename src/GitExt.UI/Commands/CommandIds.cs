@@ -52,6 +52,17 @@ public static class CommandIds
 
     // ---- Araçlar / yardım
     public const string ToolsCommandLog = "tools.commandLog";
+
+    /// <summary>
+    /// Performans teşhis paneli (P09-T03).
+    /// </summary>
+    /// <remarks>
+    /// Menüde <b>yok</b>: günlük kullanımda gürültü. Yalnızca kısayolla ve komut
+    /// paletinden açılıyor — "yavaş" şikâyeti geldiğinde kullanıcıya tarif edilebilecek
+    /// kadar erişilebilir, normalde görünmeyecek kadar gizli.
+    /// </remarks>
+    public const string ToolsDiagnostics = "tools.diagnostics";
+
     public const string ToolsSettings = "tools.settings";
     public const string ToolsCommandPalette = "tools.commandPalette";
     public const string HelpShortcuts = "help.shortcuts";

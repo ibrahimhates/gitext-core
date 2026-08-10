@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
+using GitExt.Core.Diagnostics;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.UI.Storage;
@@ -79,6 +80,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IAuthenticationDiagnostics? _authDiagnostics;
     private readonly IMergeWriter? _mergeWriter;
     private readonly IGitCommandLog? _commandLog;
+    private readonly IPerformanceDiagnostics? _diagnostics;
 
     /// <summary>
     /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
@@ -131,6 +133,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IAuthenticationDiagnostics? authenticationDiagnostics = null,
         IMergeWriter? mergeWriter = null,
         IGitCommandLog? commandLog = null,
+        IPerformanceDiagnostics? diagnostics = null,
         AdvancedOperationServices? advanced = null)
     {
         ArgumentNullException.ThrowIfNull(commits);
@@ -154,6 +157,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _authDiagnostics = authenticationDiagnostics;
         _mergeWriter = mergeWriter;
         _commandLog = commandLog;
+        _diagnostics = diagnostics;
         _advanced = advanced ?? new AdvancedOperationServices();
 
         if (_watcher is not null)
@@ -188,6 +192,7 @@ public partial class MainWindowViewModel : ViewModelBase
         PushCommand = new AsyncRelayCommand(PushAsync, () => CanPush);
         MergeCommand = new AsyncRelayCommand(MergeAsync, () => CanMerge);
         ShowCommandLogCommand = new AsyncRelayCommand(ShowCommandLogAsync, () => CanShowCommandLog);
+        ShowDiagnosticsCommand = new AsyncRelayCommand(ShowDiagnosticsAsync, () => CanShowDiagnostics);
         AbortMergeCommand = new AsyncRelayCommand(AbortMergeAsync, () => CanAbortMerge);
 
         // ---------------------------------------------------------- Faz 07
@@ -659,6 +664,21 @@ public partial class MainWindowViewModel : ViewModelBase
     /// sürüm kontrolü) gösteriyor ve sorun tam da orada olabilir.
     /// </remarks>
     public bool CanShowCommandLog => _commandLog is not null && CommandLogPrompt is not null;
+
+    /// <summary>Performans teşhis panelini açar (P09-T03).</summary>
+    public IAsyncRelayCommand ShowDiagnosticsCommand { get; }
+
+    /// <summary>Teşhis panelini gösteren taraf (P09-T03).</summary>
+    public IDiagnosticsPrompt? DiagnosticsPrompt { get; set; }
+
+    /// <summary>
+    /// Teşhis açılabilir mi?
+    /// </summary>
+    /// <remarks>
+    /// Günlük gibi bu da depoya bağlı DEĞİL: açılışın kendisi yavaşsa, depo açılmadan
+    /// önceki komutların süresi tam da aranan bilgidir.
+    /// </remarks>
+    public bool CanShowDiagnostics => _diagnostics is not null && DiagnosticsPrompt is not null;
 
     /// <summary>Merge ekranını açar (P06-T11).</summary>
     public IAsyncRelayCommand MergeCommand { get; }
@@ -1492,6 +1512,17 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         await CommandLogPrompt.ShowAsync(new CommandLogViewModel(_commandLog)).ConfigureAwait(true);
+    }
+
+    /// <summary>Performans teşhis panelini açar (P09-T03).</summary>
+    private async Task ShowDiagnosticsAsync()
+    {
+        if (_diagnostics is null || DiagnosticsPrompt is null)
+        {
+            return;
+        }
+
+        await DiagnosticsPrompt.ShowAsync(_diagnostics).ConfigureAwait(true);
     }
 
     /// <summary>Çözülmemiş dosyalar — iptal onayında gösteriliyor.</summary>

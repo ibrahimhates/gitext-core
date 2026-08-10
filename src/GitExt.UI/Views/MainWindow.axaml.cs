@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
+using GitExt.Core.Diagnostics;
 using GitExt.Core.Git;
 using GitExt.UI.Themes;
 using GitExt.UI.Commands;
@@ -87,6 +88,7 @@ public partial class MainWindow : Window
                 BranchPanel.MergeDropped = model.MergeDroppedAsync;
                 model.MergeDropConfirmer = new DialogMergeDropConfirmer(this);
                 model.CommandLogPrompt = new DialogCommandLogPrompt(this);
+                model.DiagnosticsPrompt = new DialogDiagnosticsPrompt(this);
                 model.MergeAbortConfirmer = new DialogMergeAbortConfirmer(this);
 
                 // Faz 07 ekranları.
@@ -147,6 +149,7 @@ public partial class MainWindow : Window
             .Bind(CommandIds.HistoryReflog, model.ShowReflogCommand)
             .Bind(CommandIds.StashManage, model.ShowStashCommand)
             .Bind(CommandIds.ToolsCommandLog, model.ShowCommandLogCommand)
+            .Bind(CommandIds.ToolsDiagnostics, model.ShowDiagnosticsCommand)
             .Bind(CommandIds.ViewToggleLeftPanel, new RelayCommand(ToggleBranchPanel))
             .Bind(CommandIds.ViewToggleBottomPanel, new RelayCommand(ToggleBottomPanel))
             .Bind(CommandIds.ViewFocusLeftPanel, new RelayCommand(() => _panels.FocusPanel(PanelBranches)))
@@ -349,6 +352,21 @@ public partial class MainWindow : Window
         public DialogCommandLogPrompt(Window owner) => _owner = owner;
 
         public Task ShowAsync(CommandLogViewModel model) => CommandLogWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Teşhis panelini gerçek bir pencereyle gösterir (P09-T03).</summary>
+    /// <remarks>
+    /// Sahip olarak ana pencere veriliyor; kare ölçümü ona bağlanıyor — ölçülmek istenen
+    /// şey grafiğin kaydırılması, teşhis panelinin kendi çizimi değil.
+    /// </remarks>
+    private sealed class DialogDiagnosticsPrompt : IDiagnosticsPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogDiagnosticsPrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(IPerformanceDiagnostics diagnostics) =>
+            DiagnosticsWindow.ShowAsync(diagnostics, _owner);
     }
 
     /// <summary>Sürükle-bırak birleştirme onayını sorar (P06-T15).</summary>

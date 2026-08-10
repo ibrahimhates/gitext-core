@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using GitExt.Core.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -12,17 +13,20 @@ public sealed class GitProcessRunner : IGitProcessRunner
 {
     private readonly string _executablePath;
     private readonly IGitCommandLog _commandLog;
+    private readonly IPerformanceDiagnostics _diagnostics;
     private readonly ILogger<GitProcessRunner> _logger;
 
     public GitProcessRunner(
         GitExecutable executable,
         IGitCommandLog? commandLog = null,
-        ILogger<GitProcessRunner>? logger = null)
+        ILogger<GitProcessRunner>? logger = null,
+        IPerformanceDiagnostics? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(executable);
 
         _executablePath = executable.Path;
         _commandLog = commandLog ?? NullGitCommandLog.Instance;
+        _diagnostics = diagnostics ?? NullPerformanceDiagnostics.Instance;
         _logger = logger ?? NullLogger<GitProcessRunner>.Instance;
     }
 
@@ -38,6 +42,10 @@ public sealed class GitProcessRunner : IGitProcessRunner
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
 
         long startedAt = Stopwatch.GetTimestamp();
+
+        // Süren komut teşhis panelinde görünsün: donmuş bir arayüzün sebebi çoğu zaman
+        // burada saatlerdir duran tek bir çağrıdır (P09-T03).
+        using IDisposable tracked = _diagnostics.TrackOperation(command.ToDisplayString());
 
         try
         {
@@ -82,6 +90,9 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
         CancellationToken token = linkedSource.Token;
         long startedAt = Stopwatch.GetTimestamp();
+
+        // Akış yolu da izleniyor: `log` gibi uzun sürenler tam olarak burada çalışıyor.
+        using IDisposable tracked = _diagnostics.TrackOperation(command.ToDisplayString());
 
         using Process process = new() { StartInfo = BuildStartInfo(command) };
 

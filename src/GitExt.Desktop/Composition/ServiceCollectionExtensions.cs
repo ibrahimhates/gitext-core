@@ -1,4 +1,5 @@
 using GitExt.Core;
+using GitExt.Core.Diagnostics;
 using GitExt.Core.Git;
 using GitExt.UI.Commands;
 using GitExt.UI.Settings;
@@ -38,9 +39,17 @@ public static class ServiceCollectionExtensions
         // "Komutu göster" panelinin (Faz 08) besleneceği günlük.
         services.AddSingleton<IGitCommandLog>(_ => new InMemoryGitCommandLog());
 
+        // Performans teşhisi (P09-T03). Günlüğü dinleyerek komut istatistiği topluyor;
+        // ADR-0002 gereği her git çağrısı zaten oradan geçtiği için ayrı bir ölçüm
+        // noktası eklemeye — ve onu eklemeyi unutulan yollar üretmeye — gerek yok.
+        services.AddSingleton<IPerformanceDiagnostics>(provider =>
+            new PerformanceDiagnostics(provider.GetRequiredService<IGitCommandLog>()));
+
         services.AddSingleton<IGitProcessRunner>(provider => new GitProcessRunner(
             provider.GetRequiredService<GitExecutable>(),
-            provider.GetRequiredService<IGitCommandLog>()));
+            provider.GetRequiredService<IGitCommandLog>(),
+            logger: null,
+            diagnostics: provider.GetRequiredService<IPerformanceDiagnostics>()));
 
         // Yazma işlemleri depo başına serileştirilir (P05-T01). Singleton olması ŞART:
         // her istekte yeni kuyruk üretilseydi kilit hiçbir şeyi korumazdı.

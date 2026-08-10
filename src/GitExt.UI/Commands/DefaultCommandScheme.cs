@@ -122,6 +122,13 @@ public static class DefaultCommandScheme
 
         Define(CommandIds.ToolsCommandLog, "Git komut günlüğü…", CommandCategory.Tools,
             CommandContext.Global, Key.D9, KeyModifiers.Control),
+        // Ctrl+Shift+F12: teşhis paneli (P09-T03). Menüde yok, bilerek — kısayol ve komut
+        // paleti yeterli erişim, günlük kullanımda görünmemesi tercih edildi.
+        //
+        // 🔴 İlk seçilen Ctrl+Shift+D, "Seçili iki commit'i karşılaştır" ile çakışıyordu;
+        // çakışma testi yakaladı. Sessizce kalsaydı iki komuttan biri ölü tuşa dönerdi.
+        Define(CommandIds.ToolsDiagnostics, "Performans teşhisi…", CommandCategory.Tools,
+            CommandContext.Global, Key.F12, KeyModifiers.Control | KeyModifiers.Shift),
         Define(CommandIds.ToolsSettings, "Ayarlar…", CommandCategory.Tools,
             CommandContext.Global, Key.OemComma, KeyModifiers.Control),
         Define(CommandIds.ToolsCommandPalette, "Komut paleti", CommandCategory.Tools,
