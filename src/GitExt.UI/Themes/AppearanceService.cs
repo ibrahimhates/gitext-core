@@ -1,5 +1,4 @@
 using Avalonia;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using GitExt.UI.Settings;
 
@@ -29,14 +28,11 @@ public interface IAppearanceService
 /// <inheritdoc cref="IAppearanceService"/>
 public sealed class AppearanceService : IAppearanceService
 {
-    private static readonly Uri ColorBlindSafeSource =
-        new("avares://GitExt.UI/Themes/ColorBlindSafe.axaml");
-
     private readonly Application _application;
     private readonly ISettingsStore _settings;
     private readonly ThemeService _theme;
 
-    private ResourceInclude? _colorBlindOverlay;
+    private bool _colorBlindOverlayApplied;
 
     public AppearanceService(Application application, ISettingsStore settings)
     {
@@ -48,7 +44,16 @@ public sealed class AppearanceService : IAppearanceService
         // değil, hesaplanmış tek bir kaynakta duruyor (renk listesi XAML'de ifade
         // edilemiyor). Bu abonelik olmadan koyu temaya geçen kullanıcı açık zemine göre
         // seçilmiş şeritlerle kalırdı — bazıları neredeyse görünmez.
-        _application.ActualThemeVariantChanged += (_, _) => ApplyGraphPalette();
+        // 🔴 Kaplama da yeniden uygulanmalı, yalnızca grafik paleti değil: renk körlüğü
+        // fırçaları artık koda taşındı (P09-T11) ve açık/koyu ayrımını kendileri yapıyor.
+        // Eskiden bunu bindirilen tema sözlüğü hallediyordu; sadece grafiği tazelemek,
+        // koyu temaya geçen kullanıcıyı açık zemine göre seçilmiş diff renkleriyle
+        // bırakırdı.
+        _application.ActualThemeVariantChanged += (_, _) =>
+        {
+            ApplyColorBlindOverlay();
+            ApplyGraphPalette();
+        };
     }
 
     public void ApplyStored()
@@ -64,6 +69,7 @@ public sealed class AppearanceService : IAppearanceService
     {
         _theme.Apply(preference);
 
+        ApplyColorBlindOverlay();
         ApplyGraphPalette();
     }
 
@@ -113,24 +119,45 @@ public sealed class AppearanceService : IAppearanceService
     /// Renk körlüğü katmanını ekler veya kaldırır.
     /// </summary>
     /// <remarks>
-    /// Katman sonradan birleştirildiği için varsayılan paletin üstünde kalıyor; kaldırılınca
-    /// altındaki değerler kendiliğinden geri geliyor. İki tam palet tutmak yerine yalnızca
-    /// <b>farkı</b> tutmanın sebebi bu: ortak anahtarlar tek yerde kalıyor.
+    /// <para>
+    /// Yalnızca kırmızı/yeşil ayrımına dayanan anahtarlar eziliyor; ötekiler alttaki
+    /// paletten geliyor. İki tam palet tutmak, birinin unutulup ikisi arasında sessizce
+    /// ayrışması demekti.
+    /// </para>
+    /// <para>
+    /// Değerler <see cref="DiffPalettes"/>'te, XAML'de değil: kaplama çalışma zamanında
+    /// açılıp kapandığı için <c>ResourceInclude</c> ile yüklenmesi trimming'i kırıyordu
+    /// (P09-T11).
+    /// </para>
     /// </remarks>
     private void ApplyColorBlindOverlay()
     {
         bool wanted = Palette == PalettePreference.ColorBlindSafe;
 
-        if (wanted && _colorBlindOverlay is null)
+        if (wanted)
         {
-            _colorBlindOverlay = new ResourceInclude((Uri?)null) { Source = ColorBlindSafeSource };
+            IReadOnlyDictionary<string, Color> overlay =
+                DiffPalettes.ColorBlindSafe(_application.ActualThemeVariant);
 
-            _application.Resources.MergedDictionaries.Add(_colorBlindOverlay);
+            foreach ((string key, Color color) in overlay)
+            {
+                _application.Resources[key] = new SolidColorBrush(color);
+            }
+
+            _colorBlindOverlayApplied = true;
         }
-        else if (!wanted && _colorBlindOverlay is not null)
+        else if (_colorBlindOverlayApplied)
         {
-            _application.Resources.MergedDictionaries.Remove(_colorBlindOverlay);
-            _colorBlindOverlay = null;
+            // Anahtarı uygulama sözlüğünden SİLMEK gerekiyor, üzerine varsayılanı yazmak
+            // değil: alttaki tema sözlükleri açık/koyu ayrımını kendisi yapıyor ve buraya
+            // tek bir renk yazmak, tema değişince yanlış kalırdı. Silince arama zinciri
+            // yeniden alttaki sözlüğe düşüyor.
+            foreach (string key in DiffPalettes.OverlayKeys)
+            {
+                _application.Resources.Remove(key);
+            }
+
+            _colorBlindOverlayApplied = false;
         }
     }
 

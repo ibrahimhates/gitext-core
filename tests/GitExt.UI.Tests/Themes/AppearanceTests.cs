@@ -203,6 +203,109 @@ public class AppearanceTests
         }
     }
 
+    /// <summary>
+    /// Renk körlüğü katmanı tema değişince yeniden hesaplanıyor (P09-T11).
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Katman P09-T11'de XAML'den koda taşındı — <c>ResourceInclude</c>'u çalışma
+    /// zamanında kurmak <c>PublishTrimmed</c>'i <c>IL2026</c> ile tamamen kırıyordu.
+    /// Bindirilen tema sözlüğü açık/koyu ayrımını <b>kendisi</b> yapıyordu; koda taşınan
+    /// fırçalar yapmıyor, tema değişiminde yeniden yazılmaları gerekiyor. Bu abonelik
+    /// olmasa koyu temaya geçen kullanıcı açık zemine göre seçilmiş diff renkleriyle
+    /// kalırdı — koyu zeminde neredeyse okunmaz.
+    /// </remarks>
+    [AvaloniaFact]
+    public void Renk_korlugu_katmani_tema_degisince_yeniden_hesaplaniyor()
+    {
+        try
+        {
+            (AppearanceService service, _) = Create();
+            service.ApplyStored();
+            service.SetPalette(PalettePreference.ColorBlindSafe);
+            Dispatcher.UIThread.RunJobs();
+
+            Color light = Brush("GitExtDiffAddedBackgroundBrush");
+            light.ShouldBe(DiffPalettes.ColorBlindSafe(ThemeVariant.Light)["GitExtDiffAddedBackgroundBrush"]);
+
+            service.SetTheme(ThemePreference.Dark);
+            Dispatcher.UIThread.RunJobs();
+
+            Color dark = Brush("GitExtDiffAddedBackgroundBrush");
+            dark.ShouldBe(DiffPalettes.ColorBlindSafe(ThemeVariant.Dark)["GitExtDiffAddedBackgroundBrush"]);
+            dark.ShouldNotBe(light);
+        }
+        finally
+        {
+            Restore();
+        }
+
+        static Color Brush(string key)
+        {
+            Application.Current!.TryGetResource(key, Application.Current.ActualThemeVariant, out object? value)
+                .ShouldBeTrue($"{key} çözülemedi");
+
+            return ((ISolidColorBrush)value!).Color;
+        }
+    }
+
+    /// <summary>
+    /// Katman kapatılınca ezilen bütün anahtarlar bırakılıyor (P09-T11).
+    /// </summary>
+    /// <remarks>
+    /// Anahtarlar <see cref="DiffPalettes.OverlayKeys"/>'ten geliyor. Liste eksik kalırsa
+    /// kapatma bazı fırçaları uygulama sözlüğünde bırakır: palet "varsayılan" görünürken
+    /// diff renkleri renk körü kalır ve iki palet sessizce karışır.
+    /// </remarks>
+    [AvaloniaFact]
+    public void Katman_kapaninca_ezilen_butun_anahtarlar_birakiliyor()
+    {
+        try
+        {
+            (AppearanceService service, _) = Create();
+            service.ApplyStored();
+            Dispatcher.UIThread.RunJobs();
+
+            service.SetPalette(PalettePreference.ColorBlindSafe);
+            Dispatcher.UIThread.RunJobs();
+
+            foreach (string key in DiffPalettes.OverlayKeys)
+            {
+                Application.Current!.Resources.ContainsKey(key)
+                    .ShouldBeTrue($"{key} katman açıkken yazılmamış");
+            }
+
+            service.SetPalette(PalettePreference.Default);
+            Dispatcher.UIThread.RunJobs();
+
+            foreach (string key in DiffPalettes.OverlayKeys)
+            {
+                Application.Current!.Resources.ContainsKey(key)
+                    .ShouldBeFalse($"{key} katman kapandıktan sonra da duruyor");
+            }
+        }
+        finally
+        {
+            Restore();
+        }
+    }
+
+    /// <remarks>
+    /// Açık ve koyu kaplamalar aynı anahtar kümesini kapsamalı; biri eksikse o tema o
+    /// fırçayı varsayılan paletten alır ve renk körü kullanıcı için kırmızı/yeşil ayrımı
+    /// tek bir yerde geri gelir.
+    /// </remarks>
+    [Fact]
+    public void Acik_ve_koyu_kaplamalar_ayni_anahtarlari_kapsiyor()
+    {
+        IReadOnlyDictionary<string, Color> light = DiffPalettes.ColorBlindSafe(ThemeVariant.Light);
+        IReadOnlyDictionary<string, Color> dark = DiffPalettes.ColorBlindSafe(ThemeVariant.Dark);
+
+        light.Keys.OrderBy(k => k, StringComparer.Ordinal)
+            .ShouldBe(DiffPalettes.OverlayKeys.OrderBy(k => k, StringComparer.Ordinal));
+        dark.Keys.OrderBy(k => k, StringComparer.Ordinal)
+            .ShouldBe(DiffPalettes.OverlayKeys.OrderBy(k => k, StringComparer.Ordinal));
+    }
+
     // ------------------------------------------------------------------- tipografi
 
     [AvaloniaFact]
