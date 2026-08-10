@@ -84,44 +84,68 @@ public sealed class RepositoryLocator : IRepositoryLocator
 
         bool isBare = string.Equals(lines[2], "true", StringComparison.OrdinalIgnoreCase);
 
-        string? workTreeRoot = isBare
-            ? null
-            : await ReadWorkTreeRootAsync(directory, cancellationToken).ConfigureAwait(false);
+        if (isBare)
+        {
+            return new RepositoryLocation(gitDirectory, commonDirectory, null, null);
+        }
 
-        string? superproject = isBare
-            ? null
-            : await ReadSuperprojectAsync(directory, cancellationToken).ConfigureAwait(false);
+        (string workTreeRoot, string? superproject) =
+            await ReadWorkTreeAsync(directory, cancellationToken).ConfigureAwait(false);
 
         return new RepositoryLocation(gitDirectory, commonDirectory, workTreeRoot, superproject);
     }
 
-    private async Task<string> ReadWorkTreeRootAsync(
-        string directory,
-        CancellationToken cancellationToken)
-    {
-        string root = await _runner.RunForTextAsync(
-            GitCommand.Create(directory, "rev-parse", "--show-toplevel"),
-            cancellationToken).ConfigureAwait(false);
-
-        return Path.GetFullPath(root);
-    }
-
     /// <summary>
-    /// Depo bir submodule ise üst projenin çalışma ağacını döndürür.
+    /// Çalışma ağacının kökünü ve — depo bir submodule ise — üst projenin ağacını okur.
     /// </summary>
     /// <remarks>
-    /// <c>--show-superproject-working-tree</c> submodule değilse <b>boş çıktı ve 0</b> döner —
-    /// hata değil. Bu yüzden boşluk kontrolü yeterli.
+    /// <para>
+    /// İkisi <b>tek çağrıda</b> alınıyor (P09-T06). Ayrı ayrı sorulduklarında depo açılışı
+    /// iki yerine üç süreç başlatıyordu; süreç başlatma maliyeti Linux'ta birkaç ms, ama
+    /// Windows'ta kat kat yüksek ve ADR-0002'nin bilinen zayıflığı tam olarak bu.
+    /// </para>
+    /// <para>
+    /// ⚠️ Birleştirmenin çalışması <c>--show-superproject-working-tree</c>'nin submodule
+    /// olmayan bir depoda <b>hiçbir satır basmamasına</b> dayanıyor — hata değil, boş
+    /// çıktı ve 0. Dolayısıyla satır sayısı ayrımı yapıyor: bir satır varsa yalnızca kök,
+    /// iki satır varsa kök + üst proje. Gerçek git ile her iki durumda da ölçüldü.
+    /// </para>
+    /// <para>
+    /// <c>--show-toplevel</c> yukarıdaki ilk çağrıya eklenemiyor: bare depoda tüm çağrıyı
+    /// 128 ile kırıyor. Bu yüzden iki çağrı üçe değil ikiye iniyor, bire değil.
+    /// </para>
     /// </remarks>
-    private async Task<string?> ReadSuperprojectAsync(
+    private async Task<(string WorkTreeRoot, string? Superproject)> ReadWorkTreeAsync(
         string directory,
         CancellationToken cancellationToken)
     {
-        string superproject = await _runner.RunForTextAsync(
-            GitCommand.Create(directory, "rev-parse", "--show-superproject-working-tree"),
+        string output = await _runner.RunForTextAsync(
+            GitCommand.Create(
+                directory,
+                "rev-parse",
+                "--show-toplevel",
+                "--show-superproject-working-tree"),
             cancellationToken).ConfigureAwait(false);
 
-        return string.IsNullOrWhiteSpace(superproject) ? null : Path.GetFullPath(superproject);
+        string[] lines = SplitLines(output);
+
+        if (lines.Length == 0)
+        {
+            throw new GitException(
+                GitFailureKind.Unknown,
+                "git rev-parse çalışma ağacının kökünü döndürmedi.",
+                "git rev-parse --show-toplevel --show-superproject-working-tree",
+                exitCode: 0,
+                standardError: string.Empty);
+        }
+
+        string root = Path.GetFullPath(lines[0]);
+
+        string? superproject = lines.Length > 1 && !string.IsNullOrWhiteSpace(lines[1])
+            ? Path.GetFullPath(lines[1])
+            : null;
+
+        return (root, superproject);
     }
 
     private static string[] SplitLines(string text) =>

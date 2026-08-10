@@ -51,6 +51,10 @@ public static class ServiceCollectionExtensions
             logger: null,
             diagnostics: provider.GetRequiredService<IPerformanceDiagnostics>()));
 
+        // commit-graph önerisi (P09-T07). Yalnızca DURUMU okuyor; dosyayı kendiliğinden
+        // yazmıyor — kullanıcının deposuna izinsiz dosya eklemek doğru değil.
+        services.AddSingleton<ICommitGraphAdvisor, CommitGraphAdvisor>();
+
         // Yazma işlemleri depo başına serileştirilir (P05-T01). Singleton olması ŞART:
         // her istekte yeni kuyruk üretilseydi kilit hiçbir şeyi korumazdı.
         services.AddSingleton<IGitWriteQueue, GitWriteQueue>();
