@@ -194,3 +194,7 @@ CLAUDE.md
 
 # --- Test repos (generated at project root, not committed) ---
 /test-repos/
+
+# BenchmarkDotNet'in ham çıktısı — her koşuda yeniden üretiliyor, tekrar üretilebilir.
+# Karşılaştırma için elde tutulan temel çizgi benchmarks/baseline/ altında ve İZLENİYOR.
+benchmarks/**/BenchmarkDotNet.Artifacts/

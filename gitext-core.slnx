@@ -5,6 +5,9 @@
     <Project Path="src/GitExt.Graph/GitExt.Graph.csproj" />
     <Project Path="src/GitExt.UI/GitExt.UI.csproj" />
   </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/GitExt.Benchmarks/GitExt.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/GitExt.Core.Tests/GitExt.Core.Tests.csproj" />
     <Project Path="tests/GitExt.Graph.Tests/GitExt.Graph.Tests.csproj" />

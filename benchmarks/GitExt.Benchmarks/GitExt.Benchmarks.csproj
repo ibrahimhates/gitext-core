@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Faz 09 — Performans regresyon benchmark'ları.
+
+    Amaç: GitExt.Core ve GitExt.Graph katmanlarının kritik yolundaki işlemleri
+    mikro-benchmark ile ölçmek; sonraki fazlarda yapılan değişikliklerin performans
+    geriye gidip gitmediğini otomatik olarak saptamak.
+
+    BenchmarkDotNet istatistiksel olarak anlamlı sonuçlar üretir (warmup, iteration,
+    confidence interval). Sonuçlar `results/` altında JSON ve Markdown olarak saklanır —
+    bunlar CI'da regresyon tespiti için kullanılabilir (P09-T16).
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PublishAot>false</PublishAot>
+    <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <AnalysisLevel>none</AnalysisLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows"
+                      Condition="'$(RuntimeIdentifier)' == 'win-x64'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/GitExt.Core/GitExt.Core.csproj" />
+    <ProjectReference Include="../../src/GitExt.Graph/GitExt.Graph.csproj" />
+  </ItemGroup>
+
+</Project>
