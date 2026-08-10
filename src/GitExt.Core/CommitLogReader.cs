@@ -131,10 +131,11 @@ public sealed class CommitLogReader : ICommitLogReader
         string[] fields = result.SplitStandardOutputAtNulPreservingEmpty();
 
         List<CommitInfo> commits = new(fields.Length / FieldCount);
+        StringPool pool = new();
 
         for (int offset = 0; offset + FieldCount <= fields.Length; offset += FieldCount)
         {
-            commits.Add(ParseRecord(fields.AsSpan(offset, FieldCount)));
+            commits.Add(ParseRecord(fields.AsSpan(offset, FieldCount), pool));
         }
 
         return commits;
@@ -148,6 +149,7 @@ public sealed class CommitLogReader : ICommitLogReader
         ArgumentNullException.ThrowIfNull(query);
 
         string[] window = new string[FieldCount];
+        StringPool pool = new();
         int filled = 0;
 
         await foreach (string field in _runner
@@ -162,7 +164,7 @@ public sealed class CommitLogReader : ICommitLogReader
             }
 
             filled = 0;
-            yield return ParseRecord(window);
+            yield return ParseRecord(window, pool);
         }
 
         // filled > 0 ise akış yarım bir kayıtla bitmiş demektir. Bu, format dizesiyle
@@ -239,18 +241,61 @@ public sealed class CommitLogReader : ICommitLogReader
         };
     }
 
-    private static CommitInfo ParseRecord(ReadOnlySpan<string> fields) => new()
+    private static CommitInfo ParseRecord(ReadOnlySpan<string> fields, StringPool pool) => new()
     {
         Id = CommitId.Parse(fields[0]),
         Parents = ParseParents(fields[1]),
-        Author = new Signature(fields[2], fields[3], ParseTimestamp(fields[4])),
-        Committer = new Signature(fields[5], fields[6], ParseTimestamp(fields[7])),
+        Author = new Signature(pool.Intern(fields[2]), pool.Intern(fields[3]), ParseTimestamp(fields[4])),
+        Committer = new Signature(pool.Intern(fields[5]), pool.Intern(fields[6]), ParseTimestamp(fields[7])),
         Refs = ParseRefs(fields[8]),
-        Encoding = fields[9],
+        Encoding = pool.Intern(fields[9]),
         Subject = fields[10],
         // git son alandan sonra kayıt ayracı koyar; gövde satır sonuyla bitebilir.
         Body = fields[11].TrimEnd('\n'),
     };
+
+    /// <summary>
+    /// Bir okuma boyunca tekrar eden kısa metinleri tek örneğe indirger (P09-T08).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Ölçüm neden bunu gösterdi:</b> 500.000 commit'lik bir depoda yazar ve
+    /// committer alanları <b>46 MB</b> tutuyordu, ama benzersiz değer sayısı yalnızca
+    /// <b>2</b>'ydi (P09-T04 ölçümü, `--bench` çıktısının "metin (MB)" satırı). Gerçek
+    /// depolarda da bu sayı onlarca mertebesinde — bir projenin yazarları commit'leri
+    /// kadar çeşitlenmiyor.
+    /// </para>
+    /// <para>
+    /// ⚠️ <c>string.Intern</c> KULLANILMIYOR: çalışma zamanının intern havuzu süreç
+    /// ömrü boyunca yaşıyor ve hiç boşaltılmıyor. Depo kapatıldığında serbest kalması
+    /// gereken metinleri oraya koymak, düzeltmeye çalıştığımız şeyin daha kötüsünü —
+    /// geri alınamaz bir sızıntıyı — üretirdi. Bu havuz okuma bitince çöp oluyor.
+    /// </para>
+    /// <para>
+    /// Konu ve gövde interning'e girmiyor: onlar commit başına gerçekten benzersiz,
+    /// havuz yalnızca hiç isabet etmeyen bir sözlük olurdu.
+    /// </para>
+    /// </remarks>
+    private sealed class StringPool
+    {
+        private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
+
+        public string Intern(string value)
+        {
+            if (value.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            if (_values.TryGetValue(value, out string? existing))
+            {
+                return existing;
+            }
+
+            _values[value] = value;
+            return value;
+        }
+    }
 
     private static IReadOnlyList<CommitId> ParseParents(string value)
     {
