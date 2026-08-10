@@ -1,0 +1,257 @@
+{
+   "Title":"GitExt.Benchmarks.ParserBenchmarks-20260810-112910",
+   "HostEnvironmentInfo":{
+      "BenchmarkDotNetCaption":"BenchmarkDotNet",
+      "BenchmarkDotNetVersion":"0.15.6",
+      "OsVersion":"Linux CachyOS",
+      "ProcessorName":"Intel Core i7-14700KF",
+      "PhysicalProcessorCount":1,
+      "PhysicalCoreCount":20,
+      "LogicalCoreCount":28,
+      "RuntimeVersion":".NET 10.0.10 (10.0.10, 42.42.42.42424)",
+      "Architecture":"X64",
+      "HasAttachedDebugger":false,
+      "HasRyuJit":true,
+      "Configuration":"RELEASE",
+      "DotNetCliVersion":"10.0.110",
+      "ChronometerFrequency":{
+         "Hertz":1000000000
+      },
+      "HardwareTimerKind":"Unknown"
+   },
+   "Benchmarks":[
+      {
+         "DisplayInfo":"ParserBenchmarks.ParseSingleRecord: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"ParserBenchmarks",
+         "Method":"ParseSingleRecord",
+         "MethodTitle":"ParseSingleRecord",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.ParserBenchmarks.ParseSingleRecord",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               394.2012119293213,453.35779094696045,429.3345375061035
+            ],
+            "N":3,
+            "Min":394.2012119293213,
+            "LowerFence":367.40044045448303,
+            "Q1":411.7678747177124,
+            "Median":429.3345375061035,
+            "Mean":425.63118012746173,
+            "Q3":441.346164226532,
+            "UpperFence":485.71359848976135,
+            "Max":453.35779094696045,
+            "InterquartileRange":29.57828950881958,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":17.177129680411312,
+            "Variance":885.1613521730017,
+            "StandardDeviation":29.751661334671745,
+            "Skewness":-0.12254700080031035,
+            "Kurtosis":0.6666666666666663,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":425.63118012746173,
+               "StandardError":17.177129680411312,
+               "Level":12,
+               "Margin":542.7810560414943,
+               "Lower":-117.14987591403252,
+               "Upper":968.412236168956
+            },
+            "Percentiles":{
+               "P0":394.2012119293213,
+               "P25":411.7678747177124,
+               "P50":429.3345375061035,
+               "P67":437.50244367599487,
+               "P80":443.74848957061766,
+               "P85":446.15081491470335,
+               "P90":448.5531402587891,
+               "P95":450.95546560287477,
+               "P100":453.35779094696045
+            }
+         }
+      },{
+         "DisplayInfo":"ParserBenchmarks.CompareAll: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"ParserBenchmarks",
+         "Method":"CompareAll",
+         "MethodTitle":"CompareAll",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.ParserBenchmarks.CompareAll",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               9132.13890838623,9875.087104797363,12645.416954040527
+            ],
+            "N":3,
+            "Min":9132.13890838623,
+            "LowerFence":6868.654472351074,
+            "Q1":9503.613006591797,
+            "Median":9875.087104797363,
+            "Mean":10550.880989074707,
+            "Q3":11260.252029418945,
+            "UpperFence":13895.210563659668,
+            "Max":12645.416954040527,
+            "InterquartileRange":1756.6390228271484,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":1069.0032252896642,
+            "Variance":3428303.6870391136,
+            "StandardDeviation":1851.5678996566974,
+            "Skewness":0.31636366703896585,
+            "Kurtosis":0.6666666666666667,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":10550.880989074707,
+               "StandardError":1069.0032252896642,
+               "Level":12,
+               "Margin":33779.49112162687,
+               "Lower":-23228.61013255216,
+               "Upper":44330.37211070157
+            },
+            "Percentiles":{
+               "P0":9132.13890838623,
+               "P25":9503.613006591797,
+               "P50":9875.087104797363,
+               "P67":10816.999253540038,
+               "P80":11537.285014343262,
+               "P85":11814.31799926758,
+               "P90":12091.350984191895,
+               "P95":12368.38396911621,
+               "P100":12645.416954040527
+            }
+         }
+      },{
+         "DisplayInfo":"ParserBenchmarks.ShortenAll: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"ParserBenchmarks",
+         "Method":"ShortenAll",
+         "MethodTitle":"ShortenAll",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.ParserBenchmarks.ShortenAll",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               168957.83325195312,156354.78393554688,217709.84326171875
+            ],
+            "N":3,
+            "Min":156354.78393554688,
+            "LowerFence":116640.0140991211,
+            "Q1":162656.30859375,
+            "Median":168957.83325195312,
+            "Mean":181007.48681640625,
+            "Q3":193333.83825683594,
+            "UpperFence":239350.13275146484,
+            "Max":217709.84326171875,
+            "InterquartileRange":30677.529663085938,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":18708.34430138079,
+            "Variance":1050006439.4970211,
+            "StandardDeviation":32403.802855483198,
+            "Skewness":0.3204388077972334,
+            "Kurtosis":0.6666666666666666,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":181007.48681640625,
+               "StandardError":18708.34430138079,
+               "Level":12,
+               "Margin":591165.9902219578,
+               "Lower":-410158.50340555154,
+               "Upper":772173.477038364
+            },
+            "Percentiles":{
+               "P0":156354.78393554688,
+               "P25":162656.30859375,
+               "P50":168957.83325195312,
+               "P67":185533.51665527344,
+               "P80":198209.0392578125,
+               "P85":203084.24025878907,
+               "P90":207959.44125976562,
+               "P95":212834.6422607422,
+               "P100":217709.84326171875
+            }
+         }
+      },{
+         "DisplayInfo":"ParserBenchmarks.TryParseAll: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"ParserBenchmarks",
+         "Method":"TryParseAll",
+         "MethodTitle":"TryParseAll",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.ParserBenchmarks.TryParseAll",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               304038.2783203125,317752.3818359375,311912.84423828125
+            ],
+            "N":3,
+            "Min":304038.2783203125,
+            "LowerFence":297689.9836425781,
+            "Q1":307975.5612792969,
+            "Median":311912.84423828125,
+            "Mean":311234.50146484375,
+            "Q3":314832.6130371094,
+            "UpperFence":325118.1906738281,
+            "Max":317752.3818359375,
+            "InterquartileRange":6857.0517578125,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":3973.4229784920394,
+            "Variance":47364270.498025656,
+            "StandardDeviation":6882.170478709871,
+            "Skewness":-0.09760766656788304,
+            "Kurtosis":0.6666666666666667,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":311234.50146484375,
+               "StandardError":3973.4229784920394,
+               "Level":12,
+               "Margin":125556.40904457594,
+               "Lower":185678.0924202678,
+               "Upper":436790.9105094197
+            },
+            "Percentiles":{
+               "P0":304038.2783203125,
+               "P25":307975.5612792969,
+               "P50":311912.84423828125,
+               "P67":313898.28702148434,
+               "P80":315416.566796875,
+               "P85":316000.52055664064,
+               "P90":316584.47431640624,
+               "P95":317168.4280761719,
+               "P100":317752.3818359375
+            }
+         }
+      }
+   ]
+}

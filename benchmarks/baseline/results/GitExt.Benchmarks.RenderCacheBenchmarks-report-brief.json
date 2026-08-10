@@ -1,0 +1,141 @@
+{
+   "Title":"GitExt.Benchmarks.RenderCacheBenchmarks-20260810-112926",
+   "HostEnvironmentInfo":{
+      "BenchmarkDotNetCaption":"BenchmarkDotNet",
+      "BenchmarkDotNetVersion":"0.15.6",
+      "OsVersion":"Linux CachyOS",
+      "ProcessorName":"Intel Core i7-14700KF",
+      "PhysicalProcessorCount":1,
+      "PhysicalCoreCount":20,
+      "LogicalCoreCount":28,
+      "RuntimeVersion":".NET 10.0.10 (10.0.10, 42.42.42.42424)",
+      "Architecture":"X64",
+      "HasAttachedDebugger":false,
+      "HasRyuJit":true,
+      "Configuration":"RELEASE",
+      "DotNetCliVersion":"10.0.110",
+      "ChronometerFrequency":{
+         "Hertz":1000000000
+      },
+      "HardwareTimerKind":"Unknown"
+   },
+   "Benchmarks":[
+      {
+         "DisplayInfo":"RenderCacheBenchmarks.LockedDictionary: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"RenderCacheBenchmarks",
+         "Method":"LockedDictionary",
+         "MethodTitle":"LockedDictionary",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.RenderCacheBenchmarks.LockedDictionary",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               6212.205642700195,6408.844779968262,5518.083190917969
+            ],
+            "N":3,
+            "Min":5518.083190917969,
+            "LowerFence":5197.073225021362,
+            "Q1":5865.144416809082,
+            "Median":6212.205642700195,
+            "Mean":6046.377871195476,
+            "Q3":6310.5252113342285,
+            "UpperFence":6978.596403121948,
+            "Max":6408.844779968262,
+            "InterquartileRange":445.3807945251465,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":270.1778361767899,
+            "Variance":218988.189483517,
+            "StandardDeviation":467.9617393372208,
+            "Skewness":-0.3098637885703751,
+            "Kurtosis":0.6666666666666674,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":6046.377871195476,
+               "StandardError":270.1778361767899,
+               "Level":12,
+               "Margin":8537.364156147672,
+               "Lower":-2490.986284952197,
+               "Upper":14583.742027343149
+            },
+            "Percentiles":{
+               "P0":5518.083190917969,
+               "P25":5865.144416809082,
+               "P50":6212.205642700195,
+               "P67":6279.062949371338,
+               "P80":6330.189125061035,
+               "P85":6349.853038787842,
+               "P90":6369.516952514648,
+               "P95":6389.180866241455,
+               "P100":6408.844779968262
+            }
+         }
+      },{
+         "DisplayInfo":"RenderCacheBenchmarks.ConcurrentDictionary: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"RenderCacheBenchmarks",
+         "Method":"ConcurrentDictionary",
+         "MethodTitle":"ConcurrentDictionary",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.RenderCacheBenchmarks.ConcurrentDictionary",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               1045.594560623169,1120.8092136383057,1138.2394580841064
+            ],
+            "N":3,
+            "Min":1045.594560623169,
+            "LowerFence":1013.7182140350342,
+            "Q1":1083.2018871307373,
+            "Median":1120.8092136383057,
+            "Mean":1101.5477441151936,
+            "Q3":1129.524335861206,
+            "UpperFence":1199.0080089569092,
+            "Max":1138.2394580841064,
+            "InterquartileRange":46.32244873046875,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":28.425472218471207,
+            "Variance":2424.0224125292348,
+            "StandardDeviation":49.234362111529734,
+            "Skewness":-0.3313425968767722,
+            "Kurtosis":0.6666666666666645,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":1101.5477441151936,
+               "StandardError":28.425472218471207,
+               "Level":12,
+               "Margin":898.2180443578342,
+               "Lower":203.32969975735944,
+               "Upper":1999.765788473028
+            },
+            "Percentiles":{
+               "P0":1045.594560623169,
+               "P25":1083.2018871307373,
+               "P50":1120.8092136383057,
+               "P67":1126.735496749878,
+               "P80":1131.267360305786,
+               "P85":1133.0103847503663,
+               "P90":1134.7534091949462,
+               "P95":1136.4964336395262,
+               "P100":1138.2394580841064
+            }
+         }
+      }
+   ]
+}

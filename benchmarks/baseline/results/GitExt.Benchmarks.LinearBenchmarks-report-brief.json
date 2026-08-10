@@ -1,0 +1,141 @@
+{
+   "Title":"GitExt.Benchmarks.LinearBenchmarks-20260810-112816",
+   "HostEnvironmentInfo":{
+      "BenchmarkDotNetCaption":"BenchmarkDotNet",
+      "BenchmarkDotNetVersion":"0.15.6",
+      "OsVersion":"Linux CachyOS",
+      "ProcessorName":"Intel Core i7-14700KF",
+      "PhysicalProcessorCount":1,
+      "PhysicalCoreCount":20,
+      "LogicalCoreCount":28,
+      "RuntimeVersion":".NET 10.0.10 (10.0.10, 42.42.42.42424)",
+      "Architecture":"X64",
+      "HasAttachedDebugger":false,
+      "HasRyuJit":true,
+      "Configuration":"RELEASE",
+      "DotNetCliVersion":"10.0.110",
+      "ChronometerFrequency":{
+         "Hertz":1000000000
+      },
+      "HardwareTimerKind":"Unknown"
+   },
+   "Benchmarks":[
+      {
+         "DisplayInfo":"LinearBenchmarks.Linear_10k: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"LinearBenchmarks",
+         "Method":"Linear_10k",
+         "MethodTitle":"Linear_10k",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.LinearBenchmarks.Linear_10k",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               3842517.84765625,3715517.09765625,3989091.14453125
+            ],
+            "N":3,
+            "Min":3715517.09765625,
+            "LowerFence":3573836.9375,
+            "Q1":3779017.47265625,
+            "Median":3842517.84765625,
+            "Mean":3849042.0299479165,
+            "Q3":3915804.49609375,
+            "UpperFence":4120985.03125,
+            "Max":3989091.14453125,
+            "InterquartileRange":136787.0234375,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":79041.36785427056,
+            "Variance":18742613496.822346,
+            "StandardDeviation":136903.66502333802,
+            "Skewness":0.04754705219705772,
+            "Kurtosis":0.6666666666666671,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":3849042.0299479165,
+               "StandardError":79041.36785427056,
+               "Level":12,
+               "Margin":2497632.486516681,
+               "Lower":1351409.5434312355,
+               "Upper":6346674.516464598
+            },
+            "Percentiles":{
+               "P0":3715517.09765625,
+               "P25":3779017.47265625,
+               "P50":3842517.84765625,
+               "P67":3892352.76859375,
+               "P80":3930461.82578125,
+               "P85":3945119.15546875,
+               "P90":3959776.48515625,
+               "P95":3974433.81484375,
+               "P100":3989091.14453125
+            }
+         }
+      },{
+         "DisplayInfo":"LinearBenchmarks.Linear_50k: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"LinearBenchmarks",
+         "Method":"Linear_50k",
+         "MethodTitle":"Linear_50k",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.LinearBenchmarks.Linear_50k",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               18626262.234375,21220289.203125,22005481.703125
+            ],
+            "N":3,
+            "Min":18626262.234375,
+            "LowerFence":17388861.1171875,
+            "Q1":19923275.71875,
+            "Median":21220289.203125,
+            "Mean":20617344.380208332,
+            "Q3":21612885.453125,
+            "UpperFence":24147300.0546875,
+            "Max":22005481.703125,
+            "InterquartileRange":1689609.734375,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":1021018.7558032853,
+            "Variance":3127437899106.266,
+            "StandardDeviation":1768456.3605320505,
+            "Skewness":-0.30131179847601425,
+            "Kurtosis":0.6666666666666659,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":20617344.380208332,
+               "StandardError":1021018.7558032853,
+               "Level":12,
+               "Margin":32263227.257640954,
+               "Lower":-11645882.877432622,
+               "Upper":52880571.637849286
+            },
+            "Percentiles":{
+               "P0":18626262.234375,
+               "P25":19923275.71875,
+               "P50":21220289.203125,
+               "P67":21487254.653125,
+               "P80":21691404.703125,
+               "P85":21769923.953125,
+               "P90":21848443.203125,
+               "P95":21926962.453125,
+               "P100":22005481.703125
+            }
+         }
+      }
+   ]
+}

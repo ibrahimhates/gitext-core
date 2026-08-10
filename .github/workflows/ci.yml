@@ -141,3 +141,57 @@ jobs:
 
       - name: Report size
         run: du -sh ./dist/${{ matrix.rid }}
+
+  # P09-T16 — performans regresyon koruması.
+  #
+  # UYARIR, KIRMAZ. Planın maddesi: "Kırmızı yapmak değil, uyarmak — CI makinelerinin
+  # gürültüsü yanlış alarm üretir." Paylaşımlı runner'lar CPU'yu komşu işlerle
+  # paylaşıyor; P09-T02'de aynı benchmark'ın iki koşusu arasında %10'a varan fark
+  # ölçüldü. Bir eşiği kırmızı yapmak, gerçek regresyonları da görmezden gelinen bir
+  # gürültü akışına gömerdi.
+  #
+  # Yalnızca Linux'ta: üç işletim sisteminde ölçmek gürültüyü üçe katlar, karşılaştırma
+  # değeri artmaz. Temel çizgi zaten tek bir makinede alındı.
+  benchmarks:
+    name: Performance regression check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore (locked)
+        run: dotnet restore --locked-mode
+
+      - name: Build benchmarks
+        run: dotnet build benchmarks/GitExt.Benchmarks -c Release --no-restore
+
+      # --fast: 1 warmup, 3 iterasyon. Tam koşu CI'da ~15 dakika sürüyor ve elde edilen
+      # dar güven aralığı, makinenin gürültüsü yanında zaten anlamını yitiriyor.
+      - name: Run benchmarks
+        run: dotnet run --project benchmarks/GitExt.Benchmarks -c Release --no-build -- --fast
+
+      - name: Compare against baseline
+        run: |
+          shopt -s nullglob
+          for current in benchmarks/GitExt.Benchmarks/BenchmarkDotNet.Artifacts/results/*-brief.json; do
+            baseline="benchmarks/baseline/results/$(basename "$current")"
+            if [ -f "$baseline" ]; then
+              echo "--- $(basename "$current") ---"
+              python3 tools/compare-benchmarks.py "$baseline" "$current"
+            else
+              echo "::warning::Temel çizgi yok: $(basename "$current")"
+            fi
+          done
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: benchmarks/GitExt.Benchmarks/BenchmarkDotNet.Artifacts/results/*
+          if-no-files-found: ignore

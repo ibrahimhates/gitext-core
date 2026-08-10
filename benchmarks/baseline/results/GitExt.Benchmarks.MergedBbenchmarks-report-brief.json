@@ -1,0 +1,83 @@
+{
+   "Title":"GitExt.Benchmarks.MergedBbenchmarks-20260810-112827",
+   "HostEnvironmentInfo":{
+      "BenchmarkDotNetCaption":"BenchmarkDotNet",
+      "BenchmarkDotNetVersion":"0.15.6",
+      "OsVersion":"Linux CachyOS",
+      "ProcessorName":"Intel Core i7-14700KF",
+      "PhysicalProcessorCount":1,
+      "PhysicalCoreCount":20,
+      "LogicalCoreCount":28,
+      "RuntimeVersion":".NET 10.0.10 (10.0.10, 42.42.42.42424)",
+      "Architecture":"X64",
+      "HasAttachedDebugger":false,
+      "HasRyuJit":true,
+      "Configuration":"RELEASE",
+      "DotNetCliVersion":"10.0.110",
+      "ChronometerFrequency":{
+         "Hertz":1000000000
+      },
+      "HardwareTimerKind":"Unknown"
+   },
+   "Benchmarks":[
+      {
+         "DisplayInfo":"MergedBbenchmarks.Merged_10k: Job-WWFMMQ(IterationCount=3, WarmupCount=1)",
+         "Namespace":"GitExt.Benchmarks",
+         "Type":"MergedBbenchmarks",
+         "Method":"Merged_10k",
+         "MethodTitle":"Merged_10k",
+         "Parameters":"",
+         "FullName":"GitExt.Benchmarks.MergedBbenchmarks.Merged_10k",
+         "HardwareIntrinsics":"AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256",
+         "Statistics":{
+            "OriginalValues":[
+               3389301.162109375,3366653.498046875,3689792.943359375
+            ],
+            "N":3,
+            "Min":3366653.498046875,
+            "LowerFence":3135622.74609375,
+            "Q1":3377977.330078125,
+            "Median":3389301.162109375,
+            "Mean":3481915.8678385415,
+            "Q3":3539547.052734375,
+            "UpperFence":3781901.63671875,
+            "Max":3689792.943359375,
+            "InterquartileRange":161569.72265625,
+            "LowerOutliers":[
+               
+            ],
+            "UpperOutliers":[
+               
+            ],
+            "AllOutliers":[
+               
+            ],
+            "StandardError":104143.95176420096,
+            "Variance":32537888067.192646,
+            "StandardDeviation":180382.61575659848,
+            "Skewness":0.3780855267701431,
+            "Kurtosis":0.6666666666666681,
+            "ConfidenceInterval":{
+               "N":3,
+               "Mean":3481915.8678385415,
+               "StandardError":104143.95176420096,
+               "Level":12,
+               "Margin":3290850.4022864117,
+               "Lower":191065.46555212978,
+               "Upper":6772766.270124953
+            },
+            "Percentiles":{
+               "P0":3366653.498046875,
+               "P25":3377977.330078125,
+               "P50":3389301.162109375,
+               "P67":3491468.367734375,
+               "P80":3569596.2308593756,
+               "P85":3599645.408984375,
+               "P90":3629694.587109375,
+               "P95":3659743.765234375,
+               "P100":3689792.943359375
+            }
+         }
+      }
+   ]
+}

@@ -13,10 +13,11 @@
      [![License](https://img.shields.io/github/license/ibrahimhates/gitext-core)](./LICENSE)
 -->
 
-> ⚠️ **Status: pre-alpha — not usable yet.**
-> The project builds and opens a window, but **it does not do anything with Git yet.**
-> There is no release. Everything marked *(planned)* below describes the intended end state,
-> not current behaviour.
+> ⚠️ **Status: alpha — usable, but not yet released as stable.**
+> Git works: browsing history, diffing, staging by line, committing, branching, fetch/pull/push,
+> rebase (including interactive), cherry-pick, revert, stash and conflict resolution are all
+> implemented and tested. Linux is exercised daily; Windows and macOS cross-compile but have
+> **not been run on target**. Items marked *(planned)* below are not built yet.
 
 </div>
 
@@ -87,6 +88,36 @@ the same codebase and the same release pipeline.
      the glibc floor for self-contained Linux builds needs pinning (likely Ubuntu 22.04 /
      glibc 2.35), as does the macOS floor (likely 12.0). Confirm when building the AppImage
      on an old-glibc container. -->
+
+---
+
+## Measured performance
+
+Numbers from a real run on Linux x64 (.NET 10, ReadyToRun, self-contained), against
+synthetic repositories built by `tools/test-repos/generate.sh`. Every figure below was
+measured, not estimated — see [`benchmarks/baseline/`](./benchmarks/baseline/) for the raw
+data and how to reproduce it.
+
+| | Measured | Budget |
+|---|---:|---:|
+| Cold start to first frame | **~370 ms** | < 1.5 s |
+| Open a 10k-commit repository | **99 ms** | < 1 s |
+| Open a 500k-commit repository | **3.4 s** (first screen 1.3 s) | < 5 s |
+| Diff a 1 000-line file | **3 ms** | < 200 ms |
+| Refresh status, 10 000 files | **47 ms** | < 300 ms |
+| Memory, 500k commits loaded | **368 MB** | < 600 MB |
+| Idle memory (PSS) | **76 MB** | < 200 MB |
+| Self-contained binary (trimmed) | **59 MB** | — |
+
+With a `commit-graph` file present — which gitext-core detects and offers to create, but
+never writes without asking — the first row of a 500k-commit graph appears in **7.8 ms**
+instead of 1.3 s.
+
+> **Caveats, stated plainly.** These come from one machine, and the two largest repositories
+> are synthetic: 500k linear commits, not 500k commits of tangled real history. Scroll frame
+> rate is not in the table because it needs interaction and has not been measured end to end
+> yet; the built-in diagnostics panel (`Ctrl+Shift+F12`) reports frame times and dropped
+> frames for when it is.
 
 ---
 

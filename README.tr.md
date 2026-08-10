@@ -9,10 +9,11 @@
 <!-- TODO(readme-01): CI çalıştıktan ve ilk sürüm yayınlandıktan sonra rozetler eklenecek.
      Planlanan: build durumu, son sürüm, indirme sayısı, lisans. -->
 
-> ⚠️ **Durum: pre-alpha — henüz kullanılabilir değil.**
-> Proje derleniyor ve bir pencere açıyor, ama **henüz Git ile hiçbir şey yapmıyor.**
-> Yayınlanmış bir sürüm yok. Aşağıda *(planlanan)* olarak işaretlenen her şey hedeflenen
-> son durumu anlatır, mevcut davranışı değil.
+> ⚠️ **Durum: alfa — kullanılabilir, ama kararlı sürüm olarak yayınlanmadı.**
+> Git çalışıyor: geçmişte gezinme, diff, satır satır staging, commit, dallanma, fetch/pull/push,
+> rebase (interaktif dahil), cherry-pick, revert, stash ve çakışma çözümü uygulandı ve test
+> edildi. Linux günlük olarak kullanılıyor; Windows ve macOS derleniyor ama **hedef platformda
+> çalıştırılmadı**. Aşağıda *(planlanan)* diye işaretlenenler henüz yapılmadı.
 
 </div>
 
@@ -75,6 +76,36 @@ ve GitExtensions projesiyle bağlantılı değildir.
 
 Linux birinci sınıf hedef ve geliştirmenin yapıldığı yer. Windows ve macOS yapıları aynı kod
 tabanından, aynı yayın hattıyla üretiliyor.
+
+---
+
+## Ölçülen performans
+
+Sayılar Linux x64'te gerçek bir koşudan (.NET 10, ReadyToRun, self-contained);
+depolar `tools/test-repos/generate.sh` ile üretildi. Aşağıdaki her değer **ölçüldü**,
+tahmin edilmedi — ham veri ve yeniden üretme adımları
+[`benchmarks/baseline/`](./benchmarks/baseline/) altında.
+
+| | Ölçülen | Bütçe |
+|---|---:|---:|
+| Soğuk başlatma, ilk kare | **~370 ms** | < 1,5 sn |
+| 10 bin commit'lik depoyu açma | **99 ms** | < 1 sn |
+| 500 bin commit'lik depoyu açma | **3,4 sn** (ilk ekran 1,3 sn) | < 5 sn |
+| 1 000 satırlık dosyanın diff'i | **3 ms** | < 200 ms |
+| 10 000 dosyada durum tazeleme | **47 ms** | < 300 ms |
+| Bellek, 500 bin commit yüklü | **368 MB** | < 600 MB |
+| Boşta bellek (PSS) | **76 MB** | < 200 MB |
+| Self-contained ikili (trimli) | **59 MB** | — |
+
+Depoda `commit-graph` dosyası varsa — gitext-core bunu algılayıp öneriyor, ama
+**sormadan asla yazmıyor** — 500 bin commit'lik grafiğin ilk satırı 1,3 sn yerine
+**7,8 ms**'de görünüyor.
+
+> **Çekinceler, açıkça.** Bu sayılar tek bir makineden ve en büyük iki depo sentetik:
+> 500 bin lineer commit, 500 bin commit'lik karmaşık gerçek geçmiş değil. Kaydırma
+> kare hızı tabloda yok çünkü etkileşim gerektiriyor ve uçtan uca henüz ölçülmedi;
+> gerektiğinde okunabilsin diye teşhis paneli (`Ctrl+Shift+F12`) kare süresini ve
+> düşen kare sayısını gösteriyor.
 
 ---
 
