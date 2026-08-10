@@ -120,14 +120,21 @@ gen_wide() {
 
     init_repo "$dir"
 
-    # Initial commit.
+    # Initial commit — every branch forks from HERE.
     echo "root" > root.txt
     git add . && git commit -q -m "initial"
 
-    local BRANCH_NAME="main"
-    local b i BRANCH_COUNT=200
+    local root
+    root="$(git rev-parse HEAD)"
+
+    # 🔴 Each branch must start from the root, not from the previous branch's tip.
+    # `git switch -c` without a start point branches off the CURRENT commit, so an
+    # unqualified loop produces one long chain wearing 200 branch labels: 200 refs,
+    # zero forks, maximum lane width of 1. That repo cannot stress what it exists to
+    # stress. The explicit start point is the whole point of this repo.
+    local b BRANCH_COUNT=200
     for ((b = 1; b <= BRANCH_COUNT; b++)); do
-        git switch -c "branch/$b" >/dev/null 2>&1
+        git switch -c "branch/$b" "$root" >/dev/null 2>&1
 
         # Two commits per branch (init + update).
         echo "content $b" > "branch_$b.txt"
@@ -136,6 +143,8 @@ gen_wide() {
         printf 'update %d\n' "$b" >> "branch_$b.txt"
         git add . && git commit -q -m "update branch/$b"
     done
+
+    git switch -q main 2>/dev/null || git switch -q master 2>/dev/null || true
 
     popd >/dev/null
 }
@@ -161,22 +170,49 @@ gen_many_files() {
 # ── large-deep: ~250k linear commits (optional, takes time) ────────────────
 gen_large_deep() {
     local dir="$OUTPUT_DIR/large-deep"
+    local total="${GEN_LARGE_COUNT:-250000}"
+
     mkdir -p "$dir" && pushd "$dir" >/dev/null
-    echo "[large-deep] → $dir ..."
+    echo "[large-deep] → $dir ($total commits) ..."
 
     git init -q
     git config user.name "Test Author"
     git config user.email "test@test.com"
 
-    local total=250000
-    local i
-    for ((i = 1; i <= total; i++)); do
-        printf '%d\n' "$i" >> data.txt
-        if (( i % 1000 == 0 )); then
-            git add . && git commit -q -m "batch #$(( i / 1000 ))"
-            echo "  ... $i / $total ..." >&2
-        fi
-    done
+    # 🔴 Built with `fast-import`, not a commit loop.
+    #
+    # Two reasons, both found by measuring:
+    #   1. The previous loop committed only every 1000th iteration, so "250000" produced
+    #      250 commits — a repo two orders of magnitude smaller than its own name, used
+    #      as the scale test. The count was never checked against the label.
+    #   2. Even done correctly, 250k `git commit` invocations means 250k processes. At
+    #      the ~5 ms per call measured in P09-T02 that is over 20 minutes of pure process
+    #      overhead; fast-import does it in one process, in seconds.
+    #
+    # A synthetic scale repo is worth having precisely because the alternative — cloning
+    # something like the kernel — costs gigabytes and cannot be reproduced offline.
+    awk -v total="$total" '
+        BEGIN {
+            print "reset refs/heads/main";
+            for (i = 1; i <= total; i++) {
+                print "commit refs/heads/main";
+                print "mark :" i;
+                print "author Test Author <test@test.com> " (1600000000 + i) " +0000";
+                print "committer Test Author <test@test.com> " (1600000000 + i) " +0000";
+                msg = "commit #" i;
+                print "data " length(msg);
+                print msg;
+                if (i > 1) { print "from :" (i - 1); }
+                content = "line " i;
+                print "M 644 inline data.txt";
+                print "data " length(content);
+                print content;
+            }
+            print "done";
+        }
+    ' | git fast-import --quiet --done
+
+    git reset -q --hard refs/heads/main
 
     popd >/dev/null
 }

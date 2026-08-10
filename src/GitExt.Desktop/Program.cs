@@ -32,6 +32,14 @@ internal static class Program
                 .GetAwaiter().GetResult();
         }
 
+        // Başlatma ölçümü: pencere ilk kareyi çizene kadar geçen süre (P09-T04).
+        // Dışarıdan ölçülemiyor — süreç başlangıcı ile ilk pikselin arasındaki farkı
+        // yalnızca uygulamanın kendisi görebilir.
+        if (args.Contains(StartupBenchmark.Flag, StringComparer.Ordinal))
+        {
+            return StartupBenchmark.Run(args, BuildAvaloniaApp());
+        }
+
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
