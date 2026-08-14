@@ -1,0 +1,37 @@
+# winget manifesti — yerelleştirme (P10-T18).
+# ÜRETİLMİŞ ŞABLON: sürüm yayın sırasında doldurulur.
+
+PackageIdentifier: io.github.ibrahimhates.GitExtCore
+PackageVersion: 0.0.0
+PackageLocale: en-US
+Publisher: gitext-core contributors
+PublisherUrl: https://github.com/ibrahimhates
+PublisherSupportUrl: https://github.com/ibrahimhates/gitext-core/issues
+PackageName: gitext-core
+PackageUrl: https://github.com/ibrahimhates/gitext-core
+License: GPL-3.0-or-later
+LicenseUrl: https://github.com/ibrahimhates/gitext-core/blob/main/LICENSE
+ShortDescription: Fast native Git GUI — browse history, stage changes and manage branches
+Description: |-
+  gitext-core is a fast, native Git GUI. It rebuilds the GitExtensions experience on modern
+  .NET and Avalonia: a commit graph that makes tangled histories readable, a UI that maps onto
+  how Git actually works, and speed that stays out of your way.
+
+  It drives the real git command line rather than reimplementing it, so hooks, aliases,
+  credential helpers and configuration behave exactly as they do in a terminal. Every operation
+  shows the underlying command it ran.
+
+  gitext-core collects no telemetry of any kind.
+
+  Note: the installer is not code-signed, so Windows SmartScreen will warn on first run.
+  See the project README for why, and for the SHA256 checksums to verify your download.
+Moniker: gitext-core
+Tags:
+  - git
+  - gui
+  - vcs
+  - version-control
+  - developer-tools
+ReleaseNotesUrl: https://github.com/ibrahimhates/gitext-core/releases
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

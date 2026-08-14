@@ -73,7 +73,19 @@ public sealed class GitExecutable
     /// <summary>
     /// Aday yolları, denenme sırasına göre üretir.
     /// </summary>
-    private static IEnumerable<string> EnumerateCandidates(string? explicitPath)
+    internal static IEnumerable<string> EnumerateCandidates(string? explicitPath) =>
+        EnumerateCandidates(explicitPath, RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
+
+    /// <summary>
+    /// Aday üretimi; hedef platform dışarıdan verilebiliyor.
+    /// </summary>
+    /// <remarks>
+    /// Test edilebilirlik için ayrıldı. Windows aday listesi yalnızca Windows'ta
+    /// koşan bir testle doğrulanabilseydi, Linux'ta geliştirilen bu projede hiç
+    /// çalıştırılmazdı — ve P10-T19'da bulunan eksik (Scoop/Chocolatey yolları)
+    /// yakalanamazdı.
+    /// </remarks>
+    internal static IEnumerable<string> EnumerateCandidates(string? explicitPath, bool windows)
     {
         // Kullanıcı açıkça bir yol verdiyse yalnızca onu dene — sessizce başka bir git'e
         // düşmek, teşhisi zor davranış farklarına yol açar.
@@ -84,9 +96,9 @@ public sealed class GitExecutable
         }
 
         // PATH üzerinden: en yaygın ve kullanıcının beklediği durum.
-        yield return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "git.exe" : "git";
+        yield return windows ? "git.exe" : "git";
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (windows)
         {
             // Git for Windows varsayılan konumları. PATH'e eklenmeden kurulabiliyor.
             foreach (string root in new[]
@@ -100,6 +112,32 @@ public sealed class GitExecutable
                 {
                     yield return System.IO.Path.Combine(root, "Git", "cmd", "git.exe");
                 }
+            }
+
+            // Paket yöneticileriyle kurulmuş git (P10-T19). Bunlar Git for Windows'un
+            // kurulum yolunu KULLANMIYOR ve yalnızca yukarıdaki listeye bakmak, git'i
+            // Scoop veya Chocolatey ile kurmuş kullanıcıda "git bulunamadı" veriyordu.
+            //
+            // Normalde ikisi de PATH'e ekleniyor, yani ilk aday zaten tutuyor. Bu yollar
+            // PATH'in eksik olduğu durumlar için: uygulama kısayolla veya PATH'i
+            // devralmayan bir başlatıcıyla açıldığında.
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            if (!string.IsNullOrEmpty(userProfile))
+            {
+                // Scoop: kullanıcı başına kurulum, shims/ altında.
+                yield return System.IO.Path.Combine(userProfile, "scoop", "shims", "git.exe");
+                yield return System.IO.Path.Combine(userProfile, "scoop", "apps", "git", "current", "cmd", "git.exe");
+            }
+
+            // Chocolatey: sistem geneli, varsayılan C:\ProgramData\chocolatey.
+            string programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+
+            if (!string.IsNullOrEmpty(programData))
+            {
+                yield return System.IO.Path.Combine(programData, "chocolatey", "bin", "git.exe");
+                // Scoop'un genel (global) kurulumu da buraya düşüyor.
+                yield return System.IO.Path.Combine(programData, "scoop", "shims", "git.exe");
             }
         }
         else

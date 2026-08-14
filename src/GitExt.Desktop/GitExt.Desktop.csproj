@@ -10,6 +10,14 @@
     <AssemblyName>gitext-core</AssemblyName>
     <RootNamespace>GitExt.Desktop</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!--
+      Windows çalıştırılabilirinin ikonu (P10-T15). build/icons/generate.sh üretiyor;
+      dosya yoksa (ikon üretimi çalıştırılmamışsa) build kırılmasın diye koşullu.
+      Explorer'da ve görev çubuğunda görünen ikon budur — .desktop/hicolor Windows'ta
+      hiçbir işe yaramıyor.
+    -->
+    <ApplicationIcon Condition="Exists('$(MSBuildThisFileDirectory)../../build/icons/out/gitext-core.ico')">$(MSBuildThisFileDirectory)../../build/icons/out/gitext-core.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
     <!-- Publish boyutunu küçültür, ICU bağımlılığını kaldırır (ADR-0006).

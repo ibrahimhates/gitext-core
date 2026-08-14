@@ -1,0 +1,32 @@
+# winget manifesti — kurulum paketi (P10-T18).
+#
+# ÜRETİLMİŞ ŞABLON: sürüm, URL ve SHA256 yayın sırasında doldurulur.
+# winget-pkgs deposuna gönderim: https://github.com/microsoft/winget-pkgs
+#
+# ⚠️ İmzasız paket (P10-T17): winget kurulumu SmartScreen uyarısını ATLAMIYOR ama
+# kullanıcı komut satırında olduğu için deneyim daha az kırılgan. Bu, imzasız
+# yayınlamanın en az zarar veren kanalı.
+
+PackageIdentifier: io.github.ibrahimhates.GitExtCore
+PackageVersion: 0.0.0
+InstallerType: inno
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+
+# git bir ÇALIŞMA ZAMANI bağımlılığı (ADR-0002). winget bunu kurabiliyor; kullanıcının
+# git'i olmadan uygulama hiç çalışmayacağı için bildirmek doğru.
+Dependencies:
+  PackageDependencies:
+    - PackageIdentifier: Git.Git
+
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/ibrahimhates/gitext-core/releases/download/v0.0.0/gitext-core-0.0.0-setup.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+
+ManifestType: installer
+ManifestVersion: 1.6.0
