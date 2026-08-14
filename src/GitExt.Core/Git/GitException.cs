@@ -134,7 +134,12 @@ public class GitException : Exception
 /// <summary>
 /// Sistemde çalıştırılabilir bir <c>git</c> bulunamadığında fırlatılır.
 /// </summary>
-public sealed class GitNotFoundException(string message) : Exception(message);
+/// <remarks>
+/// Flatpak sandbox'ında host'a erişilemediğinde de bu fırlatılıyor (ADR-0009):
+/// kullanıcı açısından sonuç aynı — kullanılabilir bir git yok.
+/// </remarks>
+public sealed class GitNotFoundException(string message, Exception? innerException = null)
+    : Exception(message, innerException);
 
 /// <summary>
 /// Bulunan <c>git</c> sürümü <see cref="GitVersion.Minimum"/> değerinden düşük olduğunda fırlatılır.

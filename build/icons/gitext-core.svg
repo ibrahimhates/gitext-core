@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
 <!--
   gitext-core uygulama ikonu (P10-T06).
+
+  ⚠️ AÇIKLAMA KÖK ÖĞENİN İÇİNDE — dışında DEĞİL. `appstreamcli compose` dosya türünü
+  ilk birkaç yüz bayta bakarak belirliyor; `<svg` o pencereye girmezse dosyayı SVG
+  olarak tanımıyor ve `file-read-error` ile Flatpak derlemesini kırıyor.
+  Ölçüldü (P10-T10): kök öncesi ~380 baytlık yorum geçiyor, ~490 bayt kırıyor.
+  Yorum kök içine alındığında boyutu ne olursa olsun sorun yok.
 
   Tasarım: uygulamanın kimliği commit grafiği. İkon iki paralel şerit ve aralarında
   tek bir merge bağlantısı gösteriyor — git grafiğinin en tanınan biçimi.
@@ -16,7 +23,6 @@
   → Yan dal artık geri birleşmiyor, kendi yolunda AŞAĞIYA devam ediyor. Kapalı alan yok.
   Merge, iki şerit arasındaki tek bir çapraz bağ olarak gösteriliyor.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
 
   <!-- Zemin: koyu, nötr. Hem açık hem koyu masaüstü temasında ayırt edilebiliyor. -->
   <rect width="256" height="256" rx="56" fill="#22272E"/>

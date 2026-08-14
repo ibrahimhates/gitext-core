@@ -17,6 +17,7 @@ build rather than by code review.
 | [0006](./0006-versioning-and-dependencies.md) | Versioning and dependencies | SemVer + Central Package Management + committed lock files | Accepted |
 | [0007](./0007-commit-graph-layout.md) | Commit graph layout | Straight-branch lanes, fed by `--topo-order` | Accepted |
 | [0008](./0008-diff-pipeline.md) | Diff pipeline | One `git` call, paths from `--raw`, local word diff, lossless decoding | Accepted |
+| [0009](./0009-flatpak-and-git-access.md) | Flatpak and access to the user's Git | `flatpak-spawn --host git`; the Flatpak build is not meaningfully sandboxed, and says so | Accepted |
 
 ## Decisions enforced by the build
 

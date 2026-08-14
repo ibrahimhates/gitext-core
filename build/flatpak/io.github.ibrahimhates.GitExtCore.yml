@@ -1,0 +1,71 @@
+# Flatpak manifesti (P10-T10, ADR-0009).
+#
+# ⚠️ BU BUILD ANLAMLI BİÇİMDE SANDBOX'LANMIŞ DEĞİL — ve bu bilinçli bir karardır,
+# bir eksiklik değil. Gerekçesi docs/adr/0009-flatpak-and-git-access.md içinde.
+#
+# Kısaca: gitext-core kullanıcının KENDİ git'ini çalıştırmak zorunda (ADR-0002).
+# Hook'lar, kimlik bilgisi yardımcıları, LFS, .gitconfig — hepsi buna bağlı.
+# Sandbox içine git gömmek ölçüldü ve şu sonucu verdi: Python ile yazılmış bir
+# pre-commit hook'u olan depoda `git commit` çağrıldığında COMMIT ATILMADI ama
+# ÇIKIŞ KODU 0 DÖNDÜ. Arayüz "commit edildi" derdi. Bu, sessizce veri kaybettiren
+# bir davranış.
+#
+# Build:
+#   flatpak-builder --force-clean build-dir build/flatpak/io.github.ibrahimhates.GitExtCore.yml
+
+app-id: io.github.ibrahimhates.GitExtCore
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: gitext-core
+
+finish-args:
+  # Pencere sistemi.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+
+  # Uzak depolarla konuşmak için (fetch/pull/push).
+  - --share=network
+
+  # Depolar kullanıcının diskinde HERHANGİ BİR YERDE olabilir. Bir Git GUI için
+  # bu kaçınılmaz; --filesystem=host tek başına sandbox'ın değerinin çoğunu kaldırıyor.
+  - --filesystem=host
+
+  # 🔴 Host'ta komut çalıştırma izni. flatpak-spawn --host bunu gerektiriyor ve
+  # Flatpak belgeleri bunun sandbox'tan çıkmakla eşdeğer olduğunu açıkça söylüyor.
+  # ADR-0009'un kararı: bunu gizlemek yerine açıkça yazmak. Sandbox isteyen bir
+  # kullanıcı bu uygulamayı hiç kurmamalı — hiçbir paketleme numarası bir Git GUI'yi
+  # düzenlediği depolardan yalıtılmış hâle getiremez.
+  - --talk-name=org.freedesktop.Flatpak
+
+  # Kimlik bilgisi yardımcıları (git-credential-libsecret) host tarafında çalışıyor,
+  # ama bazı kurulumlar sandbox içinden secret servisine erişim bekliyor.
+  - --talk-name=org.freedesktop.secrets
+
+modules:
+  - name: gitext-core
+    buildsystem: simple
+
+    build-commands:
+      # Yayınlanmış tarball açılıp yerine kopyalanıyor. Kaynaktan derlemek, .NET SDK'nın
+      # Flatpak SDK uzantısı olarak bulunmasını gerektiriyor ve derleme süresini
+      # dakikalara çıkarıyor; Flathub için hazır ikili yeterli ve doğrulanabilir
+      # (SHA256 aşağıda).
+      - install -Dm755 gitext-core /app/bin/gitext-core
+      - install -Dm644 share/applications/io.github.ibrahimhates.GitExtCore.desktop
+          /app/share/applications/io.github.ibrahimhates.GitExtCore.desktop
+      - install -Dm644 share/metainfo/io.github.ibrahimhates.GitExtCore.metainfo.xml
+          /app/share/metainfo/io.github.ibrahimhates.GitExtCore.metainfo.xml
+      - |
+        find share/icons -type f | while read -r icon; do
+          install -Dm644 "$icon" "/app/$icon"
+        done
+
+    sources:
+      # Sürüm ve sha256 yayın sırasında doldurulur (build/flatpak/update.sh).
+      - type: archive
+        url: https://github.com/ibrahimhates/gitext-core/releases/download/v0.0.0/gitext-core-0.0.0-linux-x64.tar.gz
+        sha256: '0000000000000000000000000000000000000000000000000000000000000000'
+        strip-components: 1

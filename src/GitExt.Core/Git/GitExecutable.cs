@@ -38,6 +38,11 @@ public sealed class GitExecutable
         string? explicitPath = null,
         CancellationToken cancellationToken = default)
     {
+        // Sandbox içindeysek host'a erişimin gerçekten mümkün olduğu ÖNCE doğrulanıyor.
+        // Erişilemiyorsa burada durulur; sandbox içindeki bir git'e sessizce düşmek,
+        // hook'u olan depolarda commit'in sessizce atılmamasına yol açıyor (ADR-0009).
+        SandboxLauncher.EnsureHostAccessible();
+
         List<string> attempted = [];
 
         foreach (string candidate in EnumerateCandidates(explicitPath))
@@ -124,6 +129,11 @@ public sealed class GitExecutable
 
         startInfo.ArgumentList.Add("--version");
         startInfo.Environment["LC_ALL"] = "C";
+
+        // Flatpak sandbox'ındaysak host'taki git aranıyor (ADR-0009). Sandbox içindeki
+        // git'i bulmak, kullanıcının hook'larını ve yapılandırmasını göremeyen bir
+        // git'i "bulundu" saymak olurdu.
+        SandboxLauncher.RewriteForHost(startInfo);
 
         try
         {

@@ -245,6 +245,11 @@ public sealed class GitProcessRunner : IGitProcessRunner
             }
         }
 
+        // Flatpak sandbox'ındaysak git host üzerinde çalıştırılıyor (ADR-0009).
+        // EN SONDA: ortam ve argümanların tamamı kurulduktan sonra sarmalanmalı,
+        // aksi halde sonradan eklenenler host'a geçmez.
+        SandboxLauncher.RewriteForHost(startInfo);
+
         return startInfo;
     }
 

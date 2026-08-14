@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
 <!--
   gitext-core ikonu — KÜÇÜK BOYUT varyantı (16 ve 22 px), P10-T06.
+
+  ⚠️ Açıklama kök öğenin İÇİNDE: kök öncesindeki uzun yorum `appstreamcli compose`'un
+  dosya türü tespitini bozuyor (P10-T10'da ölçüldü, gitext-core.svg'ye bakın).
 
   ⚠️ ÖLÇÜLDÜ — tam ikon 16 px'te bulanıklaşıyor: üç düğüm, iki şerit ve bir merge bağı
   16 piksele sığmıyor, ayrıntılar birbirine giriyor (16/24/32/48 çıktıları yan yana
@@ -13,7 +17,6 @@
   Freedesktop ikon temaları boyut başına ayrı dosya beklediği için bu tamamen olağan:
   16 px'lik ikon 256 px'liğin küçültülmüşü değildir, kendi çizimidir.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
 
   <rect width="64" height="64" rx="14" fill="#22272E"/>
 
