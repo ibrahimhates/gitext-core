@@ -1,0 +1,49 @@
+# Maintainer: gitext-core contributors <https://github.com/ibrahimhates/gitext-core>
+#
+# gitext-core — hazır ikiliden kurulum (P10-T13).
+#
+# Bu paket yayınlanmış tarball'ı kullanır; kaynaktan derleyen sürüm için `gitext-core`
+# paketine bakın. Çoğu kullanıcı için önerilen budur: .NET SDK indirmeden kurulur.
+#
+# Sürüm ve sha256sum YAYIN SIRASINDA doldurulur — build/arch/update.sh bunu yapıyor.
+# Elle güncellemek, sürümün ayrışacağı ikinci bir kaynak yaratırdı (ADR-0006).
+
+pkgname=gitext-core-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="Fast native Git GUI — browse history, stage changes and manage branches"
+arch=('x86_64')
+url="https://github.com/ibrahimhates/gitext-core"
+license=('GPL-3.0-or-later')
+
+# git bir ÇALIŞMA ZAMANI bağımlılığı, isteğe bağlı değil (ADR-0002): uygulama git'i
+# alt süreç olarak çalıştırıyor. 2.30, ADR-0002'deki minimum.
+depends=('git>=2.30')
+
+provides=('gitext-core')
+conflicts=('gitext-core')
+
+# İkili self-contained: .NET runtime içine gömülü, ayrıca dotnet-runtime gerekmiyor.
+options=('!strip')
+
+source=("gitext-core-${pkgver}-linux-x64.tar.gz::${url}/releases/download/v${pkgver}/gitext-core-${pkgver}-linux-x64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    cd "${srcdir}/gitext-core"
+
+    install -Dm755 gitext-core "${pkgdir}/usr/bin/gitext-core"
+
+    install -Dm644 share/applications/io.github.ibrahimhates.GitExtCore.desktop \
+        "${pkgdir}/usr/share/applications/io.github.ibrahimhates.GitExtCore.desktop"
+
+    install -Dm644 share/metainfo/io.github.ibrahimhates.GitExtCore.metainfo.xml \
+        "${pkgdir}/usr/share/metainfo/io.github.ibrahimhates.GitExtCore.metainfo.xml"
+
+    # İkonlar boyut boyut; dizin yapısı korunmalı.
+    find share/icons -type f | while read -r icon; do
+        install -Dm644 "$icon" "${pkgdir}/usr/${icon}"
+    done
+
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

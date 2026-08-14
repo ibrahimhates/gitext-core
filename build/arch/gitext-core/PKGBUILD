@@ -1,0 +1,78 @@
+# Maintainer: gitext-core contributors <https://github.com/ibrahimhates/gitext-core>
+#
+# gitext-core — kaynaktan derleme (P10-T13).
+#
+# Hazır ikili isteyenler için `gitext-core-bin` paketine bakın; çoğu kullanıcı için
+# önerilen odur. Bu paket .NET SDK indirip derliyor (~1 GB, birkaç dakika).
+
+pkgname=gitext-core
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="Fast native Git GUI — browse history, stage changes and manage branches (built from source)"
+arch=('x86_64')
+url="https://github.com/ibrahimhates/gitext-core"
+license=('GPL-3.0-or-later')
+
+depends=('git>=2.30')
+makedepends=('dotnet-sdk>=10.0')
+
+provides=('gitext-core')
+conflicts=('gitext-core-bin')
+
+# Self-contained yayın: ikili .NET runtime'ı içeriyor, strip edilmemeli.
+options=('!strip')
+
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    # ⚠️ MinVerVersionOverride ŞART: kaynak arşivinde .git YOK, dolayısıyla MinVer
+    # tag göremiyor ve 0.0.0-alpha.0'a düşüyor. `-p:Version=` işe yaramaz — MinVer
+    # onu eziyor (P10-T00'de ölçüldü). Sürüm pkgver'den geliyor.
+    dotnet publish src/GitExt.Desktop \
+        -c Release \
+        -r linux-x64 \
+        --self-contained \
+        -p:PublishSingleFile=true \
+        -p:PublishTrimmed=true \
+        -p:PublishReadyToRun=true \
+        -p:MinVerVersionOverride="${pkgver}" \
+        -o "${srcdir}/publish"
+
+    # İkonlar SVG'den üretiliyor (rsvg-convert yoksa atlanır — paket yine kurulur,
+    # yalnızca ikonsuz kalır).
+    if command -v rsvg-convert >/dev/null; then
+        build/icons/generate.sh "${srcdir}/icons"
+    fi
+}
+
+check() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    # Çekirdek testler: git çıktısı ayrıştırma mantığı, kullanıcının gerçek git
+    # sürümüne karşı. UI testleri headless backend gerektirdiği için atlanıyor.
+    dotnet test tests/GitExt.Core.Tests -c Release
+}
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    install -Dm755 "${srcdir}/publish/gitext-core" "${pkgdir}/usr/bin/gitext-core"
+
+    install -Dm644 build/linux/io.github.ibrahimhates.GitExtCore.desktop \
+        "${pkgdir}/usr/share/applications/io.github.ibrahimhates.GitExtCore.desktop"
+
+    install -Dm644 build/linux/io.github.ibrahimhates.GitExtCore.metainfo.xml \
+        "${pkgdir}/usr/share/metainfo/io.github.ibrahimhates.GitExtCore.metainfo.xml"
+
+    if [ -d "${srcdir}/icons/hicolor" ]; then
+        find "${srcdir}/icons/hicolor" -type f | while read -r icon; do
+            rel="${icon#"${srcdir}/icons/"}"
+            install -Dm644 "$icon" "${pkgdir}/usr/share/icons/${rel}"
+        done
+    fi
+
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

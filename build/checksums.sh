@@ -22,15 +22,18 @@ cd "$DIST"
 
 # Yalnızca dağıtılan çıktılar. Ara ürünler (appimagetool, açılmış klasörler)
 # checksum listesine girmemeli — kullanıcı onları indirmiyor.
+# ⚠️ Desen `gitext-core-*` DEĞİL `gitext-core[-_]*`: Debian paket adları alt çizgi
+# kullanıyor (gitext-core_1.0.0_amd64.deb). Yalnızca tire aranırken .deb sessizce
+# listenin dışında kalıyordu — checksum dosyası eksik ama "başarılı" görünüyordu.
 mapfile -t ARTIFACTS < <(
     find . -maxdepth 1 -type f \
-        \( -name 'gitext-core-*.tar.gz' \
-        -o -name 'gitext-core-*.AppImage' \
-        -o -name 'gitext-core-*.zip' \
-        -o -name 'gitext-core-*.deb' \
-        -o -name 'gitext-core-*.rpm' \
-        -o -name 'gitext-core-*.dmg' \
-        -o -name 'gitext-core-*.pkg.tar.zst' \) \
+        \( -name 'gitext-core[-_]*.tar.gz' \
+        -o -name 'gitext-core[-_]*.AppImage' \
+        -o -name 'gitext-core[-_]*.zip' \
+        -o -name 'gitext-core[-_]*.deb' \
+        -o -name 'gitext-core[-_]*.rpm' \
+        -o -name 'gitext-core[-_]*.dmg' \
+        -o -name 'gitext-core[-_]*.pkg.tar.zst' \) \
         -printf '%P\n' | sort
 )
 
