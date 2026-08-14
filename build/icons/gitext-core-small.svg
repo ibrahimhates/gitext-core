@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  gitext-core ikonu — KÜÇÜK BOYUT varyantı (16 ve 22 px), P10-T06.
+
+  ⚠️ ÖLÇÜLDÜ — tam ikon 16 px'te bulanıklaşıyor: üç düğüm, iki şerit ve bir merge bağı
+  16 piksele sığmıyor, ayrıntılar birbirine giriyor (16/24/32/48 çıktıları yan yana
+  gözle karşılaştırıldı). 24 px'ten itibaren tam ikon net.
+
+  Bu varyant aynı fikri daha az öğeyle anlatıyor: iki şerit, iki düğüm, tek bağ.
+  Renkler ve zemin tam ikonla aynı — yan yana durduklarında aynı uygulama gibi
+  görünmeleri gerekiyor.
+
+  Freedesktop ikon temaları boyut başına ayrı dosya beklediği için bu tamamen olağan:
+  16 px'lik ikon 256 px'liğin küçültülmüşü değildir, kendi çizimidir.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+
+  <rect width="64" height="64" rx="14" fill="#22272E"/>
+
+  <g fill="none" stroke-width="7" stroke-linecap="round">
+    <!-- Sol şerit: ana dal -->
+    <path d="M 22 14 L 22 50" stroke="#457B9D"/>
+    <!-- Sağ şerit: ayrı dal -->
+    <path d="M 42 26 L 42 50" stroke="#E63A35"/>
+    <!-- Tek bağ: sağdan sola -->
+    <path d="M 42 26 L 22 38" stroke="#2A9D8F"/>
+  </g>
+
+  <g stroke="#22272E" stroke-width="5">
+    <circle cx="42" cy="26" r="8" fill="#E63A35"/>
+    <circle cx="22" cy="38" r="8" fill="#2A9D8F"/>
+  </g>
+</svg>

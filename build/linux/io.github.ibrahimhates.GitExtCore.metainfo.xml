@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metadata (P10-T07). Flathub ve yazılım merkezleri (GNOME Software, KDE
+  Discover, elementary AppCenter) için zorunlu.
+
+  Dosya adı uygulama kimliğiyle AYNI olmak zorunda: io.github.ibrahimhates.GitExtCore
+  (P01-T21'de belirlendi, .desktop dosyasıyla da eşleşiyor).
+
+  ⚠️ Ekran görüntüsü URL'leri P10-T26'da gerçek dosyalarla doldurulacak. AppStream
+  ekran görüntüsünü ZORUNLU tutmuyor ama yazılım merkezleri ekran görüntüsü olmayan
+  uygulamaları listelemekte isteksiz; Flathub'a gönderimden önce şart.
+-->
+<component type="desktop-application">
+  <id>io.github.ibrahimhates.GitExtCore</id>
+
+  <name>gitext-core</name>
+  <summary>Browse history, stage changes and manage branches in Git repositories</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <developer id="io.github.ibrahimhates">
+    <name>gitext-core contributors</name>
+  </developer>
+
+  <description>
+    <p>
+      gitext-core is a fast, native Git GUI for Linux, Windows and macOS. It rebuilds the
+      GitExtensions experience on modern .NET and Avalonia: a commit graph that makes tangled
+      histories readable, a UI that maps onto how Git actually works, and speed that stays out
+      of your way.
+    </p>
+    <p>
+      It drives the real <code>git</code> command line rather than a reimplementation of it, so
+      your hooks, aliases, credential helpers and configuration all behave exactly as they do in
+      a terminal. Every operation shows the underlying command it ran.
+    </p>
+    <p>What it does:</p>
+    <ul>
+      <li>Read a commit graph of hundreds of thousands of commits without waiting</li>
+      <li>Stage and unstage by file, hunk or individual line</li>
+      <li>Commit, branch, merge, rebase (including interactive), cherry-pick and revert</li>
+      <li>Fetch, pull and push, with force-with-lease anchored to what you actually saw</li>
+      <li>Resolve conflicts, manage stashes, browse the reflog, blame and file history</li>
+      <li>Light and dark themes, a colour-blind-safe graph palette, and reassignable shortcuts</li>
+    </ul>
+    <p>
+      gitext-core collects no telemetry of any kind.
+    </p>
+    <p>
+      This is a clean-room reimplementation inspired by GitExtensions. It is not a port of it and
+      is not affiliated with the GitExtensions project.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.ibrahimhates.GitExtCore.desktop</launchable>
+
+  <url type="homepage">https://github.com/ibrahimhates/gitext-core</url>
+  <url type="bugtracker">https://github.com/ibrahimhates/gitext-core/issues</url>
+  <url type="vcs-browser">https://github.com/ibrahimhates/gitext-core</url>
+
+  <categories>
+    <category>Development</category>
+    <category>RevisionControl</category>
+  </categories>
+
+  <keywords>
+    <keyword>git</keyword>
+    <keyword>vcs</keyword>
+    <keyword>version control</keyword>
+    <keyword>commit</keyword>
+    <keyword>branch</keyword>
+    <keyword>merge</keyword>
+    <keyword>diff</keyword>
+  </keywords>
+
+  <!--
+    Masaüstü uygulaması: klavye ve işaretçi gerekiyor, dokunmatik desteklenmiyor.
+    Yazılım merkezleri bu bilgiyi cihaz uyumluluğu göstermek için kullanıyor.
+  -->
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <content_rating type="oars-1.1" />
+
+  <!--
+    Sürüm geçmişi. Yeni sürümde buraya yeni bir <release> eklenmesi gerekiyor;
+    P10-T29'da yayın kontrol listesinin parçası.
+  -->
+  <releases>
+    <release version="1.0.0" date="2026-08-14">
+      <description>
+        <p>First stable release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

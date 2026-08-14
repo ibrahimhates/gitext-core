@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  gitext-core uygulama ikonu (P10-T06).
+
+  Tasarım: uygulamanın kimliği commit grafiği. İkon iki paralel şerit ve aralarında
+  tek bir merge bağlantısı gösteriyor — git grafiğinin en tanınan biçimi.
+
+  Renkler uydurma DEĞİL — GraphPalettes.LightDefault'un şeritleri:
+    #457B9D (şerit 0), #E63A35 (şerit 1), #2A9D8F (şerit 2)
+  Okabe & Ito, Color Universal Design (2008) tabanlı; renk körlüğüne uyumlu (P08-T09).
+
+  🔴 İKİ TASARIM REDDEDİLDİ, ikisi de gözle 256 px'te kontrol edilerek:
+  Yan dalın ana şeritten ayrılıp GERİ BİRLEŞMESİ — yani "ayrıl + birleş" — kapalı bir
+  alan üretiyor ve ikon her seferinde bir "play" üçgeni gibi okunuyordu. Eğrileri
+  asimetrik yapmak da çözmedi: kapalı şekil geometrinin kendisinden geliyordu.
+  → Yan dal artık geri birleşmiyor, kendi yolunda AŞAĞIYA devam ediyor. Kapalı alan yok.
+  Merge, iki şerit arasındaki tek bir çapraz bağ olarak gösteriliyor.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+
+  <!-- Zemin: koyu, nötr. Hem açık hem koyu masaüstü temasında ayırt edilebiliyor. -->
+  <rect width="256" height="256" rx="56" fill="#22272E"/>
+
+  <g fill="none" stroke-width="15" stroke-linecap="round">
+
+    <!-- Sol şerit: ana dal, kesintisiz iniyor (#457B9D) -->
+    <path d="M 88 46 L 88 210" stroke="#457B9D"/>
+
+    <!-- Sağ şerit: ayrı dal, üstte ana şeritten çıkıp aşağıya devam ediyor (#E63A35) -->
+    <path d="M 88 78 C 88 108, 168 98, 168 128
+             L 168 210" stroke="#E63A35"/>
+
+    <!-- Merge: sağ daldan sola tek çapraz bağ. Kapalı alan üretmiyor (#2A9D8F) -->
+    <path d="M 168 128 L 88 168" stroke="#2A9D8F"/>
+  </g>
+
+  <!-- Commit düğümleri. Zemin renginde halka: şeritler düğümün ardından geçerken
+       kesiliyormuş gibi görünüyor — gerçek grafik çiziminde de böyle. -->
+  <g stroke="#22272E" stroke-width="11">
+    <circle cx="88"  cy="78"  r="18" fill="#457B9D"/>
+    <circle cx="168" cy="128" r="18" fill="#E63A35"/>
+    <circle cx="88"  cy="168" r="18" fill="#2A9D8F"/>
+  </g>
+</svg>
