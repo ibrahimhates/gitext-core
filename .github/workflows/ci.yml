@@ -14,6 +14,26 @@ env:
   CI: true
 
 jobs:
+  # P10-T03 — Commit mesajı biçimi sürüm notlarının GİRDİSİ, üslup tercihi değil.
+  # Sürüm notları commit'lerden üretiliyor (bu depoda PR akışı yok: 53 commit'in 50'si
+  # doğrudan main'e atılmış), yani biçimi bozuk bir commit "Diğer" başlığına düşer.
+  #
+  # Yalnızca PR'larda: main'e atılmış commit'ler zaten geçmiş, geriye dönük kırmak
+  # anlamsız. Kural bugünden itibaren geçerli.
+  commits:
+    name: Commit message format
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Aralık karşılaştırması için taban dal lazım; sığ klonda yok.
+          fetch-depth: 0
+
+      - name: Check Conventional Commits
+        run: build/check-commits.sh "origin/${{ github.base_ref }}..HEAD"
+
   build:
     name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

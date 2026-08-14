@@ -3,9 +3,10 @@
 # Linux paketleme (P06-T17): taşınabilir tarball + AppImage.
 #
 # Kullanım:
-#   build/linux/package.sh [sürüm]
+#   build/linux/package.sh
+#   MINVER_VERSION_OVERRIDE=1.0.0-test build/linux/package.sh   # etiketsiz deneme
 #
-# Sürüm verilmezse Directory.Build.props'taki VersionPrefix kullanılır.
+# Sürüm git tag'inden türetiliyor (P10-T01) — build/version.sh. Elle sürüm VERİLMEZ.
 #
 # ⚠️ ÖLÇÜLDÜ — appimagetool bu makinede kurulu DEĞİL ve olmayabilir de. Betik onu
 # indirmeye çalışır; indiremezse tarball yine üretilir ve AppImage adımı ATLANDIĞI
@@ -19,11 +20,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-VERSION="${1:-}"
+# Sürüm TEK kaynaktan: git tag → MinVer → ikiliye gömülen değer (P10-T01).
+# Eskiden burada Directory.Build.props'tan VersionPrefix okunuyordu; o alan artık yok.
+# shellcheck source=../version.sh
+. "$ROOT/build/version.sh"
 
-if [ -z "$VERSION" ]; then
-    VERSION="$(grep -oP '(?<=<VersionPrefix>)[^<]+' Directory.Build.props | head -1)"
+if [ $# -gt 0 ]; then
+    echo "!! Sürüm artık argümanla verilmiyor — git tag'inden türetiliyor (ADR-0006)." >&2
+    echo "   Etiketsiz deneme için: MINVER_VERSION_OVERRIDE=$1 $0" >&2
+    exit 2
 fi
+
+VERSION="$(gitext_require_releasable_version)"
 
 RID="${RID:-linux-x64}"
 OUT="$ROOT/dist"
@@ -42,8 +50,24 @@ dotnet publish src/GitExt.Desktop \
     -p:PublishSingleFile=true \
     -p:PublishTrimmed=true \
     -p:PublishReadyToRun=true \
-    -p:Version="$VERSION" \
+    -p:MinVerVersionOverride="$VERSION" \
     -o "$STAGE"
+
+# ⚠️ ÖLÇÜLDÜ (P10-T00) — burada eskiden `-p:Version=` vardı. MinVer eklendikten sonra
+# o parametre SESSİZCE etkisiz: MinVer sürümü kendi hesaplayıp üzerine yazıyor.
+# MinVerVersionOverride, sürümü dışarıdan dayatmanın tek geçerli yolu.
+
+# Paketin adındaki sürüm ile ikilinin içindeki sürüm AYNI olmalı. Ayrışırlarsa
+# kullanıcı "1.0.0 kurdum ama 0.9.1 diyor" ile karşılaşır ve hangisinin doğru olduğu
+# hata raporundan anlaşılmaz. Burada bir kez doğrulanıyor.
+EMBEDDED="$("$STAGE/gitext-core" --version | head -1 | awk '{print $2}')"
+
+if [ "$EMBEDDED" != "$VERSION" ]; then
+    echo "!! SÜRÜM UYUŞMAZLIĞI: paket '$VERSION', ikili '$EMBEDDED'." >&2
+    exit 1
+fi
+
+echo "   sürüm doğrulandı: $EMBEDDED"
 
 # Yayın klasöründeki hata ayıklama sembolleri tarball'ı gereksiz şişiriyor.
 rm -f "$STAGE"/*.pdb

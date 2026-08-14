@@ -12,6 +12,8 @@
 
 - [ ] `dotnet build -c Release` passes with zero warnings
 - [ ] `dotnet test` passes
+- [ ] Commit messages follow Conventional Commits (`feat:`, `fix:`, `perf:` … — CI checks this).
+      Release notes are generated from commits, so the format is the input, not a style preference
 - [ ] If this parses `git` output, it is tested against a fixture repository created with real `git`
 - [ ] No UI dependency was added to `GitExt.Core` or `GitExt.Graph`
 - [ ] If this adds a destructive operation, it has a confirmation step and/or a documented way to undo it

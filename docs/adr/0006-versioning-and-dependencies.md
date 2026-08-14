@@ -29,10 +29,39 @@ This is stated plainly in the README.
 
 ### How the version reaches the binary
 
-The version is **never written by hand into any file**. `Directory.Build.props` holds a base
-version; the real version is derived from the Git tag and passed to the build with `-p:Version=`.
+The version is **never written by hand into any file**. It is derived from the Git tag by
+[MinVer](https://github.com/adamralph/minver), which runs as a build-time-only package
+(`PrivateAssets="all"`) referenced once from `Directory.Build.props` for every project.
 This makes the "we tagged a release but the csproj still says the old version" class of mistake
 impossible.
+
+> **Superseded (P10-T01):** an earlier revision of this ADR said the version was passed with
+> `-p:Version=`. That no longer works and is now actively wrong — see the measurement below.
+
+**Why MinVer and not Nerdbank.GitVersioning** (measured, P10-T00): Nerdbank survives a shallow
+clone and builds ~32 ms faster, but it requires `version.json` to carry MAJOR.MINOR **written by
+hand** — a direct violation of the rule above. The build-time difference is within measurement
+noise. The shallow-clone weakness is closed by `fetch-depth: 0` plus an explicit pre-publish check.
+
+**Three measured traps**, each of which fails *silently* — green build, green tests, wrong version:
+
+| Trap | What happens | Guard |
+|---|---|---|
+| `v` prefix not recognised | MinVer logs *"Ignoring non-version tag"* for `v1.0.0` and falls back to `0.0.0-alpha.0` | `MinVerTagPrefix=v` in `Directory.Build.props` |
+| Shallow clone | `actions/checkout` defaults to `fetch-depth: 1`; no tags arrive, version becomes `0.0.0-alpha.0` | `fetch-depth: 0` **and** `build/version.sh --check` before packaging |
+| `-p:Version=` is overridden | MinVer computes the version in a target and overwrites the property; `-p:Version=7.7.7` produced `1.0.1-alpha.0.1` | Use `MinVerVersionOverride` — the only override MinVer honours |
+
+**The single source of truth is `build/version.sh`.** Packaging scripts ask MSBuild for the value
+that gets embedded in the binary rather than computing their own. Two sources — a script deriving
+the version and the compiler embedding another — drift eventually, and the result is a package
+named `1.0.0` containing a binary that reports `0.9.1`. `package.sh` verifies the two match by
+running `gitext-core --version` on the freshly published output and comparing.
+
+**Sabotage verification:** disabling MinVer entirely (`MinVerSkip=true`) initially left every test
+green — the SDK's fallback version `1.0.0` is valid semver, consistent across assemblies, and even
+carries the commit sha. Versioning could have silently switched off and the application would have
+reported `gitext-core 1.0.0` with nothing objecting. `Directory.Build.props` therefore embeds
+MinVer's own `MinVerVersion` as assembly metadata, and a test asserts it is present and matches.
 
 ---
 

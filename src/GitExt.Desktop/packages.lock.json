@@ -86,6 +86,12 @@
           "Microsoft.Extensions.Options": "10.0.10"
         }
       },
+      "MinVer": {
+        "type": "Direct",
+        "requested": "[6.0.0, )",
+        "resolved": "6.0.0",
+        "contentHash": "+/SsmiySsXJlvQLCGBqaZKNVt3s/Y/HbAdwtop7Km2CnuZbaScoqkWJEBQ5Cy9ebkn6kCYKrHsXgwrFdTgcb3g=="
+      },
       "Avalonia.Angle.Windows.Natives": {
         "type": "Transitive",
         "resolved": "2.1.27548.20260419",
@@ -258,7 +264,7 @@
       "gitext.graph": {
         "type": "Project",
         "dependencies": {
-          "GitExt.Core": "[0.1.0, )"
+          "GitExt.Core": "[1.0.0, )"
         }
       },
       "gitext.ui": {
@@ -267,8 +273,8 @@
           "Avalonia": "[12.1.0, )",
           "Avalonia.Themes.Fluent": "[12.1.0, )",
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "GitExt.Core": "[0.1.0, )",
-          "GitExt.Graph": "[0.1.0, )",
+          "GitExt.Core": "[1.0.0, )",
+          "GitExt.Graph": "[1.0.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.10, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.10, )"
         }

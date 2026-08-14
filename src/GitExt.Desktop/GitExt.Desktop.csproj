@@ -41,6 +41,14 @@
     <ProjectReference Include="../GitExt.UI/GitExt.UI.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      Sürüm türetmenin (P10-T01) test edilebilmesi için. VersionInfo internal kalmalı:
+      uygulamanın kendi sürümü bir API yüzeyi değil, giriş noktasının iç bilgisi.
+    -->
+    <InternalsVisibleTo Include="GitExt.UI.Tests" />
+  </ItemGroup>
+
   <!--
     P01-T18/T19 — Native pdb'leri publish çıktısından çıkar.
     SkiaSharp ve HarfBuzzSharp, native kütüphanelerinin sembol dosyalarını da taşır:

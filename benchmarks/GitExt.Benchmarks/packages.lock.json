@@ -20,6 +20,12 @@
           "System.Management": "9.0.5"
         }
       },
+      "MinVer": {
+        "type": "Direct",
+        "requested": "[6.0.0, )",
+        "resolved": "6.0.0",
+        "contentHash": "+/SsmiySsXJlvQLCGBqaZKNVt3s/Y/HbAdwtop7Km2CnuZbaScoqkWJEBQ5Cy9ebkn6kCYKrHsXgwrFdTgcb3g=="
+      },
       "BenchmarkDotNet.Annotations": {
         "type": "Transitive",
         "resolved": "0.15.6",
@@ -146,7 +152,7 @@
       "gitext.graph": {
         "type": "Project",
         "dependencies": {
-          "GitExt.Core": "[0.3.0, )"
+          "GitExt.Core": "[1.0.0, )"
         }
       },
       "Microsoft.Extensions.DependencyInjection": {

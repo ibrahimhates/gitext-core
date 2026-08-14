@@ -54,4 +54,9 @@
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.15.6" />
   </ItemGroup>
 
+  <ItemGroup Label="Sürümleme (P10-T01, ADR-0006)">
+    <!-- Sürüm git tag'inden türetiliyor; hiçbir dosyaya elle yazılmıyor. -->
+    <PackageVersion Include="MinVer" Version="6.0.0" />
+  </ItemGroup>
+
 </Project>

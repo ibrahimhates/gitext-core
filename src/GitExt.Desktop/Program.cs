@@ -16,6 +16,13 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Sürüm sorgusu (P10-T01). En başta: paketleme betikleri ve paket yöneticileri
+        // bunu çağırıyor, hiçbir ağır başlatma yapılmadan cevaplanmalı.
+        if (args.Contains(VersionInfo.Flag, StringComparer.Ordinal))
+        {
+            return VersionInfo.Run();
+        }
+
         // Teşhis modu: arayüz açmadan çekirdek katmanı bir depoya karşı çalıştırır.
         // Avalonia hiç başlatılmaz, bu yüzden masaüstü oturumu gerektirmez.
         if (args.Contains(HeadlessDiagnostics.Flag, StringComparer.Ordinal))

@@ -31,8 +31,21 @@
     -->
     <NuGetLockFilePath Condition="'$(RuntimeIdentifier)' != ''">$(MSBuildProjectDirectory)/obj/packages.$(RuntimeIdentifier).lock.json</NuGetLockFilePath>
 
-    <!-- Sürüm CI'da git tag'inden -p:Version= ile geçilir; burada yalnızca taban değer. -->
-    <VersionPrefix>0.3.0</VersionPrefix>
+    <!--
+      Sürüm git tag'inden türetiliyor (P10-T01, ADR-0006). Hiçbir dosyaya elle yazılmaz.
+
+      MinVerTagPrefix ZORUNLU: ADR-0006 tag'leri `v` önekli tanımlıyor (v1.0.0) ama MinVer
+      varsayılan olarak öneksiz bekliyor ve `v1.0.0`'ı "non-version tag" diyip ATLIYOR —
+      uyarı vermeden 0.0.0-alpha.0'a düşerek. Ölçüldü (P10-T00).
+    -->
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+
+    <!--
+      Tag yokken (temiz klon, fork, sığ klon) MinVer 0.0.0-alpha.0 üretir. Bu değer
+      yayınlanabilir bir sürüm DEĞİL; yayın hattı P10-T02'deki doğrulama adımıyla
+      böyle bir çıktının paketlenmesini engelliyor.
+    -->
+    <MinVerDefaultPreReleaseIdentifiers>alpha.0</MinVerDefaultPreReleaseIdentifiers>
 
     <Product>gitext-core</Product>
     <Company>gitext-core contributors</Company>
@@ -57,6 +70,41 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <DebugType>portable</DebugType>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!--
+      Derleme yolunu çıktıdan sil (P10-T05). Deponun DİSKTEKİ KONUMU derlemeye sızıyor:
+      ölçüldü, aynı kaynak /work-a ve /work-bbbbb altında derlendiğinde farklı SHA
+      üretiyor ve ikilinin içinde ".../obj/Release/net10.0/..." mutlak yolu duruyor.
+
+      ContinuousIntegrationBuild bunu TEK BAŞINA çözmüyor — o kaynak dosya yollarını
+      normalleştiriyor, ara çıktı yollarını değil. PathMap ile iki koşu bit-bit özdeş
+      hâle geldi (ölçüldü).
+
+      Yan fayda: kullanıcıya giden ikilide geliştiricinin ev dizini yazmıyor.
+    -->
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- PrivateAssets=all: MinVer yalnızca derleme zamanı aracı, çalışma zamanına sızmaz. -->
+    <PackageReference Include="MinVer" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    Sürümün MinVer tarafından türetildiğinin KANITI (P10-T01).
+
+    🔴 SABOTAJ DOĞRULAMASI BURAYI DOĞURDU: MinVer devre dışı bırakıldığında (MinVerSkip=true)
+    testlerin tamamı geçmeye devam etti. Sebep — SDK varsayılan sürümü `1.0.0`: geçerli
+    semver, tüm derlemelerde tutarlı, sha'sı bile yerinde. Yani sürümleme altyapısı sessizce
+    kapansa uygulama "gitext-core 1.0.0" derdi ve hiçbir test itiraz etmezdi.
+
+    Ayırt edici işaret olarak MinVer'in kendi ürettiği MinVerVersion derlemeye gömülüyor.
+    MinVer çalışmazsa bu öznitelik boş kalır ve test kırılır.
+  -->
+  <Target Name="EmbedMinVerEvidence" AfterTargets="MinVer" BeforeTargets="GetAssemblyAttributes">
+    <ItemGroup>
+      <AssemblyMetadata Include="MinVerVersion" Value="$(MinVerVersion)" />
+    </ItemGroup>
+  </Target>
 
 </Project>

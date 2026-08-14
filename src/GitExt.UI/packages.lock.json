@@ -43,6 +43,12 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.10"
         }
       },
+      "MinVer": {
+        "type": "Direct",
+        "requested": "[6.0.0, )",
+        "resolved": "6.0.0",
+        "contentHash": "+/SsmiySsXJlvQLCGBqaZKNVt3s/Y/HbAdwtop7Km2CnuZbaScoqkWJEBQ5Cy9ebkn6kCYKrHsXgwrFdTgcb3g=="
+      },
       "Avalonia.BuildServices": {
         "type": "Transitive",
         "resolved": "11.3.2",
@@ -67,7 +73,7 @@
       "gitext.graph": {
         "type": "Project",
         "dependencies": {
-          "GitExt.Core": "[0.1.0, )"
+          "GitExt.Core": "[1.0.0, )"
         }
       }
     }

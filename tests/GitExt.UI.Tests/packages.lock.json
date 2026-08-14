@@ -55,6 +55,12 @@
           "Microsoft.TestPlatform.TestHost": "18.8.1"
         }
       },
+      "MinVer": {
+        "type": "Direct",
+        "requested": "[6.0.0, )",
+        "resolved": "6.0.0",
+        "contentHash": "+/SsmiySsXJlvQLCGBqaZKNVt3s/Y/HbAdwtop7Km2CnuZbaScoqkWJEBQ5Cy9ebkn6kCYKrHsXgwrFdTgcb3g=="
+      },
       "Shouldly": {
         "type": "Direct",
         "requested": "[4.3.0, )",
@@ -409,7 +415,7 @@
           "Avalonia.Themes.Fluent": "[12.1.0, )",
           "Avalonia.Wayland": "[12.1.0, )",
           "AvaloniaUI.DiagnosticsSupport": "[2.2.3, )",
-          "GitExt.UI": "[0.1.0, )",
+          "GitExt.UI": "[1.0.0, )",
           "Microsoft.Extensions.DependencyInjection": "[10.0.10, )",
           "Microsoft.Extensions.Logging": "[10.0.10, )"
         }
@@ -423,7 +429,7 @@
       "gitext.graph": {
         "type": "Project",
         "dependencies": {
-          "GitExt.Core": "[0.1.0, )"
+          "GitExt.Core": "[1.0.0, )"
         }
       },
       "gitext.ui": {
@@ -432,8 +438,8 @@
           "Avalonia": "[12.1.0, )",
           "Avalonia.Themes.Fluent": "[12.1.0, )",
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "GitExt.Core": "[0.1.0, )",
-          "GitExt.Graph": "[0.1.0, )",
+          "GitExt.Core": "[1.0.0, )",
+          "GitExt.Graph": "[1.0.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.10, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.10, )"
         }
