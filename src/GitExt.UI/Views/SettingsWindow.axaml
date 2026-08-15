@@ -15,6 +15,25 @@
             <StackPanel Margin="12" Spacing="14">
 
                 <StackPanel Spacing="4">
+                    <TextBlock Text="Dil" FontWeight="SemiBold" />
+                    <!--
+                        Tema/Palet listelerinden farklı olarak DisplayMemberBinding var:
+                        onlar enum'ın ham ToString()'ini gösteriyor, burada kullanıcıya
+                        "tr" değil "Türkçe" gösterilmeli. Ad dil dosyasının _meta.name
+                        alanından geliyor (P11-T01).
+                    -->
+                    <ComboBox Name="LanguageBox"
+                              ItemsSource="{Binding Languages}"
+                              SelectedItem="{Binding Language}"
+                              DisplayMemberBinding="{Binding Name}"
+                              MinWidth="220" />
+                    <TextBlock Text="Değişiklik hemen uygulanır; uygulamayı yeniden başlatmaya gerek yok."
+                               Opacity="0.65"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
                     <TextBlock Text="Tema" FontWeight="SemiBold" />
                     <ComboBox Name="ThemeBox"
                               ItemsSource="{Binding Themes}"

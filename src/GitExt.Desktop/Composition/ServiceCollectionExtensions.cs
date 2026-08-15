@@ -2,6 +2,7 @@ using GitExt.Core;
 using GitExt.Core.Diagnostics;
 using GitExt.Core.Git;
 using GitExt.UI.Commands;
+using GitExt.UI.Localization;
 using GitExt.UI.Settings;
 using GitExt.UI.Themes;
 using GitExt.UI.Storage;
@@ -178,6 +179,22 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAppearanceService>(provider => new AppearanceService(
             Avalonia.Application.Current!,
             provider.GetRequiredService<ISettingsStore>()));
+
+        // Çevirmen (P11-T01). Tema ile aynı gerekçeyle singleton ve erken: dil, pencere
+        // AÇILMADAN önce seçilmiş olmak zorunda, yoksa uygulama İngilizce açılıp gözle
+        // görülür biçimde Türkçeye zıplardı.
+        services.AddSingleton<ITranslator>(provider =>
+        {
+            Translator translator = new(provider.GetRequiredService<ISettingsStore>());
+
+            // XAML uzantısına tanıtılıyor. Markup extension örneklerini XAML çözümleyici
+            // yaratıyor, DI kapsayıcısı değil — yapıcıya bağımlılık geçirmenin yolu yok.
+            // Bu, composition root'un (ADR-0004) tek yetkili olma kuralını bozmuyor:
+            // nesne burada kuruluyor ve uzantıya BİR KEZ veriliyor.
+            TranslateExtension.Attach(translator);
+
+            return translator;
+        });
 
         // Komut kaydı (P08-T01). Kısayolların TEK kaynağı; ayar deposuna bağımlı çünkü
         // kullanıcının yeniden atamaları oradan geliyor.

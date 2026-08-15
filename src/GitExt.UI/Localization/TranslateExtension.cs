@@ -56,8 +56,15 @@ public sealed class TranslateExtension : MarkupExtension
     /// <summary>XAML'de konumsal kullanım: <c>{loc:Translate settings.title}</c>.</summary>
     public TranslateExtension(string key) => Key = key;
 
-    /// <summary>Etkin çevirmeni tanıtır. Composition root'tan bir kez çağrılıyor.</summary>
-    internal static void Attach(ITranslator translator) => Instance = translator;
+    /// <summary>
+    /// Etkin çevirmeni tanıtır. <b>Yalnızca composition root'tan</b> bir kez çağrılıyor.
+    /// </summary>
+    /// <remarks>
+    /// <c>public</c> olması bir API vaadi değil, <c>GitExt.Desktop</c>'un composition root
+    /// olarak buna erişmesi gerektiği için (ADR-0004). Başka hiçbir yerden çağrılmamalı;
+    /// çağrıldığında uygulama genelindeki çevirmen sessizce değişirdi.
+    /// </remarks>
+    public static void Attach(ITranslator translator) => Instance = translator;
 
     public override object ProvideValue(IServiceProvider serviceProvider)
     {

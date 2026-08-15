@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using GitExt.UI.Localization;
 using GitExt.UI.Settings;
 using GitExt.UI.Themes;
 using GitExt.UI.ViewModels;
@@ -48,6 +49,10 @@ public partial class App : Application
         // sonrasına kalsaydı uygulama önce varsayılan tema ve yazı tipiyle açılıp gözle
         // görülür biçimde zıplardı.
         _services.GetRequiredService<IAppearanceService>().ApplyStored();
+
+        // Dil de aynı gerekçeyle burada (P11-T07): pencere kurulurken metinler zaten
+        // doğru dilde olmalı, yoksa uygulama İngilizce açılıp Türkçeye zıplardı.
+        _services.GetRequiredService<ITranslator>().ApplyStored();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

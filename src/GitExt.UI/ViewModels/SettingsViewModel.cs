@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.Core.Git;
 using GitExt.UI.Commands;
+using GitExt.UI.Localization;
 using GitExt.UI.Settings;
 using GitExt.UI.Themes;
 
@@ -19,10 +20,14 @@ public sealed partial class SettingsViewModel : ViewModelBase
 {
     private readonly IAppearanceService _appearance;
     private readonly ISettingsStore _settings;
+    private readonly ITranslator? _translator;
     private readonly IGitConfigWriter? _config;
     private readonly string? _workingDirectory;
 
     private bool _loading;
+
+    [ObservableProperty]
+    private LanguageInfo? _language;
 
     [ObservableProperty]
     private ThemePreference _theme;
@@ -62,12 +67,18 @@ public sealed partial class SettingsViewModel : ViewModelBase
         ISettingsStore settings,
         ICommandRegistry registry,
         IGitConfigWriter? config = null,
-        string? workingDirectory = null)
+        string? workingDirectory = null,
+        ITranslator? translator = null)
     {
         _appearance = appearance;
         _settings = settings;
+        _translator = translator;
         _config = config;
         _workingDirectory = workingDirectory;
+
+        // Çevirmen verilmediğinde (bazı testler) dil listesi boş kalıyor ve açılır liste
+        // devre dışı görünüyor — çökmüyor.
+        Languages = translator?.Available ?? [];
 
         Shortcuts = new ShortcutSettingsViewModel(registry);
 
@@ -90,6 +101,16 @@ public sealed partial class SettingsViewModel : ViewModelBase
     public bool CanEditLocal => _workingDirectory is { Length: > 0 };
 
     public bool CanEditGit => _config is not null;
+
+    /// <summary>
+    /// Kullanılabilir diller (P11-T07).
+    /// </summary>
+    /// <remarks>
+    /// Tema/Palet listelerinden farklı olarak sabit değil: gömülü dil dosyalarından
+    /// çalışma anında geliyor. <c>Locales/</c> klasörüne yeni bir JSON eklemek, bu listede
+    /// bir satır daha görünmesi için yeterli.
+    /// </remarks>
+    public IReadOnlyList<LanguageInfo> Languages { get; }
 
     public IReadOnlyList<ThemePreference> Themes { get; } =
         [ThemePreference.Light, ThemePreference.Dark, ThemePreference.System];
@@ -132,6 +153,14 @@ public sealed partial class SettingsViewModel : ViewModelBase
             await _config.GetScopedAsync(directory, key, scope, cancellationToken).ConfigureAwait(true) ?? "";
     }
 
+    partial void OnLanguageChanged(LanguageInfo? value)
+    {
+        if (value is not null)
+        {
+            Apply(() => _translator?.Use(value.Code));
+        }
+    }
+
     partial void OnThemeChanged(ThemePreference value) => Apply(() => _appearance.SetTheme(value));
 
     partial void OnPaletteChanged(PalettePreference value) => Apply(() => _appearance.SetPalette(value));
@@ -169,6 +198,13 @@ public sealed partial class SettingsViewModel : ViewModelBase
         try
         {
             AppearanceSettings appearance = _settings.Current.Appearance;
+
+            // Etkin dil, ayardaki koddan DEĞİL çevirmenin kendisinden okunuyor: ayar boş
+            // olabilir (ilk çalıştırma) ya da tanınmayan bir kod içerebilir; ikisinde de
+            // çevirmen çoktan İngilizceye düşmüştür ve açılır liste onu göstermeli.
+            Language = _translator is null
+                ? null
+                : Languages.FirstOrDefault(l => l.Code == _translator.Current);
 
             Theme = SettingsEnum.Parse(appearance.Theme, ThemePreference.Light);
             Palette = SettingsEnum.Parse(appearance.Palette, PalettePreference.Default);
