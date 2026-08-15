@@ -309,7 +309,7 @@ public sealed class PullViewModel : ViewModelBase
                 $"Your setting (pull.rebase = {resolved.ConfigValue}) says {Describe(resolved.Strategy)}.",
             PullStrategySource.PullFfSetting =>
                 $"Your setting (pull.ff = {resolved.ConfigValue}) only allows fast-forward.",
-            _ => "No preference in your settings; merge was chosen as the default.",
+            _ => Loc.T("pull.no_preference_in_your_settings_merge_was_cho"),
         };
 
     /// <summary>
@@ -507,8 +507,8 @@ public sealed class PullViewModel : ViewModelBase
     private static string Describe(PullStrategy strategy) => strategy switch
     {
         PullStrategy.Rebase => "yeniden temellendirme (rebase)",
-        PullStrategy.FastForwardOnly => "fast-forward only",
-        _ => "merge",
+        PullStrategy.FastForwardOnly => Loc.T("pull.fast_forward_only"),
+        _ => Loc.T("pull.merge"),
     };
 
     private async Task RunAsync()
@@ -535,7 +535,7 @@ public sealed class PullViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             // İptal bir hata değil; kullanıcı zaten ne olduğunu biliyor.
-            Notice = "The operation was cancelled.";
+            Notice = Loc.T("pull.the_operation_was_cancelled");
         }
         catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
         {
@@ -614,7 +614,7 @@ public sealed class PullViewModel : ViewModelBase
         if (result.Failures.Count > 0)
         {
             // 🔴 Kısmi başarı: bazı remote'lar güncellendi, bazıları güncellenmedi.
-            Warning = "These remotes could not be fetched: "
+            Warning = Loc.T("pull.these_remotes_could_not_be_fetched")
                 + string.Join(", ", result.Failures.Select(failure => failure.Remote));
         }
     }
@@ -637,7 +637,7 @@ public sealed class PullViewModel : ViewModelBase
             _cancellation?.Token ?? CancellationToken.None).ConfigureAwait(true);
 
         Notice = result.AlreadyUpToDate
-            ? "Already up to date."
+            ? Loc.T("pull.already_up_to_date")
             : DescribeChanges(result.Changes);
 
         if (!result.AlreadyUpToDate)
@@ -649,14 +649,14 @@ public sealed class PullViewModel : ViewModelBase
         // "başarıyla güncellendi" demek olurdu.
         if (result.AutoStashConflict)
         {
-            Warning = "The fetch succeeded, but your uncommitted changes "
-                + "conflicted while being restored. Your changes are NOT lost: `git stash list` "
-                + "is still there. Resolve the conflicting files and drop the stash.";
+            Warning = Loc.T("pull.the_fetch_succeeded_but_your_uncommitted_cha")
+                + Loc.T("pull.conflicted_while_being_restored_your_changes")
+                + Loc.T("pull.is_still_there_resolve_the_conflicting_files");
         }
         else if (result.HasConflicts)
         {
-            Warning = "The merge stopped with conflicts: some files are UNRESOLVED. "
-                + "Resolve the conflicts and commit, or abort the operation.";
+            Warning = Loc.T("pull.the_merge_stopped_with_conflicts_some_files_")
+                + Loc.T("pull.resolve_the_conflicts_and_commit_or_abort_th");
         }
     }
 
@@ -664,7 +664,7 @@ public sealed class PullViewModel : ViewModelBase
     {
         if (changes.Count == 0)
         {
-            return "No changes.";
+            return Loc.T("pull.no_changes");
         }
 
         int created = changes.Count(change => change.Kind == RefChangeKind.Created);

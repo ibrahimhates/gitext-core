@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using GitExt.UI.Commands;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -79,7 +80,7 @@ public sealed partial class ShortcutReferenceViewModel : ViewModelBase
         [
             .. _registry.Conflicts.Select(c =>
                 $"{c.Gesture}: {string.Join(", ", c.CommandIds.Select(id => _registry.Find(id)?.Title ?? id))}"
-                + " — only the first one works.")
+                + Loc.T("shortcut_reference.only_the_first_one_works"))
         ];
 
         OnPropertyChanged(nameof(Groups));
@@ -103,8 +104,8 @@ public sealed partial class ShortcutReferenceViewModel : ViewModelBase
     {
         CommandContext.Global => "Her yerde",
         CommandContext.CommitList => "Commit listesi",
-        CommandContext.Diff => "Diff view",
-        CommandContext.WorkingTree => "Working tree (commit screen)",
+        CommandContext.Diff => Loc.T("shortcut_reference.diff_view"),
+        CommandContext.WorkingTree => Loc.T("shortcut_reference.working_tree_commit_screen"),
         CommandContext.RefTree => "Dal paneli",
         _ => context.ToString(),
     };

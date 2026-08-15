@@ -476,7 +476,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 await resolver.AbortAsync(path).ConfigureAwait(true);
             }
 
-            BranchNotice = "The operation was cancelled; the working tree is back to its previous state.";
+            BranchNotice = Loc.T("main.the_operation_was_cancelled_the_working_tree");
         }
         catch (GitException error)
         {
@@ -755,12 +755,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
             BranchNotice = result.Outcome switch
             {
-                MergeOutcome.AlreadyUpToDate => "Already up to date.",
+                MergeOutcome.AlreadyUpToDate => Loc.T("main.already_up_to_date"),
                 MergeOutcome.FastForward => $"\"{source}\" was fast-forwarded.",
                 MergeOutcome.MergeCommit => $"\"{source}\" was merged.",
-                MergeOutcome.Staged => "The changes were staged but NOT committed.",
+                MergeOutcome.Staged => Loc.T("main.the_changes_were_staged_but_not_committed"),
                 _ => $"The merge stopped with conflicts: {result.ConflictedPaths.Count} files "
-                    + "are unresolved.",
+                    + Loc.T("main.are_unresolved"),
             };
         }
         catch (GitException error)
@@ -845,12 +845,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Süren işlemin insan-okunur adı.</summary>
     public string OperationText => CurrentOperation switch
     {
-        InProgressOperation.Rebase => "A rebase is in progress. Finish it or abort.",
-        InProgressOperation.ApplyMailbox => "A patch is being applied (git am). Finish it or abort.",
-        InProgressOperation.Merge => "The merge stopped with conflicts. Resolve them or abort.",
-        InProgressOperation.CherryPick => "A cherry-pick is in progress. Finish it or abort.",
-        InProgressOperation.Revert => "A revert is in progress. Finish it or abort.",
-        InProgressOperation.Bisect => "A bisect is in progress. Finish it or reset.",
+        InProgressOperation.Rebase => Loc.T("main.a_rebase_is_in_progress_finish_it_or_abort"),
+        InProgressOperation.ApplyMailbox => Loc.T("main.a_patch_is_being_applied_git_am_finish_it_or"),
+        InProgressOperation.Merge => Loc.T("main.the_merge_stopped_with_conflicts_resolve_the"),
+        InProgressOperation.CherryPick => Loc.T("main.a_cherry_pick_is_in_progress_finish_it_or_ab"),
+        InProgressOperation.Revert => Loc.T("main.a_revert_is_in_progress_finish_it_or_abort"),
+        InProgressOperation.Bisect => Loc.T("main.a_bisect_is_in_progress_finish_it_or_reset"),
         _ => string.Empty,
     };
 
@@ -1079,7 +1079,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (resolved is not { } target)
         {
-            BranchNotice = "Select a commit to check out.";
+            BranchNotice = Loc.T("main.select_a_commit_to_check_out");
             return;
         }
 
@@ -1151,7 +1151,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (SelectedLocalBranch is not { } branch)
         {
-            BranchNotice = "Select a branch to rename.";
+            BranchNotice = Loc.T("main.select_a_branch_to_rename");
             return;
         }
 
@@ -1210,7 +1210,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (SelectedLocalBranch is not { } branch)
         {
-            BranchNotice = "Select a branch to delete.";
+            BranchNotice = Loc.T("main.select_a_branch_to_delete");
             return;
         }
 
@@ -1494,7 +1494,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 await _mergeWriter.AbortAsync(path).ConfigureAwait(true);
             }
 
-            BranchNotice = "Merge aborted; the working tree is back to its previous state.";
+            BranchNotice = Loc.T("main.merge_aborted_the_working_tree_is_back_to_it");
         }
         catch (GitException error)
         {
@@ -1581,12 +1581,12 @@ public partial class MainWindowViewModel : ViewModelBase
         // kullanıcıya "başarıyla geçildi" demek olurdu.
         if (result.HasConflicts)
         {
-            summary += " ⚠️ Some files are UNRESOLVED — you need to resolve the conflicts by hand.";
+            summary += Loc.T("main.some_files_are_unresolved_you_need_to_resolv");
         }
 
         if (result.StashCreated)
         {
-            summary += " Your local changes were stashed (restore them with `git stash pop`).";
+            summary += Loc.T("main.your_local_changes_were_stashed_restore_them");
         }
 
         if (result.Backups.Count > 0)
@@ -1614,7 +1614,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (startPoint is not { Length: > 0 })
         {
-            return "HEAD (tip of the current branch)";
+            return Loc.T("main.head_tip_of_the_current_branch");
         }
 
         string shortId = startPoint.Length > 8 ? startPoint[..8] : startPoint;
@@ -1674,7 +1674,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Commits.Close();
         _watcher?.Stop();
 
-        Subtitle = "No repository open.";
+        Subtitle = Loc.T("main.no_repository_open");
 
         // Depo bilerek kapatıldı: sonraki açılışta karşılama ekranı gelmeli, aynı depo
         // değil. Kullanıcı "kapat" derken bunu kastediyor.
@@ -1688,7 +1688,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [ObservableProperty]
-    public partial string Subtitle { get; set; } = "No repository open.";
+    public partial string Subtitle { get; set; } = Loc.T("main.no_repository_open");
 
     /// <summary>
     /// Karşılama ekranı gösterilsin mi?
@@ -1778,7 +1778,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Subtitle = Commits.Repository is { } repository
             ? $"{repository.WorkingDirectory} — {Commits.Rows.Count} commit"
-            : Commits.ErrorMessage ?? "Could not open the repository.";
+            : Commits.ErrorMessage ?? Loc.T("main.could_not_open_the_repository");
 
         OnPropertyChanged(nameof(ShowWelcome));
 
@@ -1908,7 +1908,7 @@ public partial class MainWindowViewModel : ViewModelBase
             // Hata mesajı temizleniyor: kullanıcı bu klasörü açmayı istemedi.
             Commits.ErrorMessage = null;
             Commits.ErrorDetails = null;
-            Subtitle = "No repository open.";
+            Subtitle = Loc.T("main.no_repository_open");
         }
 
         await UpdateHeadStateAsync(cancellationToken).ConfigureAwait(true);

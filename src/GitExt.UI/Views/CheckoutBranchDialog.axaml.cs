@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using GitExt.Core;
 using GitExt.UI.ViewModels;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.Views;
 
@@ -49,7 +50,7 @@ public partial class CheckoutBranchDialog : Window
         ArgumentNullException.ThrowIfNull(request);
 
         TargetText.Text = request.TargetLabel;
-        TargetLabel.Text = request.IsDetached ? "Commit to check out" : "Branch to switch to";
+        TargetLabel.Text = request.IsDetached ? Loc.T("checkout_branch_dialog.axaml.commit_to_check_out") : Loc.T("checkout_branch_dialog.axaml.branch_to_switch_to");
         DetachWarning.IsVisible = request.IsDetached;
 
         // Temiz ağaçta dört seçenek de aynı sonucu verir; sormak yalnızca gürültü olur.
@@ -72,17 +73,17 @@ public partial class CheckoutBranchDialog : Window
         ActionHint.Text = SelectedAction switch
         {
             LocalChangesAction.Keep =>
-                "The changes are carried to the new branch; if they cannot be, the checkout is refused "
-                + "and nothing changes.",
+                Loc.T("checkout_branch_dialog.axaml.the_changes_are_carried_to_the_new_branch_if")
+                + Loc.T("checkout_branch_dialog.axaml.and_nothing_changes"),
             LocalChangesAction.Merge =>
-                "The changes are merged into the target. If conflicts appear the checkout still "
-                + "happens but the files are left unresolved.",
+                Loc.T("checkout_branch_dialog.axaml.the_changes_are_merged_into_the_target_if_co")
+                + Loc.T("checkout_branch_dialog.axaml.happens_but_the_files_are_left_unresolved"),
             LocalChangesAction.Stash =>
-                "The changes are stashed along with untracked files; "
-                + "nothing is lost, you can restore it later.",
+                Loc.T("checkout_branch_dialog.axaml.the_changes_are_stashed_along_with_untracked")
+                + Loc.T("checkout_branch_dialog.axaml.nothing_is_lost_you_can_restore_it_later"),
             LocalChangesAction.Discard =>
-                "⚠️ Changes in tracked files are DISCARDED. Untracked "
-                + "files are left alone. The discarded content is backed up, and after the operation you can "
+                Loc.T("checkout_branch_dialog.axaml.changes_in_tracked_files_are_discarded_untra")
+                + Loc.T("checkout_branch_dialog.axaml.files_are_left_alone_the_discarded_content_i")
                 + "alabilirsiniz.",
             _ => string.Empty,
         };

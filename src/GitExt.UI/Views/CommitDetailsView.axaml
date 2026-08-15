@@ -78,7 +78,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Classes="secondary" Text="{Binding AuthorDate}" />
                         <TextBlock Classes="secondary"
-                                   Text="{Binding AuthorOriginalDate, StringFormat='(in the author\'s time zone {0})'}"
+                                   Text="{Binding AuthorOriginalDateText}"
                                    IsVisible="{Binding AuthorOriginalDate, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     </StackPanel>
                 </StackPanel>
@@ -97,7 +97,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Classes="secondary" Text="{Binding CommitterDate}" />
                         <TextBlock Classes="secondary"
-                                   Text="{Binding CommitterOriginalDate, StringFormat='(in their own time zone {0})'}"
+                                   Text="{Binding CommitterOriginalDateText}"
                                    IsVisible="{Binding CommitterOriginalDate, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     </StackPanel>
                 </StackPanel>

@@ -205,7 +205,7 @@ public sealed class MergeViewModel : ViewModelBase
     /// </remarks>
     public string? SquashNotice => Strategy != MergeStrategy.Squash
         ? null
-        : "Squash does NOT create a commit: the changes are staged and committing is left to you.";
+        : Loc.T("merge.squash_does_not_create_a_commit_the_changes_");
 
     public bool HasSquashNotice => SquashNotice is not null;
 
@@ -213,9 +213,9 @@ public sealed class MergeViewModel : ViewModelBase
     public string? PreviewNotice => _preview is not { } preview
         ? null
         : !preview.HasCommonAncestor
-            ? "This branch has no common ancestor (unrelated history). You need to allow it in the advanced options."
+            ? Loc.T("merge.this_branch_has_no_common_ancestor_unrelated")
             : !preview.HasChanges
-                ? "Nothing to fetch on this branch."
+                ? Loc.T("merge.nothing_to_fetch_on_this_branch")
                 : preview.CanFastForward
                     ? $"{preview.Ahead} commits can be fast-forwarded."
                     : $"{preview.Ahead} commits will be merged (cannot fast-forward).";
@@ -349,32 +349,32 @@ public sealed class MergeViewModel : ViewModelBase
         switch (result.Outcome)
         {
             case MergeOutcome.AlreadyUpToDate:
-                Notice = "Already up to date.";
+                Notice = Loc.T("merge.already_up_to_date");
                 break;
 
             case MergeOutcome.FastForward:
-                Notice = "Fast-forwarded; no new commit was created.";
+                Notice = Loc.T("merge.fast_forwarded_no_new_commit_was_created");
                 break;
 
             case MergeOutcome.MergeCommit:
-                Notice = "Merge commit created.";
+                Notice = Loc.T("merge.merge_commit_created");
                 break;
 
             case MergeOutcome.Staged:
                 // 🔴 Ölçümün kalbi: çıkış kodu 0 ama HEAD yerinde.
-                Notice = "The changes were staged.";
-                Warning = "Nothing was COMMITTED yet. The changes are staged; "
-                    + "you need to finish it from the commit screen.";
+                Notice = Loc.T("merge.the_changes_were_staged");
+                Warning = Loc.T("merge.nothing_was_committed_yet_the_changes_are_st")
+                    + Loc.T("merge.you_need_to_finish_it_from_the_commit_screen");
                 break;
 
             case MergeOutcome.Conflicted:
             default:
                 Notice = null;
-                Warning = "The merge stopped with conflicts — "
+                Warning = Loc.T("merge.the_merge_stopped_with_conflicts")
                     + $"{result.ConflictedPaths.Count} files are UNRESOLVED: "
                     + string.Join(", ", result.ConflictedPaths.Take(4))
                     + (result.ConflictedPaths.Count > 4 ? "…" : string.Empty)
-                    + ". Resolve the conflicts and commit, or abort the merge.";
+                    + Loc.T("merge.resolve_the_conflicts_and_commit_or_abort_th");
                 break;
         }
     }

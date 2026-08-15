@@ -273,7 +273,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
             return;
         }
 
-        SearchStatus = TryGoToCommit(SearchText) ? null : "not found";
+        SearchStatus = TryGoToCommit(SearchText) ? null : Loc.T("commit_list.not_found");
     }
 
     /// <summary>Yükleme başarısız olduysa kullanıcıya gösterilecek mesaj.</summary>

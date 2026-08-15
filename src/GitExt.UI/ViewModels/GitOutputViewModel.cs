@@ -1,5 +1,6 @@
 using GitExt.Core;
 using GitExt.Core.Git;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -88,7 +89,7 @@ public sealed class GitOutputViewModel : ViewModelBase
 
         string output = GitOutputText.CleanForDisplay(exception.StandardError, out int dropped);
 
-        return new GitOutputViewModel(title ?? "The git command failed", exception.Message)
+        return new GitOutputViewModel(title ?? Loc.T("git_output.the_git_command_failed"), exception.Message)
         {
             CommandLine = exception.CommandLine,
             ExitCode = exception.ExitCode,
@@ -114,10 +115,10 @@ public sealed class GitOutputViewModel : ViewModelBase
         bool messageChanged = result.MessageChanged;
 
         string summary = messageChanged
-            ? "Commit created. Hooks changed the commit message."
-            : "Commit created.";
+            ? Loc.T("git_output.commit_created_hooks_changed_the_commit_mess")
+            : Loc.T("git_output.commit_created");
 
-        return new GitOutputViewModel("Commit complete", summary)
+        return new GitOutputViewModel(Loc.T("git_output.commit_complete"), summary)
         {
             Output = output,
             TruncationNotice = Notice(dropped),

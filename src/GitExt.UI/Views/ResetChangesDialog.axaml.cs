@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using GitExt.Core.Model;
 using GitExt.UI.ViewModels;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.Views;
 
@@ -55,7 +56,7 @@ public partial class ResetChangesDialog : Window
             ? $"All changes in {modified} files (including staged ones) will be reset."
             : $"Unstaged changes in {modified} files will be reset.";
 
-        HintText.Text = "This deletes uncommitted work.";
+        HintText.Text = Loc.T("reset_changes_dialog.axaml.this_deletes_uncommitted_work");
 
         AffectedList.ItemsSource = Preview(request);
 

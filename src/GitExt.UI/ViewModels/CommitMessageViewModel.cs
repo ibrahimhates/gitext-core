@@ -3,6 +3,7 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -179,7 +180,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     /// <summary>Kullanıcıya gösterilecek biçim önerisi; sorun yoksa boş.</summary>
     public string Hint => this switch
     {
-        { HasNonEmptySecondLine: true } => "Leave a blank line between the subject and the body.",
+        { HasNonEmptySecondLine: true } => Loc.T("commit_message.leave_a_blank_line_between_the_subject_and_t"),
         { IsSubjectTooLong: true } => $"The subject line exceeds {SubjectLimit} characters.",
         _ => string.Empty,
     };
@@ -276,7 +277,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     /// </remarks>
     public string TemplateLabel => Template switch
     {
-        null => "commit.template is not set",
+        null => Loc.T("commit_message.commit_template_is_not_set"),
         { IsMissing: true } t => $"Template not found: {t.Path}",
         { Path: var path } => Path.GetFileName(path),
     };

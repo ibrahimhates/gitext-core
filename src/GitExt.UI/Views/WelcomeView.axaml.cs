@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using GitExt.UI.ViewModels;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.Views;
 
@@ -34,7 +35,7 @@ public partial class WelcomeView : UserControl
         }
 
         IReadOnlyList<IStorageFolder> folders = await storage.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions { Title = "Open a git repository", AllowMultiple = false });
+            new FolderPickerOpenOptions { Title = Loc.T("welcome_view.axaml.open_a_git_repository"), AllowMultiple = false });
 
         if (folders.Count == 0)
         {

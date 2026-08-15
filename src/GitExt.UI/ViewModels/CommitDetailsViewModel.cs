@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -103,6 +104,14 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
     [ObservableProperty]
     public partial string? AuthorOriginalDate { get; private set; }
 
+    /// <summary>Yazarın saat dilimi açıklamasının çevrilmiş metni (P11-T05).</summary>
+    public string? AuthorOriginalDateText => AuthorOriginalDate is null
+        ? null
+        : Loc.F("commit_details.in_the_authors_time_zone", AuthorOriginalDate);
+
+    partial void OnAuthorOriginalDateChanged(string? value) =>
+        OnPropertyChanged(nameof(AuthorOriginalDateText));
+
     [ObservableProperty]
     public partial string CommitterText { get; private set; } = string.Empty;
 
@@ -111,6 +120,14 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial string? CommitterOriginalDate { get; private set; }
+
+    /// <summary>Kaydedenin saat dilimi açıklamasının çevrilmiş metni (P11-T05).</summary>
+    public string? CommitterOriginalDateText => CommitterOriginalDate is null
+        ? null
+        : Loc.F("commit_details.in_their_own_time_zone", CommitterOriginalDate);
+
+    partial void OnCommitterOriginalDateChanged(string? value) =>
+        OnPropertyChanged(nameof(CommitterOriginalDateText));
 
     /// <summary>
     /// Kaydeden yazardan farklı mı?
@@ -261,13 +278,13 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
 
         SignatureText = signature.Status switch
         {
-            SignatureStatus.Valid => "Signature verified",
-            SignatureStatus.ValidUntrusted => "Signature valid, key not marked as trusted",
-            SignatureStatus.Bad => "Signature INVALID",
-            SignatureStatus.Expired => "The signature has expired",
-            SignatureStatus.KeyExpired => "The signing key has expired",
-            SignatureStatus.KeyRevoked => "The signing key was revoked",
-            _ => "Signature could not be verified",
+            SignatureStatus.Valid => Loc.T("commit_details.signature_verified"),
+            SignatureStatus.ValidUntrusted => Loc.T("commit_details.signature_valid_key_not_marked_as_trusted"),
+            SignatureStatus.Bad => Loc.T("commit_details.signature_invalid"),
+            SignatureStatus.Expired => Loc.T("commit_details.the_signature_has_expired"),
+            SignatureStatus.KeyExpired => Loc.T("commit_details.the_signing_key_has_expired"),
+            SignatureStatus.KeyRevoked => Loc.T("commit_details.the_signing_key_was_revoked"),
+            _ => Loc.T("commit_details.signature_could_not_be_verified"),
         };
 
         SignatureDetail = signature.CannotVerifyReason

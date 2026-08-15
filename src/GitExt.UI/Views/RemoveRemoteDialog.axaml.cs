@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GitExt.UI.ViewModels;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.Views;
 
@@ -65,7 +66,7 @@ public partial class RemoveRemoteDialog : Window
         {
             parts.Add(
                 $"{request.TrackingBranchCount} remote-tracking branches (and their reflogs) will be deleted; "
-                + "commits that live only on them will no longer appear on any branch");
+                + Loc.T("remove_remote_dialog.axaml.commits_that_live_only_on_them_will_no_longe"));
         }
 
         if (request.AffectedBranches.Count > 0)
@@ -77,11 +78,11 @@ public partial class RemoveRemoteDialog : Window
 
         if (request.IsPushDefault)
         {
-            parts.Add("this remote is set as the default push target (remote.pushDefault)");
+            parts.Add(Loc.T("remove_remote_dialog.axaml.this_remote_is_set_as_the_default_push_targe"));
         }
 
         return parts.Count == 0
-            ? "No local branch or remote-tracking branch is attached to this remote."
+            ? Loc.T("remove_remote_dialog.axaml.no_local_branch_or_remote_tracking_branch_is")
             : char.ToUpperInvariant(parts[0][0]) + parts[0][1..]
               + (parts.Count > 1 ? " · " + string.Join(" · ", parts.Skip(1)) : string.Empty)
               + ".";

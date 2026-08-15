@@ -377,10 +377,10 @@ public sealed class PushViewModel : ViewModelBase
             string? anchor = LeaseAnchor;
 
             return anchor is null
-                ? "This branch does not exist on the remote; there is nothing to force."
+                ? Loc.T("push.this_branch_does_not_exist_on_the_remote_the")
                 : $"The decision is based on the remote tip as you see it right now: "
                   + $"{anchor[..Math.Min(10, anchor.Length)]}. If someone else "
-                  + "pushes something, the push is rejected.";
+                  + Loc.T("push.pushes_something_the_push_is_rejected");
         }
     }
 
@@ -390,8 +390,8 @@ public sealed class PushViewModel : ViewModelBase
     /// Çıplak <c>--force</c> neden yok?
     /// </summary>
     public static string ForceDisabledReason =>
-        "A bare force is not offered: it deletes remote commits without checking. "
-        + "\"Force with lease\" does the same thing but stops if someone else got in between.";
+        Loc.T("push.a_bare_force_is_not_offered_it_deletes_remot")
+        + Loc.T("push.force_with_lease_does_the_same_thing_but_sto");
 
     /// <summary>Çalıştırılacak komut ("komutu göster" ilkesi).</summary>
     public string CommandPreview =>
@@ -590,7 +590,7 @@ public sealed class PushViewModel : ViewModelBase
 
         if (tracking.IsGone)
         {
-            return "upstream was deleted";
+            return Loc.T("push.upstream_was_deleted");
         }
 
         return tracking.IsUpToDate ? "up to date" : $"↑{tracking.Ahead} ↓{tracking.Behind}";
@@ -697,7 +697,7 @@ public sealed class PushViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            Notice = "The operation was cancelled.";
+            Notice = Loc.T("push.the_operation_was_cancelled");
         }
         catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
         {
@@ -777,8 +777,8 @@ public sealed class PushViewModel : ViewModelBase
         // kullanıcıyı gitmiş bir gönderimi tekrarlamaya iterdi (ölçüldü — çıkış kodu 1
         // olsa da diğer dal gerçekten gitmişti).
         Warning = (result.IsPartial
-                ? "Some were pushed, some were rejected: "
-                : "The push was rejected: ")
+                ? Loc.T("push.some_were_pushed_some_were_rejected")
+                : Loc.T("push.the_push_was_rejected"))
             + string.Join(", ", result.Rejected.Select(row => row.ShortDestination));
 
         Advice = DescribeAdvice(result);
@@ -791,14 +791,14 @@ public sealed class PushViewModel : ViewModelBase
         string advice = kind switch
         {
             PushRejectionKind.Behind =>
-                "The remote has commits you do not have. Fetch or pull them first; "
-                + "if you rewrote history deliberately, use the \"Force with lease\" option.",
+                Loc.T("push.the_remote_has_commits_you_do_not_have_fetch")
+                + Loc.T("push.if_you_rewrote_history_deliberately_use_the_"),
             PushRejectionKind.StaleLease =>
-                "The remote branch changed since you opened this screen — that is exactly what the protection is for. "
-                + "Fetch, see what changed, then try again.",
+                Loc.T("push.the_remote_branch_changed_since_you_opened_t")
+                + Loc.T("push.fetch_see_what_changed_then_try_again"),
             PushRejectionKind.RemoteRejected =>
-                "The remote rejected it (it may be a protected branch or a permissions issue).",
-            _ => "The reason for the rejection was not recognised; see git's output.",
+                Loc.T("push.the_remote_rejected_it_it_may_be_a_protected"),
+            _ => Loc.T("push.the_reason_for_the_rejection_was_not_recogni"),
         };
 
         return result.RemoteMessages.Count > 0
@@ -810,7 +810,7 @@ public sealed class PushViewModel : ViewModelBase
     {
         if (result.Refs.Count == 0)
         {
-            return "No changes.";
+            return Loc.T("push.no_changes");
         }
 
         List<string> parts = [];
@@ -820,10 +820,10 @@ public sealed class PushViewModel : ViewModelBase
             string label = group.Key switch
             {
                 PushRefStatus.Created => "yeni",
-                PushRefStatus.FastForward => "updated",
-                PushRefStatus.Forced => "force-updated",
+                PushRefStatus.FastForward => Loc.T("push.updated"),
+                PushRefStatus.Forced => Loc.T("push.force_updated"),
                 PushRefStatus.Deleted => "silindi",
-                PushRefStatus.UpToDate => "already up to date",
+                PushRefStatus.UpToDate => Loc.T("push.already_up_to_date"),
                 _ => "reddedildi",
             };
 

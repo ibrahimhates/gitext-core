@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using GitExt.Core;
 using GitExt.Core.Model;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -58,7 +59,7 @@ public sealed partial class CompareViewModel : ViewModelBase
 
     /// <summary>Pencere başlığı.</summary>
     [ObservableProperty]
-    public partial string Title { get; private set; } = "Compare";
+    public partial string Title { get; private set; } = Loc.T("compare.compare");
 
     /// <summary>İki commit'i karşılaştırır.</summary>
     public Task CompareAsync(

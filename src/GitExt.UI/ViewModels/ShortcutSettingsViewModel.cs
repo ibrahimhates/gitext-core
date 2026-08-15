@@ -3,6 +3,7 @@ using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.UI.Commands;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -188,7 +189,7 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
             .. _registry.Conflicts.Select(conflict =>
                 $"{conflict.Gesture} is assigned to more than one command: "
                 + string.Join(", ", conflict.CommandIds.Select(TitleOf))
-                + " — only the first one works.")
+                + Loc.T("shortcut_settings.only_the_first_one_works"))
         ];
 
         OnPropertyChanged(nameof(ConflictMessages));
@@ -233,7 +234,7 @@ public sealed record ShortcutRow(
     {
         CommandContext.Global => "Her yerde",
         CommandContext.CommitList => "Commit listesi",
-        CommandContext.WorkingTree => "Working tree",
+        CommandContext.WorkingTree => Loc.T("shortcut_settings.working_tree"),
         CommandContext.Diff => "Diff",
         CommandContext.RefTree => "Dal paneli",
         _ => Context.ToString(),

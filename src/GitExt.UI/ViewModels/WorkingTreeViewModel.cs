@@ -277,7 +277,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         RecordReset(
             backups,
             backups.Count == 0
-                ? "The selected lines were reverted."
+                ? Loc.T("working_tree.the_selected_lines_were_reverted")
                 : $"The selected lines were reverted. {diff.Path.Name} was backed up.");
 
         await RefreshAsync().ConfigureAwait(true);
@@ -750,7 +750,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             RecordReset(
                 backups,
                 backups.Count == 0
-                    ? "The changes were reset."
+                    ? Loc.T("working_tree.the_changes_were_reset")
                     : $"The changes were reset. The content of {backups.Count} files was backed up.");
         }
         catch (GitException ex)
@@ -851,7 +851,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             restored.Count == backups.Count
                 ? $"{restored.Count} files were restored."
                 : $"{restored.Count}/{backups.Count} files were restored; "
-                  + "the rest have no backup in the object database.");
+                  + Loc.T("working_tree.the_rest_have_no_backup_in_the_object_databa"));
 
         await RefreshAsync(cancellationToken).ConfigureAwait(true);
     }

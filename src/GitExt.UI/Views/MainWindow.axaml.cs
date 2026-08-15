@@ -9,6 +9,7 @@ using GitExt.Core.Git;
 using GitExt.UI.Themes;
 using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.Views;
 
@@ -490,7 +491,7 @@ public partial class MainWindow : Window
         }
 
         IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions { Title = "Open a git repository", AllowMultiple = false });
+            new FolderPickerOpenOptions { Title = Loc.T("main_window.axaml.open_a_git_repository"), AllowMultiple = false });
 
         if (folders.Count == 0)
         {

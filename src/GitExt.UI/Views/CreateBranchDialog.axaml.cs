@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using GitExt.Core;
 using GitExt.UI.ViewModels;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.Views;
 
@@ -58,8 +59,8 @@ public partial class CreateBranchDialog : Window
 
         StartPointText.Text = request.StartPointLabel;
         StartPointLabel.Text = request.StartPoint is null
-            ? "Create branch at this revision (current HEAD)"
-            : "Create branch at this revision";
+            ? Loc.T("create_branch_dialog.axaml.create_branch_at_this_revision_current_head")
+            : Loc.T("create_branch_dialog.axaml.create_branch_at_this_revision");
 
         _hasLocalChanges = request.HasLocalChanges;
 
@@ -105,27 +106,27 @@ public partial class CreateBranchDialog : Window
 
         DirtyWarning.IsVisible = warn;
         DirtyWarning.Text = warn
-            ? "There are uncommitted changes in the working tree. They are carried to the new branch; "
-              + "if there is a conflict that cannot be carried, git refuses and nothing changes."
+            ? Loc.T("create_branch_dialog.axaml.there_are_uncommitted_changes_in_the_working")
+              + Loc.T("create_branch_dialog.axaml.if_there_is_a_conflict_that_cannot_be_carrie")
             : string.Empty;
     }
 
     internal static string Describe(BranchNameProblem problem) => problem switch
     {
-        BranchNameProblem.Empty => "A branch name cannot be empty.",
+        BranchNameProblem.Empty => Loc.T("create_branch_dialog.axaml.a_branch_name_cannot_be_empty"),
         BranchNameProblem.NestedRefsPrefix =>
-            "Do not type the \"refs/heads/\" prefix — git does not treat it as an error, it creates a nested branch.",
+            Loc.T("create_branch_dialog.axaml.do_not_type_the_refs_heads_prefix_git_does_n"),
         BranchNameProblem.RevisionSyntax =>
-            "\"@{…}\" is revision syntax for git; a branch name other than the one you typed would be created.",
-        BranchNameProblem.LeadingDash => "A branch name cannot start with \"-\".",
-        BranchNameProblem.ReservedHead => "\"HEAD\" is a name reserved by git.",
+            Loc.T("create_branch_dialog.axaml.is_revision_syntax_for_git_a_branch_name_oth"),
+        BranchNameProblem.LeadingDash => Loc.T("create_branch_dialog.axaml.a_branch_name_cannot_start_with"),
+        BranchNameProblem.ReservedHead => Loc.T("create_branch_dialog.axaml.head_is_a_name_reserved_by_git"),
         BranchNameProblem.ForbiddenCharacter =>
-            "A branch name cannot contain spaces or these characters: ~ ^ : ? * [ \\",
+            Loc.T("create_branch_dialog.axaml.a_branch_name_cannot_contain_spaces_or_these"),
         BranchNameProblem.InvalidSegment =>
-            "Components cannot start with \".\" or end with \".lock\".",
-        BranchNameProblem.EmptySegment => "A branch name cannot start or end with \"/\", or contain \"//\".",
-        BranchNameProblem.InvalidDot => "A branch name cannot contain \"..\" or end with \".\".",
-        _ => "Invalid branch name.",
+            Loc.T("create_branch_dialog.axaml.components_cannot_start_with_or_end_with_loc"),
+        BranchNameProblem.EmptySegment => Loc.T("create_branch_dialog.axaml.a_branch_name_cannot_start_or_end_with_or_co"),
+        BranchNameProblem.InvalidDot => Loc.T("create_branch_dialog.axaml.a_branch_name_cannot_contain_or_end_with"),
+        _ => Loc.T("create_branch_dialog.axaml.invalid_branch_name"),
     };
 
     private void OnCancelClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();

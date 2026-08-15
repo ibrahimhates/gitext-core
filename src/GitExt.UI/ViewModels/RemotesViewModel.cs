@@ -32,7 +32,7 @@ public sealed class RemoteRowViewModel
     /// </remarks>
     public string DisplayUrl => Remote.Url is { } url
         ? GitRemote.MaskCredentials(url)
-        : "(no URL configured)";
+        : Loc.T("remotes.no_url_configured");
 
     public override string ToString() => Name;
 }
@@ -219,8 +219,8 @@ public sealed partial class RemotesViewModel : ViewModelBase
     /// çıkış kodu 128 ile duruyor. Tek satırlık kutu bu remote'u temsil edemez.
     /// </remarks>
     public string? MultipleUrlNotice => HasMultipleUrls
-        ? "This remote has multiple URLs configured; it cannot be edited safely from a single box. "
-          + "Configured URLs: " + string.Join(", ", AllUrls())
+        ? Loc.T("remotes.this_remote_has_multiple_urls_configured_it_")
+          + Loc.T("remotes.configured_urls") + string.Join(", ", AllUrls())
         : null;
 
     /// <summary>Ad doğrulaması — kullanıcı yazarken.</summary>
@@ -383,7 +383,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
                 .SetUrlAsync(_workingDirectory, Name, RemoteUrlKind.Fetch, Url)
                 .ConfigureAwait(true);
 
-            done.Add("URL updated");
+            done.Add(Loc.T("remotes.url_updated"));
         }
 
         string originalPush = original.PushUrls.Count > 0 ? original.PushUrls[0] : string.Empty;
@@ -394,7 +394,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
                 .SetUrlAsync(_workingDirectory, Name, RemoteUrlKind.Push, PushUrl)
                 .ConfigureAwait(true);
 
-            done.Add("the push URL was updated");
+            done.Add(Loc.T("remotes.the_push_url_was_updated"));
         }
         else if (!SeparatePushUrl && originalPush.Length > 0)
         {
@@ -402,10 +402,10 @@ public sealed partial class RemotesViewModel : ViewModelBase
                 .RemoveUrlAsync(_workingDirectory, Name, RemoteUrlKind.Push, originalPush)
                 .ConfigureAwait(true);
 
-            done.Add("the separate push URL was removed");
+            done.Add(Loc.T("remotes.the_separate_push_url_was_removed"));
         }
 
-        Notice = done.Count == 0 ? "No changes." : string.Join(", ", done) + ".";
+        Notice = done.Count == 0 ? Loc.T("remotes.no_changes") : string.Join(", ", done) + ".";
     }
 
     private async Task DeleteAsync()

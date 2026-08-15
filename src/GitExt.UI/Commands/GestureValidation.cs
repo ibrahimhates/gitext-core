@@ -1,4 +1,5 @@
 using Avalonia.Input;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.Commands;
 
@@ -87,13 +88,13 @@ public static class GestureValidation
     public static string Describe(GestureRejection rejection) => rejection switch
     {
         GestureRejection.ModifierOnly =>
-            "Only a modifier key was pressed. Press another key together with Ctrl/Alt/Shift.",
+            Loc.T("gesture_validation.only_a_modifier_key_was_pressed_press_anothe"),
         GestureRejection.BareKeyInGlobalContext =>
-            "A key without a modifier cannot be assigned to an application-wide command: the key would be stolen from text "
-            + "boxes too and you would not be able to type it again. Add Ctrl, Alt or Shift "
-            + "(function keys are the exception).",
+            Loc.T("gesture_validation.a_key_without_a_modifier_cannot_be_assigned_")
+            + Loc.T("gesture_validation.boxes_too_and_you_would_not_be_able_to_type_")
+            + Loc.T("gesture_validation.function_keys_are_the_exception"),
         GestureRejection.Unsupported =>
-            "This key cannot be used as a shortcut.",
+            Loc.T("gesture_validation.this_key_cannot_be_used_as_a_shortcut"),
         _ => "",
     };
 }

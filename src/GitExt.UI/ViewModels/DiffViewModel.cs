@@ -462,11 +462,11 @@ public sealed partial class DiffViewModel : ViewModelBase
             // içerik olmadığı söylenmeli, boş bir alan bırakılmamalı.
             ContentNotice = diff switch
             {
-                { IsTooLarge: true } => "This file is too large; its content was not loaded.",
-                { IsBinary: true } => "Binary file — the content cannot be shown.",
+                { IsTooLarge: true } => Loc.T("diff.this_file_is_too_large_its_content_was_not_l"),
+                { IsBinary: true } => Loc.T("diff.binary_file_the_content_cannot_be_shown"),
                 { IsModeOnlyChange: true } => $"Only the file mode changed: {diff.OldMode} → {diff.NewMode}",
-                { Change: FileChangeKind.Renamed } => "The file was moved; the content did not change.",
-                _ => "No changes to show.",
+                { Change: FileChangeKind.Renamed } => Loc.T("diff.the_file_was_moved_the_content_did_not_chang"),
+                _ => Loc.T("diff.no_changes_to_show"),
             };
 
             HasLines = false;
@@ -1023,7 +1023,7 @@ public sealed partial class DiffViewModel : ViewModelBase
             }
         }
 
-        LineSearchStatus = "not found";
+        LineSearchStatus = Loc.T("diff.not_found");
         return false;
     }
 
