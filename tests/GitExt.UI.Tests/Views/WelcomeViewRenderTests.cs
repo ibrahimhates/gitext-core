@@ -91,7 +91,7 @@ public class WelcomeViewRenderTests
         bool errorShown = window.GetVisualDescendants()
             .OfType<TextBlock>()
             .Any(t => t.IsEffectivelyVisible
-                && t.Text?.Contains("Git deposu değil", StringComparison.Ordinal) == true);
+                && t.Text?.Contains("not a git repository", StringComparison.Ordinal) == true);
 
         errorShown.ShouldBeTrue();
 

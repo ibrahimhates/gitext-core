@@ -42,7 +42,7 @@ public partial class RemoveRemoteDialog : Window
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        MessageText.Text = $"'{request.Name}' uzak deposu kaldırılacak.";
+        MessageText.Text = $"Remote '{request.Name}' will be removed.";
         ImpactText.Text = DescribeImpact(request);
         RecoveryCommands.Text = string.Join('\n', request.RecoveryCommands);
     }
@@ -64,24 +64,24 @@ public partial class RemoveRemoteDialog : Window
         if (request.TrackingBranchCount > 0)
         {
             parts.Add(
-                $"{request.TrackingBranchCount} uzak izleme dalı (ve reflog'ları) silinecek; "
-                + "yalnızca onlarda duran commit'ler artık hiçbir dalda görünmez");
+                $"{request.TrackingBranchCount} remote-tracking branches (and their reflogs) will be deleted; "
+                + "commits that live only on them will no longer appear on any branch");
         }
 
         if (request.AffectedBranches.Count > 0)
         {
             parts.Add(
-                $"şu yerel dalların upstream bağlantısı gidecek: "
+                $"these local branches will lose their upstream link: "
                 + string.Join(", ", request.AffectedBranches));
         }
 
         if (request.IsPushDefault)
         {
-            parts.Add("bu depo varsayılan push hedefi (remote.pushDefault) olarak ayarlı");
+            parts.Add("this remote is set as the default push target (remote.pushDefault)");
         }
 
         return parts.Count == 0
-            ? "Bu uzak depoya bağlı yerel dal veya uzak izleme dalı yok."
+            ? "No local branch or remote-tracking branch is attached to this remote."
             : char.ToUpperInvariant(parts[0][0]) + parts[0][1..]
               + (parts.Count > 1 ? " · " + string.Join(" · ", parts.Skip(1)) : string.Empty)
               + ".";

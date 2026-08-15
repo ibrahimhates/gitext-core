@@ -53,7 +53,7 @@ public sealed class GitOutputViewModel : ViewModelBase
     public bool HasExitCode => ExitCode is not null;
 
     /// <summary>Çıkış kodunun gösterim metni.</summary>
-    public string ExitCodeText => ExitCode is { } code ? $"Çıkış kodu: {code}" : string.Empty;
+    public string ExitCodeText => ExitCode is { } code ? $"Exit code: {code}" : string.Empty;
 
     /// <summary>
     /// Komutun tam çıktısı — gösterime hazırlanmış (ANSI kodları silinmiş, <c>\r</c> uygulanmış).
@@ -88,7 +88,7 @@ public sealed class GitOutputViewModel : ViewModelBase
 
         string output = GitOutputText.CleanForDisplay(exception.StandardError, out int dropped);
 
-        return new GitOutputViewModel(title ?? "Git komutu başarısız oldu", exception.Message)
+        return new GitOutputViewModel(title ?? "The git command failed", exception.Message)
         {
             CommandLine = exception.CommandLine,
             ExitCode = exception.ExitCode,
@@ -114,10 +114,10 @@ public sealed class GitOutputViewModel : ViewModelBase
         bool messageChanged = result.MessageChanged;
 
         string summary = messageChanged
-            ? "Commit oluşturuldu. Hook'lar commit mesajını değiştirdi."
-            : "Commit oluşturuldu.";
+            ? "Commit created. Hooks changed the commit message."
+            : "Commit created.";
 
-        return new GitOutputViewModel("Commit tamamlandı", summary)
+        return new GitOutputViewModel("Commit complete", summary)
         {
             Output = output,
             TruncationNotice = Notice(dropped),
@@ -130,7 +130,7 @@ public sealed class GitOutputViewModel : ViewModelBase
 
     private static string Notice(int droppedLines) =>
         droppedLines > 0
-            ? $"Çıktı çok uzun; ilk {droppedLines} satır gösterilmiyor (son "
-              + $"{GitOutputText.MaximumDisplayLines} satır aşağıda)."
+            ? $"The output is too long; the first {droppedLines} lines are hidden (last "
+              + $"{GitOutputText.MaximumDisplayLines} lines below)."
             : string.Empty;
 }

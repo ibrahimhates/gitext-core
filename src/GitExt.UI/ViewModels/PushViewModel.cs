@@ -376,10 +376,10 @@ public sealed class PushViewModel : ViewModelBase
             string? anchor = LeaseAnchor;
 
             return anchor is null
-                ? "Bu dal uzakta yok; zorlanacak bir şey de yok."
-                : $"Uzaktaki ucun şu an gördüğünüz hâline göre karar verilecek: "
-                  + $"{anchor[..Math.Min(10, anchor.Length)]}. Bu arada başkası bir şey "
-                  + "gönderirse gönderim reddedilir.";
+                ? "This branch does not exist on the remote; there is nothing to force."
+                : $"The decision is based on the remote tip as you see it right now: "
+                  + $"{anchor[..Math.Min(10, anchor.Length)]}. If someone else "
+                  + "pushes something, the push is rejected.";
         }
     }
 
@@ -389,8 +389,8 @@ public sealed class PushViewModel : ViewModelBase
     /// Çıplak <c>--force</c> neden yok?
     /// </summary>
     public static string ForceDisabledReason =>
-        "Çıplak zorlama sunulmuyor: uzaktaki commit'leri kontrol etmeden siler. "
-        + "\"Kirayla zorla\" aynı işi yapar ama araya başkası girdiyse durur.";
+        "A bare force is not offered: it deletes remote commits without checking. "
+        + "\"Force with lease\" does the same thing but stops if someone else got in between.";
 
     /// <summary>Çalıştırılacak komut ("komutu göster" ilkesi).</summary>
     public string CommandPreview =>
@@ -589,10 +589,10 @@ public sealed class PushViewModel : ViewModelBase
 
         if (tracking.IsGone)
         {
-            return "upstream silinmiş";
+            return "upstream was deleted";
         }
 
-        return tracking.IsUpToDate ? "güncel" : $"↑{tracking.Ahead} ↓{tracking.Behind}";
+        return tracking.IsUpToDate ? "up to date" : $"↑{tracking.Ahead} ↓{tracking.Behind}";
     }
 
     /// <summary>Kira çıpası: seçili hedefin uzak izleme ref'inin donmuş ucu.</summary>
@@ -696,7 +696,7 @@ public sealed class PushViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            Notice = "İşlem iptal edildi.";
+            Notice = "The operation was cancelled.";
         }
         catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
         {
@@ -776,8 +776,8 @@ public sealed class PushViewModel : ViewModelBase
         // kullanıcıyı gitmiş bir gönderimi tekrarlamaya iterdi (ölçüldü — çıkış kodu 1
         // olsa da diğer dal gerçekten gitmişti).
         Warning = (result.IsPartial
-                ? "Bir kısmı gönderildi, bir kısmı reddedildi: "
-                : "Gönderim reddedildi: ")
+                ? "Some were pushed, some were rejected: "
+                : "The push was rejected: ")
             + string.Join(", ", result.Rejected.Select(row => row.ShortDestination));
 
         Advice = DescribeAdvice(result);
@@ -790,14 +790,14 @@ public sealed class PushViewModel : ViewModelBase
         string advice = kind switch
         {
             PushRejectionKind.Behind =>
-                "Uzakta sizde olmayan commit'ler var. Önce Pull/Fetch ile getirin; "
-                + "geçmişi bilerek yeniden yazdıysanız \"Kirayla zorla\" seçeneğini kullanın.",
+                "The remote has commits you do not have. Fetch or pull them first; "
+                + "if you rewrote history deliberately, use the \"Force with lease\" option.",
             PushRejectionKind.StaleLease =>
-                "Ekranı açtığınızdan beri uzaktaki dal değişti — koruma tam da bunun için. "
-                + "Getirip ne değiştiğine bakın, sonra tekrar deneyin.",
+                "The remote branch changed since you opened this screen — that is exactly what the protection is for. "
+                + "Fetch, see what changed, then try again.",
             PushRejectionKind.RemoteRejected =>
-                "Uzak depo reddetti (korumalı dal veya yetki olabilir).",
-            _ => "Reddin sebebi tanınamadı; git'in çıktısına bakın.",
+                "The remote rejected it (it may be a protected branch or a permissions issue).",
+            _ => "The reason for the rejection was not recognised; see git's output.",
         };
 
         return result.RemoteMessages.Count > 0
@@ -809,7 +809,7 @@ public sealed class PushViewModel : ViewModelBase
     {
         if (result.Refs.Count == 0)
         {
-            return "Değişiklik yok.";
+            return "No changes.";
         }
 
         List<string> parts = [];
@@ -819,10 +819,10 @@ public sealed class PushViewModel : ViewModelBase
             string label = group.Key switch
             {
                 PushRefStatus.Created => "yeni",
-                PushRefStatus.FastForward => "güncellendi",
-                PushRefStatus.Forced => "zorla değiştirildi",
+                PushRefStatus.FastForward => "updated",
+                PushRefStatus.Forced => "force-updated",
                 PushRefStatus.Deleted => "silindi",
-                PushRefStatus.UpToDate => "zaten güncel",
+                PushRefStatus.UpToDate => "already up to date",
                 _ => "reddedildi",
             };
 

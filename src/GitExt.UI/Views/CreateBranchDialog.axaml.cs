@@ -58,8 +58,8 @@ public partial class CreateBranchDialog : Window
 
         StartPointText.Text = request.StartPointLabel;
         StartPointLabel.Text = request.StartPoint is null
-            ? "Bu revizyonda dal oluştur (mevcut HEAD)"
-            : "Bu revizyonda dal oluştur";
+            ? "Create branch at this revision (current HEAD)"
+            : "Create branch at this revision";
 
         _hasLocalChanges = request.HasLocalChanges;
 
@@ -105,27 +105,27 @@ public partial class CreateBranchDialog : Window
 
         DirtyWarning.IsVisible = warn;
         DirtyWarning.Text = warn
-            ? "Çalışma ağacında kaydedilmemiş değişiklikler var. Bunlar yeni dala taşınır; "
-              + "taşınamayacak bir çakışma olursa git işlemi reddeder ve hiçbir şey değişmez."
+            ? "There are uncommitted changes in the working tree. They are carried to the new branch; "
+              + "if there is a conflict that cannot be carried, git refuses and nothing changes."
             : string.Empty;
     }
 
     internal static string Describe(BranchNameProblem problem) => problem switch
     {
-        BranchNameProblem.Empty => "Dal adı boş olamaz.",
+        BranchNameProblem.Empty => "A branch name cannot be empty.",
         BranchNameProblem.NestedRefsPrefix =>
-            "\"refs/heads/\" önekini yazmayın — git bunu hata saymaz, iç içe bir dal oluşturur.",
+            "Do not type the \"refs/heads/\" prefix — git does not treat it as an error, it creates a nested branch.",
         BranchNameProblem.RevisionSyntax =>
-            "\"@{…}\" git için revizyon sözdizimi; yazdığınızdan başka bir dal adı oluşurdu.",
-        BranchNameProblem.LeadingDash => "Dal adı \"-\" ile başlayamaz.",
-        BranchNameProblem.ReservedHead => "\"HEAD\" git tarafından ayrılmış bir addır.",
+            "\"@{…}\" is revision syntax for git; a branch name other than the one you typed would be created.",
+        BranchNameProblem.LeadingDash => "A branch name cannot start with \"-\".",
+        BranchNameProblem.ReservedHead => "\"HEAD\" is a name reserved by git.",
         BranchNameProblem.ForbiddenCharacter =>
-            "Dal adında boşluk ve şu karakterler kullanılamaz: ~ ^ : ? * [ \\",
+            "A branch name cannot contain spaces or these characters: ~ ^ : ? * [ \\",
         BranchNameProblem.InvalidSegment =>
-            "Bölümler \".\" ile başlayamaz ve \".lock\" ile bitemez.",
-        BranchNameProblem.EmptySegment => "Dal adı \"/\" ile başlayıp bitemez, \"//\" içeremez.",
-        BranchNameProblem.InvalidDot => "Dal adı \"..\" içeremez ve \".\" ile bitemez.",
-        _ => "Geçersiz dal adı.",
+            "Components cannot start with \".\" or end with \".lock\".",
+        BranchNameProblem.EmptySegment => "A branch name cannot start or end with \"/\", or contain \"//\".",
+        BranchNameProblem.InvalidDot => "A branch name cannot contain \"..\" or end with \".\".",
+        _ => "Invalid branch name.",
     };
 
     private void OnCancelClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();

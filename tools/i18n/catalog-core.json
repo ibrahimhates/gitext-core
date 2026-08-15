@@ -1,0 +1,275 @@
+{
+  "'{name}' dalı birleştirilmemiş commit'ler içeriyor.": {
+    "en": ""
+  },
+  "'{name}' geçerli bir uzak depo adı değil ({RemoteName.Describe(problem)})": {
+    "en": ""
+  },
+  "'{name}' uzak deposunda {existing.Count} adet URL tanımlı; ": {
+    "en": ""
+  },
+  "'{newName}' geçerli bir dal adı değil ({problem}).": {
+    "en": ""
+  },
+  "'{options.Name}' geçerli bir dal adı değil ({problem}).": {
+    "en": ""
+  },
+  "'{value}' geçerli bir Git nesne kimliği değil. ": {
+    "en": ""
+  },
+  "'{value}' geçerli bir depo-göreli yol değil.": {
+    "en": ""
+  },
+  "(doğmamış)": {
+    "en": ""
+  },
+  "(flatpak-spawn --host başarısız). gitext-core, hook'larınızın ve kimlik ": {
+    "en": ""
+  },
+  "(çalıştırılabilir: {executablePath}).": {
+    "en": ""
+  },
+  "Ad \\\"-\\\" ile başlayamaz; git komutlarında seçenek sanılır.": {
+    "en": ""
+  },
+  "Ad \\\"..\\\" içeremez.": {
+    "en": ""
+  },
+  "Ad \\\"/\\\" ile başlayıp bitemez, \\\"//\\\" içeremez.": {
+    "en": ""
+  },
+  "Ad \\\"refs/\\\" ile başlayamaz. Git bunu reddetmiyor ama iç içe bir ad ": {
+    "en": ""
+  },
+  "Ad boş olamaz.": {
+    "en": ""
+  },
+  "Ad boşluk ve şu karakterleri içeremez: ~ ^ : ? * [ \\\\": {
+    "en": ""
+  },
+  "Ad geçersiz.": {
+    "en": ""
+  },
+  "Başka bir git süreci çalışıyor olabilir.": {
+    "en": ""
+  },
+  "Belirtilen revizyon veya dal bulunamadı.": {
+    "en": ""
+  },
+  "Bu ad mevcut bir dalla çakışıyor. Git dalları dosya gibi saklar: ": {
+    "en": ""
+  },
+  "Bu ad mevcut bir uzak depoyla iç içe geçiyor: \\\"ic\\\" varken \\\"ic/main\\\" ": {
+    "en": ""
+  },
+  "Bu klasör bir Git deposu değil.": {
+    "en": ""
+  },
+  "Bulunan git sürümü {found} çok eski. En az {GitVersion.Minimum} gerekiyor ": {
+    "en": ""
+  },
+  "Bölümler \\\".\\\" ile başlayamaz ve \\\".lock\\\" ile bitemez.": {
+    "en": ""
+  },
+  "Böyle bir uzak depo yok.": {
+    "en": ""
+  },
+  "Commit kimliği boş olamaz.": {
+    "en": ""
+  },
+  "Commit oluşturuldu ama kimliği okunamadı.": {
+    "en": ""
+  },
+  "Depo kilitli. Başka bir Git süreci çalışıyor olabilir; birkaç saniye sonra ": {
+    "en": ""
+  },
+  "Depoda henüz commit yok, dal oluşturulacak bir başlangıç noktası bulunamıyor. ": {
+    "en": ""
+  },
+  "Değişiklikleri geri almak kaydedilmemiş içeriği siler ve bunun reflog üzerinden ": {
+    "en": ""
+  },
+  "Dizin bulunamadı: {directory}": {
+    "en": ""
+  },
+  "En az {MinimumLength}, en fazla {Sha256Length} onaltılık karakter bekleniyor.": {
+    "en": ""
+  },
+  "Flatpak sandbox'ı içinde çalışılıyor ama host'taki 'git'e erişilemiyor ": {
+    "en": ""
+  },
+  "Format dizesi ile alan sayısı uyuşmuyor olabilir.": {
+    "en": ""
+  },
+  "Git komutu başarısız oldu.": {
+    "en": ""
+  },
+  "Ham kayıt ayrıştırılamadı: '{meta}'": {
+    "en": ""
+  },
+  "Ham kayıt yolları yarım kaldı.": {
+    "en": ""
+  },
+  "Kayıtlı kimlik bilgisi kabul edilmedi. Token'ın süresi dolmuş ya da yetkisi ": {
+    "en": ""
+  },
+  "Kilit dosyası yalnızca kullanıcının açık onayıyla silinebilir. ": {
+    "en": ""
+  },
+  "Kimlik doğrulama başarısız oldu.": {
+    "en": ""
+  },
+  "Komut zaman aşımına uğradı.": {
+    "en": ""
+  },
+  "Komut {command.Timeout.TotalSeconds:F0} saniye içinde tamamlanmadı ve durduruldu.": {
+    "en": ""
+  },
+  "SSH agent çalışıyor ama içinde hiç anahtar yok.": {
+    "en": ""
+  },
+  "Sandbox içindeki bir git'e geçilmiyor: ölçüldü, hook'u olan depolarda commit ": {
+    "en": ""
+  },
+  "Seçili satırlardaki değişiklikleri geri almak çalışma ağacındaki içeriği siler. ": {
+    "en": ""
+  },
+  "Sürdürülebilecek bir işlem yok; önce bir merge/rebase/cherry-pick başlamalı.": {
+    "en": ""
+  },
+  "Takip edilmeyen dosyaları silmek geri alınamaz; bu dosyaların hiçbir kopyası ": {
+    "en": ""
+  },
+  "Tüm commit'ler çıkarılmış — geriye uygulanacak bir şey kalmıyor.": {
+    "en": ""
+  },
+  "Uzak depo SSH kullanıyor ama bu oturumda çalışan bir SSH agent yok, ": {
+    "en": ""
+  },
+  "Uzak depo SSH kullanıyor ve sunucu anahtarı kabul etmedi.": {
+    "en": ""
+  },
+  "Uzak depo kimlik doğrulama istedi. SSH anahtarınızı, kimlik yardımcınızı (credential helper) ": {
+    "en": ""
+  },
+  "Uzak depo kimlik doğrulama istiyor ve kayıtlı bir kimlik bilgisi yok.": {
+    "en": ""
+  },
+  "Uzak depoya ulaşılamadı.": {
+    "en": ""
+  },
+  "Uzak depoya ulaşılamadı. Adresi, ağ bağlantınızı ve erişim yetkinizi kontrol edin.": {
+    "en": ""
+  },
+  "Uzak depoya ulaşılamadı. Ağ bağlantınızı kontrol edin.": {
+    "en": ""
+  },
+  "Yama bloğu hiçbir ham kayda eşlenemedi ({records.Count} kayıt, ": {
+    "en": ""
+  },
+  "Yedeklenen içerik sayısı yol sayısıyla uyuşmadı.": {
+    "en": ""
+  },
+  "Yedekleyici olmadan yerel değişiklikler atılamaz.": {
+    "en": ""
+  },
+  "Yerel bir yola erişilemedi; kimlik doğrulamayla ilgisi yok.": {
+    "en": ""
+  },
+  "Yerel değişiklikleri atarak dal değiştirmek geri alınamaz içerik siler; ": {
+    "en": ""
+  },
+  "\\\"feature\\\" dalı varken \\\"feature/x\\\" oluşturulamaz (ve tersi).": {
+    "en": ""
+  },
+  "bilgisi yardımcılarınızın çalışması için sizin git'inizi kullanmak zorundadır ": {
+    "en": ""
+  },
+  "bir geri dönüşü yoktur; işlem yalnızca kullanıcının açık onayıyla yapılabilir.": {
+    "en": ""
+  },
+  "eklenemez (ve tersi). Farklı bir ad seçin.": {
+    "en": ""
+  },
+  "git log çıktısı yarım bir kayıtla bitti ({filled}/{FieldCount} alan). ": {
+    "en": ""
+  },
+  "git rev-parse beklenen alanları döndürmedi.": {
+    "en": ""
+  },
+  "git rev-parse çalışma ağacının kökünü döndürmedi.": {
+    "en": ""
+  },
+  "git süreci başlatılamadı: {_executablePath}": {
+    "en": ""
+  },
+  "git süreci öldürülemedi; muhtemelen zaten sonlanmıştı.": {
+    "en": ""
+  },
+  "git çıkış kodu {ExitCode}: {Command}": {
+    "en": ""
+  },
+  "git'te yok. İşlem yalnızca kullanıcının açık onayıyla yapılabilir.": {
+    "en": ""
+  },
+  "gitext: '{target}' dalına geçiş": {
+    "en": ""
+  },
+  "gpg.ssh.allowedSignersFile yapılandırılmamış; SSH imzaları doğrulanamıyor.": {
+    "en": ""
+  },
+  "hangisinin değiştirileceği seçilmeden tek adımda güncellenemez.": {
+    "en": ""
+  },
+  "için yetkili değil.": {
+    "en": ""
+  },
+  "işlem yalnızca kullanıcının açık onayıyla yapılabilir.": {
+    "en": ""
+  },
+  "oluşturuyor (\\\"refs/remotes/refs/remotes/…\\\"); istediğiniz bu değildir.": {
+    "en": ""
+  },
+  "sessizce atılmıyor ve çıkış kodu yine de 0 dönüyor.": {
+    "en": ""
+  },
+  "tekrar deneyin. Kilit uzun süredir duruyorsa çökmüş bir süreçten kalmış ": {
+    "en": ""
+  },
+  "veya erişim belirtecinizi kontrol edin.": {
+    "en": ""
+  },
+  "yani sunucuya sunulacak bir anahtar bulunamadı.": {
+    "en": ""
+  },
+  "zaman aşımı ({command.Timeout})": {
+    "en": ""
+  },
+  "{blocks.Count} blok). Hunk'ları yanlış dosyaya bağlamaktansa durmak gerekir.": {
+    "en": ""
+  },
+  "Çalışma ağacını temizlemek takip edilmeyen tüm dosyaları siler ve geri alınamaz; ": {
+    "en": ""
+  },
+  "Çalışma dizininde kaydedilmemiş değişiklikler var; işlem devam edemedi.": {
+    "en": ""
+  },
+  "Çalıştırılabilir bir 'git' bulunamadı. Git kurulu ve PATH üzerinde olmalı. ": {
+    "en": ""
+  },
+  "Önce ilk commit'i atın.": {
+    "en": ""
+  },
+  "İkili içerik metin olarak okunamaz. Önce IsBinary kontrol edilmeli.": {
+    "en": ""
+  },
+  "İlk commit bir öncekine kaynatılamaz; kaynatılacak önceki commit yok.": {
+    "en": ""
+  },
+  "İşlem yalnızca kullanıcının açık onayıyla yapılabilir.": {
+    "en": ""
+  },
+  "İşlem çakışma (conflict) nedeniyle durdu.": {
+    "en": ""
+  }
+}

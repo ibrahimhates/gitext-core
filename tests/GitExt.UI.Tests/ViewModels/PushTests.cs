@@ -265,7 +265,7 @@ public class PushTests
         await model.RunCommand.ExecuteAsync(null);
 
         model.HasWarning.ShouldBeTrue();
-        model.Warning!.ShouldContain("Bir kısmı gönderildi");
+        model.Warning!.ShouldContain("Some were pushed");
         model.Warning!.ShouldContain("dev");
         model.Notice!.ShouldContain("main");
     }
@@ -286,7 +286,7 @@ public class PushTests
         await model.RunCommand.ExecuteAsync(null);
 
         model.HasAdvice.ShouldBeTrue();
-        model.Advice!.ShouldContain("Ekranı açtığınızdan beri");
+        model.Advice!.ShouldContain("changed since you opened this screen");
         model.Advice!.ShouldNotContain("Pull/Fetch ile getirin");
     }
 

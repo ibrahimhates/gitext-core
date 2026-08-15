@@ -204,7 +204,7 @@ public sealed class MergeViewModel : ViewModelBase
     /// </remarks>
     public string? SquashNotice => Strategy != MergeStrategy.Squash
         ? null
-        : "Squash bir commit OLUŞTURMAZ: değişiklikler hazırlanır ve commit'lemek size kalır.";
+        : "Squash does NOT create a commit: the changes are staged and committing is left to you.";
 
     public bool HasSquashNotice => SquashNotice is not null;
 
@@ -212,12 +212,12 @@ public sealed class MergeViewModel : ViewModelBase
     public string? PreviewNotice => _preview is not { } preview
         ? null
         : !preview.HasCommonAncestor
-            ? "Bu dalın ortak atası yok (ilgisiz geçmiş). Gelişmiş seçeneklerden izin vermeniz gerekir."
+            ? "This branch has no common ancestor (unrelated history). You need to allow it in the advanced options."
             : !preview.HasChanges
-                ? "Bu dalda getirilecek bir şey yok."
+                ? "Nothing to fetch on this branch."
                 : preview.CanFastForward
-                    ? $"{preview.Ahead} commit ileri sarılabilir."
-                    : $"{preview.Ahead} commit birleştirilecek (ileri sarılamaz).";
+                    ? $"{preview.Ahead} commits can be fast-forwarded."
+                    : $"{preview.Ahead} commits will be merged (cannot fast-forward).";
 
     public bool HasPreviewNotice => PreviewNotice is not null;
 
@@ -348,32 +348,32 @@ public sealed class MergeViewModel : ViewModelBase
         switch (result.Outcome)
         {
             case MergeOutcome.AlreadyUpToDate:
-                Notice = "Zaten güncel.";
+                Notice = "Already up to date.";
                 break;
 
             case MergeOutcome.FastForward:
-                Notice = "İleri sarıldı; yeni bir commit oluşmadı.";
+                Notice = "Fast-forwarded; no new commit was created.";
                 break;
 
             case MergeOutcome.MergeCommit:
-                Notice = "Birleştirme commit'i oluşturuldu.";
+                Notice = "Merge commit created.";
                 break;
 
             case MergeOutcome.Staged:
                 // 🔴 Ölçümün kalbi: çıkış kodu 0 ama HEAD yerinde.
-                Notice = "Değişiklikler hazırlandı.";
-                Warning = "Henüz commit YAPILMADI. Değişiklikler hazırlanmış durumda; "
-                    + "commit ekranından tamamlamanız gerekiyor.";
+                Notice = "The changes were staged.";
+                Warning = "Nothing was COMMITTED yet. The changes are staged; "
+                    + "you need to finish it from the commit screen.";
                 break;
 
             case MergeOutcome.Conflicted:
             default:
                 Notice = null;
-                Warning = "Birleştirme çakışmayla durdu — "
-                    + $"{result.ConflictedPaths.Count} dosya ÇÖZÜLMEMİŞ durumda: "
+                Warning = "The merge stopped with conflicts — "
+                    + $"{result.ConflictedPaths.Count} files are UNRESOLVED: "
                     + string.Join(", ", result.ConflictedPaths.Take(4))
                     + (result.ConflictedPaths.Count > 4 ? "…" : string.Empty)
-                    + ". Çakışmaları çözüp commit'leyin ya da birleştirmeyi iptal edin.";
+                    + ". Resolve the conflicts and commit, or abort the merge.";
                 break;
         }
     }

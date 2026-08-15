@@ -179,8 +179,8 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     /// <summary>Kullanıcıya gösterilecek biçim önerisi; sorun yoksa boş.</summary>
     public string Hint => this switch
     {
-        { HasNonEmptySecondLine: true } => "Konu ile gövde arasında boş satır bırakın.",
-        { IsSubjectTooLong: true } => $"Konu satırı {SubjectLimit} karakteri aşıyor.",
+        { HasNonEmptySecondLine: true } => "Leave a blank line between the subject and the body.",
+        { IsSubjectTooLong: true } => $"The subject line exceeds {SubjectLimit} characters.",
         _ => string.Empty,
     };
 
@@ -276,8 +276,8 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     /// </remarks>
     public string TemplateLabel => Template switch
     {
-        null => "commit.template ayarlı değil",
-        { IsMissing: true } t => $"Şablon bulunamadı: {t.Path}",
+        null => "commit.template is not set",
+        { IsMissing: true } t => $"Template not found: {t.Path}",
         { Path: var path } => Path.GetFileName(path),
     };
 

@@ -24,7 +24,7 @@ public class CreateBranchDialogTests
         dialog.Apply(new CreateBranchRequest
         {
             StartPoint = startPoint,
-            StartPointLabel = startPoint is null ? "HEAD (mevcut dalın ucu)" : "abcdef12 — bir commit",
+            StartPointLabel = startPoint is null ? "HEAD (tip of the current branch)" : "abcdef12 — bir commit",
             HasLocalChanges = hasLocalChanges,
         });
 
@@ -113,7 +113,7 @@ public class CreateBranchDialogTests
     [AvaloniaFact]
     public void Baslangic_noktasi_GOSTERILIYOR()
     {
-        // "Bu revizyonda dal oluştur" derken hangi revizyon olduğunu söylememek,
+        // "Create branch at this revision" derken hangi revizyon olduğunu söylememek,
         // kullanıcıyı tahmine zorlar.
         Create().GetControl<TextBox>("StartPointText").Text.ShouldNotBeNullOrWhiteSpace();
     }

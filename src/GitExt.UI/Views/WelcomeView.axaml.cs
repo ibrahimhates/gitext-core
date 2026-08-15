@@ -34,7 +34,7 @@ public partial class WelcomeView : UserControl
         }
 
         IReadOnlyList<IStorageFolder> folders = await storage.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions { Title = "Git deposu aç", AllowMultiple = false });
+            new FolderPickerOpenOptions { Title = "Open a git repository", AllowMultiple = false });
 
         if (folders.Count == 0)
         {

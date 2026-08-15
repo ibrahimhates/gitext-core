@@ -490,7 +490,7 @@ public partial class MainWindow : Window
         }
 
         IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions { Title = "Git deposu aç", AllowMultiple = false });
+            new FolderPickerOpenOptions { Title = "Open a git repository", AllowMultiple = false });
 
         if (folders.Count == 0)
         {

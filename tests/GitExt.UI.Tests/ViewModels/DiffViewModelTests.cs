@@ -441,14 +441,14 @@ public class DiffViewModelTests
         // kullanıcıya hata gibi görünürdü.
         DiffViewModel binary = await LoadedAsync(FakeGitData.Diff("resim.png", binary: true));
         binary.HasLines.ShouldBeFalse();
-        binary.ContentNotice!.ShouldContain("İkili");
+        binary.ContentNotice!.ShouldContain("Binary");
 
         DiffViewModel large = await LoadedAsync(FakeGitData.Diff("dev.txt", tooLarge: true));
-        large.ContentNotice!.ShouldContain("çok büyük");
+        large.ContentNotice!.ShouldContain("too large");
 
         DiffViewModel renamed = await LoadedAsync(
             FakeGitData.Diff("yeni", FileChangeKind.Renamed, oldPath: "eski"));
-        renamed.ContentNotice!.ShouldContain("taşındı");
+        renamed.ContentNotice!.ShouldContain("was moved");
     }
 
     [AvaloniaFact]
@@ -547,7 +547,7 @@ public class DiffViewModelTests
         viewModel.FindNext().ShouldBeTrue();
         viewModel.Lines[viewModel.CurrentLineIndex].Text.ShouldBe("bes yeni");
 
-        // Sona gelince başa sarmalı: aranan şey imlecin üstündeyse "bulunamadı" yanıltıcı olur.
+        // Sona gelince başa sarmalı: aranan şey imlecin üstündeyse "not found" yanıltıcı olur.
         viewModel.FindNext().ShouldBeTrue();
         viewModel.Lines[viewModel.CurrentLineIndex].Text.ShouldBe("iki yeni");
 

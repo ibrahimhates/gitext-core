@@ -61,7 +61,7 @@ public class CompareWindowTests
 
         compare.Target.ShouldBe(CompareTarget.WorkingTree);
         compare.ToRevision.ShouldBeEmpty();
-        compare.Title.ShouldContain("çalışma ağacı");
+        compare.Title.ShouldContain("working tree");
     }
 
     [AvaloniaFact]

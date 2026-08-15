@@ -85,7 +85,7 @@ public class GitOutputViewModelTests
 
         view.HasFinalMessage.ShouldBeTrue();
         view.FinalMessage.ShouldContain("Change-Id: I1");
-        view.Summary.ShouldContain("mesajını değiştirdi");
+        view.Summary.ShouldContain("changed the commit message");
     }
 
     [Fact]

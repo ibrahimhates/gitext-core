@@ -87,13 +87,13 @@ public static class GestureValidation
     public static string Describe(GestureRejection rejection) => rejection switch
     {
         GestureRejection.ModifierOnly =>
-            "Yalnızca bir değiştirici tuşa basıldı. Ctrl/Alt/Shift ile birlikte başka bir tuşa basın.",
+            "Only a modifier key was pressed. Press another key together with Ctrl/Alt/Shift.",
         GestureRejection.BareKeyInGlobalContext =>
-            "Uygulama genelindeki bir komuta değiştiricisiz tuş atanamaz: bu tuş metin "
-            + "kutularından da çalınır ve bir daha yazamazsınız. Ctrl, Alt veya Shift ekleyin "
-            + "(fonksiyon tuşları istisna).",
+            "A key without a modifier cannot be assigned to an application-wide command: the key would be stolen from text "
+            + "boxes too and you would not be able to type it again. Add Ctrl, Alt or Shift "
+            + "(function keys are the exception).",
         GestureRejection.Unsupported =>
-            "Bu tuş kısayol olarak kullanılamıyor.",
+            "This key cannot be used as a shortcut.",
         _ => "",
     };
 }

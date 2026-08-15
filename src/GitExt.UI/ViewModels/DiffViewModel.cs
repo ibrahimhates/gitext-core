@@ -461,11 +461,11 @@ public sealed partial class DiffViewModel : ViewModelBase
             // içerik olmadığı söylenmeli, boş bir alan bırakılmamalı.
             ContentNotice = diff switch
             {
-                { IsTooLarge: true } => "Bu dosya çok büyük; içeriği yüklenmedi.",
-                { IsBinary: true } => "İkili dosya — içerik gösterilemiyor.",
-                { IsModeOnlyChange: true } => $"Yalnızca dosya modu değişti: {diff.OldMode} → {diff.NewMode}",
-                { Change: FileChangeKind.Renamed } => "Dosya taşındı; içerik değişmedi.",
-                _ => "Gösterilecek değişiklik yok.",
+                { IsTooLarge: true } => "This file is too large; its content was not loaded.",
+                { IsBinary: true } => "Binary file — the content cannot be shown.",
+                { IsModeOnlyChange: true } => $"Only the file mode changed: {diff.OldMode} → {diff.NewMode}",
+                { Change: FileChangeKind.Renamed } => "The file was moved; the content did not change.",
+                _ => "No changes to show.",
             };
 
             HasLines = false;
@@ -1019,7 +1019,7 @@ public sealed partial class DiffViewModel : ViewModelBase
             }
         }
 
-        LineSearchStatus = "bulunamadı";
+        LineSearchStatus = "not found";
         return false;
     }
 

@@ -190,9 +190,9 @@ public class CommandPaletteTests
         ShortcutReferenceViewModel model = new(TestCommands.Registry());
 
         model.Groups.Select(g => g.Title).ShouldContain("Her yerde");
-        model.Groups.Select(g => g.Title).ShouldContain("Diff görünümü");
+        model.Groups.Select(g => g.Title).ShouldContain("Diff view");
 
-        model.Groups.Single(g => g.Title == "Diff görünümü").Rows
+        model.Groups.Single(g => g.Title == "Diff view").Rows
             .Select(r => r.CommandId)
             .ShouldContain(CommandIds.DiffStageLines);
     }

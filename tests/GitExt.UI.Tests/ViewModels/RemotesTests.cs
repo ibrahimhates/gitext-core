@@ -61,7 +61,7 @@ public class RemotesTests
 
         await model.LoadAsync(Path);
 
-        model.Remotes.Single().DisplayUrl.ShouldBe("(URL tanımlı değil)");
+        model.Remotes.Single().DisplayUrl.ShouldBe("(no URL configured)");
     }
 
     [AvaloniaFact]

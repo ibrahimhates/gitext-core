@@ -71,7 +71,7 @@ public class PullTests
         await LoadAsync(model);
 
         model.Action.ShouldBe(PullAction.Merge);
-        model.StrategyNotice!.ShouldContain("varsayılan");
+        model.StrategyNotice!.ShouldContain("default");
     }
 
     [AvaloniaFact]
@@ -168,7 +168,7 @@ public class PullTests
 
         model.HasWarning.ShouldBeTrue();
         model.Warning!.ShouldContain("bozuk");
-        model.Notice!.ShouldContain("güncellendi");
+        model.Notice!.ShouldContain("updated");
     }
 
     [AvaloniaFact]
@@ -207,7 +207,7 @@ public class PullTests
         await model.RunCommand.ExecuteAsync(null);
 
         model.HasWarning.ShouldBeTrue();
-        model.Warning!.ShouldContain("ÇÖZÜLMEMİŞ");
+        model.Warning!.ShouldContain("UNRESOLVED");
     }
 
     [AvaloniaFact]
@@ -262,7 +262,7 @@ public class PullTests
         await model.RunCommand.ExecuteAsync(null);
 
         model.HasRecoveryCommand.ShouldBeFalse();
-        model.Notice.ShouldBe("Zaten güncel.");
+        model.Notice.ShouldBe("Already up to date.");
     }
 
     [AvaloniaFact]

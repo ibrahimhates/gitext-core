@@ -186,9 +186,9 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
         ConflictMessages =
         [
             .. _registry.Conflicts.Select(conflict =>
-                $"{conflict.Gesture} birden fazla komuta atanmış: "
+                $"{conflict.Gesture} is assigned to more than one command: "
                 + string.Join(", ", conflict.CommandIds.Select(TitleOf))
-                + " — yalnızca ilki çalışır.")
+                + " — only the first one works.")
         ];
 
         OnPropertyChanged(nameof(ConflictMessages));
@@ -233,7 +233,7 @@ public sealed record ShortcutRow(
     {
         CommandContext.Global => "Her yerde",
         CommandContext.CommitList => "Commit listesi",
-        CommandContext.WorkingTree => "Çalışma ağacı",
+        CommandContext.WorkingTree => "Working tree",
         CommandContext.Diff => "Diff",
         CommandContext.RefTree => "Dal paneli",
         _ => Context.ToString(),

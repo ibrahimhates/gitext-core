@@ -52,16 +52,16 @@ public partial class ResetChangesDialog : Window
         int untracked = request.UntrackedPaths.Count;
 
         MessageText.Text = request.IncludesStaged
-            ? $"{modified} dosyadaki tüm değişiklikler (stage'lenmiş olanlar dahil) sıfırlanacak."
-            : $"{modified} dosyadaki stage'lenmemiş değişiklikler sıfırlanacak.";
+            ? $"All changes in {modified} files (including staged ones) will be reset."
+            : $"Unstaged changes in {modified} files will be reset.";
 
-        HintText.Text = "Bu işlem commit edilmemiş çalışmayı siler.";
+        HintText.Text = "This deletes uncommitted work.";
 
         AffectedList.ItemsSource = Preview(request);
 
         // GitExtensions'taki davranış: seçimde yeni dosya yoksa kutu kapalı ve devre dışı,
         // yalnızca yeni dosya varsa açık ve devre dışı (tek seçenek o).
-        DeleteUntrackedBox.Content = $"{untracked} yeni dosyayı ve/veya dizini de sil";
+        DeleteUntrackedBox.Content = $"Also delete {untracked} new files and/or directories";
         DeleteUntrackedBox.IsEnabled = untracked > 0 && modified > 0;
         DeleteUntrackedBox.IsChecked = untracked > 0 && modified == 0;
 

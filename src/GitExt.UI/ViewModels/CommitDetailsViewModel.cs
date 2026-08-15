@@ -261,13 +261,13 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
 
         SignatureText = signature.Status switch
         {
-            SignatureStatus.Valid => "İmza doğrulandı",
-            SignatureStatus.ValidUntrusted => "İmza geçerli, anahtar güvenilir işaretlenmemiş",
-            SignatureStatus.Bad => "İmza HATALI",
-            SignatureStatus.Expired => "İmzanın süresi dolmuş",
-            SignatureStatus.KeyExpired => "İmzalayan anahtarın süresi dolmuş",
-            SignatureStatus.KeyRevoked => "İmzalayan anahtar iptal edilmiş",
-            _ => "İmza doğrulanamadı",
+            SignatureStatus.Valid => "Signature verified",
+            SignatureStatus.ValidUntrusted => "Signature valid, key not marked as trusted",
+            SignatureStatus.Bad => "Signature INVALID",
+            SignatureStatus.Expired => "The signature has expired",
+            SignatureStatus.KeyExpired => "The signing key has expired",
+            SignatureStatus.KeyRevoked => "The signing key was revoked",
+            _ => "Signature could not be verified",
         };
 
         SignatureDetail = signature.CannotVerifyReason

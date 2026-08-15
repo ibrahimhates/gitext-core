@@ -49,7 +49,7 @@ public partial class CheckoutBranchDialog : Window
         ArgumentNullException.ThrowIfNull(request);
 
         TargetText.Text = request.TargetLabel;
-        TargetLabel.Text = request.IsDetached ? "Geçilecek commit" : "Geçilecek dal";
+        TargetLabel.Text = request.IsDetached ? "Commit to check out" : "Branch to switch to";
         DetachWarning.IsVisible = request.IsDetached;
 
         // Temiz ağaçta dört seçenek de aynı sonucu verir; sormak yalnızca gürültü olur.
@@ -72,17 +72,17 @@ public partial class CheckoutBranchDialog : Window
         ActionHint.Text = SelectedAction switch
         {
             LocalChangesAction.Keep =>
-                "Değişiklikler yeni dala taşınmaya çalışılır; taşınamazsa geçiş reddedilir "
-                + "ve hiçbir şey değişmez.",
+                "The changes are carried to the new branch; if they cannot be, the checkout is refused "
+                + "and nothing changes.",
             LocalChangesAction.Merge =>
-                "Değişiklikler hedefe birleştirilmeye çalışılır. Çakışma çıkarsa geçiş yine "
-                + "yapılır ama dosyalar çözülmemiş hâlde kalır.",
+                "The changes are merged into the target. If conflicts appear the checkout still "
+                + "happens but the files are left unresolved.",
             LocalChangesAction.Stash =>
-                "Değişiklikler takip edilmeyen dosyalarla birlikte bir stash'e alınır; "
-                + "hiçbir şey kaybolmaz, sonradan geri alabilirsiniz.",
+                "The changes are stashed along with untracked files; "
+                + "nothing is lost, you can restore it later.",
             LocalChangesAction.Discard =>
-                "⚠️ Takip edilen dosyalardaki değişiklikler ATILIR. Takip edilmeyen "
-                + "dosyalara dokunulmaz. Atılan içerik yedeklenir, işlemden sonra geri "
+                "⚠️ Changes in tracked files are DISCARDED. Untracked "
+                + "files are left alone. The discarded content is backed up, and after the operation you can "
                 + "alabilirsiniz.",
             _ => string.Empty,
         };

@@ -49,6 +49,8 @@ public sealed class TestApp : Application
         // yerleşim testleri "main.repository" gibi değerler görüyor.
         //
         // Varsayılan İngilizce: testlerin beklediği metinler de İngilizce.
-        TranslateExtension.Attach(new Translator(new InMemorySettingsStore()));
+        Translator translator = new(new InMemorySettingsStore());
+        TranslateExtension.Attach(translator);
+        Loc.Attach(translator);
     }
 }

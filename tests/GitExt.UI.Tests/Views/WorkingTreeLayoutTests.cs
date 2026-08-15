@@ -333,7 +333,7 @@ public class WorkingTreeLayoutTests
 
         MenuItem item = flyout.Items.OfType<MenuItem>().First(menuItem => menuItem.Name == "TemplateItem");
 
-        item.Header?.ToString().ShouldBe("commit.template ayarlı değil");
+        item.Header?.ToString().ShouldBe("commit.template is not set");
         item.IsEnabled.ShouldBeFalse();
 
         flyout.Hide();

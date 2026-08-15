@@ -276,8 +276,8 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         RecordReset(
             backups,
             backups.Count == 0
-                ? "Seçili satırlar geri alındı."
-                : $"Seçili satırlar geri alındı. {diff.Path.Name} yedeklendi.");
+                ? "The selected lines were reverted."
+                : $"The selected lines were reverted. {diff.Path.Name} was backed up.");
 
         await RefreshAsync().ConfigureAwait(true);
     }
@@ -749,8 +749,8 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             RecordReset(
                 backups,
                 backups.Count == 0
-                    ? "Değişiklikler sıfırlandı."
-                    : $"Değişiklikler sıfırlandı. {backups.Count} dosyanın içeriği yedeklendi.");
+                    ? "The changes were reset."
+                    : $"The changes were reset. The content of {backups.Count} files was backed up.");
         }
         catch (GitException ex)
         {
@@ -848,9 +848,9 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         RecordReset(
             [],
             restored.Count == backups.Count
-                ? $"{restored.Count} dosya geri yüklendi."
-                : $"{restored.Count}/{backups.Count} dosya geri yüklendi; "
-                  + "kalanların yedeği nesne veritabanında yok.");
+                ? $"{restored.Count} files were restored."
+                : $"{restored.Count}/{backups.Count} files were restored; "
+                  + "the rest have no backup in the object database.");
 
         await RefreshAsync(cancellationToken).ConfigureAwait(true);
     }

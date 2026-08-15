@@ -71,7 +71,7 @@ public class ProgressTests
         await LoadAsync(model);
         await model.RunCommand.ExecuteAsync(null);
 
-        model.Notice.ShouldBe("İşlem iptal edildi.");
+        model.Notice.ShouldBe("The operation was cancelled.");
         model.HasWarning.ShouldBeFalse();
     }
 

@@ -46,7 +46,7 @@ public sealed class ShortcutDispatcher
         // kimse de sebebini göremez.
         if (_registry.Find(commandId) is null)
         {
-            throw new ArgumentException($"Tanımsız komut kimliği: {commandId}", nameof(commandId));
+            throw new ArgumentException($"Unknown command id: {commandId}", nameof(commandId));
         }
 
         _handlers[commandId] = handler;

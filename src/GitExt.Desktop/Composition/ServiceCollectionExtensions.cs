@@ -193,6 +193,9 @@ public static class ServiceCollectionExtensions
             // nesne burada kuruluyor ve uzantıya BİR KEZ veriliyor.
             TranslateExtension.Attach(translator);
 
+            // Kod içinden erişim (P11-T05): ViewModel'ler metinleri buradan alıyor.
+            Loc.Attach(translator);
+
             return translator;
         });
 

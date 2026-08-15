@@ -117,7 +117,7 @@ public class CommitListViewModelTests
         await viewModel.OpenAsync("/tmp/duz-klasor");
 
         viewModel.ErrorMessage.ShouldNotBeNull();
-        viewModel.ErrorMessage!.ShouldContain("Git deposu değil");
+        viewModel.ErrorMessage!.ShouldContain("not a git repository");
         viewModel.Rows.ShouldBeEmpty();
         viewModel.IsLoading.ShouldBeFalse();
     }

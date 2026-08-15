@@ -1,0 +1,623 @@
+{
+  " Yerel değişiklikleriniz stash'e alındı (`git stash pop` ile geri alınır).": {
+    "en": " Your local changes were stashed (restore them with `git stash pop`)."
+  },
+  " {plan.TrackingBranches.Count} uzak izleme dalı da silindi.": {
+    "en": " {plan.TrackingBranches.Count} remote-tracking branches were deleted too."
+  },
+  " {result.Backups.Count} dosyanın atılan içeriği yedeklendi.": {
+    "en": " The discarded content of {result.Backups.Count} files was backed up."
+  },
+  " — yalnızca ilki çalışır.": {
+    "en": " — only the first one works."
+  },
+  " ⚠️ Bazı dosyalar ÇÖZÜLMEMİŞ durumda — çakışmaları elle çözmeniz gerekiyor.": {
+    "en": " ⚠️ Some files are UNRESOLVED — you need to resolve the conflicts by hand."
+  },
+  "'{branch}' → '{decision.NewName}' olarak yeniden adlandırıldı.": {
+    "en": "Renamed '{branch}' to '{decision.NewName}'."
+  },
+  "'{request.Name}' dalı silinemedi.": {
+    "en": "Could not delete branch '{request.Name}'."
+  },
+  "'{request.Name}' dalını silmek istediğinize emin misiniz?": {
+    "en": "Are you sure you want to delete branch '{request.Name}'?"
+  },
+  "'{request.Name}' uzak deposu kaldırılacak.": {
+    "en": "Remote '{request.Name}' will be removed."
+  },
+  "'{result.Name}' dalı oluşturuldu ve geçildi.": {
+    "en": "Branch '{result.Name}' created and checked out."
+  },
+  "'{result.Name}' dalı oluşturuldu.": {
+    "en": "Branch '{result.Name}' created."
+  },
+  "'{result.Name}' dalı silindi (ucu {Shorten(result.LastCommitId)}).": {
+    "en": "Branch '{result.Name}' deleted (tip was {Shorten(result.LastCommitId)})."
+  },
+  "'{result.Name}' dalı silindi. Geri getirmek için: ": {
+    "en": "Branch '{result.Name}' deleted. To restore it: "
+  },
+  "'{result.Target}' dalına geçildi.": {
+    "en": "Switched to branch '{result.Target}'."
+  },
+  "'{row.Name}' kaldırıldı.": {
+    "en": "'{row.Name}' removed."
+  },
+  "(URL tanımlı değil)": {
+    "en": "(no URL configured)"
+  },
+  "(fonksiyon tuşları istisna).": {
+    "en": "(function keys are the exception)."
+  },
+  ". Çakışmaları çözüp commit'leyin ya da birleştirmeyi iptal edin.": {
+    "en": ". Resolve the conflicts and commit, or abort the merge."
+  },
+  "Alt paneli aç/kapat": {
+    "en": "Toggle the bottom panel"
+  },
+  "Ayarlarınızda bir tercih yok; varsayılan olarak birleştirme seçildi.": {
+    "en": "No preference in your settings; merge was chosen as the default."
+  },
+  "Ayarınız (pull.ff = {resolved.ConfigValue}) yalnızca ileri sarmaya izin veriyor.": {
+    "en": "Your setting (pull.ff = {resolved.ConfigValue}) only allows fast-forward."
+  },
+  "Ayarınız (pull.rebase = {resolved.ConfigValue}) {Describe(resolved.Strategy)} diyor.": {
+    "en": "Your setting (pull.rebase = {resolved.ConfigValue}) says {Describe(resolved.Strategy)}."
+  },
+  "Bir kısmı gönderildi, bir kısmı reddedildi: ": {
+    "en": "Some were pushed, some were rejected: "
+  },
+  "Bir sayfa aşağı": {
+    "en": "One page down"
+  },
+  "Bir sayfa yukarı": {
+    "en": "One page up"
+  },
+  "Birleştirme commit'i oluşturuldu.": {
+    "en": "Merge commit created."
+  },
+  "Birleştirme iptal edildi; çalışma ağacı önceki hâline döndü.": {
+    "en": "Merge aborted; the working tree is back to its previous state."
+  },
+  "Birleştirme yalnızca üzerinde bulunduğunuz dala yapılabilir. ": {
+    "en": "You can only merge into the branch you are on. "
+  },
+  "Birleştirme çakışmayla durdu — ": {
+    "en": "The merge stopped with conflicts — "
+  },
+  "Birleştirme çakışmayla durdu: bazı dosyalar ÇÖZÜLMEMİŞ durumda. ": {
+    "en": "The merge stopped with conflicts: some files are UNRESOLVED. "
+  },
+  "Birleştirme çakışmayla durdu: {result.ConflictedPaths.Count} dosya ": {
+    "en": "The merge stopped with conflicts: {result.ConflictedPaths.Count} files "
+  },
+  "Bisect sürüyor. Sonuçlandırın ya da sıfırlayın.": {
+    "en": "A bisect is in progress. Finish it or reset."
+  },
+  "Bu commit'e sıfırla…": {
+    "en": "Reset to this commit…"
+  },
+  "Bu dal uzakta yok; zorlanacak bir şey de yok.": {
+    "en": "This branch does not exist on the remote; there is nothing to force."
+  },
+  "Bu dalda getirilecek bir şey yok.": {
+    "en": "Nothing to fetch on this branch."
+  },
+  "Bu dalın ayarı (branch.{CurrentBranch}.rebase = {resolved.ConfigValue}) ": {
+    "en": "This branch's setting (branch.{CurrentBranch}.rebase = {resolved.ConfigValue}) "
+  },
+  "Bu dalın ortak atası yok (ilgisiz geçmiş). Gelişmiş seçeneklerden izin vermeniz gerekir.": {
+    "en": "This branch has no common ancestor (unrelated history). You need to allow it in the advanced options."
+  },
+  "Bu dosya çok büyük; içeriği yüklenmedi.": {
+    "en": "This file is too large; its content was not loaded."
+  },
+  "Bu işlem commit edilmemiş çalışmayı siler.": {
+    "en": "This deletes uncommitted work."
+  },
+  "Bu revizyonda dal oluştur": {
+    "en": "Create branch at this revision"
+  },
+  "Bu revizyonda dal oluştur (mevcut HEAD)": {
+    "en": "Create branch at this revision (current HEAD)"
+  },
+  "Bu tuş kısayol olarak kullanılamıyor.": {
+    "en": "This key cannot be used as a shortcut."
+  },
+  "Bu uzak depoda birden çok URL tanımlı; tek kutudan güvenle düzenlenemez. ": {
+    "en": "This remote has multiple URLs configured; it cannot be edited safely from a single box. "
+  },
+  "Bu uzak depoya bağlı yerel dal veya uzak izleme dalı yok.": {
+    "en": "No local branch or remote-tracking branch is attached to this remote."
+  },
+  "Bölümler \\\".\\\" ile başlayamaz ve \\\".lock\\\" ile bitemez.": {
+    "en": "Components cannot start with \\\".\\\" or end with \\\".lock\\\"."
+  },
+  "Cherry-pick sürüyor. Tamamlayın ya da iptal edin.": {
+    "en": "A cherry-pick is in progress. Finish it or abort."
+  },
+  "Commit detayına odaklan": {
+    "en": "Focus the commit details"
+  },
+  "Commit oluşturuldu.": {
+    "en": "Commit created."
+  },
+  "Commit oluşturuldu. Hook'lar commit mesajını değiştirdi.": {
+    "en": "Commit created. Hooks changed the commit message."
+  },
+  "Commit tamamlandı": {
+    "en": "Commit complete"
+  },
+  "Dal adı \\\"-\\\" ile başlayamaz.": {
+    "en": "A branch name cannot start with \\\"-\\\"."
+  },
+  "Dal adı \\\"..\\\" içeremez ve \\\".\\\" ile bitemez.": {
+    "en": "A branch name cannot contain \\\"..\\\" or end with \\\".\\\"."
+  },
+  "Dal adı \\\"/\\\" ile başlayıp bitemez, \\\"//\\\" içeremez.": {
+    "en": "A branch name cannot start or end with \\\"/\\\", or contain \\\"//\\\"."
+  },
+  "Dal adı boş olamaz.": {
+    "en": "A branch name cannot be empty."
+  },
+  "Dal adında boşluk ve şu karakterler kullanılamaz: ~ ^ : ? * [ \\\\": {
+    "en": "A branch name cannot contain spaces or these characters: ~ ^ : ? * [ \\\\"
+  },
+  "Dal oluştur…": {
+    "en": "Create branch…"
+  },
+  "Dala geç (checkout)…": {
+    "en": "Check out branch…"
+  },
+  "Dalları birleştir…": {
+    "en": "Merge branches…"
+  },
+  "Depo açılamadı.": {
+    "en": "Could not open the repository."
+  },
+  "Depo açılmadı.": {
+    "en": "No repository open."
+  },
+  "Depo aç…": {
+    "en": "Open repository…"
+  },
+  "Değişiklik yok.": {
+    "en": "No changes."
+  },
+  "Değişiklikler hazırlandı ama commit YAPILMADI.": {
+    "en": "The changes were staged but NOT committed."
+  },
+  "Değişiklikler hazırlandı.": {
+    "en": "The changes were staged."
+  },
+  "Değişiklikler hedefe birleştirilmeye çalışılır. Çakışma çıkarsa geçiş yine ": {
+    "en": "The changes are merged into the target. If conflicts appear the checkout still "
+  },
+  "Değişiklikler sıfırlandı.": {
+    "en": "The changes were reset."
+  },
+  "Değişiklikler sıfırlandı. {backups.Count} dosyanın içeriği yedeklendi.": {
+    "en": "The changes were reset. The content of {backups.Count} files was backed up."
+  },
+  "Değişiklikler takip edilmeyen dosyalarla birlikte bir stash'e alınır; ": {
+    "en": "The changes are stashed along with untracked files; "
+  },
+  "Değişiklikler yeni dala taşınmaya çalışılır; taşınamazsa geçiş reddedilir ": {
+    "en": "The changes are carried to the new branch; if they cannot be, the checkout is refused "
+  },
+  "Diff görünümü": {
+    "en": "Diff view"
+  },
+  "Dosya taşındı; içerik değişmedi.": {
+    "en": "The file was moved; the content did not change."
+  },
+  "Ekranı açtığınızdan beri uzaktaki dal değişti — koruma tam da bunun için. ": {
+    "en": "The remote branch changed since you opened this screen — that is exactly what the protection is for. "
+  },
+  "Etiket oluştur…": {
+    "en": "Create tag…"
+  },
+  "Getirip ne değiştiğine bakın, sonra tekrar deneyin.": {
+    "en": "Fetch, see what changed, then try again."
+  },
+  "Getirme başarılı, ancak kaydedilmemiş değişiklikleriniz geri ": {
+    "en": "The fetch succeeded, but your uncommitted changes "
+  },
+  "Geçersiz dal adı.": {
+    "en": "Invalid branch name."
+  },
+  "Geçilecek bir commit seçin.": {
+    "en": "Select a commit to check out."
+  },
+  "Geçilecek commit": {
+    "en": "Commit to check out"
+  },
+  "Geçilecek dal": {
+    "en": "Branch to switch to"
+  },
+  "Git deposu aç": {
+    "en": "Open a git repository"
+  },
+  "Git komut günlüğü…": {
+    "en": "Git command log…"
+  },
+  "Git komutu başarısız oldu": {
+    "en": "The git command failed"
+  },
+  "Gönderim reddedildi: ": {
+    "en": "The push was rejected: "
+  },
+  "Gösterilecek değişiklik yok.": {
+    "en": "No changes to show."
+  },
+  "HEAD (mevcut dalın ucu)": {
+    "en": "HEAD (tip of the current branch)"
+  },
+  "Hakkında": {
+    "en": "About"
+  },
+  "Henüz commit YAPILMADI. Değişiklikler hazırlanmış durumda; ": {
+    "en": "Nothing was COMMITTED yet. The changes are staged; "
+  },
+  "Karşılaştır": {
+    "en": "Compare"
+  },
+  "Klavye kısayolları": {
+    "en": "Keyboard shortcuts"
+  },
+  "Konu ile gövde arasında boş satır bırakın.": {
+    "en": "Leave a blank line between the subject and the body."
+  },
+  "Konu satırı {SubjectLimit} karakteri aşıyor.": {
+    "en": "The subject line exceeds {SubjectLimit} characters."
+  },
+  "Merge çakışmayla durdu. Çakışmaları çözün ya da iptal edin.": {
+    "en": "The merge stopped with conflicts. Resolve them or abort."
+  },
+  "Performans teşhisi…": {
+    "en": "Performance diagnostics…"
+  },
+  "Rebase sürüyor. Tamamlayın ya da iptal edin.": {
+    "en": "A rebase is in progress. Finish it or abort."
+  },
+  "Reddin sebebi tanınamadı; git'in çıktısına bakın.": {
+    "en": "The reason for the rejection was not recognised; see git's output."
+  },
+  "Reflog'u göster…": {
+    "en": "Show reflog…"
+  },
+  "Revert sürüyor. Tamamlayın ya da iptal edin.": {
+    "en": "A revert is in progress. Finish it or abort."
+  },
+  "Seçili dalı sil…": {
+    "en": "Delete the selected branch…"
+  },
+  "Seçili dalı yeniden adlandır…": {
+    "en": "Rename the selected branch…"
+  },
+  "Seçili iki commit'i karşılaştır": {
+    "en": "Compare the two selected commits"
+  },
+  "Seçili satırlar geri alındı.": {
+    "en": "The selected lines were reverted."
+  },
+  "Seçili satırlar geri alındı. {diff.Path.Name} yedeklendi.": {
+    "en": "The selected lines were reverted. {diff.Path.Name} was backed up."
+  },
+  "Seçili satırları geri al": {
+    "en": "Revert the selected lines"
+  },
+  "Seçili satırları stage'le": {
+    "en": "Stage the selected lines"
+  },
+  "Seçili satırları unstage'le": {
+    "en": "Unstage the selected lines"
+  },
+  "Seçiliyi stage'le / unstage'le": {
+    "en": "Stage / unstage the selection"
+  },
+  "Silinecek bir dal seçin.": {
+    "en": "Select a branch to delete."
+  },
+  "Sol paneli aç/kapat": {
+    "en": "Toggle the left panel"
+  },
+  "Sonraki değişiklik": {
+    "en": "Next change"
+  },
+  "Squash bir commit OLUŞTURMAZ: değişiklikler hazırlanır ve commit'lemek size kalır.": {
+    "en": "Squash does NOT create a commit: the changes are staged and committing is left to you."
+  },
+  "Stash'leri yönet…": {
+    "en": "Manage stashes…"
+  },
+  "Tanımlı URL'ler: ": {
+    "en": "Configured URLs: "
+  },
+  "Tanımsız komut kimliği: {commandId}": {
+    "en": "Unknown command id: {commandId}"
+  },
+  "Tümünü stage'le": {
+    "en": "Stage all"
+  },
+  "Tümünü unstage'le": {
+    "en": "Unstage all"
+  },
+  "URL güncellendi": {
+    "en": "URL updated"
+  },
+  "Uygulama genelindeki bir komuta değiştiricisiz tuş atanamaz: bu tuş metin ": {
+    "en": "A key without a modifier cannot be assigned to an application-wide command: the key would be stolen from text "
+  },
+  "Uzak depo reddetti (korumalı dal veya yetki olabilir).": {
+    "en": "The remote rejected it (it may be a protected branch or a permissions issue)."
+  },
+  "Uzakta sizde olmayan commit'ler var. Önce Pull/Fetch ile getirin; ": {
+    "en": "The remote has commits you do not have. Fetch or pull them first; "
+  },
+  "Uzaktaki ucun şu an gördüğünüz hâline göre karar verilecek: ": {
+    "en": "The decision is based on the remote tip as you see it right now: "
+  },
+  "Yalnızca bir değiştirici tuşa basıldı. Ctrl/Alt/Shift ile birlikte başka bir tuşa basın.": {
+    "en": "Only a modifier key was pressed. Press another key together with Ctrl/Alt/Shift."
+  },
+  "Yalnızca dosya modu değişti: {diff.OldMode} → {diff.NewMode}": {
+    "en": "Only the file mode changed: {diff.OldMode} → {diff.NewMode}"
+  },
+  "Yama uygulanıyor (git am). Tamamlayın ya da iptal edin.": {
+    "en": "A patch is being applied (git am). Finish it or abort."
+  },
+  "Yamayı kopyala": {
+    "en": "Copy the patch"
+  },
+  "Yeniden adlandırılacak bir dal seçin.": {
+    "en": "Select a branch to rename."
+  },
+  "Zaten güncel.": {
+    "en": "Already up to date."
+  },
+  "\\\"@{…}\\\" git için revizyon sözdizimi; yazdığınızdan başka bir dal adı oluşurdu.": {
+    "en": "\\\"@{…}\\\" is revision syntax for git; a branch name other than the one you typed would be created."
+  },
+  "\\\"HEAD\\\" git tarafından ayrılmış bir addır.": {
+    "en": "\\\"HEAD\\\" is a name reserved by git."
+  },
+  "\\\"Kirayla zorla\\\" aynı işi yapar ama araya başkası girdiyse durur.": {
+    "en": "\\\"Force with lease\\\" does the same thing but stops if someone else got in between."
+  },
+  "\\\"refs/heads/\\\" önekini yazmayın — git bunu hata saymaz, iç içe bir dal oluşturur.": {
+    "en": "Do not type the \\\"refs/heads/\\\" prefix — git does not treat it as an error, it creates a nested branch."
+  },
+  "\\\"{request.Source}\\\" dalı \\\"{request.Target}\\\" dalına birleştirilsin mi?": {
+    "en": "Merge branch \\\"{request.Source}\\\" into \\\"{request.Target}\\\"?"
+  },
+  "\\\"{source}\\\" birleştirildi.": {
+    "en": "\\\"{source}\\\" was merged."
+  },
+  "\\\"{source}\\\" ileri sarıldı.": {
+    "en": "\\\"{source}\\\" was fast-forwarded."
+  },
+  "ayrı push URL'si kaldırıldı": {
+    "en": "the separate push URL was removed"
+  },
+  "birleştirme (merge)": {
+    "en": "merge"
+  },
+  "bu depo varsayılan push hedefi (remote.pushDefault) olarak ayarlı": {
+    "en": "this remote is set as the default push target (remote.pushDefault)"
+  },
+  "bulunamadı": {
+    "en": "not found"
+  },
+  "commit ekranından tamamlamanız gerekiyor.": {
+    "en": "you need to finish it from the commit screen."
+  },
+  "commit.template ayarlı değil": {
+    "en": "commit.template is not set"
+  },
+  "dosyalara dokunulmaz. Atılan içerik yedeklenir, işlemden sonra geri ": {
+    "en": "files are left alone. The discarded content is backed up, and after the operation you can "
+  },
+  "geçmişi bilerek yeniden yazdıysanız \\\"Kirayla zorla\\\" seçeneğini kullanın.": {
+    "en": "if you rewrote history deliberately, use the \\\"Force with lease\\\" option."
+  },
+  "gönderirse gönderim reddedilir.": {
+    "en": "pushes something, the push is rejected."
+  },
+  "güncel": {
+    "en": "up to date"
+  },
+  "güncellendi": {
+    "en": "updated"
+  },
+  "hiçbir şey kaybolmaz, sonradan geri alabilirsiniz.": {
+    "en": "nothing is lost, you can restore it later."
+  },
+  "içinde duruyor. Çakışan dosyaları çözüp stash'i düşürün.": {
+    "en": "is still there. Resolve the conflicting files and drop the stash."
+  },
+  "kalanların yedeği nesne veritabanında yok.": {
+    "en": "the rest have no backup in the object database."
+  },
+  "konurken çakıştı. Değişiklikleriniz kayıp DEĞİL: `git stash list` ": {
+    "en": "conflicted while being restored. Your changes are NOT lost: `git stash list` "
+  },
+  "kutularından da çalınır ve bir daha yazamazsınız. Ctrl, Alt veya Shift ekleyin ": {
+    "en": "boxes too and you would not be able to type it again. Add Ctrl, Alt or Shift "
+  },
+  "push URL'si güncellendi": {
+    "en": "the push URL was updated"
+  },
+  "taşınamayacak bir çakışma olursa git işlemi reddeder ve hiçbir şey değişmez.": {
+    "en": "if there is a conflict that cannot be carried, git refuses and nothing changes."
+  },
+  "upstream silinmiş": {
+    "en": "upstream was deleted"
+  },
+  "ve hiçbir şey değişmez.": {
+    "en": "and nothing changes."
+  },
+  "yalnızca ileri sarma": {
+    "en": "fast-forward only"
+  },
+  "yalnızca onlarda duran commit'ler artık hiçbir dalda görünmez": {
+    "en": "commits that live only on them will no longer appear on any branch"
+  },
+  "yapılır ama dosyalar çözülmemiş hâlde kalır.": {
+    "en": "happens but the files are left unresolved."
+  },
+  "zaten güncel": {
+    "en": "already up to date"
+  },
+  "zorla değiştirildi": {
+    "en": "force-updated"
+  },
+  "{GitOutputText.MaximumDisplayLines} satır aşağıda).": {
+    "en": "{GitOutputText.MaximumDisplayLines} lines below)."
+  },
+  "{Shorten(from)} ↔ çalışma ağacı": {
+    "en": "{Shorten(from)} ↔ working tree"
+  },
+  "{anchor[..Math.Min(10, anchor.Length)]}. Bu arada başkası bir şey ": {
+    "en": "{anchor[..Math.Min(10, anchor.Length)]}. If someone else "
+  },
+  "{başlangıç} Takip edilen dal: {upstream}.": {
+    "en": "{başlangıç} Tracked branch: {upstream}."
+  },
+  "{conflict.Gesture} birden fazla komuta atanmış: ": {
+    "en": "{conflict.Gesture} is assigned to more than one command: "
+  },
+  "{deleted} kaldırıldı": {
+    "en": "{deleted} removed"
+  },
+  "{modified} dosyadaki stage'lenmemiş değişiklikler sıfırlanacak.": {
+    "en": "Unstaged changes in {modified} files will be reset."
+  },
+  "{modified} dosyadaki tüm değişiklikler (stage'lenmiş olanlar dahil) sıfırlanacak.": {
+    "en": "All changes in {modified} files (including staged ones) will be reset."
+  },
+  "{preview.Ahead} commit birleştirilecek (ileri sarılamaz).": {
+    "en": "{preview.Ahead} commits will be merged (cannot fast-forward)."
+  },
+  "{preview.Ahead} commit ileri sarılabilir.": {
+    "en": "{preview.Ahead} commits can be fast-forwarded."
+  },
+  "{request.TrackingBranchCount} uzak izleme dalı (ve reflog'ları) silinecek; ": {
+    "en": "{request.TrackingBranchCount} remote-tracking branches (and their reflogs) will be deleted; "
+  },
+  "{restored.Count} dosya geri yüklendi.": {
+    "en": "{restored.Count} files were restored."
+  },
+  "{restored.Count}/{backups.Count} dosya geri yüklendi; ": {
+    "en": "{restored.Count}/{backups.Count} files were restored; "
+  },
+  "{result.ConflictedPaths.Count} dosya ÇÖZÜLMEMİŞ durumda: ": {
+    "en": "{result.ConflictedPaths.Count} files are UNRESOLVED: "
+  },
+  "{target.Label} commit'ine geçildi (HEAD ayrık).": {
+    "en": "Checked out commit {target.Label} (detached HEAD)."
+  },
+  "{untracked} yeni dosyayı ve/veya dizini de sil": {
+    "en": "Also delete {untracked} new files and/or directories"
+  },
+  "{updated} güncellendi": {
+    "en": "{updated} updated"
+  },
+  "Çakışmaları çözüp commit'leyin ya da işlemi iptal edin.": {
+    "en": "Resolve the conflicts and commit, or abort the operation."
+  },
+  "Çalışma ağacı": {
+    "en": "Working tree"
+  },
+  "Çalışma ağacı (commit ekranı)": {
+    "en": "Working tree (commit screen)"
+  },
+  "Çalışma ağacında kaydedilmemiş değişiklikler var. Bunlar yeni dala taşınır; ": {
+    "en": "There are uncommitted changes in the working tree. They are carried to the new branch; "
+  },
+  "Çalışma diziniyle karşılaştır": {
+    "en": "Compare with the working directory"
+  },
+  "Çocuğa git": {
+    "en": "Go to child"
+  },
+  "Çıktı çok uzun; ilk {droppedLines} satır gösterilmiyor (son ": {
+    "en": "The output is too long; the first {droppedLines} lines are hidden (last "
+  },
+  "Çıkış": {
+    "en": "Exit"
+  },
+  "Çıkış kodu: {code}": {
+    "en": "Exit code: {code}"
+  },
+  "Çıplak zorlama sunulmuyor: uzaktaki commit'leri kontrol etmeden siler. ": {
+    "en": "A bare force is not offered: it deletes remote commits without checking. "
+  },
+  "Önce \\\"{target}\\\" dalına geçin.": {
+    "en": "Switch to branch \\\"{target}\\\" first."
+  },
+  "Önceki değişiklik": {
+    "en": "Previous change"
+  },
+  "Önceki dosya": {
+    "en": "Previous file"
+  },
+  "Önceki hunk": {
+    "en": "Previous hunk"
+  },
+  "Önceki panel": {
+    "en": "Previous panel"
+  },
+  "Öncekini bul": {
+    "en": "Find previous"
+  },
+  "çözülmemiş durumda.": {
+    "en": "are unresolved."
+  },
+  "İkili dosya — içerik gösterilemiyor.": {
+    "en": "Binary file — the content cannot be shown."
+  },
+  "İleri sarıldı; yeni bir commit oluşmadı.": {
+    "en": "Fast-forwarded; no new commit was created."
+  },
+  "İmza HATALI": {
+    "en": "Signature INVALID"
+  },
+  "İmza doğrulanamadı": {
+    "en": "Signature could not be verified"
+  },
+  "İmza doğrulandı": {
+    "en": "Signature verified"
+  },
+  "İmza geçerli, anahtar güvenilir işaretlenmemiş": {
+    "en": "Signature valid, key not marked as trusted"
+  },
+  "İmzalayan anahtar iptal edilmiş": {
+    "en": "The signing key was revoked"
+  },
+  "İmzalayan anahtarın süresi dolmuş": {
+    "en": "The signing key has expired"
+  },
+  "İmzanın süresi dolmuş": {
+    "en": "The signature has expired"
+  },
+  "İşlem iptal edildi.": {
+    "en": "The operation was cancelled."
+  },
+  "İşlem iptal edildi; çalışma ağacı önceki hâline döndü.": {
+    "en": "The operation was cancelled; the working tree is back to its previous state."
+  },
+  "Şablon bulunamadı: {t.Path}": {
+    "en": "Template not found: {t.Path}"
+  },
+  "Şu uzak depolar getirilemedi: ": {
+    "en": "These remotes could not be fetched: "
+  },
+  "şu yerel dalların upstream bağlantısı gidecek: ": {
+    "en": "these local branches will lose their upstream link: "
+  },
+  "⚠️ Takip edilen dosyalardaki değişiklikler ATILIR. Takip edilmeyen ": {
+    "en": "⚠️ Changes in tracked files are DISCARDED. Untracked "
+  }
+}

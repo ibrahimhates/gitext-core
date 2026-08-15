@@ -51,7 +51,9 @@ public class TranslatorTests
         translator.Use("tr");
 
         translator.Current.ShouldBe("tr");
-        translator["settings.title"].ShouldBe("Ayarlar");
+
+        // Türkçe karşılık: dil gerçekten değişti mi, yoksa yalnızca kod mu değişti?
+        translator["settings.settings"].ShouldBe("Ayarlar");
     }
 
     [Fact]
@@ -124,9 +126,14 @@ public class TranslatorTests
     [Fact]
     public void Format_yer_tutuculari_dolduruyor()
     {
-        Translator translator = Build();
+        // Test verisi ÜRETİM dil dosyalarından değil, testin kendisinden geliyor:
+        // en.json'a "test.*" anahtarları koymak, kullanıcıya giden dosyaya test
+        // artığı sokmak olurdu.
+        Translator translator = Translator.ForTesting(
+            new InMemorySettingsStore(),
+            Locale("en", """{"_meta":{"code":"en","name":"English"},"count":"{0} items"}"""));
 
-        translator.Format("test.format", 42).ShouldBe("42 items");
+        translator.Format("count", 42).ShouldBe("42 items");
     }
 
     [Fact]
@@ -134,10 +141,19 @@ public class TranslatorTests
     {
         // Çeviride bozuk bir "{0" uygulamayı çökertmemeli: ham şablon gösteriliyor,
         // hata görünür kalıyor ama arayüz ayakta.
-        Translator translator = Build();
+        Translator translator = Translator.ForTesting(
+            new InMemorySettingsStore(),
+            Locale("en", """{"_meta":{"code":"en","name":"English"},"broken":"{0 broken"}"""));
 
-        Should.NotThrow(() => translator.Format("test.broken_format", 1));
+        Should.NotThrow(() => translator.Format("broken", 1));
     }
+
+    private static Dictionary<string, Func<Stream>> Locale(string code, string json) =>
+        new()
+        {
+            [$"GitExt.UI.Locales.{code}.json"] =
+                () => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json)),
+        };
 
     [Fact]
     public void Kayitli_tercih_baslangicta_uygulaniyor()

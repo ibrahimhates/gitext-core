@@ -23,7 +23,7 @@ public partial class MergeDropDialog : Window
         MergeDropDialog dialog = new();
 
         dialog.QuestionText.Text =
-            $"\"{request.Source}\" dalı \"{request.Target}\" dalına birleştirilsin mi?";
+            $"Merge branch \"{request.Source}\" into \"{request.Target}\"?";
         dialog.CommandBox.Text = request.Command;
 
         await dialog.ShowDialog(owner);

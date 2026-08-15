@@ -73,7 +73,7 @@ public class CommitPanelTests
         CommitMessageViewModel message = new() { Text = "konu\ngovde\nbiraz daha" };
 
         message.HasNonEmptySecondLine.ShouldBeTrue();
-        message.Hint.ShouldContain("boş satır");
+        message.Hint.ShouldContain("blank line");
     }
 
     [AvaloniaFact]

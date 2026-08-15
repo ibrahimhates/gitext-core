@@ -48,8 +48,8 @@ public partial class DeleteBranchDialog : Window
         _isUnmerged = request.IsUnmerged;
 
         MessageText.Text = request.IsUnmerged
-            ? $"'{request.Name}' dalı silinemedi."
-            : $"'{request.Name}' dalını silmek istediğinize emin misiniz?";
+            ? $"Could not delete branch '{request.Name}'."
+            : $"Are you sure you want to delete branch '{request.Name}'?";
 
         UnmergedPanel.IsVisible = request.IsUnmerged;
 

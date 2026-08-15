@@ -213,7 +213,7 @@ public class ResetConfirmationTests
 
         harness.Writer.Restored.ShouldBe(["yeni.cs"]);
         harness.Model.CanUndoReset.ShouldBeFalse();
-        harness.Model.ResetNotice!.ShouldContain("geri yüklendi");
+        harness.Model.ResetNotice!.ShouldContain("were restored");
     }
 
     [AvaloniaFact]
@@ -233,7 +233,7 @@ public class ResetConfirmationTests
         await harness.Model.UndoResetAsync();
 
         harness.Model.ResetNotice!.ShouldContain("1/2");
-        harness.Model.ResetNotice!.ShouldContain("yedeği");
+        harness.Model.ResetNotice!.ShouldContain("no backup");
     }
 
     [AvaloniaFact]

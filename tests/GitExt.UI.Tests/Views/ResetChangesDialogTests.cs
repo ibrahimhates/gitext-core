@@ -82,7 +82,7 @@ public class ResetChangesDialogTests
     public void YALNIZCA_yeni_dosya_varsa_kutu_zorla_isaretli()
     {
         // Yine GitExtensions'taki davranış: yapılabilecek tek şey silmek olduğunda kutu
-        // işaretli ve devre dışı — kapalıyken "Sıfırla" hiçbir şey yapmazdı.
+        // işaretli ve devre dışı — kapalıyken "Reset" hiçbir şey yapmazdı.
         ResetChangesDialog dialog = Create(Request(modified: 0, untracked: 4));
 
         CheckBox box = dialog.GetControl<CheckBox>("DeleteUntrackedBox");

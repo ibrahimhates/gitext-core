@@ -475,7 +475,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 await resolver.AbortAsync(path).ConfigureAwait(true);
             }
 
-            BranchNotice = "İşlem iptal edildi; çalışma ağacı önceki hâline döndü.";
+            BranchNotice = "The operation was cancelled; the working tree is back to its previous state.";
         }
         catch (GitException error)
         {
@@ -723,8 +723,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (!string.Equals(target, current, StringComparison.Ordinal))
         {
-            BranchNotice = $"Birleştirme yalnızca üzerinde bulunduğunuz dala yapılabilir. "
-                + $"Önce \"{target}\" dalına geçin.";
+            BranchNotice = $"You can only merge into the branch you are on. "
+                + $"Switch to branch \"{target}\" first.";
             return;
         }
 
@@ -754,12 +754,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
             BranchNotice = result.Outcome switch
             {
-                MergeOutcome.AlreadyUpToDate => "Zaten güncel.",
-                MergeOutcome.FastForward => $"\"{source}\" ileri sarıldı.",
-                MergeOutcome.MergeCommit => $"\"{source}\" birleştirildi.",
-                MergeOutcome.Staged => "Değişiklikler hazırlandı ama commit YAPILMADI.",
-                _ => $"Birleştirme çakışmayla durdu: {result.ConflictedPaths.Count} dosya "
-                    + "çözülmemiş durumda.",
+                MergeOutcome.AlreadyUpToDate => "Already up to date.",
+                MergeOutcome.FastForward => $"\"{source}\" was fast-forwarded.",
+                MergeOutcome.MergeCommit => $"\"{source}\" was merged.",
+                MergeOutcome.Staged => "The changes were staged but NOT committed.",
+                _ => $"The merge stopped with conflicts: {result.ConflictedPaths.Count} files "
+                    + "are unresolved.",
             };
         }
         catch (GitException error)
@@ -844,12 +844,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Süren işlemin insan-okunur adı.</summary>
     public string OperationText => CurrentOperation switch
     {
-        InProgressOperation.Rebase => "Rebase sürüyor. Tamamlayın ya da iptal edin.",
-        InProgressOperation.ApplyMailbox => "Yama uygulanıyor (git am). Tamamlayın ya da iptal edin.",
-        InProgressOperation.Merge => "Merge çakışmayla durdu. Çakışmaları çözün ya da iptal edin.",
-        InProgressOperation.CherryPick => "Cherry-pick sürüyor. Tamamlayın ya da iptal edin.",
-        InProgressOperation.Revert => "Revert sürüyor. Tamamlayın ya da iptal edin.",
-        InProgressOperation.Bisect => "Bisect sürüyor. Sonuçlandırın ya da sıfırlayın.",
+        InProgressOperation.Rebase => "A rebase is in progress. Finish it or abort.",
+        InProgressOperation.ApplyMailbox => "A patch is being applied (git am). Finish it or abort.",
+        InProgressOperation.Merge => "The merge stopped with conflicts. Resolve them or abort.",
+        InProgressOperation.CherryPick => "A cherry-pick is in progress. Finish it or abort.",
+        InProgressOperation.Revert => "A revert is in progress. Finish it or abort.",
+        InProgressOperation.Bisect => "A bisect is in progress. Finish it or reset.",
         _ => string.Empty,
     };
 
@@ -1078,7 +1078,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (resolved is not { } target)
         {
-            BranchNotice = "Geçilecek bir commit seçin.";
+            BranchNotice = "Select a commit to check out.";
             return;
         }
 
@@ -1150,7 +1150,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (SelectedLocalBranch is not { } branch)
         {
-            BranchNotice = "Yeniden adlandırılacak bir dal seçin.";
+            BranchNotice = "Select a branch to rename.";
             return;
         }
 
@@ -1172,7 +1172,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     .ConfigureAwait(true);
             }
 
-            BranchNotice = $"'{branch}' → '{decision.NewName}' olarak yeniden adlandırıldı.";
+            BranchNotice = $"Renamed '{branch}' to '{decision.NewName}'.";
         }
         catch (GitException error)
         {
@@ -1209,7 +1209,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (SelectedLocalBranch is not { } branch)
         {
-            BranchNotice = "Silinecek bir dal seçin.";
+            BranchNotice = "Select a branch to delete.";
             return;
         }
 
@@ -1272,9 +1272,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // 🔴 Hash bildirimde KALMALI: silinen dalın kendi reflog'u da gidiyor ve dal bu
         // çalışma ağacında hiç checkout edilmemişse HEAD reflog'unda da iz yok (ölçüldü).
         BranchNotice = result.WasUnmerged
-            ? $"'{result.Name}' dalı silindi. Geri getirmek için: "
+            ? $"Branch '{result.Name}' deleted. To restore it: "
               + $"git branch {result.Name} {result.LastCommitId}"
-            : $"'{result.Name}' dalı silindi (ucu {Shorten(result.LastCommitId)}).";
+            : $"Branch '{result.Name}' deleted (tip was {Shorten(result.LastCommitId)}).";
 
         await RefreshAsync().ConfigureAwait(true);
     }
@@ -1493,7 +1493,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 await _mergeWriter.AbortAsync(path).ConfigureAwait(true);
             }
 
-            BranchNotice = "Birleştirme iptal edildi; çalışma ağacı önceki hâline döndü.";
+            BranchNotice = "Merge aborted; the working tree is back to its previous state.";
         }
         catch (GitException error)
         {
@@ -1572,48 +1572,48 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private static string Describe(BranchSwitchResult result, CheckoutTarget target)
     {
-        string başlangıç = target.IsDetached
-            ? $"{target.Label} commit'ine geçildi (HEAD ayrık)."
-            : $"'{result.Target}' dalına geçildi.";
+        string summary = target.IsDetached
+            ? $"Checked out commit {target.Label} (detached HEAD)."
+            : $"Switched to branch '{result.Target}'.";
 
         // 🔴 Çıkış kodu 0 olsa bile çakışma olabiliyor (`--merge` ölçümü); sessiz kalmak
         // kullanıcıya "başarıyla geçildi" demek olurdu.
         if (result.HasConflicts)
         {
-            başlangıç += " ⚠️ Bazı dosyalar ÇÖZÜLMEMİŞ durumda — çakışmaları elle çözmeniz gerekiyor.";
+            summary += " ⚠️ Some files are UNRESOLVED — you need to resolve the conflicts by hand.";
         }
 
         if (result.StashCreated)
         {
-            başlangıç += " Yerel değişiklikleriniz stash'e alındı (`git stash pop` ile geri alınır).";
+            summary += " Your local changes were stashed (restore them with `git stash pop`).";
         }
 
         if (result.Backups.Count > 0)
         {
-            başlangıç += $" {result.Backups.Count} dosyanın atılan içeriği yedeklendi.";
+            summary += $" The discarded content of {result.Backups.Count} files was backed up.";
         }
 
-        return başlangıç;
+        return summary;
     }
 
 
     private static string Describe(BranchCreateResult result)
     {
-        string başlangıç = result.CheckedOut
-            ? $"'{result.Name}' dalı oluşturuldu ve geçildi."
-            : $"'{result.Name}' dalı oluşturuldu.";
+        string summary = result.CheckedOut
+            ? $"Branch '{result.Name}' created and checked out."
+            : $"Branch '{result.Name}' created.";
 
         // Upstream'i git kendisi kurdu; kullanıcı istemeden kurulan bir bağ sessiz kalmamalı.
         return result.Upstream is { Length: > 0 } upstream
-            ? $"{başlangıç} Takip edilen dal: {upstream}."
-            : başlangıç;
+            ? $"{summary} Tracked branch: {upstream}."
+            : summary;
     }
 
     private string DescribeStartPoint(string? startPoint)
     {
         if (startPoint is not { Length: > 0 })
         {
-            return "HEAD (mevcut dalın ucu)";
+            return "HEAD (tip of the current branch)";
         }
 
         string shortId = startPoint.Length > 8 ? startPoint[..8] : startPoint;
@@ -1673,7 +1673,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Commits.Close();
         _watcher?.Stop();
 
-        Subtitle = "Depo açılmadı.";
+        Subtitle = "No repository open.";
 
         // Depo bilerek kapatıldı: sonraki açılışta karşılama ekranı gelmeli, aynı depo
         // değil. Kullanıcı "kapat" derken bunu kastediyor.
@@ -1687,7 +1687,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [ObservableProperty]
-    public partial string Subtitle { get; set; } = "Depo açılmadı.";
+    public partial string Subtitle { get; set; } = "No repository open.";
 
     /// <summary>
     /// Karşılama ekranı gösterilsin mi?
@@ -1777,7 +1777,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Subtitle = Commits.Repository is { } repository
             ? $"{repository.WorkingDirectory} — {Commits.Rows.Count} commit"
-            : Commits.ErrorMessage ?? "Depo açılamadı.";
+            : Commits.ErrorMessage ?? "Could not open the repository.";
 
         OnPropertyChanged(nameof(ShowWelcome));
 
@@ -1907,7 +1907,7 @@ public partial class MainWindowViewModel : ViewModelBase
             // Hata mesajı temizleniyor: kullanıcı bu klasörü açmayı istemedi.
             Commits.ErrorMessage = null;
             Commits.ErrorDetails = null;
-            Subtitle = "Depo açılmadı.";
+            Subtitle = "No repository open.";
         }
 
         await UpdateHeadStateAsync(cancellationToken).ConfigureAwait(true);

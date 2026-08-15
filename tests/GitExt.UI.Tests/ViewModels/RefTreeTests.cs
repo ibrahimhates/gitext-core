@@ -49,7 +49,7 @@ public class RefTreeTests
     {
         RefTreeViewModel model = Create();
 
-        model.Roots.Select(node => node.Name).ShouldBe(["Dallar", "Uzak depolar", "Etiketler"]);
+        model.Roots.Select(node => node.Name).ShouldBe(["Dallar", "Remotes", "Etiketler"]);
     }
 
     [AvaloniaFact]
@@ -69,7 +69,7 @@ public class RefTreeTests
     [AvaloniaFact]
     public void Uzak_dallar_UZAK_DEPO_altinda_gruplaniyor()
     {
-        RefNodeViewModel remotes = Root(Create(), "Uzak depolar");
+        RefNodeViewModel remotes = Root(Create(), "Remotes");
 
         RefNodeViewModel origin = remotes.Children.Single();
         origin.Name.ShouldBe("origin");
@@ -85,7 +85,7 @@ public class RefTreeTests
     {
         // Beşinci kez aynı tuzak (P03-T12, P06-T05, T06, T08): aynı commit'te ikinci bir
         // dal gibi görünürdü.
-        RefNodeViewModel origin = Root(Create(), "Uzak depolar").Children.Single();
+        RefNodeViewModel origin = Root(Create(), "Remotes").Children.Single();
 
         origin.Children.ShouldNotContain(node => node.Name == "HEAD");
     }

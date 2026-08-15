@@ -55,7 +55,7 @@ public class MainWindowViewModelTests
 
         await viewModel.OpenRepositoryAsync("/tmp/duz-klasor");
 
-        viewModel.Subtitle.ShouldContain("Git deposu değil");
+        viewModel.Subtitle.ShouldContain("not a git repository");
     }
 
     [AvaloniaFact]

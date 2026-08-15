@@ -95,7 +95,7 @@ public class MergeDropTests
         merge.Merged.ShouldBeEmpty();
         confirmer.Asked.ShouldBeFalse("onay bile sorulmamalı");
         model.BranchNotice!.ShouldContain("ozellik");
-        model.BranchNotice!.ShouldContain("geçin");
+        model.BranchNotice!.ShouldContain("Switch to branch");
     }
 
     [AvaloniaFact]
@@ -126,7 +126,7 @@ public class MergeDropTests
         await model.OpenRepositoryAsync("/depo");
         await model.MergeDroppedAsync("ozellik", "main");
 
-        model.BranchNotice!.ShouldContain("çakışmayla durdu");
+        model.BranchNotice!.ShouldContain("stopped with conflicts");
     }
 
     [AvaloniaFact]

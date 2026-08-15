@@ -260,7 +260,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
             return;
         }
 
-        SearchStatus = TryGoToCommit(SearchText) ? null : "bulunamadı";
+        SearchStatus = TryGoToCommit(SearchText) ? null : "not found";
     }
 
     /// <summary>Yükleme başarısız olduysa kullanıcıya gösterilecek mesaj.</summary>

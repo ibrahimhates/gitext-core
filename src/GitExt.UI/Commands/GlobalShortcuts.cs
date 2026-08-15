@@ -50,7 +50,7 @@ public sealed class GlobalShortcuts : IDisposable
     {
         if (_registry.Find(commandId) is null)
         {
-            throw new ArgumentException($"Tanımsız komut kimliği: {commandId}", nameof(commandId));
+            throw new ArgumentException($"Unknown command id: {commandId}", nameof(commandId));
         }
 
         _commands[commandId] = command;

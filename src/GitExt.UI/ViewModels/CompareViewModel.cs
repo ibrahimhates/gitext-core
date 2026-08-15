@@ -58,7 +58,7 @@ public sealed partial class CompareViewModel : ViewModelBase
 
     /// <summary>Pencere başlığı.</summary>
     [ObservableProperty]
-    public partial string Title { get; private set; } = "Karşılaştır";
+    public partial string Title { get; private set; } = "Compare";
 
     /// <summary>İki commit'i karşılaştırır.</summary>
     public Task CompareAsync(
@@ -94,7 +94,7 @@ public sealed partial class CompareViewModel : ViewModelBase
         FromRevision = from;
         ToRevision = string.Empty;
         Target = CompareTarget.WorkingTree;
-        Title = $"{Shorten(from)} ↔ çalışma ağacı";
+        Title = $"{Shorten(from)} ↔ working tree";
 
         return Diff.ShowRangeAsync(WorkingDirectory, from, null, Title, cancellationToken: cancellationToken);
     }

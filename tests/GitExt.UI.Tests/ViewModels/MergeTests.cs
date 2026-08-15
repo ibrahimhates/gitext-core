@@ -74,7 +74,7 @@ public class MergeTests
 
         model.HasPreviewNotice.ShouldBeTrue();
         model.PreviewNotice!.ShouldContain("3 commit");
-        model.PreviewNotice!.ShouldContain("ileri sarılamaz");
+        model.PreviewNotice!.ShouldContain("cannot fast-forward");
     }
 
     [AvaloniaFact]
@@ -91,7 +91,7 @@ public class MergeTests
 
         await LoadAsync(model);
 
-        model.PreviewNotice!.ShouldContain("ortak atası yok");
+        model.PreviewNotice!.ShouldContain("no common ancestor");
     }
 
     [AvaloniaFact]
@@ -108,7 +108,7 @@ public class MergeTests
         model.Strategy = MergeStrategy.Squash;
 
         model.HasSquashNotice.ShouldBeTrue();
-        model.SquashNotice!.ShouldContain("commit OLUŞTURMAZ");
+        model.SquashNotice!.ShouldContain("does NOT create a commit");
     }
 
     [AvaloniaFact]
@@ -150,7 +150,7 @@ public class MergeTests
         await LoadAsync(model);
         await model.RunCommand.ExecuteAsync(null);
 
-        model.Warning!.ShouldContain("ÇÖZÜLMEMİŞ");
+        model.Warning!.ShouldContain("UNRESOLVED");
         model.Warning!.ShouldContain("a.txt");
     }
 
@@ -170,7 +170,7 @@ public class MergeTests
         await model.RunCommand.ExecuteAsync(null);
 
         model.RecoveryCommand.ShouldBe("git reset --hard 1234567890");
-        model.Notice!.ShouldContain("İleri sarıldı");
+        model.Notice!.ShouldContain("Fast-forwarded");
     }
 
     [AvaloniaFact]
@@ -189,7 +189,7 @@ public class MergeTests
         await model.RunCommand.ExecuteAsync(null);
 
         model.HasRecoveryCommand.ShouldBeFalse();
-        model.Notice.ShouldBe("Zaten güncel.");
+        model.Notice.ShouldBe("Already up to date.");
     }
 
     // ------------------------------------------------------- ana pencere

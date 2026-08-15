@@ -302,13 +302,13 @@ public sealed class PullViewModel : ViewModelBase
         : resolved.Source switch
         {
             PullStrategySource.BranchSetting =>
-                $"Bu dalın ayarı (branch.{CurrentBranch}.rebase = {resolved.ConfigValue}) "
+                $"This branch's setting (branch.{CurrentBranch}.rebase = {resolved.ConfigValue}) "
                 + $"{Describe(resolved.Strategy)} diyor.",
             PullStrategySource.PullRebaseSetting =>
-                $"Ayarınız (pull.rebase = {resolved.ConfigValue}) {Describe(resolved.Strategy)} diyor.",
+                $"Your setting (pull.rebase = {resolved.ConfigValue}) says {Describe(resolved.Strategy)}.",
             PullStrategySource.PullFfSetting =>
-                $"Ayarınız (pull.ff = {resolved.ConfigValue}) yalnızca ileri sarmaya izin veriyor.",
-            _ => "Ayarlarınızda bir tercih yok; varsayılan olarak birleştirme seçildi.",
+                $"Your setting (pull.ff = {resolved.ConfigValue}) only allows fast-forward.",
+            _ => "No preference in your settings; merge was chosen as the default.",
         };
 
     /// <summary>
@@ -506,8 +506,8 @@ public sealed class PullViewModel : ViewModelBase
     private static string Describe(PullStrategy strategy) => strategy switch
     {
         PullStrategy.Rebase => "yeniden temellendirme (rebase)",
-        PullStrategy.FastForwardOnly => "yalnızca ileri sarma",
-        _ => "birleştirme (merge)",
+        PullStrategy.FastForwardOnly => "fast-forward only",
+        _ => "merge",
     };
 
     private async Task RunAsync()
@@ -534,7 +534,7 @@ public sealed class PullViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             // İptal bir hata değil; kullanıcı zaten ne olduğunu biliyor.
-            Notice = "İşlem iptal edildi.";
+            Notice = "The operation was cancelled.";
         }
         catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
         {
@@ -613,7 +613,7 @@ public sealed class PullViewModel : ViewModelBase
         if (result.Failures.Count > 0)
         {
             // 🔴 Kısmi başarı: bazı remote'lar güncellendi, bazıları güncellenmedi.
-            Warning = "Şu uzak depolar getirilemedi: "
+            Warning = "These remotes could not be fetched: "
                 + string.Join(", ", result.Failures.Select(failure => failure.Remote));
         }
     }
@@ -636,7 +636,7 @@ public sealed class PullViewModel : ViewModelBase
             _cancellation?.Token ?? CancellationToken.None).ConfigureAwait(true);
 
         Notice = result.AlreadyUpToDate
-            ? "Zaten güncel."
+            ? "Already up to date."
             : DescribeChanges(result.Changes);
 
         if (!result.AlreadyUpToDate)
@@ -648,14 +648,14 @@ public sealed class PullViewModel : ViewModelBase
         // "başarıyla güncellendi" demek olurdu.
         if (result.AutoStashConflict)
         {
-            Warning = "Getirme başarılı, ancak kaydedilmemiş değişiklikleriniz geri "
-                + "konurken çakıştı. Değişiklikleriniz kayıp DEĞİL: `git stash list` "
-                + "içinde duruyor. Çakışan dosyaları çözüp stash'i düşürün.";
+            Warning = "The fetch succeeded, but your uncommitted changes "
+                + "conflicted while being restored. Your changes are NOT lost: `git stash list` "
+                + "is still there. Resolve the conflicting files and drop the stash.";
         }
         else if (result.HasConflicts)
         {
-            Warning = "Birleştirme çakışmayla durdu: bazı dosyalar ÇÖZÜLMEMİŞ durumda. "
-                + "Çakışmaları çözüp commit'leyin ya da işlemi iptal edin.";
+            Warning = "The merge stopped with conflicts: some files are UNRESOLVED. "
+                + "Resolve the conflicts and commit, or abort the operation.";
         }
     }
 
@@ -663,7 +663,7 @@ public sealed class PullViewModel : ViewModelBase
     {
         if (changes.Count == 0)
         {
-            return "Değişiklik yok.";
+            return "No changes.";
         }
 
         int created = changes.Count(change => change.Kind == RefChangeKind.Created);
@@ -674,7 +674,7 @@ public sealed class PullViewModel : ViewModelBase
 
         if (updated > 0)
         {
-            parts.Add($"{updated} güncellendi");
+            parts.Add($"{updated} updated");
         }
 
         if (created > 0)
@@ -685,7 +685,7 @@ public sealed class PullViewModel : ViewModelBase
         if (deleted > 0)
         {
             // Budama yıkıcı: sayıyı yutmak kullanıcının haberi olmadan ref kaybetmesi olurdu.
-            parts.Add($"{deleted} kaldırıldı");
+            parts.Add($"{deleted} removed");
         }
 
         return string.Join(" · ", parts) + $" ({string.Join(", ", changes.Take(4).Select(c => c.ShortName))}"

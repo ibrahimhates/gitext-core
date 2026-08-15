@@ -146,7 +146,7 @@ public class CheckoutTests
         await model.CheckoutCommand.ExecuteAsync(null);
 
         model.BranchNotice.ShouldNotBeNull();
-        model.BranchNotice!.ShouldContain("ÇÖZÜLMEMİŞ");
+        model.BranchNotice!.ShouldContain("UNRESOLVED");
     }
 
     [AvaloniaFact]

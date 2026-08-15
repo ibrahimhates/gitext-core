@@ -31,7 +31,7 @@ public sealed class RemoteRowViewModel
     /// </remarks>
     public string DisplayUrl => Remote.Url is { } url
         ? GitRemote.MaskCredentials(url)
-        : "(URL tanımlı değil)";
+        : "(no URL configured)";
 
     public override string ToString() => Name;
 }
@@ -218,8 +218,8 @@ public sealed partial class RemotesViewModel : ViewModelBase
     /// çıkış kodu 128 ile duruyor. Tek satırlık kutu bu remote'u temsil edemez.
     /// </remarks>
     public string? MultipleUrlNotice => HasMultipleUrls
-        ? "Bu uzak depoda birden çok URL tanımlı; tek kutudan güvenle düzenlenemez. "
-          + "Tanımlı URL'ler: " + string.Join(", ", AllUrls())
+        ? "This remote has multiple URLs configured; it cannot be edited safely from a single box. "
+          + "Configured URLs: " + string.Join(", ", AllUrls())
         : null;
 
     /// <summary>Ad doğrulaması — kullanıcı yazarken.</summary>
@@ -382,7 +382,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
                 .SetUrlAsync(_workingDirectory, Name, RemoteUrlKind.Fetch, Url)
                 .ConfigureAwait(true);
 
-            done.Add("URL güncellendi");
+            done.Add("URL updated");
         }
 
         string originalPush = original.PushUrls.Count > 0 ? original.PushUrls[0] : string.Empty;
@@ -393,7 +393,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
                 .SetUrlAsync(_workingDirectory, Name, RemoteUrlKind.Push, PushUrl)
                 .ConfigureAwait(true);
 
-            done.Add("push URL'si güncellendi");
+            done.Add("the push URL was updated");
         }
         else if (!SeparatePushUrl && originalPush.Length > 0)
         {
@@ -401,10 +401,10 @@ public sealed partial class RemotesViewModel : ViewModelBase
                 .RemoveUrlAsync(_workingDirectory, Name, RemoteUrlKind.Push, originalPush)
                 .ConfigureAwait(true);
 
-            done.Add("ayrı push URL'si kaldırıldı");
+            done.Add("the separate push URL was removed");
         }
 
-        Notice = done.Count == 0 ? "Değişiklik yok." : string.Join(", ", done) + ".";
+        Notice = done.Count == 0 ? "No changes." : string.Join(", ", done) + ".";
     }
 
     private async Task DeleteAsync()
@@ -446,9 +446,9 @@ public sealed partial class RemotesViewModel : ViewModelBase
 
             await _writer.RemoveAsync(_workingDirectory, row.Name).ConfigureAwait(true);
 
-            Notice = $"'{row.Name}' kaldırıldı."
+            Notice = $"'{row.Name}' removed."
                 + (plan.TrackingBranches.Count > 0
-                    ? $" {plan.TrackingBranches.Count} uzak izleme dalı da silindi."
+                    ? $" {plan.TrackingBranches.Count} remote-tracking branches were deleted too."
                     : string.Empty);
 
             await ReloadAsync(select: null).ConfigureAwait(true);

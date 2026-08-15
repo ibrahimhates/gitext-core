@@ -79,7 +79,7 @@ public sealed partial class ShortcutReferenceViewModel : ViewModelBase
         [
             .. _registry.Conflicts.Select(c =>
                 $"{c.Gesture}: {string.Join(", ", c.CommandIds.Select(id => _registry.Find(id)?.Title ?? id))}"
-                + " — yalnızca ilki çalışır.")
+                + " — only the first one works.")
         ];
 
         OnPropertyChanged(nameof(Groups));
@@ -103,8 +103,8 @@ public sealed partial class ShortcutReferenceViewModel : ViewModelBase
     {
         CommandContext.Global => "Her yerde",
         CommandContext.CommitList => "Commit listesi",
-        CommandContext.Diff => "Diff görünümü",
-        CommandContext.WorkingTree => "Çalışma ağacı (commit ekranı)",
+        CommandContext.Diff => "Diff view",
+        CommandContext.WorkingTree => "Working tree (commit screen)",
         CommandContext.RefTree => "Dal paneli",
         _ => context.ToString(),
     };
