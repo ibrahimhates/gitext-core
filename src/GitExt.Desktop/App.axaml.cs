@@ -13,8 +13,8 @@ namespace GitExt.Desktop;
 public partial class App : Application
 {
     /// <summary>
-    /// <c>1</c> ise pencere açıldığında soğuk başlatma süresini stderr'e yazar.
-    /// Faz 09'daki teşhis modunun (P09-T03) çekirdeği.
+    /// If <c>1</c>, writes the cold start time to stderr when the window opens.
+    /// The core of the Phase 09 diagnostics mode (P09-T03).
     /// </summary>
     private const string StartupTraceVariable = "GITEXT_STARTUP_TRACE";
 
@@ -26,8 +26,8 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Süreç başlangıcından pencerenin açılmasına kadar geçen süreyi raporlar.
-    /// Süreç başlangıcını temel aldığı için .NET çalışma zamanı başlatma maliyetini de içerir.
+    /// Reports the time elapsed from process start until the window opens.
+    /// Since it is based on process start it also includes the .NET runtime startup cost.
     /// </summary>
     private static void ReportStartupTime(object? sender, EventArgs e)
     {
@@ -45,13 +45,13 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        // Kayıtlı görünüm ayarları pencere AÇILMADAN önce uygulanıyor (P08-T07…T10):
-        // sonrasına kalsaydı uygulama önce varsayılan tema ve yazı tipiyle açılıp gözle
-        // görülür biçimde zıplardı.
+        // The saved appearance settings are applied BEFORE the window opens (P08-T07…T10):
+        // had it been left until afterwards, the application would first open with the default theme
+        // and font and would visibly jump.
         _services.GetRequiredService<IAppearanceService>().ApplyStored();
 
-        // Dil de aynı gerekçeyle burada (P11-T07): pencere kurulurken metinler zaten
-        // doğru dilde olmalı, yoksa uygulama İngilizce açılıp Türkçeye zıplardı.
+        // Language is set here for the same reason (P11-T07): the texts must already be in the right
+        // language while the window is built, else the app would open in English and jump to Turkish.
         _services.GetRequiredService<ITranslator>().ApplyStored();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -60,9 +60,9 @@ public partial class App : Application
             MainWindowViewModel viewModel = _services.GetRequiredService<MainWindowViewModel>();
             window.DataContext = viewModel;
 
-            // Komut satırında bir yol verildiyse o açılır ve açılamazsa hata gösterilir.
-            // Verilmediyse çalışma dizini SESSİZCE denenir; depo değilse karşılama ekranı
-            // açılır (masaüstünden başlatıldığında çalışma dizini rastgele bir yerdir).
+            // If a path was given on the command line it is opened, and an error is shown if it fails.
+            // If none was given the working directory is tried SILENTLY; if it is not a repository the
+            // welcome screen opens (when started from the desktop the working directory is arbitrary).
             string? path = desktop.Args?.FirstOrDefault(a => !a.StartsWith("--", StringComparison.Ordinal));
 
             _ = viewModel.StartAsync(path);
@@ -72,9 +72,9 @@ public partial class App : Application
                 window.Opened += ReportStartupTime;
             }
 
-            // Bekleyen ayar kaydı diske yazılmadan çıkılmamalı (P08-T14). Kayıt gecikmeli:
-            // pencereyi yeniden boyutlandırıp hemen kapatan bir kullanıcı, gecikme dolmadan
-            // çıktığı için düzenini KAYBEDERDİ.
+            // Must not exit before a pending settings save is written to disk (P08-T14). The save is
+            // debounced: a user who resizes the window and closes it immediately WOULD LOSE their
+            // layout, because they exit before the delay elapses.
             desktop.ShutdownRequested += (_, _) =>
                 _services.GetRequiredService<ISettingsStore>().FlushAsync().GetAwaiter().GetResult();
 

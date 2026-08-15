@@ -4,11 +4,11 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P07-T06 · P07-T07 · P07-T08 · P07-T09 · P07-T10 — geçmişi yeniden yazan işlemler.
+/// P07-T06 · P07-T07 · P07-T08 · P07-T09 · P07-T10 — operations that rewrite history.
 /// </summary>
 /// <remarks>
-/// Faz kuralı: her işlem öncesi konum kaydedilir ve geri alma yolu sunulur. Sonuçlar
-/// git'in <b>metnine</b> değil deponun <b>durumuna</b> bakılarak doğrulanıyor.
+/// The phase rule: before every operation the position is recorded and an undo path is offered. The
+/// results are verified by looking at the repository's <b>state</b>, not at git's <b>text</b>.
 /// </remarks>
 public class HistoryRewriteTests
 {
@@ -35,7 +35,7 @@ public class HistoryRewriteTests
             Repository.Dispose();
         }
 
-        /// <summary>Ardışık commit'ler üretir: c1, c2, c3…</summary>
+        /// <summary>Produces consecutive commits: c1, c2, c3…</summary>
         public void Chain(int count)
         {
             for (int index = 1; index <= count; index++)
@@ -81,7 +81,7 @@ public class HistoryRewriteTests
 
         harness.Subjects.ShouldBe(["c1", "taban"]);
 
-        // ÖLÇÜLDÜ: dosya diskte kalıyor ve index'te stage'li görünüyor.
+        // MEASURED: the file stays on disk and shows up as staged in the index.
         harness.Repository.Git("status", "--porcelain=v2").ShouldContain("A.");
     }
 
@@ -126,7 +126,7 @@ public class HistoryRewriteTests
         point.ObjectId.ShouldBe(before);
         point.RecoveryCommand.ShouldBe($"git reset --hard {before}");
 
-        // Geri alma komutu GERÇEKTEN çalışıyor mu?
+        // Does the undo command REALLY work?
         harness.Repository.Git("reset", "--hard", point.ObjectId);
         harness.Head.ShouldBe(before);
     }
@@ -158,7 +158,7 @@ public class HistoryRewriteTests
         preview.HasUncommittedChanges.ShouldBeTrue();
         preview.LosesUncommittedWork(ResetMode.Hard).ShouldBeTrue();
 
-        // --soft ve --mixed çalışma ağacına dokunmuyor; onlar için uyarı yanlış olurdu.
+        // --soft and --mixed do not touch the working tree; a warning would be wrong for them.
         preview.LosesUncommittedWork(ResetMode.Mixed).ShouldBeFalse();
     }
 
@@ -175,10 +175,10 @@ public class HistoryRewriteTests
     [Fact]
     public void Reset_komutunda_ayrac_SONDA()
     {
-        // 🔴 ÖLÇÜLDÜ: `git reset --hard -- <hedef>` "Cannot do hard reset with paths" ile
-        // ölüyor — `--`'dan sonrası reset için YOL demek. Ayraç sona konmalı; orada da
-        // gereksiz değil: dal adıyla aynı adda bir dosya varsa ayraçsız çağrı
-        // "ambiguous argument" veriyor.
+        // 🔴 MEASURED: `git reset --hard -- <target>` dies with "Cannot do hard reset with paths" —
+        // what follows `--` means a PATH to reset. The separator must go at the end; and it is not
+        // unnecessary there either: if a file has the same name as a branch, a call without the
+        // separator gives "ambiguous argument".
         ResetWriter.Describe(new ResetOptions { Target = "HEAD~1", Mode = ResetMode.Hard })
             .ShouldBe("git reset --hard HEAD~1 --");
     }
@@ -215,7 +215,7 @@ public class HistoryRewriteTests
     [Fact]
     public async Task CHERRY_PICK_cakismasi_HATA_degil_DURUM()
     {
-        // Çakışma metni stdout'ta ve çıkış kodu 1; karar index'e bakarak veriliyor.
+        // The conflict text is on stdout and the exit code is 1; the decision is made by looking at the index.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("f.txt", "a\nb\nc\n");
         harness.Repository.Git("add", "-A");
@@ -242,7 +242,7 @@ public class HistoryRewriteTests
     [Fact]
     public async Task CHERRY_PICK_BILINMEYEN_committe_FIRLATIYOR()
     {
-        // Gerçek hatalar durum olarak yutulmamalı.
+        // Real errors must not be swallowed as a state.
         using Harness harness = await CreateAsync();
 
         await Should.ThrowAsync<GitException>(async () => await harness.Sequencer.RunAsync(
@@ -258,7 +258,7 @@ public class HistoryRewriteTests
     [Fact]
     public async Task NO_COMMIT_commit_ATMIYOR_ve_bunu_SOYLUYOR()
     {
-        // P06-T11'deki `--squash` dersi: çıkış kodu 0 ama HEAD ilerlemiyor.
+        // The `--squash` lesson from P06-T11: exit code 0 but HEAD does not advance.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("checkout", "-q", "-b", "yan");
         harness.Repository.WriteFile("yan.txt", "yan\n");
@@ -303,8 +303,8 @@ public class HistoryRewriteTests
     [Fact]
     public async Task MERGE_commiti_revert_ederken_EBEVEYN_sayisi_biliniyor()
     {
-        // 🔴 ÖLÇÜLDÜ: merge commit'ini `-m` olmadan revert etmek rc=128 veriyor
-        // ("is a merge but no -m option was given"). Kullanıcı ebeveyni seçmeli.
+        // 🔴 MEASURED: reverting a merge commit without `-m` gives rc=128
+        // ("is a merge but no -m option was given"). The user has to choose the parent.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("checkout", "-q", "-b", "yan");
         harness.Repository.WriteFile("yan.txt", "yan\n");
@@ -359,7 +359,7 @@ public class HistoryRewriteTests
             RecordOrigin = true,
         }).ShouldBe("git cherry-pick -x abc");
 
-        // Revert kaynağı zaten mesajına yazıyor; `-x` orada anlamsız.
+        // Revert already writes the source into its message; `-x` is meaningless there.
         SequencerWriter.Describe(new SequencerOptions
         {
             Operation = SequencerOperation.Revert,
@@ -391,7 +391,7 @@ public class HistoryRewriteTests
 
         result.Outcome.ShouldBe(RebaseOutcome.Completed);
 
-        // "yan commit" artık "ana commit"in üstünde.
+        // "yan commit" now sits on top of "ana commit".
         harness.Subjects.ShouldBe(["yan commit", "ana commit", "taban"]);
     }
 
@@ -432,7 +432,7 @@ public class HistoryRewriteTests
         IReadOnlyList<RebaseStep> steps =
             await harness.Rebase.ReadStepsAsync(harness.Path, "main", cancellationToken: Ct);
 
-        // En eski önce: todo listesi yukarıdan aşağı uygulanıyor.
+        // Oldest first: the todo list is applied top to bottom.
         steps.Select(step => step.Subject).ShouldBe(["c1", "c2", "c3"]);
         steps.ShouldAllBe(step => step.Action == RebaseAction.Pick);
     }
@@ -491,7 +491,7 @@ public class HistoryRewriteTests
 
         result.Outcome.ShouldBe(RebaseOutcome.Completed);
 
-        // `fixup` c2'nin mesajını atıyor; içeriği c1'e kaynıyor.
+        // `fixup` discards c2's message; its content is squashed into c1.
         harness.Subjects.ShouldBe(["c3", "c1", "taban"]);
         File.Exists(Path.Combine(harness.Path, "f2.txt")).ShouldBeTrue("içerik korunmalı");
     }
@@ -558,7 +558,7 @@ public class HistoryRewriteTests
             },
             Ct);
 
-        // Çakışma YOK ama rebase yine de durdu — çıkış kodu 0 olsa bile.
+        // There is NO conflict but the rebase still stopped — even though the exit code is 0.
         result.Outcome.ShouldBe(RebaseOutcome.StoppedForEdit);
         result.ConflictedPaths.ShouldBeEmpty();
         result.IsStopped.ShouldBeTrue();
@@ -566,7 +566,7 @@ public class HistoryRewriteTests
         harness.Repository.Git("rebase", "--abort");
     }
 
-    // ------------------------------------------------------- todo listesi
+    // ------------------------------------------------------- todo list
 
     [Fact]
     public void Todo_listesi_git_in_bekledigi_bicimde_yaziliyor()
@@ -584,7 +584,7 @@ public class HistoryRewriteTests
     [Fact]
     public void Cok_satirli_konu_todo_yu_BOZMUYOR()
     {
-        // Satır sonu todo'da yeni bir komut satırı gibi okunur ve git'i şaşırtırdı.
+        // A line ending is read as a new command line in the todo and would confuse git.
         string todo = RebaseTodo.Render(
             [new RebaseStep { ObjectId = "aaa111", Subject = "ilk\nsatir arasi" }]);
 
@@ -594,8 +594,8 @@ public class HistoryRewriteTests
     [Fact]
     public void HEPSI_dusurulurse_todo_REDDEDILIYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: boş todo `error: nothing to do` ile rc=1 veriyor ve rebase hiç
-        // başlamıyor. Kullanıcıya önceden söylemek, "hiçbir şey olmadı" şaşkınlığından iyi.
+        // 🔴 MEASURED: an empty todo gives `error: nothing to do` with rc=1 and the rebase never
+        // starts. Telling the user in advance is better than the "nothing happened" bewilderment.
         RebaseTodo.Validate(
         [
             new RebaseStep { ObjectId = "a", Action = RebaseAction.Drop },
@@ -619,9 +619,9 @@ public class HistoryRewriteTests
     [Fact]
     public void Sequence_editor_betigi_dosyayi_KESIYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: betiğe verilen dosya git'in kendi todo'suyla DOLU geliyor. `>>` ile
-        // eklemek, 3 komut istenirken git'in 6 komut görmesine ve commit'lerin iki kez
-        // uygulanıp çakışmasına yol açmıştı.
+        // 🔴 MEASURED: the file passed to the script arrives FULL of git's own todo. Appending with `>>`
+        // had caused git to see 6 commands when 3 were wanted, and the commits to be applied twice
+        // and conflict.
         using RebaseTodoSession session = RebaseTodoSession.Create("pick abc\n");
 
         string scriptPath = session.Environment["GIT_SEQUENCE_EDITOR"];
@@ -634,8 +634,8 @@ public class HistoryRewriteTests
     [Fact]
     public void Todo_METNI_komut_satirinda_ya_da_betikte_GORUNMUYOR()
     {
-        // Deseni AskPassSession'dan alıyor: içerik betiğe gömülmüyor, ortamdaki bir
-        // dosyadan okunuyor. Böylece tırnak/satırsonu kaçış sorunları hiç doğmuyor.
+        // It takes the pattern from AskPassSession: the content is not embedded in the script, it is read
+        // from a file named in the environment. That way quoting/newline escaping problems never arise.
         const string todo = "pick abc # ÇOK ÖZEL \"tırnaklı\" konu\n";
 
         using RebaseTodoSession session = RebaseTodoSession.Create(todo);

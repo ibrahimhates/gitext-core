@@ -147,8 +147,10 @@ a publish smoke test for all four target platforms, and a performance regression
 `.editorconfig` is applied by the compiler (`EnforceCodeStyleInBuild`), so style problems are
 build errors, not review comments. `dotnet format` fixes most of them.
 
-Two conventions the tooling cannot enforce:
+Three conventions the tooling cannot enforce:
 
+- **Comments are written in English.** Identifiers, comments, commit messages — the whole
+  codebase is one language, so a contributor does not need a second one to read it.
 - **Comments explain why, not what.** A comment restating the code is noise. A comment
   recording a measurement, a rejected alternative, or a trap someone already fell into is the
   most valuable thing in the file.
@@ -230,7 +232,6 @@ partial translation is usable from the first commit.
 
 ### What is *not* translated
 
-- **Code comments.** They stay in Turkish.
 - **Git terminology and product names** — `SHA`, `URL`, `Push`, `Git`, `gitext-core` — which
   read the same in both languages.
 - **`GitExt.Core` messages.** The core layer cannot depend on the UI (ADR-0003), so its

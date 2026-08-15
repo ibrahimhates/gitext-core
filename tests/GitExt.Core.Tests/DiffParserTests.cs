@@ -5,17 +5,17 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T02 — Unified diff ayrıştırıcısı, <b>gerçek <c>git</c> çıktısına</b> karşı (ADR-0003).
+/// P04-T02 — Unified diff parser, against <b>real <c>git</c> output</b> (ADR-0003).
 /// </summary>
 /// <remarks>
-/// Elle yazılmış diff metni kullanmak, git'in gerçekte ürettiği ince ayrıntıları
-/// (tek satırlık hunk'ta uzunluğun yazılmaması, satır sonu işaretinin yeri, hunk'sız
-/// diff türleri) kaçırırdı. Her senaryo gerçek bir depoda üretiliyor.
+/// Using hand-written diff text would miss the fine details git actually produces
+/// (the length not being written on a single-line hunk, the position of the newline marker, hunkless
+/// diff kinds). Every scenario is produced in a real repository.
 /// </remarks>
 public class DiffParserTests
 {
     /// <summary>
-    /// Son iki commit arasındaki diff'i ayrıştırır.
+    /// Parses the diff between the last two commits.
     /// </summary>
     private static IReadOnlyList<FileDiff> DiffOfHead(TestRepository repository) =>
         DiffParser.Parse(repository.GitLossless("diff", "--raw", "-z", "--patch", "-M", "HEAD^", "HEAD"));
@@ -87,7 +87,7 @@ public class DiffParserTests
         renamed.OldPath!.Value.Value.ShouldBe("eski-ad.txt");
         renamed.SimilarityScore.ShouldBe(100);
 
-        // ÖLÇÜLDÜ: %100 benzerlikli rename HİÇ hunk üretmiyor.
+        // MEASURED: a 100% similarity rename produces NO hunk at all.
         renamed.HasHunks.ShouldBeFalse();
     }
 
@@ -163,7 +163,7 @@ public class DiffParserTests
 
         DiffHunk hunk = DiffOfHead(repository).Single().Hunks.Single();
 
-        // ÖLÇÜLDÜ: işaret hem `-` hem `+` satırından sonra ayrı ayrı çıkıyor.
+        // MEASURED: the marker comes out separately after both the `-` and the `+` line.
         hunk.Lines.Single(l => l.Kind == DiffLineKind.Removed).EndsWithoutNewline.ShouldBeTrue();
         hunk.Lines.Single(l => l.Kind == DiffLineKind.Added).EndsWithoutNewline.ShouldBeTrue();
     }
@@ -171,9 +171,9 @@ public class DiffParserTests
     [Fact]
     public void Zor_yollar_dogru_okunur()
     {
-        // Bu testin varlık sebebi: `diff --git a/… b/…` başlığı bu yollarda ayrıştırılamıyor.
-        // Boşluklu yolda iki yolu ayırmanın güvenli yolu yok, ASCII dışı adlar sekizlik
-        // kaçışla tırnaklanıyor. Yollar bu yüzden yalnızca `--raw -z`'den okunuyor.
+        // The reason this test exists: the `diff --git a/… b/…` header cannot be parsed on these paths.
+        // On a path with spaces there is no safe way to separate the two paths, and non-ASCII names are
+        // quoted with octal escapes. That is why paths are read only from `--raw -z`.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("baslangic.txt", "x\n");
         repository.Git("add", "-A");
@@ -198,8 +198,8 @@ public class DiffParserTests
     [Fact]
     public void Cok_dosyali_committe_hunklar_dogru_dosyaya_baglanir()
     {
-        // Eşleme sıraya dayanıyor (700 gerçek commit'te doğrulandı). Yanlış eşleme,
-        // kullanıcıya BAŞKA bir dosyanın değişikliklerini göstermek demek olurdu.
+        // The matching relies on order (verified on 700 real commits). A wrong match would mean showing
+        // the user the changes of ANOTHER file.
         using TestRepository repository = TestRepository.CreateEmpty();
 
         for (int i = 1; i <= 4; i++)
@@ -235,8 +235,8 @@ public class DiffParserTests
     [Fact]
     public void Tek_satirlik_hunkta_uzunluk_yazilmasa_da_dogru_okunur()
     {
-        // ÖLÇÜLDÜ: git tek satırlık hunk'ta `@@ -1 +1 @@` yazıyor — uzunluk YOK.
-        // Varsayılanı 0 almak sonraki satır numaralarını kaydırırdı.
+        // MEASURED: git writes `@@ -1 +1 @@` on a single-line hunk — there is NO length.
+        // Taking the default as 0 would shift the subsequent line numbers.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "tek\n");
         repository.Git("add", "-A");
@@ -291,14 +291,14 @@ public class DiffParserTests
     [Fact]
     public void Bozuk_ham_kayit_sessizce_yutulmaz()
     {
-        // Sessizce yanlış veri üretmektense durmak tercih edildi.
+        // Stopping was preferred over silently producing wrong data.
         Should.Throw<DiffParseException>(() => DiffParser.Parse(":bozuk\0a.txt\0\0"));
     }
 
     [Fact]
     public void Yama_blogu_eksikse_hata_verilir()
     {
-        // Hunk'ları yanlış dosyaya bağlamak sessiz veri bozulmasıdır; sayı uyuşmazsa dur.
+        // Attaching hunks to the wrong file is silent data corruption; if the counts do not match, stop.
         const string output =
             ":100644 100644 1111111 2222222 M\0a.txt\0"
             + ":100644 100644 3333333 4444444 M\0b.txt\0"

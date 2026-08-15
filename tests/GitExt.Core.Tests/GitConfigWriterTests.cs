@@ -4,12 +4,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P08-T15 — <c>git config</c> yazma, <b>gerçek git'e karşı</b>.
+/// P08-T15 — writing <c>git config</c>, <b>against real git</b>.
 /// </summary>
 /// <remarks>
-/// Testler yalnızca yerel kapsamı kullanıyor: global kapsam kullanıcının <c>~/.gitconfig</c>
-/// dosyasına yazardı ve bir test <b>asla</b> geliştiricinin gerçek yapılandırmasını
-/// değiştirmemeli.
+/// The tests use only the local scope: the global scope would write into the user's <c>~/.gitconfig</c>
+/// file, and a test must <b>never</b> change the developer's real
+/// configuration.
 /// </remarks>
 public class GitConfigWriterTests
 {
@@ -38,13 +38,13 @@ public class GitConfigWriterTests
     }
 
     /// <summary>
-    /// 🔴 Boş değer ayarı <b>siliyor</b>, boşa ayarlamıyor.
+    /// 🔴 An empty value <b>deletes</b> the setting, it does not set it to empty.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: <c>git config user.name ""</c> çıkış kodu 0 veriyor ve ayar <b>var ama
-    /// boş</b> oluyor. Boş bir <c>user.name</c> ile commit atmak, hiç ayarlanmamış
-    /// olmasından farklı ve daha kötü bir hata üretir. Bu test, alanı temizleyen
-    /// kullanıcının "sil" dediğini koruyor.
+    /// MEASURED: <c>git config user.name ""</c> gives exit code 0 and the setting ends up <b>present but
+    /// empty</b>. Committing with an empty <c>user.name</c> produces a different and worse error than
+    /// having it never set at all. This test protects the "delete" intent of the user who clears
+    /// the field.
     /// </remarks>
     [Fact]
     public async Task Bos_deger_ayari_SILIYOR()
@@ -61,12 +61,12 @@ public class GitConfigWriterTests
     }
 
     /// <summary>
-    /// 🔴 Olmayan bir ayarı silmek <b>hata değil</b>.
+    /// 🔴 Deleting a setting that does not exist is <b>not an error</b>.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: <c>git config --unset</c> olmayan anahtarda <b>çıkış kodu 5</b> veriyor —
-    /// 0 da 1 de değil. Hata sayılsaydı zaten boş olan bir alanı temizleyen kullanıcı,
-    /// hiçbir şey yanlış gitmemişken hata görürdü.
+    /// MEASURED: <c>git config --unset</c> gives <b>exit code 5</b> on a missing key —
+    /// neither 0 nor 1. Had it been treated as an error, a user clearing a field that was already empty
+    /// would see an error while nothing had gone wrong.
     /// </remarks>
     [Fact]
     public async Task Olmayan_ayari_silmek_hata_degil()
@@ -79,12 +79,12 @@ public class GitConfigWriterTests
     }
 
     /// <summary>
-    /// Kapsamlı okuma birleşimi değil, <b>o dosyayı</b> okuyor.
+    /// A scoped read reads <b>that file</b>, not the merged result.
     /// </summary>
     /// <remarks>
-    /// Ayrım şart: birleşik okuma, değerin hangi dosyadan geldiğini söylemiyor. Global bir
-    /// değeri yerel alanda göstermek, kullanıcının kaydettiğinde farkında olmadan yerel bir
-    /// kopya oluşturması demekti.
+    /// The distinction is essential: a merged read does not tell you which file the value came from.
+    /// Showing a global value in the local field meant the user unknowingly creating a local copy when
+    /// they saved.
     /// </remarks>
     [Fact]
     public async Task Kapsamli_okuma_birlesimi_degil_o_dosyayi_okuyor()
@@ -92,15 +92,15 @@ public class GitConfigWriterTests
         using TestRepository repository = TestRepository.CreateEmpty();
         (GitConfigWriter writer, GitConfigReader reader) = await CreateAsync();
 
-        // Fixture yerel `user.email` ayarlıyor; onu kaldırıp yerel kapsamın gerçekten
-        // boş olduğunu görüyoruz.
+        // The fixture sets a local `user.email`; we remove it and see that the local scope really is
+        // empty.
         await writer.SetAsync(repository.Path, "user.email", "", GitConfigScope.Local, Ct);
 
         (await writer.GetScopedAsync(repository.Path, "user.email", GitConfigScope.Local, Ct))
             .ShouldBeNull();
 
-        // Birleşik okuma yine bir değer bulabilir (geliştiricinin global ayarı); bu test
-        // onun ne olduğuna değil, YEREL kapsamın ayrı okunduğuna bakıyor.
+        // A merged read may still find a value (the developer's global setting); this test does not
+        // look at what that is, but at the LOCAL scope being read separately.
         await writer.SetAsync(repository.Path, "user.email", "yerel@örnek", GitConfigScope.Local, Ct);
 
         (await reader.GetAsync(repository.Path, "user.email", Ct)).ShouldBe("yerel@örnek");
@@ -117,12 +117,12 @@ public class GitConfigWriterTests
     }
 
     /// <summary>
-    /// 🔴 Depo olmayan bir dizinde yerel okuma <b>çökmüyor</b>.
+    /// A local read in a directory that is not a repository <b>does not crash</b>.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: <c>git config --local</c> depo dışında <c>fatal</c> ve çıkış kodu <b>128</b>
-    /// veriyor. Komut satırından verilen dizin depo olmayabilir; bunun için istisna atmak
-    /// uygulamayı açılmaz hâle getirirdi.
+    /// MEASURED: <c>git config --local</c> outside a repository gives <c>fatal</c> and exit code <b>128</b>.
+    /// A directory given on the command line may not be a repository; throwing for that would make the
+    /// application impossible to open.
     /// </remarks>
     [Fact]
     public async Task Depo_olmayan_dizinde_yerel_okuma_cokmuyor()

@@ -4,24 +4,24 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P06-T09 — kimlik doğrulama akışı.
+/// P06-T09 — authentication flow.
 /// </summary>
 /// <remarks>
-/// Ölçümün üç sessiz noktası: SSH'ta kimlik ve ağ hatalarının <b>ikisinin de</b>
-/// <c>Could not read from remote repository.</c> satırını taşıması, <c>ssh-add -l</c>'in
-/// çıkış kodunun temiz bir teşhis kanalı olması, ve <c>GIT_ASKPASS</c>'ın
-/// <c>GIT_TERMINAL_PROMPT=0</c> iken de çalışması.
+/// The three silent points of the measurement: over SSH <b>both</b> credential and network
+/// errors carry the <c>Could not read from remote repository.</c> line, <c>ssh-add -l</c>'s
+/// exit code is a clean diagnostic channel, and <c>GIT_ASKPASS</c> works even when
+/// <c>GIT_TERMINAL_PROMPT=0</c> is set.
 /// </remarks>
 public class AuthenticationTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    // ------------------------------------------------------- sınıflandırma
+    // ----------------------------------------------------- classification
 
     /// <remarks>
-    /// 🔴 <b>Bu satırlar gerçek git çıktısından alındı.</b> P06-T09'a kadar üçü de
-    /// <see cref="GitFailureKind.RemoteUnreachable"/> diye sınıflandırılıyordu: kullanıcıya
-    /// "uzak depo bulunamadı" denirdi, o da adresini kurcalardı — oysa adres doğru.
+    /// 🔴 <b>These lines were taken from real git output.</b> Until P06-T09 all three were
+    /// classified as <see cref="GitFailureKind.RemoteUnreachable"/>: the user was told
+    /// "remote repository not found", so they went fiddling with the address — but the address is right.
     /// </remarks>
     [Theory]
     [InlineData(
@@ -48,8 +48,8 @@ public class AuthenticationTests
     [Fact]
     public void Gercekten_ulasilamayan_remote_hala_RemoteUnreachable()
     {
-        // Düzeltmenin eski davranışı yutmadığının kanıtı: sebebi kimlik ya da ağ OLMAYAN
-        // bir "okuyamadım" hâlâ kendi türünde.
+        // Proof that the fix did not swallow the old behaviour: an "I could not read" whose
+        // cause is NEITHER credentials NOR network is still its own kind.
         const string text =
             "fatal: '/olmayan/yol' does not appear to be a git repository\n"
             + "fatal: Could not read from remote repository.\n";
@@ -57,7 +57,7 @@ public class AuthenticationTests
         GitFailureClassifier.Classify(text).ShouldBe(GitFailureKind.RemoteUnreachable);
     }
 
-    // ------------------------------------------------------------- teşhis
+    // ---------------------------------------------------------- diagnosis
 
     [Theory]
     [InlineData("https://github.com/x/y.git", RemoteTransport.Https)]
@@ -104,7 +104,7 @@ public class AuthenticationTests
         result.Explanation.ShouldContain("SSH agent");
         result.Suggestions.ShouldContain("ssh-add ~/.ssh/id_ed25519");
 
-        // SSH'ta kimlik bilgisi sormak anlamsız — istenen şey bir anahtar.
+        // Asking for a credential over SSH is meaningless — what is wanted is a key.
         result.CanRetryWithCredentials.ShouldBeFalse();
     }
 
@@ -138,7 +138,7 @@ public class AuthenticationTests
         result.HasCredentialHelper.ShouldBeFalse();
         result.CanRetryWithCredentials.ShouldBeTrue();
 
-        // ⚠️ `store` bilinçli olarak önerilmiyor: parolayı düz metin diske yazar.
+        // ⚠️ `store` is deliberately not recommended: it writes the password to disk in plain text.
         result.Suggestions.ShouldNotContain(suggestion => suggestion.Contains("store", StringComparison.Ordinal));
     }
 
@@ -161,8 +161,8 @@ public class AuthenticationTests
     [Fact]
     public async Task Bos_credential_helper_ayari_VAR_sayilmiyor()
     {
-        // `credential.helper=` yazmak, devralınan helper'ı iptal etmenin git'teki yolu;
-        // "helper var" demek kullanıcıya yanlış öneri verirdi.
+        // Writing `credential.helper=` is git's way of cancelling an inherited helper;
+        // saying "there is a helper" would give the user the wrong advice.
         (TestRepository repository, AuthenticationDiagnostics diagnostics) = await CreateAsync();
         using TestRepository _ = repository;
 
@@ -195,12 +195,12 @@ public class AuthenticationTests
     [Fact]
     public async Task ASKPASS_kimligi_gercekten_gecirilyor_ve_komut_satirinda_GORUNMUYOR()
     {
-        // 🔴 Parolanın argümana konmaması kritik: komut satırı aynı makinedeki her sürece
-        // `ps` ile görünür. Bu test gizli değerin argümanlarda OLMADIĞINI ve buna rağmen
-        // git'e ULAŞTIĞINI birlikte gösteriyor.
+        // 🔴 Keeping the password out of the arguments is critical: the command line is visible
+        // to every process on the same machine via `ps`. This test shows both that the secret is
+        // NOT in the arguments and that it nevertheless REACHES git.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
-        // Kimlik isteyen sahte bir uzak taraf: `git credential fill` askpass'i çağırıyor.
+        // A fake remote that asks for credentials: `git credential fill` invokes askpass.
         using AskPassSession session = AskPassSession.Create(new GitCredentials("deneme", "gizli-token"));
 
         GitExecutable executable = await GitExecutable.LocateAsync(cancellationToken: Ct);
@@ -220,7 +220,7 @@ public class AuthenticationTests
         output.ShouldContain("username=deneme");
         output.ShouldContain("password=gizli-token");
 
-        // "Komutu göster" alanı ve komut günlüğü ekranda: gizli değer oraya sızmamalı.
+        // The "show command" field and the command log are on screen: the secret must not leak there.
         command.ToDisplayString().ShouldNotContain("gizli-token");
         command.ToDisplayString().ShouldBe("git credential fill");
     }
@@ -242,7 +242,7 @@ public class AuthenticationTests
                     UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             }
 
-            // Gizli değer betiğin İÇİNDE değil, ortamda.
+            // The secret is not INSIDE the script, it is in the environment.
             File.ReadAllText(path).ShouldNotContain("COK-GIZLI-DEGER-42");
         }
 
@@ -252,8 +252,8 @@ public class AuthenticationTests
     [Fact]
     public async Task Komuta_ozel_ortam_GitEnvironment_in_bosalttigi_degiskeni_GERI_koyuyor()
     {
-        // GitEnvironment `GIT_ASKPASS`i bilerek boşaltıyor (grafik araçlar açılmasın diye).
-        // Komuta özel ortam EN SONA uygulanmazsa kimlik doğrulama akışı hiç çalışmazdı.
+        // GitEnvironment deliberately clears `GIT_ASKPASS` (so that graphical tools do not open).
+        // If the command-specific environment were not applied LAST, the authentication flow would never work.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using AskPassSession session = AskPassSession.Create(new GitCredentials("kullanici", "sir"));
 

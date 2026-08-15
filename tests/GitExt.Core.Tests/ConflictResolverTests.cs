@@ -6,7 +6,7 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P07-T04 + P07-T05 — çakışma çözüm akışı ve harici araç.
+/// P07-T04 + P07-T05 — conflict resolution flow and external tool.
 /// </summary>
 public class ConflictResolverTests
 {
@@ -68,7 +68,7 @@ public class ConflictResolverTests
             main => main.WriteFile("f.txt", "a\nANA\nc\n"),
             startCommand);
 
-    // ------------------------------------------------------------ ilerleme
+    // ------------------------------------------------------------ progress
 
     [Fact]
     public async Task Kalan_cakisma_sayisi_ve_devam_komutu_dogru()
@@ -87,7 +87,7 @@ public class ConflictResolverTests
     [Fact]
     public async Task COZULMEDEN_devam_SUNULMUYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: çözülmeden `--continue` çalıştırmak rc=128 veriyor
+        // 🔴 MEASURED: running `--continue` without resolving gives rc=128
         // ("Committing is not possible because you have unmerged files").
         using Harness harness = await ContentConflictAsync();
 
@@ -141,13 +141,13 @@ public class ConflictResolverTests
         progress.AbortCommand.ShouldBeNull();
     }
 
-    // ------------------------------------------------------------ çözme
+    // ------------------------------------------------------------ resolving
 
     [Fact]
     public async Task TARAF_ALMAK_cakismayi_GERCEKTEN_temizliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: `git checkout --ours` içeriği yazıyor ama dosya index'te hâlâ `U`.
-        // Ardından `git add` gelmezse kullanıcı "çözdüm" sanır ve `--continue` reddedilir.
+        // 🔴 MEASURED: `git checkout --ours` writes the content but the file is still `U` in the index.
+        // If `git add` does not follow, the user thinks "I resolved it" and `--continue` is refused.
         using Harness harness = await ContentConflictAsync();
         RepositoryPath path = RepositoryPath.Parse("f.txt");
 
@@ -174,7 +174,7 @@ public class ConflictResolverTests
     public async Task VARLIK_cakismasi_SILEREK_cozulebiliyor()
     {
         // deleted-by-us: `checkout --ours` burada rc=1 veriyor ("does not have our
-        // version"); doğru çözüm dosyayı silmek ya da eklemek.
+        // version"); the correct resolution is to delete or to add the file.
         using Harness harness = await CreateAsync(
             branch => branch.WriteFile("f.txt", "DEGISTI\n"),
             main => main.Git("rm", "-q", "f.txt"));
@@ -227,7 +227,7 @@ public class ConflictResolverTests
             async () => await resolver.ContinueAsync(repository.Path, Ct));
     }
 
-    // ------------------------------------------------------------ harici araç
+    // ------------------------------------------------------------ external tool
 
     [Fact]
     public async Task Yapilandirilmamis_merge_tool_NULL()
@@ -249,8 +249,8 @@ public class ConflictResolverTests
     [Fact]
     public void KURULU_OLMAYAN_araclar_ayirt_ediliyor()
     {
-        // git iki liste basıyor; kurulu olmayanı seçtirmek kullanıcıyı çalışmayan bir
-        // düğmeye tıklatırdı.
+        // git prints two lists; letting the user pick one that is not installed would make them
+        // click a button that does not work.
         const string output = """
             'git mergetool --tool=<tool>' may be set to one of the following:
             		meld             Use Meld
@@ -282,12 +282,12 @@ public class ConflictResolverTests
     [Fact]
     public async Task Harici_arac_cakismayi_cozuyor_ve_ORIG_yedegi_bildiriliyor()
     {
-        // ⚠️ ÖLÇÜLDÜ: `git mergetool` her dosya için bir `<ad>.orig` bırakıyor ve bu
-        // takip edilmeyen dosya olarak ağaçta kalıyor. Söylenmezse kullanıcı "bu dosya
-        // nereden çıktı" diye sorar.
+        // ⚠️ MEASURED: `git mergetool` leaves a `<name>.orig` behind for every file and it stays
+        // in the tree as an untracked file. If it is not mentioned, the user asks "where did this
+        // file come from".
         using Harness harness = await ContentConflictAsync();
 
-        // Karşı tarafı alan sahte bir araç: gerçek bir GUI aracı testte çalıştırılamaz.
+        // A fake tool that takes the other side: a real GUI tool cannot be run in a test.
         string script = Path.Combine(harness.Path, "arac.sh");
         await File.WriteAllTextAsync(script, "#!/bin/sh\ncat \"$2\" > \"$4\"\n", Ct);
 

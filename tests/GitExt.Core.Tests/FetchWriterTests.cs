@@ -7,9 +7,9 @@ namespace GitExt.Core.Tests;
 /// P06-T06 — fetch.
 /// </summary>
 /// <remarks>
-/// Ölçümün üç sessiz noktası test ediliyor: çıktının tamamının <c>stderr</c>'de olması
-/// (bu yüzden ne değiştiği <b>ref farkıyla</b> hesaplanıyor), <c>--all</c>'un kısmi
-/// başarısı ve budamanın geri alınamazlığı.
+/// The three silent points of the measurement are tested: the entire output being on <c>stderr</c>
+/// (which is why what changed is computed from the <b>ref difference</b>), the partial success of
+/// <c>--all</c>, and the irreversibility of pruning.
 /// </remarks>
 public class FetchWriterTests
 {
@@ -32,7 +32,7 @@ public class FetchWriterTests
             Upstream.Dispose();
         }
 
-        /// <summary>Uzak depoya yeni bir commit iter.</summary>
+        /// <summary>Pushes a new commit to the remote repository.</summary>
         public void PushCommit(string name, string branch = "main")
         {
             Seed.WriteFile($"{name}.txt", $"{name}\n");
@@ -88,8 +88,8 @@ public class FetchWriterTests
     [Fact]
     public async Task Yeni_commit_GUNCELLENEN_ref_olarak_bildiriliyor()
     {
-        // 🔴 Bu bilginin git'in ÇIKTISINDAN okunmadığına dikkat: fetch her şeyi stderr'e
-        // yazıyor ve makine-okunur `--porcelain` yalnızca git 2.41+'da var (minimum 2.30).
+        // 🔴 Note that this information is NOT read from git's OUTPUT: fetch writes everything to stderr
+        // and the machine-readable `--porcelain` only exists in git 2.41+ (the minimum is 2.30).
         using Harness harness = await CreateAsync();
 
         harness.PushCommit("ikinci");
@@ -108,8 +108,8 @@ public class FetchWriterTests
     [Fact]
     public async Task Sembolik_origin_HEAD_ikinci_kez_bildirilMIYOR()
     {
-        // 🔴 `refs/remotes/origin/HEAD` sembolik ve `origin/main`'i izliyor; `%(objectname)`
-        // onu çözdüğü için main her güncellendiğinde İKİ değişiklik görünüyordu.
+        // 🔴 `refs/remotes/origin/HEAD` is symbolic and tracks `origin/main`; because `%(objectname)`
+        // resolves it, TWO changes showed up every time main was updated.
         using Harness harness = await CreateAsync();
 
         harness.Local.Git("remote", "set-head", "origin", "main");
@@ -151,7 +151,7 @@ public class FetchWriterTests
         result.DryRun.ShouldBeTrue();
         result.Changes.ShouldBeEmpty();
 
-        // Karşı kanıt: gerçekten yazılmadı.
+        // Counter-evidence: it really was not written.
         harness.Local.Git("rev-parse", "origin/main").Trim()
             .ShouldNotBe(harness.Seed.Git("rev-parse", "HEAD").Trim());
     }
@@ -167,7 +167,7 @@ public class FetchWriterTests
 
         harness.Seed.Git("push", "-q", "up", ":gecici");
 
-        // Budamasız fetch dokunmuyor — ölçüldü, bu yüzden ayrı bir bayrak.
+        // A fetch without pruning does not touch it — measured, which is why it is a separate flag.
         FetchResult withoutPrune = await harness.Writer.FetchAsync(
             harness.Path, new FetchOptions { Remote = "origin" }, Ct);
 
@@ -186,8 +186,8 @@ public class FetchWriterTests
     [Fact]
     public async Task Budama_onizlemesi_ne_kaybedilecegini_ONCEDEN_soyluyor()
     {
-        // 🔴 Budanan ref'in reflog'u da gidiyor; yalnızca orada duran commit budayan bir
-        // `gc` sonrası KAYBOLUYOR (ölçüldü). Bu yüzden bilgi budamadan önce toplanıyor.
+        // 🔴 The reflog of a pruned ref goes away too; a commit that only lived there is LOST after a
+        // pruning `gc` (measured). That is why the information is collected before pruning.
         using Harness harness = await CreateAsync();
 
         harness.PushCommit("dal-commit", branch: "gecici");
@@ -205,7 +205,7 @@ public class FetchWriterTests
         preview.RecoveryCommands.Single()
             .ShouldBe($"git update-ref refs/remotes/origin/gecici {doomedSha}");
 
-        // Önizleme hiçbir şeyi değiştirmemiş olmalı.
+        // The preview must not have changed anything.
         harness.RemoteRefs.ShouldContain("refs/remotes/origin/gecici");
     }
 
@@ -234,8 +234,8 @@ public class FetchWriterTests
     [Fact]
     public async Task Onizleme_origin_HEAD_i_kayip_saymiyor()
     {
-        // `origin/HEAD` sembolik ve uzakta `refs/heads/HEAD` yok; elenmeseydi her budama
-        // önizlemesi yanlış bir kayıp uyarısı üretirdi.
+        // `origin/HEAD` is symbolic and there is no `refs/heads/HEAD` on the remote; if it were not
+        // filtered out, every prune preview would produce a false loss warning.
         using Harness harness = await CreateAsync();
 
         harness.Local.Git("remote", "set-head", "origin", "main");
@@ -249,8 +249,8 @@ public class FetchWriterTests
     [Fact]
     public async Task Tum_remoteler_bir_tanesi_BOZUKKEN_digerleri_yine_de_geliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: çıkış kodu 1 ama iyi remote fetch EDİLDİ. İstisnayı olduğu gibi
-        // bırakmak, gelmiş değişiklikleri kullanıcıdan gizlerdi.
+        // 🔴 MEASURED: the exit code is 1 but the good remote WAS fetched. Leaving the exception as is
+        // would hide the changes that did arrive from the user.
         using Harness harness = await CreateAsync();
 
         harness.PushCommit("ikinci");
@@ -271,8 +271,8 @@ public class FetchWriterTests
     [Fact]
     public async Task Ulasilamayan_remote_RemoteUnreachable_olarak_siniflandiriliyor()
     {
-        // 🔴 Bu tür olmadan kullanıcıya "Bu klasör bir Git deposu değil" denirdi — klasör
-        // iyiyken. git iki satır birden yazıyor ve genel kalıp yanlış olanı yakalıyordu.
+        // 🔴 Without this kind the user would be told "This folder is not a Git repository" — while the
+        // folder was fine. git writes two lines at once and the general pattern was catching the wrong one.
         using Harness harness = await CreateAsync();
 
         harness.Local.Git("remote", "add", "bozuk", "/tmp/gitext-yok-boyle-depo.git");
@@ -299,7 +299,7 @@ public class FetchWriterTests
 
         harness.Seed.Git("push", "-q", "up", ":refs/tags/v1");
 
-        // ÖLÇÜLDÜ: `--prune` tek başına etikete dokunmuyor.
+        // MEASURED: `--prune` on its own does not touch tags.
         FetchResult pruneOnly = await harness.Writer.FetchAsync(
             harness.Path, new FetchOptions { Remote = "origin", Prune = true }, Ct);
 
@@ -331,21 +331,21 @@ public class FetchWriterTests
         harness.Local.Git("tag").Trim().ShouldBeEmpty();
     }
 
-    // ================================================= P09-T13 paralel fetch
+    // ================================================= P09-T13 parallel fetch
 
     /// <summary>
-    /// Başarısızlık satırı sıralı ve paralel fetch'te farklı biçimde geliyor (P09-T13).
+    /// The failure line arrives in a different form in sequential and in parallel fetch (P09-T13).
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ.</b> Aynı bozuk remote, iki modda iki farklı satır üretiyor:
+    /// 🔴 <b>MEASURED.</b> The same broken remote produces two different lines in the two modes:
     /// <code>
     /// -j1  →  error: could not fetch bozuk
     /// -j0  →  could not fetch 'bozuk' (exit code: 128)
     /// </code>
-    /// Paralel biçimde <c>error:</c> öneki yok ve ad tırnaklı. Yalnızca sıralı biçimi
-    /// tanıyan ayrıştırıcı, paralel fetch'te başarısızlığı hiç görmez: git 1 ile çıkar,
-    /// kısmi başarı yakalanmaz ve gerçekten gelmiş değişiklikler kullanıcıdan gizlenir.
-    /// Paralelleştirme ilk denemede tam olarak böyle kırıldı.
+    /// In the parallel form there is no <c>error:</c> prefix and the name is quoted. A parser that only
+    /// recognises the sequential form never sees the failure in a parallel fetch: git exits with 1,
+    /// the partial success is not caught, and changes that really did arrive are hidden from the user.
+    /// Parallelization broke exactly like this on the first attempt.
     /// </remarks>
     [Theory]
     [InlineData("error: could not fetch bozuk", "bozuk")]
@@ -360,9 +360,9 @@ public class FetchWriterTests
     }
 
     /// <remarks>
-    /// Remote adı tırnaklardan ve <c>(exit code: N)</c> kuyruğundan arındırılmalı;
-    /// arındırılmazsa kullanıcıya remote adı diye <c>'bozuk' (exit code: 128)</c>
-    /// gösterilirdi.
+    /// The remote name must be stripped of the quotes and of the <c>(exit code: N)</c> tail;
+    /// without stripping, the user would be shown <c>'bozuk' (exit code: 128)</c> as the remote
+    /// name.
     /// </remarks>
     [Fact]
     public void Paralel_bicimde_ad_tirnaklardan_ariniyor()
@@ -375,8 +375,8 @@ public class FetchWriterTests
     }
 
     /// <remarks>
-    /// Birden çok remote başarısız olduğunda her biri ayrı kayıt olmalı; paralel modda
-    /// satırlar araya karışabiliyor.
+    /// When more than one remote fails each one must be a separate record; in parallel mode the
+    /// lines can get interleaved.
     /// </remarks>
     [Fact]
     public void Birden_cok_basarisiz_remote_ayri_ayri_okunuyor()

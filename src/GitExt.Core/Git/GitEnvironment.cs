@@ -3,43 +3,43 @@ using System.Diagnostics;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Her <c>git</c> çağrısını öngörülebilir hale getiren ortam ve yapılandırma ayarları (ADR-0002).
+/// Environment and configuration settings that make every <c>git</c> call predictable (ADR-0002).
 /// </summary>
 /// <remarks>
-/// Bu ayarlar olmadan <c>git</c>'in davranışı kullanıcının yereline, terminaline ve global
-/// yapılandırmasına göre değişir; ayrıştırıcılar da buna bağlı olarak sessizce bozulur.
+/// Without these settings <c>git</c>'s behaviour changes with the user's locale, terminal and
+/// global configuration; the parsers then break silently along with it.
 /// </remarks>
 internal static class GitEnvironment
 {
     /// <summary>
-    /// Süreç ortamını hazırlar.
+    /// Prepares the process environment.
     /// </summary>
     internal static void Apply(ProcessStartInfo startInfo, bool isReadOnly)
     {
-        // Yerelden bağımsız, İngilizce ve deterministik çıktı.
-        // Aksi halde tarih biçimleri ve hata metinleri kullanıcının diline göre değişir.
+        // Locale-independent, English and deterministic output.
+        // Otherwise date formats and error texts change with the user's language.
         startInfo.Environment["LC_ALL"] = "C";
         startInfo.Environment["LANG"] = "C";
 
-        // KRİTİK: Kimlik doğrulama isteyen bir komut, bu olmadan terminal beklerken
-        // uygulamayı süresiz kilitler. Bunun yerine hata döner ve biz onu ele alırız.
+        // CRITICAL: without this, a command that asks for authentication waits for a terminal and
+        // locks the application indefinitely. Instead it fails and we handle that.
         startInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";
 
-        // Editör açmaya çalışan komutlar (commit, rebase -i, tag -a) takılmasın.
-        // Bu değişkenlere ihtiyaç duyan komutlar onları bilinçli olarak kendisi ayarlar.
+        // Keep commands that try to open an editor (commit, rebase -i, tag -a) from hanging.
+        // Commands that need these variables set them deliberately themselves.
         startInfo.Environment["GIT_EDITOR"] = "false";
         startInfo.Environment["GIT_SEQUENCE_EDITOR"] = "false";
 
-        // Sayfalayıcı (pager) alt süreçte anlamsızdır ve çıktıyı bozabilir.
+        // A pager is meaningless in a child process and can corrupt the output.
         startInfo.Environment["GIT_PAGER"] = "cat";
         startInfo.Environment["PAGER"] = "cat";
 
-        // Grafik kimlik doğrulama araçlarının açılmasını engelle — arayüzü biz yönetiyoruz.
+        // Prevent graphical authentication tools from popping up — we drive the UI ourselves.
         startInfo.Environment["GIT_ASKPASS"] = string.Empty;
         startInfo.Environment["SSH_ASKPASS"] = string.Empty;
 
-        // Salt okunur çağrılar index'e yazmaya çalışmasın; aksi halde eşzamanlı bir yazma
-        // işlemiyle index.lock üzerinden çakışırlar.
+        // Read-only calls must not try to write the index; otherwise they collide with a concurrent
+        // write operation over index.lock.
         if (isReadOnly)
         {
             startInfo.Environment["GIT_OPTIONAL_LOCKS"] = "0";
@@ -47,29 +47,29 @@ internal static class GitEnvironment
     }
 
     /// <summary>
-    /// Her komutun başına eklenen <c>-c</c> yapılandırma geçersiz kılmaları.
+    /// The <c>-c</c> configuration overrides prepended to every command.
     /// </summary>
     /// <remarks>
-    /// Argüman olarak verildikleri için kullanıcının <c>.gitconfig</c>'ini kalıcı olarak
-    /// değiştirmezler; yalnızca o çağrı için geçerlidirler.
+    /// Because they are passed as arguments they do not permanently change the user's
+    /// <c>.gitconfig</c>; they apply only to that one call.
     /// </remarks>
     internal static IEnumerable<string> ConfigurationOverrides()
     {
-        // ASCII olmayan dosya adlarını \303\266 gibi sekizlik kaçışlarla değil, olduğu gibi ver.
-        // Ayrıştırıcıların bu kaçışları çözmek zorunda kalmaması için.
+        // Emit non-ASCII file names as they are, not as octal escapes like \303\266.
+        // So the parsers never have to decode those escapes.
         yield return "-c";
         yield return "core.quotepath=false";
 
-        // Tavsiye (advice) metinleri stderr'e uzun bloklar yazar. Bu mesajları kullanıcıya
-        // kendi arayüzümüzde göstereceğiz; ham hâlleri stderr'i gürültüye boğuyor.
+        // Advice texts write long blocks to stderr. We will show these messages to the user in our
+        // own UI; their raw form drowns stderr in noise.
         yield return "-c";
         yield return "advice.detachedHead=false";
 
-        // Commit mesajlarını her zaman UTF-8 olarak al.
-        // git, nesnede saklanan kodlamadan (encoding satırı) bu ayara dönüştürür; ölçüldü:
-        // ISO-8859-9 saklanmış bir mesaj ham nesnede 0xFC, log çıktısında 0xC3 0xBC geliyor.
-        // Varsayılan zaten UTF-8 ama kullanıcı .gitconfig'inde değiştirebilir — o durumda
-        // ayrıştırıcılarımız sessizce bozulurdu. Açıkça zorluyoruz.
+        // Always take commit messages as UTF-8.
+        // git converts from the encoding stored in the object (the encoding line) to this setting;
+        // measured: a message stored as ISO-8859-9 is 0xFC in the raw object, 0xC3 0xBC in log output.
+        // The default is already UTF-8 but the user can change it in .gitconfig — in that case our
+        // parsers would break silently. We force it explicitly.
         yield return "-c";
         yield return "i18n.logOutputEncoding=UTF-8";
     }

@@ -4,20 +4,20 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P07-T22 — uçtan uca güvenlik doğrulaması.
+/// P07-T22 — end-to-end safety verification.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Faz kuralı: <i>"Geçmişi değiştiren her işlem öncesinde reflog konumu kaydedilir ve
-/// kullanıcıya 'nasıl geri alırım' bilgisi her zaman sunulur."</i> Bu sınıf o sözün
-/// <b>tutulduğunu</b> kanıtlıyor: her yıkıcı işlem için <b>uygula → geri al → depo tam
-/// olarak eski hâline döndü mü</b> zinciri çalıştırılıyor.
+/// The phase rule: <i>"Before every operation that rewrites history the reflog position is recorded
+/// and the 'how do I undo this' information is always offered to the user."</i> This class proves
+/// that the promise is <b>kept</b>: for every destructive operation the chain <b>apply → undo → did
+/// the repository return exactly to its old state</b> is run.
 /// </para>
 /// <para>
-/// Karşılaştırma ölçütü commit sayısı ya da <c>HEAD</c> değil, deponun <b>tam ağaç
-/// nesnesi</b>: <c>rev-parse HEAD^{tree}</c>. İçerik tek bayt farklı olsa ağaç SHA'sı
-/// değişir. "HEAD aynı" demek dosyaların da aynı olduğunu göstermez — index ya da çalışma
-/// ağacı bozulmuş olabilir.
+/// The comparison criterion is not the commit count or <c>HEAD</c>, but the repository's <b>full tree
+/// object</b>: <c>rev-parse HEAD^{tree}</c>. If the content differs by a single byte the tree SHA
+/// changes. "HEAD is the same" does not show that the files are the same either — the index or the
+/// working tree may be corrupted.
 /// </para>
 /// </remarks>
 public class DestructiveRecoveryTests
@@ -37,23 +37,23 @@ public class DestructiveRecoveryTests
 
         public string Head => Repository.Git("rev-parse", "HEAD").Trim();
 
-        /// <summary>Deponun içeriğinin parmak izi.</summary>
+        /// <summary>Fingerprint of the repository's content.</summary>
         public string TreeId => Repository.Git("rev-parse", "HEAD^{tree}").Trim();
 
-        /// <summary>Çalışma ağacının ve index'in durumu.</summary>
+        /// <summary>State of the working tree and the index.</summary>
         public string Status => Repository.Git("status", "--porcelain=v2").Trim();
 
         /// <summary>
-        /// Nesne veritabanında <b>bozulma</b> var mı?
+        /// Is there <b>corruption</b> in the object database?
         /// </summary>
         /// <remarks>
-        /// ⚠️ <c>dangling</c> satırları elenmiş: bunlar bozulma DEĞİL, yalnızca henüz
-        /// toplanmamış erişilemeyen nesneler ve <c>fsck</c> onlarla birlikte çıkış kodu
-        /// <b>0</b> veriyor (ölçüldü — stash pop ve rebase --abort sonrası normal olarak
-        /// çıkıyorlar). Hepsini hata saymak, doğru çalışan iki testi kızartmıştı.
+        /// ⚠️ <c>dangling</c> lines are filtered out: they are NOT corruption, only unreachable objects
+        /// that have not been collected yet, and <c>fsck</c> exits with code <b>0</b> even with them
+        /// present (measured — they normally show up after a stash pop and after rebase --abort).
+        /// Counting all of them as errors had turned two correctly working tests red.
         /// <para>
-        /// Çıkış kodunun 0 olduğu ayrıca garanti: <see cref="TestRepository.Git"/>
-        /// sıfırdan farklı çıkışta fırlatıyor.
+        /// That the exit code is 0 is guaranteed separately: <see cref="TestRepository.Git"/>
+        /// throws on a non-zero exit.
         /// </para>
         /// </remarks>
         public string Fsck => string.Join(
@@ -74,7 +74,7 @@ public class DestructiveRecoveryTests
     {
         TestRepository repository = TestRepository.CreateEmpty();
 
-        // Üç commit'lik bir geçmiş + bir yan dal: yıkıcı işlemlerin hepsine yetiyor.
+        // A three-commit history + one side branch: enough for all of the destructive operations.
         foreach (int index in Enumerable.Range(1, 3))
         {
             repository.WriteFile($"f{index}.txt", $"icerik {index}\n");
@@ -99,11 +99,11 @@ public class DestructiveRecoveryTests
     }
 
     /// <summary>
-    /// Bir güvenlik noktasının <b>gösterdiği</b> komutu gerçekten çalıştırır.
+    /// Actually runs the command a safety point <b>shows</b>.
     /// </summary>
     /// <remarks>
-    /// Kritik nokta: testin kendi bildiği bir komut değil, <b>kullanıcıya gösterilen</b>
-    /// komut çalıştırılıyor. Aksi hâlde ekranda yanlış bir komut yazsa test yine geçerdi.
+    /// The critical point: it is not a command the test knows itself, it is the command <b>shown to the
+    /// user</b> that gets run. Otherwise the test would still pass while a wrong command was on screen.
     /// </remarks>
     private static void RunRecovery(Harness harness, SafetyPoint point)
     {
@@ -141,8 +141,8 @@ public class DestructiveRecoveryTests
     [Fact]
     public async Task RESET_sonrasi_calisma_agaci_da_TEMIZ_donuyor()
     {
-        // `--soft`/`--mixed` çalışma ağacında iz bırakıyor; geri alma komutu (`--hard`)
-        // onu da temizlemeli, yoksa "eski hâline döndü" yarım bir doğru olurdu.
+        // `--soft`/`--mixed` leave traces in the working tree; the undo command (`--hard`)
+        // must clean those up too, otherwise "returned to its old state" would be a half-truth.
         using Harness harness = await CreateAsync();
         harness.Status.ShouldBeEmpty();
 
@@ -250,7 +250,7 @@ public class DestructiveRecoveryTests
     [Fact]
     public async Task INTERACTIVE_rebase_geri_alinabiliyor()
     {
-        // Fazın en tehlikeli işlemi: commit'ler siliniyor, kaynaştırılıyor, sıra değişiyor.
+        // The most dangerous operation of the phase: commits are deleted, squashed, reordered.
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git("checkout", "-q", "-b", "yan");
@@ -290,7 +290,7 @@ public class DestructiveRecoveryTests
     [Fact]
     public async Task Yarim_kalmis_rebase_ABORT_ile_geri_donuyor()
     {
-        // Geri alma yolunun ikinci hali: işlem tamamlanmadan iptal.
+        // The second form of the undo path: aborting before the operation completes.
         using Harness harness = await CreateAsync();
 
         harness.Repository.WriteFile("f1.txt", "ortak\n");
@@ -344,7 +344,7 @@ public class DestructiveRecoveryTests
 
         result.IndexRestored.ShouldBeTrue();
 
-        // 🔴 Asıl sınav: stage'lenmiş/stage'lenmemiş ayrımı dahil BİREBİR aynı durum.
+        // 🔴 The real exam: EXACTLY the same state, including the staged/unstaged distinction.
         harness.Status.ShouldBe(before);
         harness.Fsck.ShouldBeEmpty();
     }
@@ -354,8 +354,8 @@ public class DestructiveRecoveryTests
     [Fact]
     public async Task Reflog_HER_yikici_islemden_sonra_geri_donus_sunuyor()
     {
-        // Kullanıcı geri alma komutunu kaybetse bile reflog tarayıcısı onu bulmalı —
-        // fazın son sigortası.
+        // Even if the user loses the undo command, the reflog browser must find it —
+        // the phase's last safety net.
         using Harness harness = await CreateAsync();
 
         GitExecutable executable = await GitExecutable.LocateAsync(cancellationToken: Ct);
@@ -375,7 +375,7 @@ public class DestructiveRecoveryTests
         found.ShouldNotBeNull("kaybolan commit reflog'da bulunmalı");
         found.IsUnreachable.ShouldBeTrue();
 
-        // Tarayıcının gösterdiği komut gerçekten çalışıyor mu?
+        // Does the command the browser shows actually work?
         string[] parts = found.RecoveryCommand.Split(' ');
         harness.Repository.Git(parts[1..]);
 
@@ -384,13 +384,13 @@ public class DestructiveRecoveryTests
         harness.Fsck.ShouldBeEmpty();
     }
 
-    // ==================================================== güvenlik noktası
+    // ==================================================== safety point
 
     [Fact]
     public async Task Her_yikici_yazici_GUVENLIK_NOKTASI_aliyor()
     {
-        // Bir yazıcı bunu atlarsa kullanıcı geri alma yolunu hiç görmez. Üçü de aynı
-        // sözü veriyor mu?
+        // If a writer skips this, the user never sees the undo path. Do all three make the
+        // same promise?
         using Harness harness = await CreateAsync();
         string head = harness.Head;
 
@@ -410,7 +410,7 @@ public class DestructiveRecoveryTests
         revert.SafetyPoint.RecoveryCommand.ShouldNotBeEmpty();
         rebase.SafetyPoint.RecoveryCommand.ShouldNotBeEmpty();
 
-        // Hiçbiri kayan referans kullanmıyor.
+        // None of them uses a moving reference.
         foreach (string command in new[]
                  {
                      reset.RecoveryCommand,

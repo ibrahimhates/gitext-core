@@ -3,27 +3,27 @@ using GitExt.Core.Git;
 namespace GitExt.Core;
 
 /// <summary>
-/// Uzak izleme dallarının ve etiketlerin anlık görüntüsü ve farkı (P06-T06).
+/// Snapshot and diff of remote-tracking branches and tags (P06-T06).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden ayrı bir sınıf?</b> İki çağıranı var (<see cref="FetchWriter"/> ve
-/// <see cref="PullWriter"/>) ve ikisi de aynı soruyu soruyor: <i>"bu ağ işleminden sonra
-/// hangi ref'ler değişti?"</i>. Kopyalanmış iki uygulama, birinin sessizce farklı
-/// davranması demekti — P06-T04'ün dersi (ve P06-T05'te <c>RefReader</c>'da gerçekten
-/// başımıza gelen şey).
+/// <b>Why a separate class?</b> It has two callers (<see cref="FetchWriter"/> and
+/// <see cref="PullWriter"/>) and both ask the same question: <i>"which refs changed after this
+/// network operation?"</i>. Two copy-pasted implementations would mean one of them silently
+/// behaving differently — the lesson of P06-T04 (and what actually happened to us in
+/// <c>RefReader</c> in P06-T05).
 /// </para>
 /// <para>
-/// 🔴 <c>%(symref)</c> alanı şart: <c>refs/remotes/origin/HEAD</c> <b>sembolik</b> ve
-/// <c>origin/main</c>'i izliyor; <c>%(objectname)</c> onu çözdüğü için main her
-/// güncellendiğinde ikinci bir "değişiklik" olarak görünüyordu (ölçüldü).
+/// 🔴 The <c>%(symref)</c> field is mandatory: <c>refs/remotes/origin/HEAD</c> is <b>symbolic</b>
+/// and tracks <c>origin/main</c>; because <c>%(objectname)</c> resolves it, every time main was
+/// updated it showed up as a second "change" (measured).
 /// </para>
 /// </remarks>
 internal static class RefSnapshot
 {
     private const string Format = "%(refname)%00%(objectname)%00%(symref)";
 
-    /// <summary>Uzak izleme dalları ve etiketler: ref adı → commit.</summary>
+    /// <summary>Remote-tracking branches and tags: ref name → commit.</summary>
     internal static async Task<IReadOnlyDictionary<string, string>> ReadAsync(
         IGitProcessRunner runner,
         string workingDirectory,
@@ -45,7 +45,7 @@ internal static class RefSnapshot
         {
             string[] fields = line.TrimEnd('\r').Split('\0');
 
-            // Üçüncü alan doluysa ref semboliktir; takma ad olduğu için atlanıyor.
+            // If the third field is non-empty the ref is symbolic; it is skipped because it is an alias.
             if (fields.Length == 3 && fields[2].Length == 0)
             {
                 refs[fields[0]] = fields[1];
@@ -55,7 +55,7 @@ internal static class RefSnapshot
         return refs;
     }
 
-    /// <summary>İki anlık görüntü arasındaki farkı ref adına göre sıralı verir.</summary>
+    /// <summary>Returns the difference between two snapshots, ordered by ref name.</summary>
     internal static IReadOnlyList<RefChange> Diff(
         IReadOnlyDictionary<string, string> before,
         IReadOnlyDictionary<string, string> after)

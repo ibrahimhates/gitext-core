@@ -1,41 +1,41 @@
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// <c>git</c> süreçlerini çalıştıran tek kapı.
+/// The single gateway that runs <c>git</c> processes.
 /// </summary>
 /// <remarks>
-/// <b>ADR-0002 kuralı:</b> <c>Process.Start</c> uygulamanın başka hiçbir yerinde çağrılmaz.
-/// Deterministik ortam, günlükleme, zaman aşımı ve iptal davranışının tek yerde toplanması
-/// buna bağlıdır.
+/// <b>ADR-0002 rule:</b> <c>Process.Start</c> is never called anywhere else in the application.
+/// A deterministic environment, logging, timeout and cancellation behaviour all depend on
+/// being collected in one place.
 /// </remarks>
 public interface IGitProcessRunner
 {
     /// <summary>
-    /// Komutu çalıştırır ve tamamlanmasını bekler.
+    /// Runs the command and waits for it to finish.
     /// </summary>
     /// <remarks>
-    /// Çıkış kodu ne olursa olsun <see cref="GitResult"/> döner; hata fırlatmaz.
-    /// Başarısızlığı istisnaya çevirmek için <see cref="GitProcessRunnerExtensions.RunCheckedAsync"/>
-    /// kullanılır.
+    /// Returns a <see cref="GitResult"/> whatever the exit code is; it does not throw.
+    /// To turn a failure into an exception, <see cref="GitProcessRunnerExtensions.RunCheckedAsync"/>
+    /// is used.
     /// </remarks>
-    /// <exception cref="OperationCanceledException">İptal edildiğinde veya zaman aşımında.</exception>
+    /// <exception cref="OperationCanceledException">When cancelled or on timeout.</exception>
     Task<GitResult> RunAsync(GitCommand command, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Komutu çalıştırır ve stdout'u NUL ayraçlı parçalar hâlinde, <b>süreç bitmeden</b> üretir.
+    /// Runs the command and yields stdout as NUL-separated chunks, <b>before the process ends</b>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 500 bin commit'lik bir depoda <c>git log</c>'un tamamlanmasını beklemek, arayüzün ilk
-    /// ekranı çizmesini saniyelerce geciktirir. Bu metot ilk kayıtları anında verir (P02-T04).
+    /// In a repository with 500k commits, waiting for <c>git log</c> to finish delays the UI's
+    /// first screen by seconds. This method yields the first records instantly (P02-T04).
     /// </para>
     /// <para>
-    /// Boş parçalar <b>korunur</b>: sabit alanlı kayıtlarda boş bir alan atılırsa sonraki tüm
-    /// alanlar kayar ve veri sessizce yanlış olur.
+    /// Empty chunks are <b>kept</b>: in fixed-field records, dropping an empty field shifts every
+    /// following field and the data becomes silently wrong.
     /// </para>
     /// <para>
-    /// Çıkış kodu sıfır değilse, akışın <b>sonunda</b> <see cref="GitException"/> fırlatılır —
-    /// o ana kadar üretilmiş parçalar geçerlidir.
+    /// If the exit code is non-zero, a <see cref="GitException"/> is thrown at the <b>end</b> of
+    /// the stream — the chunks produced up to that point are valid.
     /// </para>
     /// </remarks>
     IAsyncEnumerable<string> StreamNulSeparatedAsync(

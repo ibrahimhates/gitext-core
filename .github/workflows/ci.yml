@@ -47,6 +47,12 @@ jobs:
       - name: Check generated fallback
         run: tools/i18n/generate-fallback.py --check
 
+      # The codebase is one language. Without this check Turkish comments creep back in
+      # one commit at a time and nobody notices until the mixture is large again.
+      # String literals are exempt — test fixture data deliberately exercises UTF-8.
+      - name: Check comment language
+        run: build/check-comments.sh
+
   build:
     name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

@@ -4,7 +4,7 @@ using GitExt.Core.Model;
 
 namespace GitExt.UI.Tests.Fakes;
 
-/// <summary>P07-T01/T02 — çakışma okuyucusu sahtesi.</summary>
+/// <summary>P07-T01/T02 — fake conflict reader.</summary>
 public sealed class FakeConflictReader : IConflictReader
 {
     public FakeConflictReader(IReadOnlyList<ConflictedFile> files) => Files = files;
@@ -12,11 +12,11 @@ public sealed class FakeConflictReader : IConflictReader
     public IReadOnlyList<ConflictedFile> Files { get; set; }
 
     /// <summary>
-    /// Hangi aşamalar için içerik istendi?
+    /// Which stages was content requested for?
     /// </summary>
     /// <remarks>
-    /// Var olmayan bir aşama için <c>git show</c> çalıştırmanın fatal verdiğini
-    /// hatırlatan test bunu okuyor.
+    /// The test that reminds us running <c>git show</c> for a non-existent stage gives a fatal error
+    /// reads this.
     /// </remarks>
     public List<ConflictStage> RequestedStages { get; } = [];
 
@@ -43,7 +43,7 @@ public sealed class FakeConflictReader : IConflictReader
     }
 }
 
-/// <summary>P07-T05 — çakışma çözücü sahtesi.</summary>
+/// <summary>P07-T05 — fake conflict resolver.</summary>
 public sealed class FakeConflictResolver : IConflictResolver
 {
     public FakeConflictResolver(InProgressOperation operation, IReadOnlyList<string> remaining)
@@ -110,7 +110,7 @@ public sealed class FakeConflictResolver : IConflictResolver
     }
 }
 
-/// <summary>P07-T06 — reset yazıcısı sahtesi.</summary>
+/// <summary>P07-T06 — fake reset writer.</summary>
 public sealed class FakeResetWriter : IResetWriter
 {
     private readonly ResetPreview _preview;
@@ -146,7 +146,7 @@ public sealed class FakeResetWriter : IResetWriter
     public string DescribeCommand(ResetOptions options) => ResetWriter.Describe(options);
 }
 
-/// <summary>P07-T07/T08 — sequencer sahtesi.</summary>
+/// <summary>P07-T07/T08 — fake sequencer.</summary>
 public sealed class FakeSequencerWriter : ISequencerWriter
 {
     private readonly int _parentCount;
@@ -198,7 +198,7 @@ public sealed class FakeSequencerWriter : ISequencerWriter
     public string DescribeCommand(SequencerOptions options) => SequencerWriter.Describe(options);
 }
 
-/// <summary>P07-T09/T10 — rebase sahtesi.</summary>
+/// <summary>P07-T09/T10 — fake rebase.</summary>
 public sealed class FakeRebaseWriter : IRebaseWriter
 {
     private readonly IReadOnlyList<RebaseStep> _steps;
@@ -247,7 +247,7 @@ public sealed class FakeRebaseWriter : IRebaseWriter
     public string DescribeCommand(RebaseOptions options) => RebaseWriter.Describe(options);
 }
 
-/// <summary>P07-T12/T13 — stash sahtesi.</summary>
+/// <summary>P07-T12/T13 — fake stash.</summary>
 public sealed class FakeStashWriter : IStashWriter
 {
     public FakeStashWriter(IReadOnlyList<StashEntry> entries) => Entries = entries;
@@ -296,7 +296,7 @@ public sealed class FakeStashWriter : IStashWriter
         Task.FromResult("diff --git a/f.txt b/f.txt\n+degisti\n");
 }
 
-/// <summary>P07-T14 — reflog sahtesi.</summary>
+/// <summary>P07-T14 — fake reflog.</summary>
 public sealed class FakeReflogReader : IReflogReader
 {
     public FakeReflogReader(IReadOnlyList<ReflogEntry> entries) => Entries = entries;

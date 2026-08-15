@@ -7,12 +7,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.Fakes;
 
 /// <summary>
-/// ViewModel testleri için sahte depo konumlandırıcı.
+/// Fake repository locator for the ViewModel tests.
 /// </summary>
 /// <remarks>
-/// ViewModel'lar gerçek <c>git</c> süreci başlatmadan test edilir (ADR-0004). Gerçek
-/// <c>git</c> davranışı <c>GitExt.Core.Tests</c>'te zaten kapsamlı biçimde doğrulanıyor;
-/// burada test edilen şey <b>ViewModel mantığı</b>.
+/// The ViewModels are tested without starting a real <c>git</c> process (ADR-0004). Real <c>git</c>
+/// behavior is already verified thoroughly in <c>GitExt.Core.Tests</c>; what is tested here is
+/// <b>ViewModel logic</b>.
 /// </remarks>
 public sealed class FakeRepositoryLocator : IRepositoryLocator
 {
@@ -37,14 +37,14 @@ public sealed class FakeRepositoryLocator : IRepositoryLocator
 }
 
 /// <summary>
-/// ViewModel testleri için sahte commit geçmişi okuyucusu.
+/// Fake commit history reader for the ViewModel tests.
 /// </summary>
 public sealed class FakeCommitLogReader : ICommitLogReader
 {
     private readonly IReadOnlyList<CommitInfo> _commits;
     private readonly Exception? _failure;
 
-    /// <summary>Akış sırasında kaç kez beklendi — toplu güncellemeyi test etmek için.</summary>
+    /// <summary>How many times it was awaited while streaming — to test batched updates.</summary>
     public int StreamCallCount { get; private set; }
 
     public FakeCommitLogReader(IReadOnlyList<CommitInfo>? commits = null, Exception? failure = null)
@@ -83,7 +83,7 @@ public sealed class FakeCommitLogReader : ICommitLogReader
 }
 
 /// <summary>
-/// ViewModel testleri için sahte ref okuyucusu.
+/// Fake ref reader for the ViewModel tests.
 /// </summary>
 public sealed class FakeRefReader : IRefReader
 {
@@ -111,11 +111,11 @@ public sealed class FakeRefReader : IRefReader
 }
 
 /// <summary>
-/// ViewModel testleri için sahte imza okuyucusu.
+/// Fake signature reader for the ViewModel tests.
 /// </summary>
 /// <remarks>
-/// Varsayılan olarak imzasız döner: testlerin çoğu imzayla ilgilenmiyor ve gerçek imza
-/// davranışı <c>GitExt.Core.Tests</c>'te gerçek SSH anahtarlarıyla doğrulanıyor.
+/// By default it returns unsigned: most tests do not care about signatures, and real signature
+/// behavior is verified in <c>GitExt.Core.Tests</c> with real SSH keys.
 /// </remarks>
 public sealed class FakeCommitSignatureReader : ICommitSignatureReader
 {
@@ -139,7 +139,7 @@ public sealed class FakeCommitSignatureReader : ICommitSignatureReader
 }
 
 /// <summary>
-/// ViewModel testleri için sahte diff okuyucusu.
+/// Fake diff reader for the ViewModel tests.
 /// </summary>
 public sealed class FakeDiffReader : IDiffReader
 {
@@ -202,7 +202,7 @@ public sealed class FakeDiffReader : IDiffReader
 }
 
 /// <summary>
-/// Bellekte tutan sahte "son açılanlar" deposu — disk dokunmadan ViewModel testi için.
+/// In-memory fake "recently opened" store — for ViewModel tests without touching the disk.
 /// </summary>
 public sealed class FakeRecentRepositoryStore : IRecentRepositoryStore
 {
@@ -231,7 +231,7 @@ public sealed class FakeRecentRepositoryStore : IRecentRepositoryStore
 }
 
 /// <summary>
-/// Test verisi üreteçleri.
+/// Test data generators.
 /// </summary>
 public static class FakeGitData
 {
@@ -243,7 +243,7 @@ public static class FakeGitData
             superprojectWorkTree: null);
 
     /// <summary>
-    /// Doğrusal bir geçmiş üretir; en yeniden en eskiye, topolojik sırada.
+    /// Produces a linear history; newest to oldest, in topological order.
     /// </summary>
     public static IReadOnlyList<CommitInfo> LinearHistory(int count)
     {
@@ -276,7 +276,7 @@ public static class FakeGitData
             Refs = refs ?? [],
         };
 
-    /// <summary>Test için dosya diff'i üretir.</summary>
+    /// <summary>Produces a file diff for tests.</summary>
     public static FileDiff Diff(
         string path,
         FileChangeKind change = FileChangeKind.Modified,
@@ -297,10 +297,10 @@ public static class FakeGitData
             Hunks = [],
         };
 
-    /// <summary>Sıra numarasından deterministik, geçerli bir SHA üretir.</summary>
+    /// <summary>Produces a deterministic, valid SHA from a sequence number.</summary>
     public static string Sha(int index) => index.ToString("x40", System.Globalization.CultureInfo.InvariantCulture);
 
-    /// <summary>Hiç dal/tag içermeyen, doğmamış bir depo ref durumu.</summary>
+    /// <summary>The ref state of an unborn repository containing no branches/tags at all.</summary>
     public static RepositoryRefs NoRefs() =>
         new()
         {
@@ -311,7 +311,7 @@ public static class FakeGitData
             Remotes = [],
         };
 
-    /// <summary>Verilen ref'lerden bir <see cref="RepositoryRefs"/> kurar.</summary>
+    /// <summary>Builds a <see cref="RepositoryRefs"/> from the given refs.</summary>
     public static RepositoryRefs Refs(
         IReadOnlyList<BranchInfo>? localBranches = null,
         IReadOnlyList<BranchInfo>? remoteBranches = null,
@@ -345,11 +345,12 @@ public static class FakeGitData
         };
 
     /// <summary>
-    /// <c>refs/remotes/&lt;uzak&gt;/HEAD</c> — klonlanan her depoda bulunan sembolik ref.
+    /// <c>refs/remotes/&lt;remote&gt;/HEAD</c> — the symbolic ref present in every cloned repository.
     /// </summary>
     /// <remarks>
-    /// Kısa ad bilerek <c>"origin"</c>: git bu ref'i <c>origin/HEAD</c> değil <c>origin</c>
-    /// olarak kısaltıyor (ölçüldü). Sahte veri gerçeği yansıtmazsa test yanlış şeyi korur.
+    /// The short name is deliberately <c>"origin"</c>: git abbreviates this ref as <c>origin</c>, not
+    /// <c>origin/HEAD</c> (measured). If the fake data does not reflect reality the test protects
+    /// the wrong thing.
     /// </remarks>
     public static BranchInfo SymbolicRemoteHead(string remote, string targetRef, string targetSha) =>
         new()
@@ -361,12 +362,12 @@ public static class FakeGitData
         };
 
     /// <summary>
-    /// Bir tag üretir.
+    /// Produces a tag.
     /// </summary>
     /// <remarks>
-    /// <paramref name="annotated"/> ise <c>ObjectId</c> (tag nesnesi) ile
-    /// <c>TargetCommit</c> (çözülmüş commit) ayrışır — gerçek <c>for-each-ref</c>
-    /// çıktısındaki durum budur.
+    /// If <paramref name="annotated"/>, <c>ObjectId</c> (the tag object) and <c>TargetCommit</c>
+    /// (the resolved commit) differ — that is the situation in real <c>for-each-ref</c>
+    /// output.
     /// </remarks>
     public static TagInfo Tag(string name, string targetSha, bool annotated = false) =>
         new()
@@ -395,11 +396,11 @@ public static class FakeGitData
 }
 
 /// <summary>
-/// Bellekte çalışan sahte durum okuyucu — <c>git</c>'e dokunmadan ViewModel testi için.
+/// In-memory fake status reader — for ViewModel tests without touching <c>git</c>.
 /// </summary>
 /// <remarks>
-/// Stage/unstage işlemleri <see cref="FakeStagingWriter"/> ile bu nesnenin durumunu
-/// değiştiriyor; böylece "stage'ledikten sonra liste ne oluyor" gerçekten test edilebiliyor.
+/// Stage/unstage operations change the state of this object via <see cref="FakeStagingWriter"/>;
+/// that way "what happens to the list after staging" can genuinely be tested.
 /// </remarks>
 public sealed class FakeStatusReader : IStatusReader
 {
@@ -414,7 +415,7 @@ public sealed class FakeStatusReader : IStatusReader
 
     public int ReadCallCount { get; private set; }
 
-    /// <summary>Okuma sırasında çalışır; izleme askısını gözlemlemek için (P05-T14).</summary>
+    /// <summary>Runs during a read; to observe the watcher suspension (P05-T14).</summary>
     public Action? OnRead { get; set; }
 
     public IList<FileStatus> Entries => _entries;
@@ -441,7 +442,7 @@ public sealed class FakeStatusReader : IStatusReader
 }
 
 /// <summary>
-/// Sahte staging yazıcısı: <see cref="FakeStatusReader"/>'ın girdilerini yerinde taşır.
+/// Fake staging writer: moves the entries of <see cref="FakeStatusReader"/> in place.
 /// </summary>
 public sealed class FakeStagingWriter : IStagingWriter
 {
@@ -494,7 +495,7 @@ public sealed class FakeStagingWriter : IStagingWriter
         }
     }
 
-    /// <summary>Kısmi staging'e geçirilen kodlama (P05-T16).</summary>
+    /// <summary>The encoding passed through to partial staging (P05-T16).</summary>
     public System.Text.Encoding? LastPartialEncoding { get; private set; }
 
     public Task StagePartialAsync(
@@ -526,7 +527,7 @@ public sealed class FakeStagingWriter : IStagingWriter
 }
 
 /// <summary>
-/// Sahte commit yazıcısı — <c>git</c>'e dokunmadan commit akışını test etmek için.
+/// Fake commit writer — for testing the commit flow without touching <c>git</c>.
 /// </summary>
 public sealed class FakeCommitWriter : ICommitWriter
 {
@@ -543,10 +544,10 @@ public sealed class FakeCommitWriter : ICommitWriter
 
     public Exception? Failure { get; set; }
 
-    /// <summary>Sonuçta döndürülecek çıktı (hook çıktısı benzetimi).</summary>
+    /// <summary>The output to be returned in the result (simulating hook output).</summary>
     public string Output { get; set; } = string.Empty;
 
-    /// <summary>Hook mesajı değiştirmiş gibi davranır.</summary>
+    /// <summary>Behaves as if a hook had changed the message.</summary>
     public string? RewrittenMessage { get; set; }
 
     public Task<CommitResult> CommitAsync(
@@ -563,7 +564,7 @@ public sealed class FakeCommitWriter : ICommitWriter
         Messages.Add(message);
         Options.Add(options ?? CommitOptions.Default);
 
-        // Commit edilen dosyalar çalışma dizininden düşer.
+        // The committed files drop out of the working directory.
         _status?.Entries.Clear();
 
         return Task.FromResult(new CommitResult
@@ -577,14 +578,14 @@ public sealed class FakeCommitWriter : ICommitWriter
 }
 
 /// <summary>
-/// P05-T13 — sahte commit mesajı okuyucusu (geçmiş, HEAD mesajı, şablon).
+/// P05-T13 — fake commit message reader (history, HEAD message, template).
 /// </summary>
 public sealed class FakeCommitMessageReader : ICommitMessageReader
 {
-    /// <summary>En yeniden eskiye sıralı mesajlar.</summary>
+    /// <summary>Messages ordered newest to oldest.</summary>
     public List<string> Recent { get; } = [];
 
-    /// <summary>"Yalnızca benim" filtresiyle dönecek mesajlar; boşsa <see cref="Recent"/>.</summary>
+    /// <summary>Messages returned by the "only mine" filter; if empty, <see cref="Recent"/>.</summary>
     public List<string> Mine { get; } = [];
 
     public string? HeadMessage { get; set; }
@@ -593,7 +594,7 @@ public sealed class FakeCommitMessageReader : ICommitMessageReader
 
     public string CommentCharacter { get; set; } = "#";
 
-    /// <summary>Kaç kez geçmiş okundu — menü açılmadan okunmadığını doğrulamak için.</summary>
+    /// <summary>How many times history was read — to verify it is not read before the menu opens.</summary>
     public int RecentReadCount { get; private set; }
 
     public bool LastOnlyCurrentUser { get; private set; }
@@ -638,17 +639,17 @@ public sealed class FakeCommitMessageReader : ICommitMessageReader
 }
 
 /// <summary>
-/// P05-T13 — sahte taslak deposu.
+/// P05-T13 — fake draft store.
 /// </summary>
 /// <remarks>
-/// Depo yolu başına ayrı tutuluyor: gerçek deponun worktree başına ayrı davranışı
-/// (<c>CommitMessageTests</c>'te gerçek git ile doğrulandı) burada da karşılığını bulsun.
+/// Kept separately per repository path: so the real store's per-worktree behavior (verified with
+/// real git in <c>CommitMessageTests</c>) has its counterpart here too.
 /// </remarks>
 public sealed class FakeCommitMessageStore : ICommitMessageStore
 {
     public Dictionary<string, string> Drafts { get; } = new(StringComparer.Ordinal);
 
-    /// <summary>git'in hazırladığı mesaj (merge/cherry-pick) — taslaktan önce gelir.</summary>
+    /// <summary>The message git prepared (merge/cherry-pick) — comes before the draft.</summary>
     public string? PendingMessage { get; set; }
 
     public int SaveCount { get; private set; }
@@ -701,11 +702,11 @@ public sealed class FakeCommitMessageStore : ICommitMessageStore
 }
 
 /// <summary>
-/// Testlerin olayları elle tetikleyebildiği sahte izleyici (P05-T14).
+/// Fake watcher whose events the tests can raise by hand (P05-T14).
 /// </summary>
 /// <remarks>
-/// Gerçek <see cref="RepositoryWatcher"/> dosya sistemi ve zamanlayıcı bekliyor; ViewModel
-/// tarafında test edilen şey <b>olaya nasıl tepki verildiği</b>, olayın nereden geldiği değil.
+/// The real <see cref="RepositoryWatcher"/> waits on the file system and a timer; what is tested on
+/// the ViewModel side is <b>how the event is reacted to</b>, not where the event came from.
 /// </remarks>
 public sealed class FakeRepositoryWatcher : IRepositoryWatcher
 {
@@ -723,12 +724,12 @@ public sealed class FakeRepositoryWatcher : IRepositoryWatcher
 
     public string? CommonDirectory { get; private set; }
 
-    /// <summary>Şu an askıda mı? Kendi okumalarımızın olay üretmemesi buna bağlı.</summary>
+    /// <summary>Is it suspended right now? Our own reads not raising events depends on this.</summary>
     public bool IsSuspended => SuspendDepth > 0;
 
     public int SuspendDepth { get; private set; }
 
-    /// <summary>Askıdayken kaç olay atıldı? Sıfırdan büyükse döngü riski var demektir.</summary>
+    /// <summary>How many events were dropped while suspended? Greater than zero means a loop risk.</summary>
     public int SuppressedCount { get; private set; }
 
     public bool Start(string workingTreeRoot, string gitDirectory, string commonDirectory)
@@ -753,7 +754,7 @@ public sealed class FakeRepositoryWatcher : IRepositoryWatcher
         return new Suspension(this);
     }
 
-    /// <summary>Bir değişiklik olayını tetikler; askıdayken sessizce yutulur.</summary>
+    /// <summary>Raises a change event; while suspended it is swallowed silently.</summary>
     public void Raise(RepositoryChangeKind kind)
     {
         if (IsSuspended)
@@ -778,7 +779,7 @@ public sealed class FakeRepositoryWatcher : IRepositoryWatcher
 }
 
 /// <summary>
-/// Yıkıcı işlemleri kaydeden sahte yazar (P05-T15).
+/// Fake writer that records destructive operations (P05-T15).
 /// </summary>
 public sealed class FakeWorkingTreeWriter : IWorkingTreeWriter
 {
@@ -795,10 +796,10 @@ public sealed class FakeWorkingTreeWriter : IWorkingTreeWriter
 
     public List<string> Calls { get; } = [];
 
-    /// <summary>Geri yazılan yollar; "geri al" gerçekten çalıştı mı?</summary>
+    /// <summary>The paths written back; did "undo" really work?</summary>
     public List<string> Restored { get; } = [];
 
-    /// <summary>Kaç yedeğin nesnesi budanmış sayılsın (kısmi kurtarma senaryosu).</summary>
+    /// <summary>How many backups should count as having their objects pruned (partial recovery).</summary>
     public int PrunedBackupCount { get; set; }
 
     public Task<IReadOnlyList<DiscardBackup>> DiscardChangesAsync(
@@ -911,7 +912,7 @@ public sealed class FakeWorkingTreeWriter : IWorkingTreeWriter
 }
 
 /// <summary>
-/// Onayı testin belirlediği sahte onaylayıcı (P05-T15).
+/// Fake confirmer whose answer is decided by the test (P05-T15).
 /// </summary>
 public sealed class FakeConfirmer : IDestructiveActionConfirmer
 {
@@ -934,14 +935,14 @@ public sealed class FakeConfirmer : IDestructiveActionConfirmer
 }
 
 /// <summary>
-/// Dal yazıcısının sahtesi (P06-T01).
+/// Fake of the branch writer (P06-T01).
 /// </summary>
 public sealed class FakeBranchWriter : IBranchWriter
 {
-    /// <summary>Ayarlanırsa <see cref="CreateAsync"/> bunu fırlatır.</summary>
+    /// <summary>If set, <see cref="CreateAsync"/> throws this.</summary>
     public Exception? Failure { get; set; }
 
-    /// <summary>git'in kurduğu varsayılan upstream.</summary>
+    /// <summary>The default upstream git sets up.</summary>
     public string? Upstream { get; set; }
 
     public List<BranchCreateOptions> Created { get; } = [];
@@ -961,7 +962,7 @@ public sealed class FakeBranchWriter : IBranchWriter
         return Task.FromResult(new BranchCreateResult(options.Name, options.Checkout, Upstream));
     }
 
-    /// <summary>Ayarlanırsa geçiş bu sonucu döndürür.</summary>
+    /// <summary>If set, the switch returns this result.</summary>
     public BranchSwitchResult? SwitchResult { get; set; }
 
     public List<BranchSwitchOptions> Switched { get; } = [];
@@ -1000,7 +1001,7 @@ public sealed class FakeBranchWriter : IBranchWriter
         return Task.CompletedTask;
     }
 
-    /// <summary>Zorlanmadan silme denendiğinde bunu fırlatır (iki turlu akış testi).</summary>
+    /// <summary>Thrown when deletion is attempted without force (two-round flow test).</summary>
     public BranchNotMergedException? UnmergedFailure { get; set; }
 
     public string DeletedCommitId { get; set; } = "abcdef1234567890";
@@ -1035,7 +1036,7 @@ public sealed class FakeBranchWriter : IBranchWriter
 }
 
 /// <summary>
-/// Dal oluşturma diyaloğunun sahtesi (P06-T01).
+/// Fake of the create branch dialog (P06-T01).
 /// </summary>
 public sealed class FakeBranchPrompt : ICreateBranchPrompt
 {
@@ -1058,7 +1059,7 @@ public sealed class FakeBranchPrompt : ICreateBranchPrompt
 }
 
 /// <summary>
-/// Dala geçme diyaloğunun sahtesi (P06-T02).
+/// Fake of the switch branch dialog (P06-T02).
 /// </summary>
 public sealed class FakeCheckoutPrompt : ICheckoutPrompt
 {
@@ -1081,7 +1082,7 @@ public sealed class FakeCheckoutPrompt : ICheckoutPrompt
 }
 
 /// <summary>
-/// Dal düzenleme diyaloglarının sahtesi (P06-T03).
+/// Fake of the branch edit dialogs (P06-T03).
 /// </summary>
 public sealed class FakeBranchEditPrompt : IBranchEditPrompt
 {
@@ -1096,7 +1097,7 @@ public sealed class FakeBranchEditPrompt : IBranchEditPrompt
         _delete = delete ?? new DeleteBranchDecision { Confirmed = true };
     }
 
-    /// <summary>İkinci turda (birleştirilmemiş) verilecek karar; yoksa ilki kullanılır.</summary>
+    /// <summary>The decision given in the second round (not merged); if absent the first is used.</summary>
     public DeleteBranchDecision? ForcedDecision { get; set; }
 
     public List<DeleteBranchRequest> DeleteRequests { get; } = [];
@@ -1120,14 +1121,14 @@ public sealed class FakeBranchEditPrompt : IBranchEditPrompt
 }
 
 /// <summary>
-/// Süren işlem okuyucusunun sahtesi (P06-T04).
+/// Fake of the in-progress operation reader (P06-T04).
 /// </summary>
 public sealed class FakeInProgressOperationReader : IInProgressOperationReader
 {
     public FakeInProgressOperationReader(InProgressOperation operation = InProgressOperation.None) =>
         Operation = operation;
 
-    /// <summary>Testin tazeleme aralarında değiştirebilmesi için yazılabilir (P06-T12).</summary>
+    /// <summary>Writable so the test can change it between refreshes (P06-T12).</summary>
     public InProgressOperation Operation { get; set; }
 
     public Task<InProgressOperation> ReadAsync(
@@ -1136,7 +1137,7 @@ public sealed class FakeInProgressOperationReader : IInProgressOperationReader
         Task.FromResult(Operation);
 }
 
-/// <summary>Merge yazıcısının sahtesi (P06-T11, P06-T12).</summary>
+/// <summary>Fake of the merge writer (P06-T11, P06-T12).</summary>
 public sealed class FakeMergeWriter : IMergeWriter
 {
     public List<MergeOptions> Merged { get; } = [];
@@ -1190,7 +1191,7 @@ public sealed class FakeMergeWriter : IMergeWriter
     public string DescribeCommand(MergeOptions options) => MergeWriter.Describe(options);
 }
 
-/// <summary>Merge ekranını gösteren tarafın sahtesi (P06-T11).</summary>
+/// <summary>Fake of the side that shows the merge screen (P06-T11).</summary>
 public sealed class FakeMergePrompt : IMergePrompt
 {
     public MergeViewModel? Shown { get; private set; }
@@ -1202,7 +1203,7 @@ public sealed class FakeMergePrompt : IMergePrompt
     }
 }
 
-/// <summary>Merge iptal onayının sahtesi (P06-T12).</summary>
+/// <summary>Fake of the merge abort confirmation (P06-T12).</summary>
 public sealed class FakeMergeAbortConfirmer : IMergeAbortConfirmer
 {
     public bool Asked { get; private set; }
@@ -1220,7 +1221,7 @@ public sealed class FakeMergeAbortConfirmer : IMergeAbortConfirmer
 }
 
 /// <summary>
-/// Uzak depo okuyucusunun sahtesi (P06-T05).
+/// Fake of the remote repository reader (P06-T05).
 /// </summary>
 public sealed class FakeRemoteReader : IRemoteReader
 {
@@ -1239,7 +1240,7 @@ public sealed class FakeRemoteReader : IRemoteReader
 }
 
 /// <summary>
-/// Uzak depo yazıcısının sahtesi (P06-T05).
+/// Fake of the remote repository writer (P06-T05).
 /// </summary>
 public sealed class FakeRemoteWriter : IRemoteWriter
 {
@@ -1247,10 +1248,10 @@ public sealed class FakeRemoteWriter : IRemoteWriter
 
     public FakeRemoteWriter(FakeRemoteReader reader) => _reader = reader;
 
-    /// <summary>Ayarlanırsa yazma çağrıları bunu fırlatır.</summary>
+    /// <summary>If set, the write calls throw this.</summary>
     public Exception? Failure { get; set; }
 
-    /// <summary>Yeniden adlandırmanın döndüreceği uyarılar (çıkış kodu 0 ile gelen).</summary>
+    /// <summary>The warnings the rename returns (the ones that come with exit code 0).</summary>
     public IReadOnlyList<string> RenameWarnings { get; set; } = [];
 
     public List<RemoteAddOptions> Added { get; } = [];
@@ -1261,10 +1262,10 @@ public sealed class FakeRemoteWriter : IRemoteWriter
 
     public List<(string Name, RemoteUrlKind Kind, string Url, string Operation)> UrlChanges { get; } = [];
 
-    /// <summary>Silme planının içeriği; testler bunu kurup diyaloğa ne gittiğine bakıyor.</summary>
+    /// <summary>The contents of the delete plan; tests set this up and look at what reaches the dialog.</summary>
     public RemoteRemovalPlan? Plan { get; set; }
 
-    /// <summary>Plan silmeden ÖNCE mi istendi? (sabotaj testi için)</summary>
+    /// <summary>Was the plan requested BEFORE the deletion? (for the sabotage test)</summary>
     public bool PlanRequestedBeforeRemoval { get; private set; }
 
     public Task AddAsync(
@@ -1396,7 +1397,7 @@ public sealed class FakeRemoteWriter : IRemoteWriter
 }
 
 /// <summary>
-/// Uzak depo silme onayının sahtesi (P06-T05).
+/// Fake of the remote repository delete confirmation (P06-T05).
 /// </summary>
 public sealed class FakeRemoteRemovalConfirmer : IRemoteRemovalConfirmer
 {
@@ -1414,7 +1415,7 @@ public sealed class FakeRemoteRemovalConfirmer : IRemoteRemovalConfirmer
 }
 
 /// <summary>
-/// Uzak depo yönetimi ekranını gösteren tarafın sahtesi (P06-T05).
+/// Fake of the side that shows the remote repository management screen (P06-T05).
 /// </summary>
 public sealed class FakeRemotesPrompt : IRemotesPrompt
 {
@@ -1422,7 +1423,7 @@ public sealed class FakeRemotesPrompt : IRemotesPrompt
 
     public IRemoteRemovalConfirmer RemovalConfirmer => Confirmer;
 
-    /// <summary>Gösterilen ViewModel; testler içeriğine bakıyor.</summary>
+    /// <summary>The ViewModel shown; the tests look at its contents.</summary>
     public RemotesViewModel? Shown { get; private set; }
 
     public Task ShowAsync(RemotesViewModel model)
@@ -1432,7 +1433,7 @@ public sealed class FakeRemotesPrompt : IRemotesPrompt
     }
 }
 
-/// <summary>Fetch yazıcısının sahtesi (P06-T06).</summary>
+/// <summary>Fake of the fetch writer (P06-T06).</summary>
 public sealed class FakeFetchWriter : IFetchWriter
 {
     public List<FetchOptions> Fetched { get; } = [];
@@ -1457,12 +1458,12 @@ public sealed class FakeFetchWriter : IFetchWriter
         Task.FromResult(Preview);
 }
 
-/// <summary>Pull yazıcısının sahtesi (P06-T07).</summary>
+/// <summary>Fake of the pull writer (P06-T07).</summary>
 public sealed class FakePullWriter : IPullWriter
 {
     public List<PullOptions> Pulled { get; } = [];
 
-    /// <summary>Ayarlardan çözülen strateji (ekranın hangi seçenekle açılacağını belirler).</summary>
+    /// <summary>The strategy resolved from the settings (decides which option the screen opens with).</summary>
     public ResolvedPullStrategy Configured { get; set; } =
         new(PullStrategy.Merge, PullStrategySource.ApplicationDefault, null);
 
@@ -1492,12 +1493,12 @@ public sealed class FakePullWriter : IPullWriter
     }
 }
 
-/// <summary>Push yazıcısının sahtesi (P06-T08).</summary>
+/// <summary>Fake of the push writer (P06-T08).</summary>
 public sealed class FakePushWriter : IPushWriter
 {
     public List<PushOptions> Pushed { get; } = [];
 
-    /// <summary>Ekranın kuracağı plan; kira çıpası da buradan geliyor.</summary>
+    /// <summary>The plan the screen will build; the lease anchor comes from here too.</summary>
     public PushPlan Plan { get; set; } = new()
     {
         Remote = "origin",
@@ -1512,19 +1513,19 @@ public sealed class FakePushWriter : IPushWriter
 
     public GitExt.Core.Git.GitException? Failure { get; set; }
 
-    /// <summary>Kimlik verilene kadar başarısız ol (P06-T09 tekrar-deneme akışı).</summary>
+    /// <summary>Fail until credentials are supplied (P06-T09 retry flow).</summary>
     public bool FailUntilCredentialsGiven { get; set; }
 
-    /// <summary>Çağrıda bildirilecek ilerleme adımları (P06-T10).</summary>
+    /// <summary>The progress steps to report during the call (P06-T10).</summary>
     public IReadOnlyList<GitExt.Core.Git.GitProgress> ReportProgress { get; set; } = [];
 
-    /// <summary>Yazıcıya geçirilen ilerleme kanalı — geçirilmediyse null.</summary>
+    /// <summary>The progress channel passed to the writer — null if it was not passed.</summary>
     public IProgress<GitExt.Core.Git.GitProgress>? SeenProgress { get; private set; }
 
-    /// <summary>Yazıcıya geçirilen iptal jetonu.</summary>
+    /// <summary>The cancellation token passed to the writer.</summary>
     public CancellationToken SeenToken { get; private set; }
 
-    /// <summary>Çağrıldığında iptal edilmiş gibi davran (P06-T10).</summary>
+    /// <summary>When called, behave as if it had been cancelled (P06-T10).</summary>
     public bool CancelOnRun { get; set; }
 
     public Task<PushPlan> PlanAsync(
@@ -1567,7 +1568,7 @@ public sealed class FakePushWriter : IPushWriter
     public string DescribeCommand(PushOptions options) => PushWriter.Describe(options);
 }
 
-/// <summary>Push ekranını gösteren tarafın sahtesi (P06-T08).</summary>
+/// <summary>Fake of the side that shows the push screen (P06-T08).</summary>
 public sealed class FakePushPrompt : IPushPrompt
 {
     public PushViewModel? Shown { get; private set; }
@@ -1579,7 +1580,7 @@ public sealed class FakePushPrompt : IPushPrompt
     }
 }
 
-/// <summary>Pull/Fetch ekranını gösteren tarafın sahtesi (P06-T07).</summary>
+/// <summary>Fake of the side that shows the pull/fetch screen (P06-T07).</summary>
 public sealed class FakePullPrompt : IPullPrompt
 {
     public PullViewModel? Shown { get; private set; }

@@ -5,12 +5,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P05-T13 — commit mesajı yardımcıları: geçmiş, şablon, <c>HEAD</c> mesajı, taslak.
+/// P05-T13 — commit message helpers: history, template, <c>HEAD</c> message, draft.
 /// </summary>
 /// <remarks>
-/// Testlerin ağırlığı <b>ölçümle bulunan üç tuzakta</b>: <c>~</c> yalnızca <c>--path</c> ile
-/// genişliyor, yorum karakteri <c>#</c> olmak zorunda değil, ve git'in hazırladığı mesaj
-/// dosyası ham baytlarla yazılıyor.
+/// The weight of the tests is on <b>three traps found by measurement</b>: <c>~</c> only expands
+/// with <c>--path</c>, the comment character does not have to be <c>#</c>, and the message file
+/// git prepares is written with raw bytes.
 /// </remarks>
 public class CommitMessageTests
 {
@@ -44,12 +44,12 @@ public class CommitMessageTests
             config);
     }
 
-    // ---- Yapılandırma okuma ----
+    // ---- Reading configuration ----
 
     [Fact]
     public async Task Ayarsiz_anahtar_null_doner_hata_DEGIL()
     {
-        // Yapılandırılmamış her depo istisna atsaydı commit ekranı hiç açılmazdı.
+        // If every unconfigured repository threw, the commit screen would never open.
         using Harness harness = await CreateAsync();
 
         (await harness.Config.GetAsync(harness.Path, "commit.template", Ct)).ShouldBeNull();
@@ -58,9 +58,9 @@ public class CommitMessageTests
     [Fact]
     public async Task Tilde_YALNIZCA_path_ile_genisliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: düz `--get` `~/…` değerini ham döndürüyor. Ham değerle File.Exists
-        // çağırmak, `~` ile başlayan her şablonu sessizce "bulunamadı" yapardı.
-        // (TestRepository HOME'u deponun köküne ayarlıyor.)
+        // 🔴 MEASURED: a plain `--get` returns the `~/…` value raw. Calling File.Exists with the raw
+        // value would silently make every template starting with `~` "not found".
+        // (TestRepository sets HOME to the repository root.)
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git("config", "--local", "commit.template", "~/sablon.txt");
@@ -76,7 +76,7 @@ public class CommitMessageTests
     [Fact]
     public async Task Ayni_anahtarin_SON_degeri_kazanir()
     {
-        // git'in kendi kuralı "son yazan kazanır"; ilk satırı almak sessizce yanlış olurdu.
+        // git's own rule is "the last writer wins"; taking the first line would be silently wrong.
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git("config", "--local", "--add", "commit.template", "birinci.txt");
@@ -85,7 +85,7 @@ public class CommitMessageTests
         (await harness.Config.GetAsync(harness.Path, "commit.template", Ct)).ShouldBe("ikinci.txt");
     }
 
-    // ---- Mesaj geçmişi ----
+    // ---- Message history ----
 
     [Fact]
     public async Task Son_mesajlar_YENIDEN_ESKIYE_okunur()
@@ -105,8 +105,8 @@ public class CommitMessageTests
     [Fact]
     public async Task Cok_satirli_mesajlar_birbirine_KARISMAZ()
     {
-        // `-z` olmadan kayıt ayracı satır sonu olurdu ve çok satırlı bir mesajın nerede
-        // bittiği belirlenemezdi (ölçüldü).
+        // Without `-z` the record separator would be the line ending and there would be no way to tell
+        // where a multi-line message ends (measured).
         using Harness harness = await CreateAsync();
 
         harness.Repository.Commit("konu\n\nsatir bir\nsatir iki\nsatir üç");
@@ -121,8 +121,8 @@ public class CommitMessageTests
     [Fact]
     public async Task Bos_mesajli_commit_listeyi_KAYDIRMAZ()
     {
-        // Boş mesajlı commit gerçek (P02-T04): `--allow-empty-message` ile oluşuyor ve
-        // rebase/import araçları üretiyor. `-z` çıktısında boş bir alan olarak geliyor.
+        // A commit with an empty message is real (P02-T04): it is created with `--allow-empty-message`
+        // and rebase/import tools produce them. In `-z` output it comes through as an empty field.
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git(
@@ -158,8 +158,8 @@ public class CommitMessageTests
     [Fact]
     public async Task Yazar_deseni_ALT_DIZE_eslesmesi_yapmaz()
     {
-        // ÖLÇÜLDÜ: `--author` düzenli ifade olarak eşleşiyor. Çapasız bir desen, adı başka
-        // bir adın içinde geçen herkesin commit'ini "benim" sayardı.
+        // MEASURED: `--author` matches as a regular expression. An unanchored pattern would count the
+        // commits of everyone whose name occurs inside another name as "mine".
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git(
@@ -178,8 +178,8 @@ public class CommitMessageTests
     [Fact]
     public async Task Commitsiz_depoda_gecmis_BOS_liste()
     {
-        // `git log` burada çıkış 128 veriyor; ilk commit'ini atan kullanıcıya istisna
-        // göstermek olurdu.
+        // `git log` exits 128 here; that would mean showing an exception to a user making
+        // their first commit.
         using Harness harness = await CreateAsync(withCommit: false);
 
         (await harness.Reader.ReadRecentAsync(harness.Path, 5, false, Ct)).ShouldBeEmpty();
@@ -197,7 +197,7 @@ public class CommitMessageTests
             .ShouldBe("düzeltilecek konu\n\ngövde");
     }
 
-    // ---- Şablon ----
+    // ---- Template ----
 
     [Fact]
     public async Task Sablon_ayarsizsa_null()
@@ -224,9 +224,9 @@ public class CommitMessageTests
     [Fact]
     public async Task Goreli_sablon_yolu_KOKE_gore_cozulur()
     {
-        // 🔴 ÖLÇÜLDÜ: git göreli yolu çalışma ağacının köküne göre çözüyor, komutun
-        // çalıştığı dizine göre değil — alt dizinde aynı adlı dosya varken bile kökteki
-        // okundu. Aksi hâlde kullanıcıya terminalde gördüğünden başka bir şablon gösterirdik.
+        // 🔴 MEASURED: git resolves the relative path against the root of the working tree, not against
+        // the directory the command runs in — even with a file of the same name in a subdirectory, the
+        // one at the root was read. Otherwise we would show the user a different template than the one they see in the terminal.
         using Harness harness = await CreateAsync();
 
         harness.Repository.WriteFile("sablon.txt", "KOK SABLONU\n");
@@ -244,9 +244,9 @@ public class CommitMessageTests
     [Fact]
     public async Task Var_olmayan_sablon_SESSIZCE_bos_gecmez()
     {
-        // git'in kendisi bu durumda `fatal: could not read` ile çıkış 128 veriyor, yani
-        // kullanıcının terminaldeki commit'i de çalışmıyor. "Şablon boş" göstermek bozuk
-        // yapılandırmayı gizlemek olurdu.
+        // git itself exits 128 with `fatal: could not read` in this case, meaning the user's commit in
+        // the terminal does not work either. Showing "empty template" would hide the broken
+        // configuration.
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git("config", "--local", "commit.template", "yok-boyle-dosya.txt");
@@ -257,14 +257,14 @@ public class CommitMessageTests
         template.Path.ShouldContain("yok-boyle-dosya.txt");
     }
 
-    // ---- Yorum karakteri ----
+    // ---- Comment character ----
 
     [Fact]
     public async Task Yorum_karakteri_ayardan_okunur()
     {
-        // 🔴 ÖLÇÜLDÜ: `core.commentChar=';'` olan depoda git `;` satırlarını siliyor ve
-        // `#` satırlarını KORUYOR. Kör bir `#` filtresi burada hem gerçek yorumları bırakır
-        // hem kullanıcının issue satırını silerdi.
+        // 🔴 MEASURED: in a repository with `core.commentChar=';'` git strips the `;` lines and KEEPS
+        // the `#` lines. A blind `#` filter would both leave the real comments in and delete the
+        // user's issue line.
         using Harness harness = await CreateAsync();
 
         (await harness.Reader.ReadCommentCharacterAsync(harness.Path, Ct)).ShouldBe("#");
@@ -277,7 +277,7 @@ public class CommitMessageTests
     [Fact]
     public void Yorum_temizleme_yalnizca_SATIR_BASINDAKI_oneki_alir()
     {
-        // ÖLÇÜLDÜ: git de girintili yorum satırını silmiyor.
+        // MEASURED: git does not strip an indented comment line either.
         string text = "konu\n\n# yorum\n  # girintili\nson";
 
         CommitMessageText.RemoveComments(text).ShouldBe("konu\n\n  # girintili\nson");
@@ -286,14 +286,14 @@ public class CommitMessageTests
     [Fact]
     public void Auto_yorum_karakterinde_VARSAYILANA_donulur()
     {
-        // `auto` git'in mesaja göre seçtiği karakter demek; sabit bir cevabı yok.
-        // Yanlış tahminle kullanıcının satırını silmektense yorumu bırakmak yeğdir.
+        // `auto` means the character git picks based on the message; there is no fixed answer.
+        // Leaving the comment in is preferable to deleting the user's line on a wrong guess.
         CommitMessageText.ResolveCommentCharacter("auto").ShouldBe("#");
         CommitMessageText.ResolveCommentCharacter(null).ShouldBe("#");
         CommitMessageText.ResolveCommentCharacter("//").ShouldBe("//");
     }
 
-    // ---- Taslak ----
+    // ---- Draft ----
 
     [Fact]
     public async Task Taslak_yazilir_ve_geri_okunur()
@@ -318,15 +318,15 @@ public class CommitMessageTests
         File.Exists(Path.Combine(harness.Path, ".git", CommitMessageStore.DraftFileName))
             .ShouldBeTrue();
 
-        // `.git` altındaki yabancı dosya git'i rahatsız etmiyor (ölçüldü) — ama testin
-        // doğrulaması gereken şey çalışma ağacının temiz kalması.
+        // A foreign file under `.git` does not bother git (measured) — but what the test needs to
+        // verify is that the working tree stays clean.
         harness.Repository.Git("status", "--porcelain").ShouldBeEmpty();
     }
 
     [Fact]
     public async Task Bos_taslak_dosyayi_SILER()
     {
-        // Yarım mesajı silen kullanıcı, ekranı bir daha açtığında onu geri görmemeli.
+        // A user who deletes a half-written message must not see it again when they reopen the screen.
         using Harness harness = await CreateAsync();
 
         await harness.Store.SaveDraftAsync(harness.Path, "bir sey", Ct);
@@ -341,8 +341,8 @@ public class CommitMessageTests
     [Fact]
     public async Task Taslak_worktree_BASINA_ayri()
     {
-        // MERGE_MSG ve index worktree başına ayrı (P02-T06). Taslağı ortak dizine koymak,
-        // iki worktree'de çalışan kullanıcının mesajlarını birbirine karıştırırdı.
+        // MERGE_MSG and the index are per worktree (P02-T06). Putting the draft in the common directory
+        // would mix up the messages of a user working in two worktrees.
         using Harness harness = await CreateAsync();
         using TestRepository worktree = harness.Repository.AddWorkTree("yan-dal");
 
@@ -371,9 +371,9 @@ public class CommitMessageTests
     [Fact]
     public async Task Merge_mesajindaki_YORUMLAR_temizlenir()
     {
-        // 🔴 Fazın en sessiz hatası burada olurdu: git'in editör yolu `# Conflicts:`
-        // satırlarını commit'e sokmuyor, bizim `--cleanup=whitespace` yolumuz sokardı.
-        // Kutuda görünen = commit'lenen.
+        // 🔴 The quietest bug of the phase would be here: git's editor path does not let `# Conflicts:`
+        // lines into the commit, our `--cleanup=whitespace` path would.
+        // What is shown in the box = what is committed.
         using Harness harness = await CreateAsync();
 
         CreateConflictingMerge(harness.Repository);
@@ -390,9 +390,9 @@ public class CommitMessageTests
     [Fact]
     public async Task Merge_mesaji_DOSYANIN_KODLAMASIYLA_okunur()
     {
-        // 🔴 ÖLÇÜLDÜ: git bu dosyayı ham baytlarla yazıyor — `i18n.commitEncoding` Latin-5
-        // olan bir depoda cherry-pick edilen mesaj Latin-5 baytlarıyla düşüyor. UTF-8
-        // varsayılsaydı Türkçe mesaj değiştirme karakterine dönerdi (P04-T07'nin aynısı).
+        // 🔴 MEASURED: git writes this file with raw bytes — in a repository whose `i18n.commitEncoding`
+        // is Latin-5, a cherry-picked message lands with Latin-5 bytes. Had UTF-8 been assumed, a Turkish
+        // message would turn into replacement characters (the same as P04-T07).
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git("config", "--local", "i18n.commitEncoding", "ISO-8859-9");
@@ -418,7 +418,7 @@ public class CommitMessageTests
         (await harness.Store.ReadAsync(harness.Path, Ct)).Source.ShouldBe(CommitMessageSource.None);
     }
 
-    /// <summary>Çakışmalı bir merge başlatır; <c>MERGE_MSG</c> geride kalır.</summary>
+    /// <summary>Starts a conflicting merge; <c>MERGE_MSG</c> is left behind.</summary>
     private static void CreateConflictingMerge(TestRepository repository)
     {
         repository.WriteFile("çakışan.txt", "taban\n");
@@ -433,7 +433,7 @@ public class CommitMessageTests
         repository.WriteFile("çakışan.txt", "ana dal\n");
         repository.Git("commit", "-am", "ana dal degisikligi");
 
-        // Çakışma bekleniyor: `Git` başarısızlıkta fırlatıyor, bu yüzden TryGit.
+        // A conflict is expected: `Git` throws on failure, which is why TryGit is used.
         repository.TryGit("merge", "yan");
     }
 }

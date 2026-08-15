@@ -5,7 +5,7 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P03-T15 — Commit imza durumu, gerçek <c>git</c> ve gerçek SSH imzalarıyla.
+/// P03-T15 — Commit signature status, with real <c>git</c> and real SSH signatures.
 /// </summary>
 public class CommitSignatureReaderTests
 {
@@ -61,10 +61,10 @@ public class CommitSignatureReaderTests
     [Fact]
     public async Task Guvenilenler_listesi_yokken_imzali_commit_imzasiz_SAYILMAZ()
     {
-        // Bu testin bütün varlık sebebi ölçülmüş bir tuzak: allowedSignersFile
-        // yapılandırılmamışsa git, İMZALI bir commit için %G? alanında "N" döner ve
-        // yalnızca stderr'e hata yazar. Ham %G?'ye güvenmek, imzalı bir commit'e
-        // "imzasız" demek olurdu — kullanıcıya yanlış bilgi.
+        // The entire reason this test exists is a measured trap: if allowedSignersFile
+        // is not configured, git returns "N" in the %G? field for a SIGNED commit and
+        // only writes the error to stderr. Trusting the raw %G? would mean calling a signed
+        // commit "unsigned" — wrong information for the user.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
         if (!repository.TryEnableSshSigning())
@@ -72,7 +72,7 @@ public class CommitSignatureReaderTests
             Assert.Skip("ssh-keygen bulunamadı; imzalama testi atlandı.");
         }
 
-        // TrustSigningKey ÇAĞRILMIYOR — tuzağın oluştuğu durum bu.
+        // TrustSigningKey is NOT CALLED — this is the situation where the trap occurs.
         repository.Git("commit", "--allow-empty", "-S", "-m", "imzalı ama doğrulanamaz");
 
         CommitSignatureReader reader = await CreateReaderAsync();

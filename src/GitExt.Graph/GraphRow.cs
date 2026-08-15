@@ -1,43 +1,43 @@
 namespace GitExt.Graph;
 
 /// <summary>
-/// Yerleşim algoritmasının tek bir satır için ürettiği sonuç.
+/// The result the layout algorithm produces for a single row.
 /// </summary>
 /// <remarks>
-/// <b>Saf veridir</b> (ADR-0003): piksel, renk kodu, çizim nesnesi içermez. Şerit indeksi
-/// ve renk indeksi soyut sayılardır; bunları koordinata ve renge çevirmek çizim katmanının
-/// işidir. Bu ayrım sayesinde algoritma hiçbir şey çizmeden test edilebiliyor.
+/// <b>Pure data</b> (ADR-0003): contains no pixels, color codes or drawing objects. The lane index
+/// and the color index are abstract numbers; turning them into coordinates and colors is the render
+/// layer's job. Thanks to this separation the algorithm can be tested without drawing anything.
 /// </remarks>
 public sealed record GraphRow
 {
-    /// <summary>Bu satırdaki commit.</summary>
+    /// <summary>The commit on this row.</summary>
     public required DagCommit Commit { get; init; }
 
     /// <summary>
-    /// Commit düğümünün bulunduğu dikey şerit; 0 en soldaki.
+    /// The vertical lane the commit node sits in; 0 is the leftmost.
     /// </summary>
     public required int Lane { get; init; }
 
     /// <summary>
-    /// Şeride atanmış renk indeksi.
+    /// The color index assigned to the lane.
     /// </summary>
     /// <remarks>
-    /// Gerçek renge çevirmek tema katmanının işi (Faz 08). Burada yalnızca "komşu şeritler
-    /// farklı indeks alsın" garantisi var.
+    /// Turning it into a real color is the theme layer's job (Phase 08). The only guarantee here is
+    /// that "neighboring lanes get different indexes".
     /// </remarks>
     public required int ColorIndex { get; init; }
 
     /// <summary>
-    /// Bu satırdan aşağıya (daha eski commit'lere) uzanan kenarlar.
+    /// The edges reaching downwards (to older commits) from this row.
     /// </summary>
     public required IReadOnlyList<GraphEdge> Edges { get; init; }
 
     /// <summary>
-    /// Bu satırda kullanımda olan toplam şerit sayısı.
+    /// The total number of lanes in use on this row.
     /// </summary>
     /// <remarks>
-    /// Çizim katmanının satır genişliğini bilmesi için; grafiğin en geniş yerini bulmak
-    /// üzere tüm satırları taramak zorunda kalmaz.
+    /// So the render layer knows the row width; it does not have to scan every row to find the
+    /// widest point of the graph.
     /// </remarks>
     public required int LaneCount { get; init; }
 
@@ -45,37 +45,37 @@ public sealed record GraphRow
 }
 
 /// <summary>
-/// İki satır arasındaki bağlantının geometrisi.
+/// The geometry of the connection between two rows.
 /// </summary>
 /// <remarks>
-/// Kenar, <b>bu satırdan başlayıp aşağı doğru</b> uzanır. Dikey bir kenarda
-/// <see cref="FromLane"/> ve <see cref="ToLane"/> aynıdır; şerit değiştiren bir kenarda
-/// (dallanma veya merge) farklıdır.
+/// An edge <b>starts at this row and reaches downwards</b>. On a vertical edge <see cref="FromLane"/>
+/// and <see cref="ToLane"/> are the same; on an edge that changes lane (a branch or a merge) they
+/// differ.
 /// </remarks>
 public sealed record GraphEdge
 {
-    /// <summary>Kenarın bu satırdaki başlangıç şeridi.</summary>
+    /// <summary>The lane the edge starts in on this row.</summary>
     public required int FromLane { get; init; }
 
-    /// <summary>Kenarın bir sonraki satırdaki bitiş şeridi.</summary>
+    /// <summary>The lane the edge ends in on the next row.</summary>
     public required int ToLane { get; init; }
 
-    /// <summary>Kenarın ulaştığı commit (ebeveyn).</summary>
+    /// <summary>The commit the edge reaches (the parent).</summary>
     public required string Target { get; init; }
 
-    /// <summary>Şeride atanmış renk indeksi.</summary>
+    /// <summary>The color index assigned to the lane.</summary>
     public required int ColorIndex { get; init; }
 
     /// <summary>
-    /// Kenar bu satırda bir düğümden mi çıkıyor, yoksa sadece geçiyor mu?
+    /// Does the edge leave a node on this row, or is it just passing through?
     /// </summary>
     /// <remarks>
-    /// Geçiş (pass-through) kenarları, o satırdaki commit'le ilgisi olmayan ama şeridi
-    /// meşgul eden bağlantılardır. Çizim katmanı bunları düğümsüz düz çizgi olarak çizer.
+    /// Pass-through edges are connections that have nothing to do with the commit on that row but
+    /// still occupy a lane. The render layer draws them as a straight line with no node.
     /// </remarks>
     public bool IsPassThrough { get; init; }
 
-    /// <summary>Şerit değiştiren (diyagonal) bir kenar mı?</summary>
+    /// <summary>An edge that changes lane (diagonal)?</summary>
     public bool IsDiagonal => FromLane != ToLane;
 
     public override string ToString() => $"{FromLane}→{ToLane} ({Target})";

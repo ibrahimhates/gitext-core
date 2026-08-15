@@ -1,3 +1,4 @@
+using System.Globalization;
 using GitExt.Core.Git;
 
 namespace GitExt.UI.Localization;
@@ -36,12 +37,46 @@ public static class Loc
 {
     private static ITranslator? _translator;
 
-    /// <summary>Anahtarın karşılığı; çevirmen kurulmamışsa anahtarın kendisi.</summary>
-    public static string T(string key) => _translator is null ? key : _translator[key];
+    /// <summary>
+    /// The text for a key. Falls back to built-in English when no translator is attached.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 This used to return the <b>key name</b> when no translator was attached, and any code
+    /// path that runs without the composition root — plain <c>[Fact]</c> tests, the XAML
+    /// designer — showed raw keys like <c>git_output.commit_created</c>. A test caught it.
+    /// <see cref="BuiltInEnglish"/> is compiled in and depends on no file, so there is no
+    /// reason to ever show a key to anyone.
+    /// </remarks>
+    public static string T(string key) =>
+        _translator is not null
+            ? _translator[key]
+            : BuiltInEnglish.Entries.GetValueOrDefault(key, key);
 
-    /// <summary>Yer tutuculu metni doldurur.</summary>
-    public static string F(string key, params object?[] arguments) =>
-        _translator is null ? key : _translator.Format(key, arguments);
+    /// <summary>Fills in a placeholder text.</summary>
+    public static string F(string key, params object?[] arguments)
+    {
+        if (_translator is not null)
+        {
+            return _translator.Format(key, arguments);
+        }
+
+        string template = T(key);
+
+        if (arguments is not { Length: > 0 })
+        {
+            return template;
+        }
+
+        try
+        {
+            return string.Format(CultureInfo.InvariantCulture, template, arguments);
+        }
+        catch (FormatException)
+        {
+            // A broken placeholder in a translation must not crash the application.
+            return template;
+        }
+    }
 
     /// <summary>Etkin çevirmeni tanıtır. Composition root'tan bir kez çağrılıyor.</summary>
     public static void Attach(ITranslator translator) => _translator = translator;

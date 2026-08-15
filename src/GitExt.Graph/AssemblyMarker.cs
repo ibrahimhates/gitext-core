@@ -1,11 +1,11 @@
 namespace GitExt.Graph;
 
 /// <summary>
-/// Bu derlemeyi referans almak için kullanılan işaretçi tip.
+/// Marker type used to reference this assembly.
 /// </summary>
 /// <remarks>
-/// Commit DAG yerleşim algoritması (şerit atama, kenar yönlendirme, renk atama) buraya gelecek.
-/// Bu proje kasıtlı olarak UI'dan bağımsızdır; böylece algoritma hiçbir şey çizmeden test
-/// edilebilir. Bkz. <c>docs/adr/0003-solution-structure.md</c>.
+/// The commit DAG layout algorithm (lane assignment, edge routing, color assignment) will land here.
+/// This project is deliberately independent of the UI; that way the algorithm can be tested without
+/// drawing anything. See <c>docs/adr/0003-solution-structure.md</c>.
 /// </remarks>
 public static class AssemblyMarker;

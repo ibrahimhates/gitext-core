@@ -4,17 +4,17 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P05-T01 — Yazma işlemlerinin serileştirilmesi.
+/// P05-T01 — Serializing write operations.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ (kod yazılmadan önce):</b> git eşzamanlı yazmayı <b>beklemiyor</b>. Aynı depoda
-/// 8 paralel <c>git add</c> çalıştırıldığında 7'si
-/// <c>fatal: Unable to create '…/index.lock': File exists</c> ile düştü.
+/// <b>MEASURED (before any code was written):</b> git does <b>not</b> wait on concurrent writes. When
+/// 8 parallel <c>git add</c> runs were started on the same repository, 7 of them failed with
+/// <c>fatal: Unable to create '…/index.lock': File exists</c>.
 /// </para>
 /// <para>
-/// Bu yüzden buradaki asıl test <b>gerçek git ile</b> yapılıyor: sahte bir işlemin sırayla
-/// çalışması kuyruğun doğru olduğunu göstermez, git'in gerçekten şikâyet etmemesi gösterir.
+/// That is why the real test here is done <b>with real git</b>: a fake operation running in order does
+/// not show that the queue is correct, git actually not complaining does.
 /// </para>
 /// </remarks>
 public class GitWriteQueueTests
@@ -59,8 +59,8 @@ public class GitWriteQueueTests
     [Fact]
     public async Task Farkli_depolar_birbirini_BEKLEMEZ()
     {
-        // Worktree'ler ayrı index'e sahip (ölçüldü: iki worktree'de eşzamanlı add çakışmıyor).
-        // Hepsini tek kuyruğa almak kullanıcıyı gereksiz yere bekletirdi.
+        // Worktrees have separate indexes (measured: concurrent adds in two worktrees do not collide).
+        // Putting them all in a single queue would make the user wait for no reason.
         using GitWriteQueue queue = new();
 
         using SemaphoreSlim bothStarted = new(0, 2);
@@ -78,7 +78,7 @@ public class GitWriteQueueTests
         Task first = Work("/tmp/bir/.git");
         Task second = Work("/tmp/iki/.git");
 
-        // İkisi de başlayabilmeli: aynı kuyrukta olsalardı ikincisi hiç başlamazdı.
+        // Both must be able to start: were they in the same queue, the second would never start.
         await bothStarted.WaitAsync(TimeSpan.FromSeconds(5), Ct);
         await bothStarted.WaitAsync(TimeSpan.FromSeconds(5), Ct);
 
@@ -90,8 +90,8 @@ public class GitWriteQueueTests
     [Fact]
     public async Task Ayni_depo_farkli_yazimla_verilse_de_ayni_kuyruga_duser()
     {
-        // "/repo/.git" ile "/repo/.git/" aynı depo; ayrışsalardı serileştirme SESSİZCE
-        // devre dışı kalırdı.
+        // "/repo/.git" and "/repo/.git/" are the same repository; if they diverged, serialization would
+        // SILENTLY be disabled.
         using GitWriteQueue queue = new();
 
         int active = 0;
@@ -129,7 +129,7 @@ public class GitWriteQueueTests
     [Fact]
     public async Task Islem_hata_verse_de_kuyruk_serbest_kalir()
     {
-        // Serbest bırakılmazsa depo kalıcı olarak kilitlenir ve uygulama donmuş görünür.
+        // If it is not released the repository is locked permanently and the application looks frozen.
         using GitWriteQueue queue = new();
 
         await Should.ThrowAsync<InvalidOperationException>(
@@ -172,14 +172,14 @@ public class GitWriteQueueTests
         await holder;
     }
 
-    // ---- Gerçek git ----
+    // ---- Real git ----
 
     [Fact]
     public void GERCEK_git_kilit_varken_BEKLEMEZ_hemen_duser()
     {
-        // Kuyruğun varlık sebebinin DETERMİNİST kanıtı: aşağıdaki yarış testi zamanlamaya
-        // bağlı ve yavaş bir CI makinesinde zayıflayabilir; bu test her zaman aynı sonucu
-        // verir.
+        // The DETERMINISTIC proof of why the queue exists: the race test below depends on timing
+        // and can weaken on a slow CI machine; this test always gives the same
+        // result.
         using TestRepository repository = CreateRepositoryWithChanges();
 
         string lockFile = Path.Combine(repository.Path, ".git", "index.lock");
@@ -201,8 +201,8 @@ public class GitWriteQueueTests
     [Fact]
     public void Okumalar_kilit_varken_CALISIR()
     {
-        // "Okumalar kuyruğa girmez" kararının dayanağı: git opsiyonel kilidi alamayınca
-        // sessizce vazgeçiyor, hata vermiyor.
+        // The basis for the "reads do not enter the queue" decision: when git cannot take the optional
+        // lock it silently gives up, it does not error.
         using TestRepository repository = CreateRepositoryWithChanges();
 
         string lockFile = Path.Combine(repository.Path, ".git", "index.lock");
@@ -225,8 +225,8 @@ public class GitWriteQueueTests
     [Fact]
     public async Task GERCEK_git_ile_kuyruksuz_yazmalar_cakisiyor()
     {
-        // Karşı kanıt: kuyruğun gerçekten bir şeyi çözdüğünü göstermek için önce
-        // problemin var olduğu gösteriliyor. Bu test kuyruğu KULLANMIYOR.
+        // Counter-evidence: to show that the queue really solves something, the problem is first shown
+        // to exist. This test does NOT USE the queue.
         using TestRepository repository = CreateRepositoryWithChanges();
 
         int failures = 0;
@@ -241,10 +241,10 @@ public class GitWriteQueueTests
             }
         }, Ct)));
 
-        // Ölçümde 8 yazardan 7'si düşmüştü. Zamanlamaya bağlı olduğu için "en az bir"
-        // deniyor. ⚠️ Yavaş/tek çekirdekli bir CI makinesinde paralellik azalıp sıfır
-        // çıkabilir; davranışın DETERMİNİST kanıtı için
-        // `GERCEK_git_kilit_varken_BEKLEMEZ_hemen_duser` var.
+        // In the measurement 7 out of 8 writers failed. Because it depends on timing, "at least one"
+        // is asserted. ⚠️ On a slow/single-core CI machine parallelism drops and it can come out as
+        // zero; for the DETERMINISTIC proof of the behaviour there is
+        // `GERCEK_git_kilit_varken_BEKLEMEZ_hemen_duser`.
         failures.ShouldBeGreaterThan(0);
     }
 

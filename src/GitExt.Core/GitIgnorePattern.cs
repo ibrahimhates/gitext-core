@@ -4,31 +4,31 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// <c>.gitignore</c> satırı üretir (P05-T08).
+/// Produces a <c>.gitignore</c> line (P05-T08).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>ÖLÇÜLDÜ:</b> dosya adını <b>ham</b> yazmak sessizce çalışmıyor. <c>#</c> ile başlayan
-/// ad yorum, <c>!</c> ile başlayan ad olumsuzlama, <c>[</c> içeren ad karakter sınıfı,
-/// <c>\</c> içeren ad kaçış sayılıyor — dördünde de git dosyayı <b>yok saymıyor</b> ama bir
-/// hata da vermiyor. Kullanıcı "yok say" diyor, uygulama "tamam" diyor, dosya listede
-/// kalmaya devam ediyor.
+/// 🔴 <b>MEASURED:</b> writing the file name <b>raw</b> silently fails. A name starting with
+/// <c>#</c> is a comment, one starting with <c>!</c> is a negation, one containing <c>[</c> is a
+/// character class, one containing <c>\</c> is an escape — in all four git does <b>not</b>
+/// ignore the file, and it does not report an error either. The user says "ignore", the app
+/// says "done", and the file stays in the list.
 /// </para>
 /// <para>
-/// Üretilen desen <b>köke sabitlenir</b> (baştaki <c>/</c>): sabitlenmezse desen depodaki
-/// <b>aynı adlı her dosyaya</b> uyar — kullanıcı bir tanesini seçmişken.
+/// The produced pattern is <b>anchored to the root</b> (leading <c>/</c>): unanchored it would
+/// match <b>every file with the same name</b> in the repository — while the user picked one.
 /// </para>
 /// </remarks>
 public static class GitIgnorePattern
 {
     /// <summary>
-    /// Verilen yolu <b>yalnızca o yolu</b> yok sayan bir desene çevirir.
+    /// Turns the given path into a pattern that ignores <b>only that path</b>.
     /// </summary>
     public static string ForPath(RepositoryPath path) => "/" + Escape(path.Value);
 
     /// <summary>
-    /// Verilen yolun bulunduğu dizini yok sayan desen üretir; yol köke aitse
-    /// <see langword="null"/>.
+    /// Produces a pattern ignoring the directory the given path lives in; <see langword="null"/>
+    /// if the path belongs to the root.
     /// </summary>
     public static string? ForDirectoryOf(RepositoryPath path)
     {
@@ -38,33 +38,33 @@ public static class GitIgnorePattern
     }
 
     /// <summary>
-    /// Aynı uzantıya sahip <b>tüm</b> dosyaları yok sayan desen üretir; uzantı yoksa
-    /// <see langword="null"/>.
+    /// Produces a pattern ignoring <b>all</b> files with the same extension;
+    /// <see langword="null"/> if there is no extension.
     /// </summary>
     /// <remarks>
-    /// Bu desen bilinçli olarak <b>sabitlenmez</b>: "tüm <c>.log</c> dosyaları" isteğinin
-    /// tanımı gereği her dizinde geçerli olması gerekiyor.
+    /// This pattern is deliberately <b>not anchored</b>: the request "all <c>.log</c> files" must
+    /// by definition apply in every directory.
     /// </remarks>
     public static string? ForExtensionOf(RepositoryPath path)
     {
         string name = path.Value[(path.Value.LastIndexOf('/') + 1)..];
 
-        // Baştaki nokta uzantı değil, gizli dosya adıdır (`.env` → uzantı yok).
+        // A leading dot is not an extension but a hidden file name (`.env` → no extension).
         int dot = name.LastIndexOf('.');
 
         return dot <= 0 || dot == name.Length - 1 ? null : "*" + Escape(name[dot..]);
     }
 
     /// <summary>
-    /// Bir yolu <c>.gitignore</c> deseni içinde <b>birebir</b> eşleşecek hale getirir.
+    /// Makes a path match <b>literally</b> inside a <c>.gitignore</c> pattern.
     /// </summary>
     /// <remarks>
-    /// Kaçırılanlar ve sebepleri (hepsi ölçüldü): <c>\</c> kaçış karakteri · <c>*</c> ve
-    /// <c>?</c> joker · <c>[</c> karakter sınıfı başlangıcı · satır başındaki <c>#</c> yorum ·
-    /// satır başındaki <c>!</c> olumsuzlama.
+    /// What is escaped and why (all measured): <c>\</c> the escape character · <c>*</c> and
+    /// <c>?</c> wildcards · <c>[</c> start of a character class · <c>#</c> at line start, a comment ·
+    /// <c>!</c> at line start, a negation.
     /// <para>
-    /// Boşluk kaçırılmıyor: ölçüldü, <b>satır içi</b> boşluk sorun değil. Yalnızca satır
-    /// <b>sonundaki</b> boşluk git tarafından kırpılıyor; o durumda son karakter kaçırılıyor.
+    /// Spaces are not escaped: measured, an <b>inline</b> space is no problem. Only a space at the
+    /// <b>end</b> of the line is trimmed by git; in that case the last character is escaped.
     /// </para>
     /// </remarks>
     public static string Escape(string value)
@@ -81,15 +81,15 @@ public static class GitIgnorePattern
             builder.Append(c);
         }
 
-        // `#` ve `!` yalnızca satır BAŞINDA özel; desen `/` ile başladığında zaten
-        // sorun olmaz ama sabitlenmemiş desenler (uzantı) için gerekli.
+        // `#` and `!` are special only at the START of a line; when the pattern begins with `/` it is
+        // already fine, but this is needed for unanchored patterns (extension).
         if (builder.Length > 0 && builder[0] is '#' or '!')
         {
             builder.Insert(0, '\\');
         }
 
-        // Sondaki boşluk git tarafından kırpılır; kaçırılmazsa desen adın son karakterini
-        // kaybeder ve hiçbir şeye uymaz.
+        // A trailing space is trimmed by git; unescaped, the pattern loses the last character of the
+        // name and matches nothing.
         if (builder.Length > 0 && builder[^1] == ' ')
         {
             builder.Insert(builder.Length - 1, '\\');

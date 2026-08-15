@@ -3,42 +3,42 @@ using System.Text;
 namespace GitExt.Graph;
 
 /// <summary>
-/// Testler için metin tabanlı DAG tanımı (P03-T02).
+/// Text-based DAG definition for tests (P03-T02).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Yerleşim algoritmasını gerçek bir depo kurmadan, okunabilir senaryolarla test edebilmek için.
-/// Gerçek <c>git</c> ile fixture kurmak (Faz 02'deki yaklaşım) burada uygun değil: bir şerit
-/// çakışmasını üreten DAG'ı <c>git</c> komutlarıyla anlatmak, aynı şeyi dört satır metinle
-/// anlatmaktan çok daha zor ve okunduğunda ne test edildiği anlaşılmıyor.
+/// So the layout algorithm can be tested with readable scenarios, without setting up a real repository.
+/// Setting up a fixture with real <c>git</c> (the Phase 02 approach) does not fit here: describing the
+/// DAG that produces a lane collision with <c>git</c> commands is far harder than describing the same
+/// thing in four lines of text, and when you read it you cannot tell what is being tested.
 /// </para>
 /// <para>
-/// Biçim — her satır bir commit, <b>en yeniden en eskiye</b> (<c>git log</c> sırası):
+/// Format — one commit per line, <b>newest to oldest</b> (<c>git log</c> order):
 /// </para>
 /// <code>
-/// D: B C     # D'nin ebeveynleri B ve C (merge)
+/// D: B C     # D's parents are B and C (merge)
 /// C: A
 /// B: A
-/// A:         # kök commit, ebeveyni yok
+/// A:         # root commit, no parents
 /// </code>
 /// <para>
-/// Kurallar:
+/// Rules:
 /// </para>
 /// <list type="bullet">
-///   <item><c>#</c> ile başlayan satırlar ve boş satırlar yok sayılır.</item>
-///   <item>Satır sonundaki <c>#</c> yorumu da atılır.</item>
-///   <item>Ebeveynler boşluk veya virgülle ayrılabilir.</item>
-///   <item>Kimlikler serbest metindir; okunabilir olsun diye tek harf önerilir.</item>
+///   <item>Lines starting with <c>#</c> and blank lines are ignored.</item>
+///   <item>A trailing <c>#</c> comment is dropped as well.</item>
+///   <item>Parents may be separated by a space or a comma.</item>
+///   <item>Ids are free text; single letters are recommended so they stay readable.</item>
 /// </list>
 /// </remarks>
 public static class DagFixture
 {
     /// <summary>
-    /// Metin tanımını commit listesine çevirir.
+    /// Converts the text definition into a commit list.
     /// </summary>
     /// <exception cref="FormatException">
-    /// Bir satır ayrıştırılamazsa, kimlik tekrarlanırsa, veya bir commit kendisinden
-    /// <b>önce</b> tanımlanmamış bir ebeveyne işaret ederse.
+    /// If a line cannot be parsed, an id is repeated, or a commit points at a parent that was not
+    /// defined <b>before</b> it.
     /// </exception>
     public static IReadOnlyList<DagCommit> Parse(string definition)
     {
@@ -90,14 +90,14 @@ public static class DagFixture
     }
 
     /// <summary>
-    /// Girdinin topolojik sırada olduğunu doğrular: her ebeveyn, çocuğundan <b>sonra</b> gelmeli.
+    /// Verifies that the input is in topological order: every parent must come <b>after</b> its child.
     /// </summary>
     /// <remarks>
-    /// ADR-0007'nin değişmezi bu. Algoritma tek geçişli ileri tarama yapıyor; bir ebeveyn
-    /// çocuğundan önce gelirse kenar yukarı bakar ve grafik bozulur. Fixture'ın kendisi bu
-    /// hatayı yapıyorsa test yanlış şeyi doğrular — bu yüzden burada yakalanıyor.
+    /// This is the invariant of ADR-0007. The algorithm does a single forward pass; if a parent comes
+    /// before its child the edge points upwards and the graph breaks. If the fixture itself makes this
+    /// mistake the test verifies the wrong thing — that is why it is caught here.
     /// <para>
-    /// Tanımlanmamış ebeveynlere izin verilir: kısmi geçmiş (sayfalama sınırı) böyle görünür.
+    /// Undefined parents are allowed: partial history (a paging limit) looks like this.
     /// </para>
     /// </remarks>
     private static void ValidateTopologicalOrder(IReadOnlyList<DagCommit> commits)
@@ -113,7 +113,7 @@ public static class DagFixture
         {
             foreach (string parent in commits[i].Parents)
             {
-                // Tanımlanmamış ebeveyn = geçmişin kesildiği yer, sorun değil.
+                // Undefined parent = the point where history was cut off, not a problem.
                 if (position.TryGetValue(parent, out int parentIndex) && parentIndex < i)
                 {
                     throw new FormatException(
@@ -132,11 +132,11 @@ public static class DagFixture
     }
 
     /// <summary>
-    /// Yerleşim sonucunu, beklenen çıktıyla karşılaştırılabilecek metin tablosuna çevirir.
+    /// Converts the layout result into a text table that can be compared against the expected output.
     /// </summary>
     /// <remarks>
-    /// Testlerde beklenen değeri elle kurmak yerine okunabilir bir dize olarak yazabilmek için.
-    /// Bir test kırıldığında fark doğrudan gözle görülür.
+    /// So that tests can write the expected value as a readable string instead of building it by hand.
+    /// When a test breaks, the difference is visible at a glance.
     /// </remarks>
     public static string Render(IReadOnlyList<GraphRow> rows)
     {
@@ -164,12 +164,12 @@ public static class DagFixture
 }
 
 /// <summary>
-/// Fixture'dan gelen tek bir commit — yalnızca kimlik ve ebeveynler.
+/// A single commit coming from the fixture — id and parents only.
 /// </summary>
 /// <remarks>
-/// Yerleşim algoritması yazar, tarih veya mesaj bilmez; bunlara ihtiyaç duymadığı için
-/// <see cref="Core.Model.CommitInfo"/> yerine bu daraltılmış tip kullanılıyor. Böylece
-/// algoritma testleri tam bir commit kurmak zorunda kalmıyor.
+/// The layout algorithm knows nothing about author, date or message; since it does not need them,
+/// this narrowed type is used instead of <see cref="Core.Model.CommitInfo"/>. That way the
+/// algorithm tests do not have to build a full commit.
 /// </remarks>
 public sealed record DagCommit(string Id, IReadOnlyList<string> Parents)
 {

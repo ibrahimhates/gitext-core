@@ -6,15 +6,15 @@ using GitExt.Core.Model;
 namespace GitExt.Desktop;
 
 /// <summary>
-/// Arayüz açmadan <c>GitExt.Core</c>'u bir depoya karşı çalıştırır (P02-T16).
+/// Runs <c>GitExt.Core</c> against a repository without opening the UI (P02-T16).
 /// </summary>
 /// <remarks>
 /// <para>
-/// İki işe yarıyor: çekirdek katmanın gerçek depolarda doğru çalıştığını UI olmadan
-/// göstermek, ve kullanıcıdan gelen "bende çalışmıyor" bildirimlerini teşhis etmek.
+/// It serves two purposes: showing that the core layer works correctly against real repositories
+/// without a UI, and diagnosing "it does not work for me" reports coming from users.
 /// </para>
 /// <para>
-/// Kullanım: <c>gitext-core --headless [depo-yolu]</c>
+/// Usage: <c>gitext-core --headless [repository-path]</c>
 /// </para>
 /// </remarks>
 internal static class HeadlessDiagnostics
@@ -194,7 +194,7 @@ internal static class HeadlessDiagnostics
         }
         catch (GitException ex) when (ex.Kind is GitFailureKind.UnknownRevision or GitFailureKind.Unknown)
         {
-            // Doğmamış depoda commit yok; bu bir hata değil.
+            // An unborn repository has no commits; this is not an error.
             Console.WriteLine("  (henüz commit yok)");
         }
     }

@@ -10,7 +10,7 @@ using GitExt.UI.Controls;
 namespace GitExt.UI.Tests.Controls;
 
 /// <summary>
-/// P03-T10 — Grafik sütunu kontrolü. Testler gerçek Skia render'ıyla piksel doğrular.
+/// P03-T10 — Graph column control. The tests verify pixels with real Skia rendering.
 /// </summary>
 public class CommitGraphCellTests
 {
@@ -21,7 +21,7 @@ public class CommitGraphCellTests
         new GraphLayoutEngine().Add(DagFixture.Parse(definition))[index];
 
     /// <summary>
-    /// Kontrolü tek başına render edip pikselleri döndürür.
+    /// Renders the control on its own and returns the pixels.
     /// </summary>
     private static uint[] RenderPixels(CommitGraphCell cell, int width = 60, int height = 22)
     {
@@ -59,8 +59,8 @@ public class CommitGraphCellTests
             handle.Free();
         }
 
-        // Kontrolü penceresinden ayır ki aynı örnek tekrar render edilebilsin.
-        // Aksi halde ikinci çağrıda "The Control already has a parent" hatası gelir.
+        // Detach the control from its window so the same instance can be rendered again.
+        // Otherwise the second call fails with "The Control already has a parent".
         ((Border)window.Content!).Child = null;
         window.Close();
 
@@ -73,9 +73,9 @@ public class CommitGraphCellTests
     private static bool IsPainted(uint pixel) =>
         (pixel & 0x00FFFFFF) != 0x00FFFFFF && (pixel & 0xFF000000) != 0;
 
-    // Yakalanan kare RGBA sıralı; little-endian uint olarak okununca 0xAABBGGRR olur.
-    // ÖLÇÜLDÜ: saf kırmızı 0xFF0000FF geliyor. ARGB varsayıp R'yi >>16'dan okumak
-    // mavi kanalı okumak demek olurdu.
+    // The captured frame is RGBA-ordered; read as a little-endian uint it becomes 0xAABBGGRR.
+    // MEASURED: pure red arrives as 0xFF0000FF. Assuming ARGB and reading R from >>16 would mean
+    // reading the blue channel.
     private static int Red(uint pixel) => (int)(pixel & 0xFF);
 
     private static int Green(uint pixel) => (int)((pixel >> 8) & 0xFF);
@@ -101,7 +101,7 @@ public class CommitGraphCellTests
     [AvaloniaFact]
     public void Kenar_cizilince_daha_fazla_piksel_boyanir()
     {
-        // Kökte yalnızca düğüm var; zincirin ortasında düğüm + kenar var.
+        // At the root there is only a node; in the middle of the chain there is a node + an edge.
         int rootOnly = NonWhitePixelCount(RenderPixels(new CommitGraphCell { Row = FirstRow("A:") }));
 
         int withEdge = NonWhitePixelCount(RenderPixels(
@@ -113,7 +113,7 @@ public class CommitGraphCellTests
     [AvaloniaFact]
     public void Merge_satiri_diyagonal_kenar_cizer()
     {
-        // Merge'de ikinci ebeveyn başka bir şeride gider → diyagonal çizgi.
+        // In a merge the second parent goes to another lane → a diagonal line.
         GraphRow merge = FirstRow(
             """
             D: B C
@@ -128,10 +128,10 @@ public class CommitGraphCellTests
         CommitGraphCell cell = new() { Row = merge, LaneWidth = laneWidth };
         uint[] pixels = RenderPixels(cell, width: 60, height: 22);
 
-        // ÖLÇÜLDÜ: kenar bu satırın ortasından bir SONRAKİ satırın ortasına uzanıyor,
-        // yani 22 px'lik hücrede 1. şerit merkezine (x=21) ulaşmadan alttan çıkıyor.
-        // Bu doğru davranış — kenar bir sonraki satırda devam eder.
-        // Doğru ölçüt: 0. şeridin düğümünün SAĞINDA boyalı piksel var mı?
+        // MEASURED: the edge reaches from the middle of this row to the middle of the NEXT row,
+        // i.e. in a 22 px cell it leaves the bottom before reaching the center of lane 1 (x=21).
+        // This is the correct behavior — the edge continues on the next row.
+        // The right criterion: is there a painted pixel to the RIGHT of the node in lane 0?
         int nodeRightEdge = (int)((laneWidth / 2) + 4);
         int paintedToTheRight = 0;
 
@@ -153,10 +153,10 @@ public class CommitGraphCellTests
     [AvaloniaFact]
     public void Genislik_serit_sayisindan_BAGIMSIZ_penceredendir()
     {
-        // P03-T21: genişlik satırın şerit sayısına bağlanamaz. Gerçek depolarda satırların
-        // yarısı ~120 şerit içeriyor; sütun buna göre büyüyünce ~2200 px oluyor ve
-        // SHA/konu/yazar/tarih ekran dışına itiliyordu (P03-T18'de ölçüldü). Ayrıca her
-        // satır farklı genişlikte olunca sütunlar hizasını kaybediyordu.
+        // P03-T21: the width cannot be tied to the lane count of the row. In real repositories half of
+        // the rows contain ~120 lanes; when the column grew accordingly it became ~2200 px and pushed
+        // SHA/subject/author/date off the screen (measured in P03-T18). On top of that, when every row
+        // had a different width the columns lost their alignment.
         CommitGraphCell single = new() { Row = FirstRow("A:"), LaneWidth = 14, VisibleLanes = 12 };
         CommitGraphCell multi = new()
         {
@@ -191,7 +191,7 @@ public class CommitGraphCellTests
     [AvaloniaFact]
     public void Ozel_palet_kullanilir()
     {
-        // Varsayılan palet yerine verilen renk çizilmeli.
+        // The given color must be drawn instead of the default palette.
         CommitGraphCell cell = new()
         {
             Row = FirstRow("A:"),
@@ -200,7 +200,7 @@ public class CommitGraphCellTests
 
         uint[] pixels = RenderPixels(cell);
 
-        // Kırmızıya yakın en az bir piksel olmalı (kenar yumuşatma nedeniyle tam eşitlik aranmaz).
+        // There must be at least one pixel close to red (no exact equality, because of anti-aliasing).
         bool hasRed = pixels.Any(p => Red(p) > 200 && Green(p) < 80 && Blue(p) < 80);
 
         hasRed.ShouldBeTrue("özel palette verilen kırmızı çizilmiş olmalı");
@@ -209,7 +209,7 @@ public class CommitGraphCellTests
     [AvaloniaFact]
     public void Satir_degisince_yeniden_cizilir()
     {
-        // AffectsRender bağlantısı: Row değişince görsel geçersiz kılınmalı.
+        // AffectsRender wiring: when Row changes the visual must be invalidated.
         CommitGraphCell cell = new() { Row = FirstRow("A:") };
 
         int before = NonWhitePixelCount(RenderPixels(cell));
@@ -230,8 +230,8 @@ public class CommitGraphCellTests
     [AvaloniaFact]
     public void Ayni_renk_icin_kalem_onbellekten_gelir()
     {
-        // Tahsis disiplini: her karede yeni Pen/Brush yaratmak 60 FPS'te
-        // saniyede binlerce nesne demek olurdu.
+        // Allocation discipline: creating a new Pen/Brush on every frame would mean thousands of
+        // objects per second at 60 FPS.
         CommitGraphCell cell = new() { Row = FirstRow("B: A\nA:") };
 
         RenderPixels(cell);
@@ -244,8 +244,8 @@ public class CommitGraphCellTests
 
         long perRender = (GC.GetTotalAllocatedBytes() - before) / 20;
 
-        // Kare başına tahsis çoğunlukla bitmap yakalamadan gelir; kalem/fırça
-        // önbellekten geldiği için bu sayı makul kalmalı.
+        // Per-frame allocation mostly comes from the bitmap capture; since the pen/brush come from the
+        // cache, this number must stay reasonable.
         perRender.ShouldBeLessThan(2_000_000);
     }
 }

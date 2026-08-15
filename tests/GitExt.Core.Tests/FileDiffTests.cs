@@ -3,11 +3,11 @@ using GitExt.Core.Model;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T01 — Diff domain modeli.
+/// P04-T01 — Diff domain model.
 /// </summary>
 /// <remarks>
-/// Model saf veridir; buradaki testler türetilmiş özelliklerin <b>ölçülen git davranışını</b>
-/// doğru yansıttığını sabitler. Ayrıştırma testleri ayrı (P04-T07).
+/// The model is pure data; the tests here pin down that the derived properties correctly reflect the
+/// <b>measured git behaviour</b>. The parsing tests are separate (P04-T07).
 /// </remarks>
 public class FileDiffTests
 {
@@ -44,9 +44,9 @@ public class FileDiffTests
     [Fact]
     public void Hunksiz_diff_gecerlidir()
     {
-        // ÖLÇÜLDÜ: %100 rename, yalnızca mod değişikliği, boş yeni dosya ve binary
-        // dosyalarda git HİÇ hunk üretmiyor. Her dosyanın hunk'ı olduğunu varsayan kod
-        // gerçek depolarda kırılır.
+        // MEASURED: on a 100% rename, a mode-only change, an empty new file and binary files git produces
+        // NO hunks at all. Code that assumes every file has a hunk breaks on real
+        // repositories.
         FileDiff diff = Diff();
 
         diff.HasHunks.ShouldBeFalse();
@@ -57,8 +57,8 @@ public class FileDiffTests
     [Fact]
     public void Yalnizca_mod_degisimi_blob_esitliginden_anlasilir()
     {
-        // ÖLÇÜLDÜ: `git diff --raw` bu durumda iki blob kimliğini de AYNI veriyor
-        // (`:100644 100755 9405325 9405325 M`), durum harfi yine M.
+        // MEASURED: `git diff --raw` gives BOTH blob ids as the SAME in this case
+        // (`:100644 100755 9405325 9405325 M`), and the status letter is still M.
         const string blob = "9405325aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
         FileDiff modeOnly = Diff(oldMode: "100644", newMode: "100755", oldBlob: blob, newBlob: blob);
@@ -83,8 +83,8 @@ public class FileDiffTests
     [Fact]
     public void Blob_bilgisi_yoksa_mod_degisimi_iddia_edilmez()
     {
-        // Blob kimlikleri okunamadıysa (ör. yalnızca unified diff'ten üretilmiş bir model)
-        // "yalnızca mod değişti" demek uydurma olurdu.
+        // If the blob ids could not be read (e.g. a model produced only from a unified diff),
+        // saying "only the mode changed" would be making things up.
         FileDiff diff = Diff(oldMode: "100644", newMode: "100755");
 
         diff.IsModeOnlyChange.ShouldBeFalse();
@@ -138,9 +138,9 @@ public class FileDiffTests
     [Fact]
     public void Satir_sonu_isareti_satira_bagli_bir_niteliktir()
     {
-        // ÖLÇÜLDÜ: `\ No newline at end of file` kendi başına bir satır değil; kendinden
-        // ÖNCEKİ satıra ait ve aynı hunk'ta hem `-` hem `+` satırından sonra çıkabiliyor.
-        // Ayrı bir satır türü olsaydı yamayı birebir geri üretmek mümkün olmazdı.
+        // MEASURED: `\ No newline at end of file` is not a line of its own; it belongs to the line
+        // BEFORE it and can appear after both the `-` and the `+` line in the same hunk.
+        // Had it been a separate line kind, reproducing the patch byte-for-byte would be impossible.
         DiffHunk hunk = Hunk(
             new DiffLine(DiffLineKind.Removed, "eski") { EndsWithoutNewline = true },
             new DiffLine(DiffLineKind.Added, "yeni") { EndsWithoutNewline = true });
@@ -166,8 +166,8 @@ public class FileDiffTests
     [Fact]
     public void Satir_icerigi_isaret_karakteri_TASIMAZ()
     {
-        // İçeriğe +/- gömmek, kopyalama ve kelime seviyesi diff'te (P04-T05) her yerde
-        // ayıklama gerektirirdi.
+        // Embedding +/- into the content would require stripping it everywhere in copying and in
+        // word-level diff (P04-T05).
         DiffLine line = new(DiffLineKind.Added, "kod satırı");
 
         line.Content.ShouldBe("kod satırı");
@@ -177,9 +177,9 @@ public class FileDiffTests
     [Fact]
     public void Hunk_ham_basligini_saklar()
     {
-        // Faz 05'te değiştirilmiş yama `git apply`'a geri verilecek; ham başlık olmadan
-        // git'in biçimindeki ince ayrıntıları (tek satırlık hunk'ta uzunluğun yazılmaması
-        // gibi) taklit etmek gerekirdi.
+        // In Phase 05 the modified patch will be handed back to `git apply`; without the raw header we
+        // would have to imitate the fine details of git's format (such as the length not being written
+        // on a single-line hunk).
         DiffHunk hunk = new()
         {
             Header = "@@ -12,7 +12,9 @@ void Main()",

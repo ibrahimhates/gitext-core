@@ -3,20 +3,20 @@ using Avalonia.Input;
 namespace GitExt.UI.Commands;
 
 /// <summary>
-/// Bir panelin bağlam kısayollarını dağıtır (P08-T01).
+/// Dispatches a panel's context shortcuts (P08-T01).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Görünümler tuş olayını kendileri okumaz; jesti buraya verir, karşılığında komut çalışır.
-/// Böylece "hangi tuş neyi yapıyor" sorusunun tek bir cevabı olur:
+/// Views do not read the key event themselves; they hand the gesture here and a command runs
+/// in return. That way "which key does what" has exactly one answer:
 /// <see cref="ICommandRegistry"/>.
 /// </para>
 /// <para>
-/// <b>Neden pencere bağlaması değil?</b> P08-T00/M11: <c>Window.KeyBindings</c>'e konan bir jest
-/// odaklı kontrolden tuşu koşulsuz çalar. Panel kısayolları (çıplak <c>S</c>, <c>PgDn</c>,
-/// <c>Delete</c>…) oraya konsaydı, listelerin kendi gezinmesi ve metin kutuları çalışmaz
-/// hâle gelirdi. Bu yüzden panel jestleri panelin <b>kendi tünelleyen işleyicisinden</b>
-/// dağıtılıyor — mevcut kodun zaten yaptığı şey, artık merkezî bir kaynakla.
+/// <b>Why not a window binding?</b> P08-T00/M11: a gesture put into <c>Window.KeyBindings</c>
+/// steals the key from the focused control unconditionally. Had panel shortcuts (bare
+/// <c>S</c>, <c>PgDn</c>, <c>Delete</c>…) been put there, list navigation and text boxes
+/// would have stopped working. That is why panel gestures are dispatched from the panel's
+/// <b>own tunneling handler</b> — what the code already did, now from a central source.
 /// </para>
 /// </remarks>
 public sealed class ShortcutDispatcher
@@ -32,18 +32,18 @@ public sealed class ShortcutDispatcher
     }
 
     /// <summary>
-    /// Komutu bir işleyiciye bağlar.
+    /// Binds a command to a handler.
     /// </summary>
-    /// <param name="commandId">Bağlanacak komutun kimliği.</param>
+    /// <param name="commandId">Id of the command to bind.</param>
     /// <param name="handler">
-    /// Olayın <b>tüketilip tüketilmediğini</b> döndürür. <see langword="false"/> dönmek
-    /// "bu tuşu ben işlemedim, yoluna devam etsin" demektir — dosyanın sonunda
-    /// <c>Alt+↓</c>'yi yutmak kullanıcıya sessiz bir duvar olurdu.
+    /// Returns <b>whether the event was consumed</b>. Returning <see langword="false"/> means
+    /// "I did not handle this key, let it travel on" — swallowing <c>Alt+↓</c> at the end of a
+    /// file would be a silent wall for the user.
     /// </param>
     public void Bind(string commandId, Func<bool> handler)
     {
-        // Tanımsız bir kimliğe bağlanmak sessiz bir hata olurdu: kısayol hiç çalışmaz,
-        // kimse de sebebini göremez.
+        // Binding to an undefined id would be a silent failure: the shortcut never runs and
+        // nobody can see why.
         if (_registry.Find(commandId) is null)
         {
             throw new ArgumentException($"Unknown command id: {commandId}", nameof(commandId));
@@ -52,7 +52,7 @@ public sealed class ShortcutDispatcher
         _handlers[commandId] = handler;
     }
 
-    /// <summary>Her zaman tüketen bir işleyici bağlar.</summary>
+    /// <summary>Binds a handler that always consumes the event.</summary>
     public void Bind(string commandId, Action handler) =>
         Bind(commandId, () =>
         {
@@ -62,9 +62,9 @@ public sealed class ShortcutDispatcher
         });
 
     /// <summary>
-    /// Tuş olayını çözer ve bağlıysa çalıştırır.
+    /// Resolves the key event and runs it if bound.
     /// </summary>
-    /// <returns>Olay tüketildiyse <see langword="true"/>.</returns>
+    /// <returns><see langword="true"/> if the event was consumed.</returns>
     public bool Handle(KeyEventArgs e)
     {
         if (e.Key is Key.None)
@@ -89,13 +89,13 @@ public sealed class ShortcutDispatcher
         return true;
     }
 
-    /// <summary>Bu bağlamda gerçekten bir işleyicisi olan komutlar.</summary>
+    /// <summary>The commands that actually have a handler in this context.</summary>
     public IReadOnlyCollection<string> BoundCommands => _handlers.Keys;
 
     /// <summary>
-    /// Komutu tuşa basılmış gibi çalıştırır (komut paletinin yolu).
+    /// Runs the command as if the key had been pressed (the command palette's path).
     /// </summary>
-    /// <returns>Bağlıysa ve işleyici işi üstlendiyse <see langword="true"/>.</returns>
+    /// <returns><see langword="true"/> if it is bound and the handler took the work.</returns>
     public bool TryInvoke(string commandId) =>
         _handlers.TryGetValue(commandId, out Func<bool>? handler) && handler();
 }

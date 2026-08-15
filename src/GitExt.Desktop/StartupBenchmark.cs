@@ -8,38 +8,38 @@ using Avalonia.Threading;
 namespace GitExt.Desktop;
 
 /// <summary>
-/// Soğuk başlatma süresini ölçer (P09-T04).
+/// Measures the cold start time (P09-T04).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kullanım: <c>gitext-core --bench-startup [depo-yolu]</c>
+/// Usage: <c>gitext-core --bench-startup [repository-path]</c>
 /// </para>
 /// <para>
-/// Performans bütçesinin ilk maddesi "pencere görünene kadar &lt; 1.5 sn" diyor.
-/// Bunu dışarıdan bir kabuk betiğiyle ölçmek mümkün değil: sürecin başlaması ile
-/// <b>pencerenin çizilmesi</b> arasındaki farkı ancak uygulamanın kendisi görebilir.
+/// The first item of the performance budget says "&lt; 1.5 s until the window is visible".
+/// Measuring this from an external shell script is impossible: only the application itself can see
+/// the gap between the process starting and the <b>window being drawn</b>.
 /// </para>
 /// <para>
-/// ⚠️ Ölçülen an, pencerenin <b>ilk kez oluşturulduğu</b> an değil, kompozitörün ilk
-/// kareyi verdiği an: <see cref="TopLevel.RequestAnimationFrame"/> tam olarak o noktada
-/// tetikleniyor. <c>Opened</c> olayını kullanmak, pencere hazır ama henüz hiçbir piksel
-/// çizilmemişken "açıldı" derdi — kullanıcının gördüğü şey bu değil.
+/// ⚠️ The moment measured is not the moment the window is <b>first created</b>, but the moment the
+/// compositor delivers the first frame: <see cref="TopLevel.RequestAnimationFrame"/> fires exactly
+/// at that point. Using the <c>Opened</c> event would say "opened" while the window is ready but not
+/// a single pixel has been drawn yet — that is not what the user sees.
 /// </para>
 /// </remarks>
 internal static class StartupBenchmark
 {
     internal const string Flag = "--bench-startup";
 
-    /// <summary>Süreç başlangıcı — <c>Main</c>'in ilk satırında damgalanıyor.</summary>
+    /// <summary>Process start — stamped on the first line of <c>Main</c>.</summary>
     internal static long ProcessStartTimestamp { get; set; }
 
     internal static int Run(string[] args, AppBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        // Süreç gerçekten ne zaman başladı? İşletim sisteminin verdiği zaman, .NET
-        // çalışma zamanının kendi yüklenme maliyetini de içeriyor — kullanıcı onu da
-        // bekliyor, dolayısıyla ölçüme dahil.
+        // When did the process really start? The time given by the operating system also includes
+        // the .NET runtime's own load cost — the user waits for that too, so it is part of the
+        // measurement.
         DateTime osStart;
 
         try
@@ -64,8 +64,8 @@ internal static class StartupBenchmark
 
             desktop.Startup += (_, _) =>
             {
-                // Pencere Startup sırasında henüz kurulmamış olabilir; ilk kareyi
-                // istemek için Dispatcher'a bırakılıyor.
+                // The window may not be set up yet during Startup; requesting the first frame is
+                // deferred to the Dispatcher.
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (desktop.MainWindow is not { } window)
@@ -77,7 +77,7 @@ internal static class StartupBenchmark
                     {
                         firstFrameMs ??= (DateTime.Now - osStart).TotalMilliseconds;
 
-                        // Ölçüm alındı; oturumu kapat.
+                        // Measurement taken; close the session.
                         desktop.Shutdown();
                     });
                 });

@@ -3,18 +3,18 @@ using System.Windows.Input;
 namespace GitExt.UI.Commands;
 
 /// <summary>
-/// Bir komut kimliğini onu gerçekten çalıştıracak yere iletir (P08-T04).
+/// Routes a command id to the place that actually runs it (P08-T04).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kısayol dağıtımı ile komut paleti <b>aynı</b> yürütme yolunu kullanmak zorunda. Ayrı
-/// olsalardı bir komut palette çalışıp kısayolla çalışmayabilir — ya da tersi — olurdu ve
-/// hangisinin doğru olduğunu kimse bilemezdi.
+/// Shortcut dispatch and the command palette have to use the <b>same</b> execution path. If
+/// they were separate, a command could work from the palette but not from the shortcut — or
+/// the other way round — and nobody would know which one was right.
 /// </para>
 /// <para>
-/// İki kaynak var: küresel komutlar doğrudan bir <see cref="ICommand"/>, panel komutları ise
-/// o panelin <see cref="ShortcutDispatcher"/>'ında. Ayrım tesadüf değil — panel komutları
-/// görünüme ait durumu (seçili satırlar, odak) okuyor ve o durum yalnızca panelde var.
+/// There are two sources: global commands are a plain <see cref="ICommand"/>, panel commands
+/// live in that panel's <see cref="ShortcutDispatcher"/>. The split is not accidental — panel
+/// commands read view state (selected rows, focus) and that state exists only in the panel.
 /// </para>
 /// </remarks>
 public sealed class CommandRouter
@@ -35,18 +35,18 @@ public sealed class CommandRouter
     public IReadOnlyDictionary<string, ICommand> GlobalCommands => _global;
 
     /// <summary>
-    /// Komut şu anda çalıştırılabilir mi?
+    /// Can the command be executed right now?
     /// </summary>
     /// <remarks>
-    /// Panel komutları için "bağlı mı" sorusuna bakılıyor, "şu an anlamlı mı" sorusuna değil:
-    /// ikincisi ancak çalıştırılınca belli oluyor (seçim yoksa işleyici <c>false</c> döner).
+    /// For panel commands this asks "is it bound", not "is it meaningful right now": the latter
+    /// only shows up when it runs (with no selection the handler returns <c>false</c>).
     /// </remarks>
     public bool CanRun(string commandId) =>
         (_global.TryGetValue(commandId, out ICommand? command) && command.CanExecute(null))
         || _panels.Any(p => p.BoundCommands.Contains(commandId));
 
-    /// <summary>Komutu çalıştırır.</summary>
-    /// <returns>Çalıştırıldıysa <see langword="true"/>.</returns>
+    /// <summary>Runs the command.</summary>
+    /// <returns><see langword="true"/> if it ran.</returns>
     public bool Run(string commandId)
     {
         if (_global.TryGetValue(commandId, out ICommand? command))

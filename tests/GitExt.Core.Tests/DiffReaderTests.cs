@@ -5,7 +5,7 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T03 — Diff komut sarmalayıcıları, gerçek <c>git</c>'e karşı.
+/// P04-T03 — Diff command wrappers, against real <c>git</c>.
 /// </summary>
 public class DiffReaderTests
 {
@@ -20,7 +20,7 @@ public class DiffReaderTests
     private static CommitId Head(TestRepository repository, string revision = "HEAD") =>
         CommitId.Parse(repository.Git("rev-parse", revision).Trim());
 
-    /// <summary>Kök → normal → (yan dal) → merge içeren bir depo kurar.</summary>
+    /// <summary>Sets up a repository containing root → normal → (side branch) → merge.</summary>
     private static TestRepository CreateWithMerge()
     {
         TestRepository repository = TestRepository.CreateEmpty();
@@ -62,7 +62,7 @@ public class DiffReaderTests
     [Fact]
     public async Task Kok_committe_cokmeden_tum_dosyalar_gelir()
     {
-        // ÖLÇÜLDÜ: `git diff <kök>^ <kök>` → "fatal: ambiguous argument". `--root` şart.
+        // MEASURED: `git diff <root>^ <root>` → "fatal: ambiguous argument". `--root` is mandatory.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("bir.txt", "a\n");
         repository.WriteFile("iki.txt", "b\n");
@@ -81,8 +81,8 @@ public class DiffReaderTests
     [Fact]
     public async Task Merge_committe_BOS_DONMEZ()
     {
-        // Bu testin bütün varlık sebebi ölçülmüş bir tuzak: düz `git show <merge>` temiz bir
-        // merge'de HİÇ çıktı vermiyor (`--cc` de öyle). Kullanıcı bunu hata sanardı.
+        // The entire reason this test exists is a measured trap: a plain `git show <merge>` gives NO
+        // output at all on a clean merge (`--cc` likewise). The user would take this for an error.
         using TestRepository repository = CreateWithMerge();
 
         DiffReader reader = await CreateReaderAsync();
@@ -92,7 +92,7 @@ public class DiffReaderTests
 
         diffs.ShouldNotBeEmpty();
 
-        // Varsayılan ilk ebeveyn: merge'in ana hatta GETİRDİĞİ şey, yani yan daldaki dosya.
+        // The default is the first parent: what the merge BRINGS to the mainline, i.e. the file on the side branch.
         diffs.ShouldContain(d => d.Path.Value == "yan.txt");
     }
 
@@ -110,7 +110,7 @@ public class DiffReaderTests
         IReadOnlyList<FileDiff> second = await reader.ReadCommitAsync(
             repository.Path, merge, new DiffOptions { MergeParent = 2 }, Ct);
 
-        // İlk ebeveyne göre yan dalın getirdiği, ikinci ebeveyne göre ana dalın getirdiği görünür.
+        // Relative to the first parent what the side branch brought is visible, relative to the second parent what the main branch brought.
         first.ShouldContain(d => d.Path.Value == "yan.txt");
         second.ShouldContain(d => d.Path.Value == "ana.txt");
 
@@ -162,8 +162,8 @@ public class DiffReaderTests
     [Fact]
     public async Task Calisma_dizini_diffinde_yeni_blob_bos_kalir()
     {
-        // ÖLÇÜLDÜ: çalışma dizini içeriği henüz blob değil, `--raw` sıfır kimlik veriyor
-        // (`:100644 100644 d614168 0000000 M`). Bunu geçerli bir kimlik saymak yanıltıcı olur.
+        // MEASURED: working directory content is not a blob yet, `--raw` gives a zero id
+        // (`:100644 100644 d614168 0000000 M`). Treating this as a valid id would be misleading.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
         repository.WriteFile("README.md", "# test\ndeğişti\n");
@@ -211,9 +211,9 @@ public class DiffReaderTests
 
         withDetection.Single().Change.ShouldBe(FileChangeKind.Renamed);
 
-        // ÖLÇÜLDÜ: tespit git'te VARSAYILAN OLARAK AÇIK — `-M`'i atlamak kapatmıyor.
-        // Kapatmak `--no-renames` gerektiriyor; bu test o hatayı yakaladı.
-        // Tespit kapalıyken aynı değişiklik bir ekleme + bir silme olarak görünür.
+        // MEASURED: detection is ON BY DEFAULT in git — omitting `-M` does not turn it off.
+        // Turning it off requires `--no-renames`; this test caught that bug.
+        // With detection off the same change looks like one addition plus one deletion.
         without.Count.ShouldBe(2);
         without.ShouldContain(d => d.Change == FileChangeKind.Added);
         without.ShouldContain(d => d.Change == FileChangeKind.Deleted);

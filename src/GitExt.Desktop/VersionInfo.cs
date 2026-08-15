@@ -3,18 +3,18 @@ using System.Reflection;
 namespace GitExt.Desktop;
 
 /// <summary>
-/// Uygulamanın kendi sürümü (P10-T01).
+/// The application's own version (P10-T01).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Sürüm git tag'inden MinVer ile türetiliyor (ADR-0006) ve derleme sırasında
-/// <see cref="AssemblyInformationalVersionAttribute"/> içine gömülüyor. Burada
-/// okunuyor, hiçbir yerde elle yazılmıyor.
+/// The version is derived from the git tag with MinVer (ADR-0006) and embedded into
+/// <see cref="AssemblyInformationalVersionAttribute"/> at build time. It is read here,
+/// never written by hand anywhere.
 /// </para>
 /// <para>
-/// Paketleme betikleri de bu değeri kullanıyor: <c>gitext-core --version</c> çıktısı,
-/// üretilen paketin dosya adındaki sürümle aynı olmak zorunda. Betiğin sürümü ayrı
-/// hesaplaması, ikisinin sessizce ayrışabileceği ikinci bir kaynak yaratırdı.
+/// The packaging scripts use this value too: the output of <c>gitext-core --version</c> must be the
+/// same as the version in the produced package's file name. Having the script compute the version
+/// separately would create a second source that could silently diverge from this one.
 /// </para>
 /// </remarks>
 internal static class VersionInfo
@@ -22,17 +22,17 @@ internal static class VersionInfo
     internal const string Flag = "--version";
 
     /// <summary>
-    /// Sürüm — <c>1.0.0</c> veya <c>1.0.1-alpha.0.3</c>. Build metadata'sı (+sha) atılır.
+    /// Version — <c>1.0.0</c> or <c>1.0.1-alpha.0.3</c>. Build metadata (+sha) is dropped.
     /// </summary>
     internal static string Version { get; } = ReadInformationalVersion();
 
     /// <summary>
-    /// Sürümün türetildiği commit'in tam SHA'sı; yoksa <c>null</c>.
+    /// The full SHA of the commit the version was derived from; <c>null</c> if there is none.
     /// </summary>
     /// <remarks>
-    /// MinVer commit SHA'sını sürümün build metadata bölümüne (<c>+sha</c>) yazıyor.
-    /// Hata raporlarında hangi commit'in çalıştığını bilmek, sürüm numarasından daha
-    /// kesin bir bilgi: ön sürümlerde aynı sürüm numarası birden çok commit'e denk gelir.
+    /// MinVer writes the commit SHA into the build metadata part of the version (<c>+sha</c>).
+    /// In bug reports, knowing which commit was running is more precise information than the version
+    /// number: in pre-releases the same version number maps to several commits.
     /// </remarks>
     internal static string? Commit { get; } = ReadCommit();
 
@@ -55,9 +55,9 @@ internal static class VersionInfo
 
         if (string.IsNullOrWhiteSpace(raw))
         {
-            // Öznitelik her zaman üretiliyor; buraya düşmek derleme yapılandırmasının
-            // bozulduğu anlamına gelir. Sessizce "1.0.0" uydurmak, yanlış sürümle
-            // paketlenmiş bir çıktıyı doğru göstermek olurdu.
+            // The attribute is always generated; landing here means the build configuration is
+            // broken. Silently inventing "1.0.0" would make an output packaged with the wrong
+            // version look correct.
             return "bilinmiyor";
         }
 

@@ -4,11 +4,11 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P05-T06 — Commit oluşturma.
+/// P05-T06 — Creating commits.
 /// </summary>
 /// <remarks>
-/// Mesaj <b>stdin</b> ile geçiriliyor: argüman olarak vermek uzunluk sınırına takılır ve
-/// kullanıcı metnini kabuk yorumlamasına açardı (ADR-0002).
+/// The message is passed via <b>stdin</b>: giving it as an argument would hit the length limit and
+/// would expose the user's text to shell interpretation (ADR-0002).
 /// </remarks>
 public class CommitWriterTests
 {
@@ -45,7 +45,7 @@ public class CommitWriterTests
             repository,
             new CommitWriter(new GitWriter(runner, queue), runner),
 
-            // Aynı depo, kısa yazma sınırı: yavaş hook testi için (varsayılan 10 dakika).
+            // Same repository, short write timeout: for the slow-hook test (the default is 10 minutes).
             new CommitWriter(
                 new GitWriter(runner, queue, writeTimeout: TimeSpan.FromSeconds(2)), runner),
             queue);
@@ -66,7 +66,7 @@ public class CommitWriterTests
         CommitResult result = await harness.Writer.CommitAsync(
             harness.Repository.Path, "ilk commit", cancellationToken: Ct);
 
-        // Kimlik `git commit` çıktısından ayrıştırılmıyor (o insan-okunur); ayrı okunuyor.
+        // The identity is not parsed from `git commit` output (that is human-readable); it is read separately.
         result.Id.Value.ShouldBe(harness.Repository.Git("rev-parse", "HEAD").Trim());
         harness.Subject().ShouldBe("ilk commit");
     }
@@ -80,18 +80,18 @@ public class CommitWriterTests
         await harness.Writer.CommitAsync(
             harness.Repository.Path, "Konu satiri\n\nGovde birinci.\nGovde ikinci.", cancellationToken: Ct);
 
-        // `%B` çıktısı mesajın sonuna kendi ayracını ekliyor; karşılaştırma kırpılarak
-        // yapılıyor (mesajın kendisi doğru, fark okuma biçiminden geliyor).
+        // The `%B` output appends its own separator to the end of the message; the comparison is done
+        // with trimming (the message itself is correct, the difference comes from the way it is read).
         harness.Message().Trim().ShouldBe("Konu satiri\n\nGovde birinci.\nGovde ikinci.");
     }
 
     [Fact]
     public async Task Diyez_ile_baslayan_satirlar_SILINMEZ()
     {
-        // 🔴 Klasik tuzak: git bazı modlarda `#` satırlarını yorum sayıp siler. O durumda
-        // "#123 numaralı hatayı düzeltir" gibi bir satır sessizce kaybolurdu.
-        // `--cleanup=whitespace` açıkça veriliyor (kullanıcının `commit.cleanup` ayarından
-        // bağımsız olmak için).
+        // 🔴 A classic trap: in some modes git treats `#` lines as comments and strips them. In that case
+        // a line like "fixes bug #123" would silently disappear.
+        // `--cleanup=whitespace` is passed explicitly (to be independent of the user's `commit.cleanup`
+        // setting).
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -118,7 +118,7 @@ public class CommitWriterTests
     [Fact]
     public async Task Bos_mesaj_REDDEDILIR()
     {
-        // ÖLÇÜLDÜ: git çıkış 1 veriyor ("Aborting commit due to empty commit message").
+        // MEASURED: git exits 1 ("Aborting commit due to empty commit message").
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -183,7 +183,7 @@ public class CommitWriterTests
         harness.Repository.Git("log", "-1", "--format=%an <%ae>").Trim()
             .ShouldBe("Baska Kisi <baska@ornek.com>");
 
-        // Committer DEĞİŞMEMELİ: kimin commit ettiği ayrı bir gerçektir.
+        // The committer must NOT CHANGE: who committed is a separate fact.
         harness.Repository.Git("log", "-1", "--format=%cn").Trim().ShouldNotBe("Baska Kisi");
     }
 
@@ -211,12 +211,12 @@ public class CommitWriterTests
         harness.CommitCount().ShouldBe(2);
     }
 
-    // ---- Hook'lar ----
+    // ---- Hooks ----
 
     [Fact]
     public async Task Basarisiz_pre_commit_hooku_commiti_DURDURUR()
     {
-        // ADR-0002'de hook desteği CLI seçiminin ana gerekçesiydi; burada karşılığı.
+        // In ADR-0002 hook support was the main rationale for choosing the CLI; here is what it buys.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -225,14 +225,14 @@ public class CommitWriterTests
         GitException exception = await Should.ThrowAsync<GitException>(
             harness.Writer.CommitAsync(harness.Repository.Path, "konu", cancellationToken: Ct));
 
-        // Hook'un çıktısı kullanıcıya ulaşabilmeli (P05-T07 bunu arayüze taşıyacak).
+        // The hook's output must be able to reach the user (P05-T07 will carry this into the UI).
         exception.StandardError.ShouldContain("hook reddetti");
     }
 
     [Fact]
     public async Task Hooklar_ACIKCA_atlanabilir()
     {
-        // `--no-verify` varsayılan KAPALI; açıkken arayüz görünür uyarı gösterecek (P05-T15).
+        // `--no-verify` is OFF by default; when it is on the UI will show a visible warning (P05-T15).
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -247,7 +247,7 @@ public class CommitWriterTests
     [Fact]
     public async Task Commit_msg_hookunun_mesaj_degisikligi_yansir()
     {
-        // `commit-msg` hook'u mesaj dosyasını yerinde düzenleyebilir; sonuç commit'e girmeli.
+        // The `commit-msg` hook can edit the message file in place; the result must end up in the commit.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -258,13 +258,13 @@ public class CommitWriterTests
         harness.Message().ShouldContain("Ek-Satir: hook");
     }
 
-    // ---- P05-T07: hook çıktısının yakalanması ----
+    // ---- P05-T07: capturing hook output ----
 
     [Fact]
     public async Task Basarili_committe_bile_hook_ciktisi_TASINIR()
     {
-        // 🔴 Asıl boşluk buydu: commit başarılı olduğunda `git commit`'in çıktısı hiç
-        // döndürülmüyordu; başarılı bir `pre-commit`'in uyarıları sessizce kayboluyordu.
+        // 🔴 This was the real gap: when the commit succeeded, the output of `git commit` was never
+        // returned; the warnings of a successful `pre-commit` disappeared silently.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -281,9 +281,9 @@ public class CommitWriterTests
     [Fact]
     public async Task Hookun_STDOUTU_da_yakalanir()
     {
-        // ÖLÇÜLDÜ: git hook'un stdout'unu stderr'e yönlendiriyor (stdout_to_stderr).
-        // Yalnızca stderr'e bakmak bu yüzden YETERLİ — ama bu bir varsayım değil, ölçüm;
-        // burada sabitleniyor. Bir gün değişirse `echo` ile yazan hook'lar sessizce kaybolur.
+        // MEASURED: git redirects the hook's stdout to stderr (stdout_to_stderr).
+        // Looking only at stderr is therefore ENOUGH — but this is not an assumption, it is a measurement;
+        // it is pinned here. If it ever changes, hooks that write with `echo` disappear silently.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -301,7 +301,7 @@ public class CommitWriterTests
     [Fact]
     public async Task Hooksuz_basarili_committe_cikti_YOKTUR()
     {
-        // Karşı kanıt: çıktı her zaman doluysa "hook konuştu" göstergesi anlamsız olurdu.
+        // Counter-evidence: if the output were always non-empty, a "the hook spoke" indicator would be meaningless.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -330,8 +330,8 @@ public class CommitWriterTests
     [Fact]
     public async Task Prepare_commit_msg_hooku_da_mesaji_degistirebilir()
     {
-        // ÖLÇÜLDÜ: `-F -` ile mesaj verildiğinde bile `prepare-commit-msg` çalışıyor
-        // (source=message) ve dosyayı düzenleyebiliyor.
+        // MEASURED: `prepare-commit-msg` runs even when the message is given with `-F -`
+        // (source=message) and it can edit the file.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -347,8 +347,8 @@ public class CommitWriterTests
     [Fact]
     public async Task No_verify_prepare_commit_msgi_ATLAMAZ()
     {
-        // 🔴 ÖLÇÜLDÜ: `--no-verify` yalnızca `pre-commit` ve `commit-msg`'i atlıyor.
-        // "Hook'ları atla" diye anlaşılırsa, mesajın yine değişebildiği gözden kaçar.
+        // 🔴 MEASURED: `--no-verify` skips only `pre-commit` and `commit-msg`.
+        // If it is understood as "skip the hooks", it goes unnoticed that the message can still change.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -365,8 +365,8 @@ public class CommitWriterTests
     [Fact]
     public async Task Hook_mesaja_dokunmazsa_degisiklik_BILDIRILMEZ()
     {
-        // Karşı kanıt: `--cleanup=whitespace`'in kendi normalleştirmesi "değişiklik"
-        // sayılmamalı, yoksa gösterge her commit'te yanıp anlamını yitirir.
+        // Counter-evidence: `--cleanup=whitespace`'s own normalization must not count as a "change",
+        // otherwise the indicator lights up on every commit and loses its meaning.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -379,8 +379,8 @@ public class CommitWriterTests
     [Fact]
     public async Task Post_commit_hooku_commiti_BOZMAZ_ama_ciktisi_gorunur()
     {
-        // ÖLÇÜLDÜ: `post-commit` çıkış 9 verse bile git 0 dönüyor — commit zaten oluşmuş.
-        // Kullanıcı yine de hook'un ne dediğini görebilmeli.
+        // MEASURED: even if `post-commit` exits 9, git returns 0 — the commit has already been created.
+        // The user must still be able to see what the hook said.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -396,8 +396,8 @@ public class CommitWriterTests
     [Fact]
     public async Task Yavas_hook_zaman_asimina_takilirsa_commit_OLUSMAZ()
     {
-        // ÖLÇÜLDÜ: süreç öldürüldüğünde commit oluşmuyor ve geride `index.lock` kalmıyor
-        // (git kilidi hook'tan SONRA alıyor). Yani zaman aşımı veri kaybettirmiyor.
+        // MEASURED: when the process is killed the commit is not created and no `index.lock` is left behind
+        // (git takes the lock AFTER the hook). So a timeout does not lose data.
         using Harness harness = await CreateAsync();
         Stage(harness, "a.txt", "icerik\n");
 
@@ -408,7 +408,7 @@ public class CommitWriterTests
 
         exception.Kind.ShouldBe(GitFailureKind.Timeout);
 
-        // `--all`: henüz HEAD yok, `rev-list --count HEAD` bu durumda çöker.
+        // `--all`: there is no HEAD yet, `rev-list --count HEAD` blows up in this case.
         harness.Repository.Git("rev-list", "--count", "--all").Trim().ShouldBe("0");
         File.Exists(Path.Combine(harness.Repository.Path, ".git", "index.lock")).ShouldBeFalse();
     }

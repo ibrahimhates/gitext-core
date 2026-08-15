@@ -4,42 +4,42 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Commands;
 
 /// <summary>
-/// Bir jestin bir komuta atanabilir olup olmadığı (P08-T03).
+/// Whether a gesture can be assigned to a command (P08-T03).
 /// </summary>
 public enum GestureRejection
 {
     /// <summary>Atanabilir.</summary>
     None,
 
-    /// <summary>Tuş yalnızca bir değiştirici (Ctrl/Alt/Shift/Meta) — jest değil.</summary>
+    /// <summary>The key is only a modifier (Ctrl/Alt/Shift/Meta) — not a gesture.</summary>
     ModifierOnly,
 
     /// <summary>
-    /// Küresel bir komuta değiştiricisiz harf/rakam/ok atanamaz.
+    /// A letter/digit/arrow without a modifier cannot be assigned to a global command.
     /// </summary>
     BareKeyInGlobalContext,
 
-    /// <summary>Uygulamanın işleyemeyeceği bir tuş.</summary>
+    /// <summary>A key the application cannot handle.</summary>
     Unsupported,
 }
 
 /// <summary>
-/// Kullanıcının atamasına izin verilen jestleri süzer (P08-T03).
+/// Filters the gestures the user is allowed to assign (P08-T03).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kısıtların tamamı P08-T00 ölçümlerinden çıktı; keyfî değiller.
+/// Every restriction came out of the P08-T00 measurements; none of them are arbitrary.
 /// </para>
 /// <para>
-/// 🔴 <b>Küresel bağlamda çıplak tuş yasak.</b> M11+M12'de ölçüldü: pencere seviyesindeki bir
-/// jest odaklı kontrolden tuşu <b>koşulsuz</b> alır ve kontrol <c>Handled=true</c> yapsa bile
-/// komut çalışır. Küresel bir <c>S</c> atanabilseydi kullanıcı bir daha hiçbir metin kutusuna
-/// "s" yazamazdı ve sebebini de bulamazdı — çünkü hiçbir hata çıkmaz.
+/// 🔴 <b>Bare keys are forbidden in the global context.</b> MEASURED in M11+M12: a window-level
+/// gesture takes the key from the focused control <b>unconditionally</b> and the command runs
+/// even if the control sets <c>Handled=true</c>. If a global <c>S</c> were assignable the user
+/// could never type "s" in a text box again — and never see why, because no error appears.
 /// </para>
 /// </remarks>
 public static class GestureValidation
 {
-    /// <summary>Tek başına basıldığında jest sayılmayan tuşlar.</summary>
+    /// <summary>Keys that do not count as a gesture when pressed on their own.</summary>
     private static readonly Key[] ModifierKeys =
     [
         Key.LeftCtrl, Key.RightCtrl,
@@ -75,16 +75,16 @@ public static class GestureValidation
     }
 
     /// <summary>
-    /// Değiştiricisiz de küresel olabilen tuşlar.
+    /// Keys that can be global even without a modifier.
     /// </summary>
     /// <remarks>
-    /// Fonksiyon tuşları ve <c>Escape</c> hiçbir metin üretmez, dolayısıyla yazmayı
-    /// engellemezler — <c>F5</c>, <c>F1</c> zaten şemada böyle.
+    /// Function keys and <c>Escape</c> produce no text, so they cannot block typing —
+    /// <c>F5</c> and <c>F1</c> are already in the scheme this way.
     /// </remarks>
     private static bool IsSafeBareKey(Key key) =>
         key is >= Key.F1 and <= Key.F24 or Key.Escape or Key.Pause or Key.PrintScreen;
 
-    /// <summary>Reddetme sebebinin kullanıcıya gösterilecek açıklaması.</summary>
+    /// <summary>The explanation of the rejection reason shown to the user.</summary>
     public static string Describe(GestureRejection rejection) => rejection switch
     {
         GestureRejection.ModifierOnly =>

@@ -1,20 +1,20 @@
 namespace GitExt.Core.Model;
 
 /// <summary>
-/// Bir commit'in yazarı veya kaydedeni (committer): kim, ne zaman.
+/// The author or committer of a commit: who, and when.
 /// </summary>
-/// <param name="Name">Görünen ad. Boş olabilir — git bunu zorunlu tutmaz.</param>
-/// <param name="Email">E-posta adresi. Boş olabilir.</param>
+/// <param name="Name">Display name. May be empty — git does not require it.</param>
+/// <param name="Email">Email address. May be empty.</param>
 /// <param name="When">
-/// Zaman damgası, <b>orijinal saat dilimi ofsetiyle birlikte</b>.
+/// Timestamp, <b>together with the original time zone offset</b>.
 /// </param>
 /// <remarks>
-/// <see cref="DateTimeOffset"/> kullanılıyor çünkü commit'in hangi saat diliminde atıldığı
-/// anlamlı bilgidir ve gösterilmek istenebilir. <see cref="DateTime"/>'a çevirmek bunu kaybeder.
+/// <see cref="DateTimeOffset"/> is used because the time zone a commit was made in is
+/// meaningful information and may need to be shown. Converting to <see cref="DateTime"/> loses it.
 /// </remarks>
 public sealed record Signature(string Name, string Email, DateTimeOffset When)
 {
-    /// <summary>Yalnızca gösterim için: <c>Ad &lt;e-posta&gt;</c>.</summary>
+    /// <summary>For display only: <c>Name &lt;email&gt;</c>.</summary>
     public override string ToString() =>
         string.IsNullOrEmpty(Email) ? Name : $"{Name} <{Email}>";
 }

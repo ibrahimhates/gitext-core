@@ -5,7 +5,7 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Tests.Commands;
 
 /// <summary>
-/// P08-T01 — komut kaydı ve kısayol çözümü.
+/// P08-T01 — command registration and shortcut resolution.
 /// </summary>
 public class CommandRegistryTests
 {
@@ -53,7 +53,7 @@ public class CommandRegistryTests
     }
 
     /// <summary>
-    /// "Kısayolu kaldır" ile "hiç atanmamış" ayrı: kaldırma varsayılana <b>dönmez</b>.
+    /// "Remove the shortcut" and "never assigned" differ: removal does <b>not</b> return to the default.
     /// </summary>
     [Fact]
     public void Kisayolu_kaldirmak_varsayilana_DONMEZ()
@@ -86,11 +86,11 @@ public class CommandRegistryTests
     }
 
     /// <summary>
-    /// Ayar dosyasındaki bozuk jest metni yalnızca o komutu varsayılanına düşürür.
+    /// A corrupt gesture string in the settings file only drops that one command back to its default.
     /// </summary>
     /// <remarks>
-    /// <c>KeyGesture.Parse</c> tanımadığı metinde istisna atıyor; yakalanmasaydı elle
-    /// düzenlenmiş tek bir satır uygulamayı <b>açılmaz</b> hâle getirirdi.
+    /// <c>KeyGesture.Parse</c> throws on text it does not recognize; if it were not caught, a single
+    /// hand-edited line would make the application <b>fail to open</b>.
     /// </remarks>
     [Fact]
     public void Bozuk_jest_metni_varsayilana_duser()
@@ -114,7 +114,7 @@ public class CommandRegistryTests
             .ShouldBe(new KeyGesture(Key.P, KeyModifiers.Control | KeyModifiers.Shift));
     }
 
-    // ---------------------------------------------------------------- çözümleme
+    // --------------------------------------------------------------- resolution
 
     [Fact]
     public void Cozumleme_baglama_gore_ayirir()
@@ -128,11 +128,11 @@ public class CommandRegistryTests
     }
 
     /// <summary>
-    /// 🔴 Küresel komut, panel bağlamı sorulduğunda <b>çözülmez</b>.
+    /// 🔴 A global command does <b>not</b> resolve when a panel context is asked for.
     /// </summary>
     /// <remarks>
-    /// Çözülseydi çift çalışırdı: küresel jestler zaten <c>Window.KeyBindings</c>'te ve
-    /// P08-T00/M11'de ölçüldüğü gibi orası koşulsuz çalışıyor.
+    /// If it did resolve it would run twice: global gestures are already in <c>Window.KeyBindings</c>
+    /// and, as measured in P08-T00/M11, that path runs unconditionally.
     /// </remarks>
     [Fact]
     public void Kuresel_komut_panel_baglaminda_cozulmez()
@@ -144,10 +144,10 @@ public class CommandRegistryTests
         registry.Resolve(ctrlR, CommandContext.CommitList).ShouldBeNull();
     }
 
-    // ------------------------------------------------------------------ çakışma
+    // ----------------------------------------------------------------- conflict
 
     /// <summary>
-    /// Farklı panellerde aynı jest <b>çakışma değildir</b> — GitExtensions'ta da öyle.
+    /// The same gesture in different panels is <b>not a conflict</b> — it is the same in GitExtensions.
     /// </summary>
     [Fact]
     public void Farkli_baglamlarda_ayni_jest_cakisma_sayilmaz()
@@ -172,7 +172,7 @@ public class CommandRegistryTests
     }
 
     /// <summary>
-    /// Küresel bir komut <b>her</b> bağlamla çakışır.
+    /// A global command conflicts with <b>every</b> context.
     /// </summary>
     [Fact]
     public void Kuresel_komut_her_baglamla_cakisir()
@@ -209,7 +209,7 @@ public class CommandRegistryTests
 }
 
 /// <summary>
-/// P08-T02 — varsayılan şema. Bu testler şemayı <b>dondurmaya</b> hazırlıyor (ADR-0006).
+/// P08-T02 — the default scheme. These tests prepare the scheme to be <b>frozen</b> (ADR-0006).
 /// </summary>
 public class DefaultCommandSchemeTests
 {
@@ -217,17 +217,17 @@ public class DefaultCommandSchemeTests
         new(new InMemorySettingsStore(), DefaultCommandScheme.Definitions);
 
     /// <summary>
-    /// 🔴 Varsayılan şemada çakışma olmamalı.
+    /// 🔴 There must be no conflict in the default scheme.
     /// </summary>
     /// <remarks>
-    /// P08-T00/M10: Avalonia çakışan iki kaydın <b>yalnızca ilkini</b> çalıştırır ve hiçbir
-    /// şey söylemez. Şemayı gözle denetlemek yetmez.
+    /// P08-T00/M10: Avalonia runs <b>only the first</b> of two conflicting registrations and says
+    /// nothing at all. Inspecting the scheme by eye is not enough.
     /// <para>
-    /// Somut örnek — şema tasarlanırken çıkan ve <b>bu testle sabotaj yapılarak</b> yakalandığı
-    /// doğrulanan durum: diff'te "sonraki değişiklik" <c>Ctrl+↓</c> olsaydı küresel
-    /// <i>Pull/Fetch</i> onu tamamen yutardı (mevcut kodda <c>Ctrl+↓</c> gerçekten diff
-    /// gezinmesiydi). Diff gezinmesi GitExtensions'ın <c>Alt+↓↑</c>'sine taşındı; bu test
-    /// geri gelmesini engelliyor.
+    /// A concrete example — a case that came up while the scheme was being designed and that was
+    /// verified to be caught <b>by sabotaging this test</b>: if "next change" in the diff were
+    /// <c>Ctrl+↓</c>, the global <i>Pull/Fetch</i> would swallow it completely (in the code at the
+    /// time <c>Ctrl+↓</c> really was diff navigation). Diff navigation was moved to GitExtensions'
+    /// <c>Alt+↓↑</c>; this test stops it from coming back.
     /// </para>
     /// </remarks>
     [Fact]
@@ -253,12 +253,12 @@ public class DefaultCommandSchemeTests
     }
 
     /// <summary>
-    /// 🔴 Çıplak harf ve ok tuşları <b>asla küresel</b> olamaz.
+    /// 🔴 Bare letters and arrow keys can <b>never be global</b>.
     /// </summary>
     /// <remarks>
-    /// P08-T00/M11+M12: küresel bir jest odaklı kontrolden tuşu koşulsuz çalar; kontrol
-    /// <c>Handled=true</c> yapsa bile komut yine çalışıyor. Küresel bir <c>S</c> yazmayı,
-    /// küresel bir <c>↓</c> liste gezinmesini bitirirdi.
+    /// P08-T00/M11+M12: a global gesture steals the key from the focused control unconditionally; the
+    /// command still runs even if the control sets <c>Handled=true</c>. A global <c>S</c> would end
+    /// typing, a global <c>↓</c> would end list navigation.
     /// </remarks>
     [Fact]
     public void Kuresel_kisayollar_degistiricisiz_harf_veya_ok_ICERMEZ()
@@ -273,12 +273,12 @@ public class DefaultCommandSchemeTests
     }
 
     /// <summary>
-    /// Yıkıcı işlemler kasıtlı olarak kısayolsuz.
+    /// Destructive operations are deliberately left without a shortcut.
     /// </summary>
     /// <remarks>
-    /// Yanlışlıkla basılan bir tuşa bağlı bir <c>reset</c>, geri alma yolunu her seferinde
-    /// sınamak demekti (Faz 07'nin kuralı: her yıkıcı işlemin geri alma yolu var — ama onu
-    /// gereksiz yere kullandırmak tasarım hatası).
+    /// A <c>reset</c> bound to a key pressed by accident would mean testing the undo path every single
+    /// time (the rule of Phase 07: every destructive operation has an undo path — but making people
+    /// use it unnecessarily is a design mistake).
     /// </remarks>
     [Theory]
     [InlineData(CommandIds.HistoryReset)]
@@ -299,12 +299,12 @@ public class DefaultCommandSchemeTests
     }
 
     /// <summary>
-    /// GitExtensions'la bilinçli olarak <b>aynı</b> tutulan atamalar.
+    /// Assignments deliberately kept <b>identical</b> to GitExtensions.
     /// </summary>
     /// <remarks>
-    /// Kaynak: GitExtensions <c>HotkeySettingsManager.CreateDefaultSettings()</c>. Bu test
-    /// sapmaları yasaklamıyor; <b>kazara</b> sapmayı yasaklıyor. Bilinçli bir sapma bu
-    /// listeden çıkarılır ve <see cref="DefaultCommandScheme"/>'deki gerekçeye yazılır.
+    /// Source: GitExtensions <c>HotkeySettingsManager.CreateDefaultSettings()</c>. This test does not
+    /// forbid deviations; it forbids <b>accidental</b> deviation. A deliberate deviation is removed
+    /// from this list and written into the rationale in <see cref="DefaultCommandScheme"/>.
     /// </remarks>
     [Theory]
     [InlineData(CommandIds.RepositoryOpen, "Ctrl+O")]

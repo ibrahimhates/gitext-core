@@ -1,87 +1,87 @@
 namespace GitExt.Core.Model;
 
 /// <summary>
-/// Bir commit imzasının doğrulama sonucu (P03-T15).
+/// The verification result of a commit signature (P03-T15).
 /// </summary>
 /// <remarks>
-/// <c>git log --format=%G?</c> alanının karşılıkları. Bir tanesi doğrudan git'ten gelmiyor:
-/// <see cref="CannotVerify"/>, git'in doğrulayıcıyı hiç çalıştıramadığı durumu temsil eder —
-/// bkz. <see cref="CommitSignatureInfo"/>.
+/// The counterparts of the <c>git log --format=%G?</c> field. One of them does not come from
+/// git directly: <see cref="CannotVerify"/> represents the case where git could not run the
+/// verifier at all — see <see cref="CommitSignatureInfo"/>.
 /// </remarks>
 public enum SignatureStatus
 {
-    /// <summary>İmza yok (<c>N</c>).</summary>
+    /// <summary>No signature (<c>N</c>).</summary>
     None,
 
-    /// <summary>Geçerli imza (<c>G</c>).</summary>
+    /// <summary>Valid signature (<c>G</c>).</summary>
     Valid,
 
-    /// <summary>İmza geçerli ama anahtar güvenilir işaretlenmemiş (<c>U</c>).</summary>
+    /// <summary>Signature is valid but the key is not marked trusted (<c>U</c>).</summary>
     ValidUntrusted,
 
-    /// <summary>İmza <b>hatalı</b> (<c>B</c>) — içerik imzalandıktan sonra değişmiş olabilir.</summary>
+    /// <summary>Signature is <b>bad</b> (<c>B</c>) — the content may have changed after signing.</summary>
     Bad,
 
-    /// <summary>İmzanın süresi dolmuş (<c>X</c>).</summary>
+    /// <summary>The signature has expired (<c>X</c>).</summary>
     Expired,
 
-    /// <summary>İmzalayan anahtarın süresi dolmuş (<c>Y</c>).</summary>
+    /// <summary>The signing key has expired (<c>Y</c>).</summary>
     KeyExpired,
 
-    /// <summary>İmzalayan anahtar iptal edilmiş (<c>R</c>).</summary>
+    /// <summary>The signing key was revoked (<c>R</c>).</summary>
     KeyRevoked,
 
-    /// <summary>Doğrulama yapılamadı (<c>E</c> veya yapılandırma eksik).</summary>
+    /// <summary>Verification could not be performed (<c>E</c>, or configuration missing).</summary>
     CannotVerify,
 }
 
 /// <summary>
-/// Bir commit'in imza bilgisi.
+/// The signature information of a commit.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden toplu <c>git log</c> okumasında yok?</b> Ölçüldü: 2.000 <b>imzasız</b> commit'te
-/// formata <c>%G?</c> eklemek okumayı 12,1 ms'den 20,8 ms'ye çıkarıyor (%72). Gerçekten imzalı
-/// commit'lerde her satır için kriptografik doğrulama yapılacağı için fark çok daha büyür.
-/// Detay paneli tek seferde tek commit gösterdiğinden imza <b>seçili commit için ayrıca</b>
-/// okunuyor.
+/// <b>Why is this not in the bulk <c>git log</c> read?</b> Measured: on 2,000 <b>unsigned</b>
+/// commits, adding <c>%G?</c> to the format raises the read from 12.1 ms to 20.8 ms (+72%). On
+/// really signed commits the gap grows far larger, since each line triggers a cryptographic
+/// verification. Because the details panel shows one commit at a time, the signature is read
+/// <b>separately, for the selected commit</b>.
 /// </para>
 /// <para>
-/// <b>⚠️ <c>%G?</c> tek başına yanıltıcı.</b> Ölçüldü: SSH imzalı bir commit,
-/// <c>gpg.ssh.allowedSignersFile</c> yapılandırılmamışsa <c>N</c> — yani "imzasız" — döner;
-/// git yalnızca stderr'e hata yazar. Kullanıcıya imzalı bir commit için "imzasız" demek
-/// yanlış bilgidir, bu yüzden stderr'e de bakılıp <see cref="SignatureStatus.CannotVerify"/>
-/// ayrımı yapılır.
+/// <b>⚠️ <c>%G?</c> on its own is misleading.</b> Measured: an SSH-signed commit returns <c>N</c>
+/// — i.e. "unsigned" — when <c>gpg.ssh.allowedSignersFile</c> is not configured; git only writes
+/// an error to stderr. Telling the user "unsigned" for a signed commit is wrong information, so
+/// stderr is inspected as well and the <see cref="SignatureStatus.CannotVerify"/> distinction
+/// is made.
 /// </para>
 /// </remarks>
 public sealed record CommitSignatureInfo
 {
-    /// <summary>İmzası olmayan commit için hazır değer.</summary>
+    /// <summary>Ready-made value for a commit without a signature.</summary>
     public static CommitSignatureInfo Unsigned { get; } = new() { Status = SignatureStatus.None };
 
     public required SignatureStatus Status { get; init; }
 
-    /// <summary>İmzalayanın adı/e-postası (<c>%GS</c>); bilinmiyorsa boş.</summary>
+    /// <summary>Signer's name/email (<c>%GS</c>); empty when unknown.</summary>
     public string Signer { get; init; } = string.Empty;
 
-    /// <summary>İmzalayan anahtarın kimliği (<c>%GK</c>); bilinmiyorsa boş.</summary>
+    /// <summary>Id of the signing key (<c>%GK</c>); empty when unknown.</summary>
     public string Key { get; init; } = string.Empty;
 
     /// <summary>
-    /// Doğrulama neden yapılamadı? Yalnızca <see cref="SignatureStatus.CannotVerify"/>
-    /// durumunda dolu.
+    /// Why could verification not be performed? Filled only in the
+    /// <see cref="SignatureStatus.CannotVerify"/> case.
     /// </summary>
     public string? CannotVerifyReason { get; init; }
 
-    /// <summary>Commit imzalı mı? Doğrulanamayan imza da imzadır.</summary>
+    /// <summary>Is the commit signed? A signature that cannot be verified is a signature too.</summary>
     public bool IsSigned => Status != SignatureStatus.None;
 
     /// <summary>
-    /// İmza güvenilir sayılabilir mi?
+    /// Can the signature be considered trusted?
     /// </summary>
     /// <remarks>
-    /// Yalnızca <see cref="SignatureStatus.Valid"/> için <see langword="true"/>. Güven
-    /// işaretlenmemiş (<c>U</c>) imza "doğrulandı" diye sunulmamalı.
+    /// <see langword="true"/> only for <see cref="SignatureStatus.Valid"/>. A signature whose trust
+    /// is not marked (<c>U</c>) must not be presented as "verified".
     /// </remarks>
     public bool IsTrusted => Status == SignatureStatus.Valid;
 

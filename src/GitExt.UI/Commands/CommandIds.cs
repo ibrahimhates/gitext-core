@@ -1,14 +1,14 @@
 namespace GitExt.UI.Commands;
 
 /// <summary>
-/// Komut kimlikleri (P08-T01).
+/// Command ids (P08-T01).
 /// </summary>
 /// <remarks>
-/// 🔴 <b>Bu dizeler asla değişmez.</b> Kullanıcının yeniden atadığı kısayollar ayar dosyasında
-/// bu kimliklerle saklanıyor; bir kimliği yeniden adlandırmak, o komuta atanmış kısayolu
-/// <b>sessizce</b> varsayılana döndürür — kullanıcı hiçbir hata görmez, kısayolu bir gün
-/// çalışmaz olur. Komut kaldırılırsa kimliği de kullanımdan kalkar, <b>yeniden kullanılmaz</b>
-/// (görev kimliklerindeki kuralın aynısı, ROADMAP § 2).
+/// 🔴 <b>These strings never change.</b> Shortcuts the user has reassigned are stored in the
+/// settings file under these ids; renaming an id <b>silently</b> resets the shortcut assigned
+/// to that command back to the default — the user sees no error, the shortcut simply stops
+/// working one day. If a command is removed its id is retired too, and is <b>never reused</b>
+/// (the same rule as for task ids, ROADMAP § 2).
 /// </remarks>
 public static class CommandIds
 {
@@ -31,7 +31,7 @@ public static class CommandIds
     public const string BranchCheckout = "branch.checkout";
     public const string BranchMerge = "branch.merge";
 
-    // ---- Geçmiş
+    // ---- History
     public const string HistoryRebase = "history.rebase";
     public const string HistoryCherryPick = "history.cherryPick";
     public const string HistoryRevert = "history.revert";
@@ -40,7 +40,7 @@ public static class CommandIds
     public const string TagCreate = "tag.create";
     public const string StashManage = "stash.manage";
 
-    // ---- Görünüm
+    // ---- View
     public const string ViewToggleLeftPanel = "view.toggleLeftPanel";
     public const string ViewToggleBottomPanel = "view.toggleBottomPanel";
     public const string ViewFocusLeftPanel = "view.focusLeftPanel";
@@ -50,16 +50,16 @@ public static class CommandIds
     public const string ViewNextPanel = "view.nextPanel";
     public const string ViewPreviousPanel = "view.previousPanel";
 
-    // ---- Araçlar / yardım
+    // ---- Tools / help
     public const string ToolsCommandLog = "tools.commandLog";
 
     /// <summary>
-    /// Performans teşhis paneli (P09-T03).
+    /// Performance diagnostics panel (P09-T03).
     /// </summary>
     /// <remarks>
-    /// Menüde <b>yok</b>: günlük kullanımda gürültü. Yalnızca kısayolla ve komut
-    /// paletinden açılıyor — "yavaş" şikâyeti geldiğinde kullanıcıya tarif edilebilecek
-    /// kadar erişilebilir, normalde görünmeyecek kadar gizli.
+    /// <b>Not</b> in the menu: noise in daily use. It opens only via the shortcut and the
+    /// command palette — reachable enough to be talked through with a user who reports "slow",
+    /// hidden enough not to be seen otherwise.
     /// </remarks>
     public const string ToolsDiagnostics = "tools.diagnostics";
 
@@ -94,7 +94,7 @@ public static class CommandIds
     public const string DiffCopyCode = "diff.copyCode";
     public const string DiffCopyPatch = "diff.copyPatch";
 
-    // ---- Çalışma ağacı
+    // ---- Working tree
     public const string WorkingTreeToggleStage = "workingTree.toggleStage";
     public const string WorkingTreeStageAll = "workingTree.stageAll";
     public const string WorkingTreeUnstageAll = "workingTree.unstageAll";

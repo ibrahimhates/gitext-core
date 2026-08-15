@@ -8,22 +8,22 @@ using GitExt.Graph;
 namespace GitExt.Desktop;
 
 /// <summary>
-/// Bir depoyu commit grafiği hattından geçirip ölçer (P03-T18).
+/// Runs a repository through the commit graph pipeline and measures it (P03-T18).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kullanım: <c>gitext-core --bench &lt;depo-yolu&gt;</c>
+/// Usage: <c>gitext-core --bench &lt;repository-path&gt;</c>
 /// </para>
 /// <para>
-/// <b>Neden ayrı bir mod?</b> Faz 02'nin ölçümleri yalnızca çekirdek katmanı kapsıyordu.
-/// Burada ölçülen şey kullanıcının beklediği şey: <b>ilk satır ne zaman görünür</b>,
-/// tamamı ne kadar sürer, kaç şerit oluşur ve bellekte ne kalır. Avalonia başlatılmaz —
-/// masaüstü oturumu gerekmez, CI'da da çalışır.
+/// <b>Why a separate mode?</b> The Phase 02 measurements only covered the core layer.
+/// What is measured here is what the user waits for: <b>when does the first row appear</b>,
+/// how long does the whole thing take, how many lanes are created and what stays in memory.
+/// Avalonia is not started — no desktop session needed, it runs on CI as well.
 /// </para>
 /// <para>
-/// Tutulan bellek, satırlar <b>canlı tutularak</b> ve zorlanmış bir çöp toplama sonrası
-/// ölçülür; aksi halde ölçülen şey tutulan değil tahsis edilen bellek olur — Faz 03'te bir
-/// kez bu hataya düşüldü.
+/// The retained memory is measured with the rows <b>kept alive</b> and after a forced garbage
+/// collection; otherwise what is measured is allocated rather than retained memory — we fell into
+/// this trap once in Phase 03.
 /// </para>
 /// </remarks>
 internal static class GraphBenchmark
@@ -43,8 +43,8 @@ internal static class GraphBenchmark
         RepositoryLocation location = await new RepositoryLocator(runner)
             .LocateAsync(path, cancellationToken).ConfigureAwait(false);
 
-        // Tüm ref'ler mi yalnızca HEAD mi? Şerit genişliğinin kaynağını ayırmak için
-        // (bir depoda 1000'den fazla tag olabiliyor — ölçüldü).
+        // All refs, or only HEAD? To separate out where the lane width comes from
+        // (a repository can have more than 1000 tags — measured).
         bool headOnly = args.Contains("--head-only", StringComparer.Ordinal);
 
         Console.WriteLine($"depo        : {location.WorkingDirectory}");
@@ -67,7 +67,7 @@ internal static class GraphBenchmark
 
         GraphLayoutEngine engine = new();
 
-        // Satırlar canlı tutuluyor: tutulan belleği ölçmenin tek yolu bu.
+        // The rows are kept alive: this is the only way to measure retained memory.
         List<GraphRow> rows = [];
         List<CommitInfo> commits = [];
 
@@ -76,17 +76,17 @@ internal static class GraphBenchmark
         Stopwatch total = Stopwatch.StartNew();
         TimeSpan firstRow = TimeSpan.Zero;
 
-        // Şerit sayısının DAĞILIMI, tepe değerinden daha çok şey söylüyor: birkaç satırda
-        // görülen bir tepe yatay kaydırmayla çözülür, yaygın bir genişlik ise algoritmayı
-        // sorgulatır (P03-T18, açık soru 1 ve 2).
+        // The DISTRIBUTION of the lane count says more than the peak value: a peak seen on a few rows
+        // is solved with horizontal scrolling, whereas a widespread width calls the algorithm into
+        // question (P03-T18, open questions 1 and 2).
         List<int> laneCounts = [];
 
-        // Asıl soru sütun genişliği için bu: commit DÜĞÜMLERİ hangi şeritlerde duruyor?
-        // Şeritlerin çoğu uzun geçiş kenarıysa dar bir sınır düğümleri gizlemez (P03-T21).
+        // For column width the real question is this: which lanes do the commit NODES sit in?
+        // If most lanes are long pass-through edges, a narrow limit does not hide the nodes (P03-T21).
         List<int> nodeLanes = [];
 
-        // Şeritler gerçekten dolu mu, yoksa aralarında boşluk mu var? Boşluk varsa çözüm
-        // sıkıştırma (compaction); doluysa eşzamanlı dal sayısı gerçekten yüksek demektir.
+        // Are the lanes really full, or are there gaps between them? If there are gaps the fix is
+        // compaction; if they are full, the number of concurrent branches really is high.
         List<int> occupied = [];
 
         await foreach (CommitInfo commit in reader
@@ -120,7 +120,7 @@ internal static class GraphBenchmark
 
         long afterBytes = GetRetainedBytes();
 
-        // rows/commits'e burada dokunmak, JIT'in listeleri erken toplanabilir saymasını önler.
+        // Touching rows/commits here stops the JIT from treating the lists as collectable early.
         int count = rows.Count + commits.Count - commits.Count;
 
         Report(count, firstRow, total.Elapsed, laneCounts, afterBytes - beforeBytes);
@@ -171,7 +171,7 @@ internal static class GraphBenchmark
     }
 
     /// <summary>
-    /// Commit düğümlerinin şerit indeksi dağılımı ve olası sınırların kapsama oranı.
+    /// The lane index distribution of the commit nodes and the coverage ratio of possible limits.
     /// </summary>
     private static void ReportNodeLanes(List<int> nodeLanes)
     {
@@ -195,7 +195,7 @@ internal static class GraphBenchmark
     }
 
     /// <summary>
-    /// Ayrılan şeritlerin ne kadarının gerçekten kullanıldığı.
+    /// How much of the allocated lanes is actually used.
     /// </summary>
     private static void ReportOccupancy(List<int> laneCounts, List<int> occupied)
     {
@@ -204,8 +204,8 @@ internal static class GraphBenchmark
             return;
         }
 
-        // laneCounts zaten sıralandı; oran için sıralanmamış eşleşme gerekli olduğundan
-        // toplamlar üzerinden bakılıyor.
+        // laneCounts is already sorted; since the ratio needs an unsorted match, this is derived
+        // from the totals.
         double totalLanes = laneCounts.Sum(x => (double)x);
         double totalUsed = occupied.Sum(x => (double)x);
 
@@ -225,12 +225,12 @@ internal static class GraphBenchmark
             : sorted[Math.Clamp((int)(sorted.Count * fraction), 0, sorted.Count - 1)];
 
     /// <summary>
-    /// Metin alanlarının bellekteki payını raporlar.
+    /// Reports the share of the text fields in memory.
     /// </summary>
     /// <remarks>
-    /// Belleği neyin yediğini bilmeden azaltmaya çalışmak tahmin yürütmektir. Yazar adı ve
-    /// e-postası az sayıda benzersiz değere sahiptir; interning'in ne kazandıracağı buradan
-    /// görülüyor (Faz 09).
+    /// Trying to reduce memory without knowing what eats it is guesswork. The author name and
+    /// e-mail address have a small number of unique values; what interning would gain is visible
+    /// from here (Phase 09).
     /// </remarks>
     private static void ReportTextWeight(List<CommitInfo> commits)
     {
@@ -264,7 +264,7 @@ internal static class GraphBenchmark
 
         CultureInfo c = CultureInfo.InvariantCulture;
 
-        // .NET'te char 2 bayt.
+        // In .NET a char is 2 bytes.
         Console.WriteLine(
             "metin (MB)  : "
             + $"konu={Mb(subject)}  gövde={Mb(body)}  "
@@ -275,11 +275,11 @@ internal static class GraphBenchmark
     }
 
     /// <summary>
-    /// Zorlanmış tam toplama sonrası tutulan bellek.
+    /// Retained memory after a forced full collection.
     /// </summary>
     /// <remarks>
-    /// <c>GC.GetTotalMemory(forceFullCollection: true)</c> tek başına yetmiyor; finalize
-    /// bekleyen nesneler sayıya karışıyor ve ölçüm gürültülü çıkıyor.
+    /// <c>GC.GetTotalMemory(forceFullCollection: true)</c> alone is not enough; objects awaiting
+    /// finalization get mixed into the number and the measurement comes out noisy.
     /// </remarks>
     private static long GetRetainedBytes()
     {

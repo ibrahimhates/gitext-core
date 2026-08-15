@@ -5,7 +5,7 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T04 — Diff seçenekleri, gerçek <c>git</c>'e karşı.
+/// P04-T04 — Diff options, against real <c>git</c>.
 /// </summary>
 public class DiffOptionsTests
 {
@@ -67,8 +67,8 @@ public class DiffOptionsTests
     [Fact]
     public async Task Sifir_baglamda_tek_satirlik_hunk_basligi_dogru_okunur()
     {
-        // ÖLÇÜLDÜ: -U0 başlığı tek satırlık biçime düşürüyor (`@@ -4 +4 @@`), uzunluk YOK.
-        // Varsayılanı 0 almak satır numaralarını kaydırırdı.
+        // MEASURED: -U0 reduces the header to the single-line form (`@@ -4 +4 @@`), there is NO length.
+        // Taking the default as 0 would shift the line numbers.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", Lines(8));
         repository.Git("add", "-A");
@@ -92,9 +92,9 @@ public class DiffOptionsTests
     [Fact]
     public async Task Bosluk_yoksayilinca_dosya_listeden_de_duser()
     {
-        // ÖLÇÜLDÜ ve KRİTİK: -w yalnızca yamayı boşaltmıyor, dosyayı HAM bölümden de
-        // düşürüyor. Öyle olmasaydı ham kayıt sayısı ile yama bloğu sayısı uyuşmaz ve
-        // ayrıştırıcı hata fırlatırdı.
+        // MEASURED and CRITICAL: -w does not merely empty the patch, it also drops the file from the RAW
+        // section. If it did not, the raw record count and the patch block count would not match and the
+        // parser would throw.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("bosluk.txt", "a\nb\nc\n");
         repository.WriteFile("gercek.txt", "x\ny\n");
@@ -121,7 +121,7 @@ public class DiffOptionsTests
     [Fact]
     public async Task Yeniden_adlandirma_esigi_uygulanir()
     {
-        // ÖLÇÜLDÜ: %69 benzerlikli dosyada -M50% rename buluyor, -M90% bulmuyor.
+        // MEASURED: on a file with 69% similarity -M50% finds the rename, -M90% does not.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("kaynak.txt", Lines(20));
         repository.Git("add", "-A");
@@ -152,8 +152,8 @@ public class DiffOptionsTests
     [Fact]
     public async Task Kopyalama_tespiti_find_copies_harder_GEREKTIRIR()
     {
-        // ÖLÇÜLDÜ: -C tek başına, DEĞİŞTİRİLMEMİŞ bir dosyadan yapılan kopyayı bulamıyor
-        // (durum A kalıyor). --find-copies-harder ile C100 oluyor.
+        // MEASURED: -C on its own cannot find a copy made from an UNMODIFIED file
+        // (it stays status A). With --find-copies-harder it becomes C100.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("orijinal.txt", Lines(15));
         repository.Git("add", "-A");
@@ -209,10 +209,10 @@ public class DiffOptionsTests
 
         normal.Single().AddedLines.ShouldBe(2);
 
-        // ÖLÇÜLDÜ: --ignore-blank-lines dosyayı listeden DÜŞÜRMÜYOR; ham bölümde kalıyor
-        // ama yama bloğu üretilmiyor. (-w'den farklı: orada dosya aynılaşırsa iki bölümden
-        // de düşüyor.) Ayrıştırıcı bu yüzden blob kimliğiyle eşleyip hunk'sız döndürüyor.
-        // Böyle dosyaların listede gizlenip gizlenmeyeceği bir arayüz kararı (P04-T08).
+        // MEASURED: --ignore-blank-lines does NOT DROP the file from the list; it stays in the raw section
+        // but no patch block is produced. (Different from -w: there, if the file becomes identical it drops
+        // out of both sections.) That is why the parser matches by blob id and returns it without hunks.
+        // Whether such files are hidden in the list is a UI decision (P04-T08).
         FileDiff unchanged = ignored.Single();
         unchanged.Path.Value.ShouldBe("a.txt");
         unchanged.HasHunks.ShouldBeFalse();
@@ -221,7 +221,7 @@ public class DiffOptionsTests
     [Fact]
     public async Task Esikler_gecerli_araliga_sikistirilir()
     {
-        // Kullanıcı arayüzünden gelen bozuk bir değer git'i hata verdirmemeli.
+        // A bad value coming from the user interface must not make git error out.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.WriteFile("README.md", "# test\ndeğişti\n");
         repository.Git("add", "-A");

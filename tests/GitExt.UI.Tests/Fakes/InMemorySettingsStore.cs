@@ -3,11 +3,11 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Tests;
 
 /// <summary>
-/// Diske dokunmayan ayar deposu. Ayarları <b>tüketen</b> testler için.
+/// Settings store that never touches the disk. For tests that <b>consume</b> settings.
 /// </summary>
 /// <remarks>
-/// Dosya davranışı (atomik yazma, bozuk dosya, göç) <c>SettingsStoreTests</c>'in konusu;
-/// buraya karıştırmak her komut testini bir dosya sistemi testine çevirirdi.
+/// File behavior (atomic write, corrupt file, migration) is the subject of <c>SettingsStoreTests</c>;
+/// mixing it in here would turn every command test into a file system test.
 /// </remarks>
 public sealed class InMemorySettingsStore : ISettingsStore
 {

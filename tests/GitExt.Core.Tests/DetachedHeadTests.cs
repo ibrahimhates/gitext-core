@@ -5,7 +5,7 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P06-T04 — ayrık (detached) HEAD ve süregelen işlemler.
+/// P06-T04 — detached HEAD and ongoing operations.
 /// </summary>
 public class DetachedHeadTests
 {
@@ -52,10 +52,10 @@ public class DetachedHeadTests
     [Fact]
     public async Task Detached_ADLI_dal_ayrik_HEAD_SANILMIYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: "(detached)" GEÇERLİ bir dal adı — `check-ref-format --branch` kabul
-        // ediyor, `git branch "(detached)"` gerçekten oluşturuyor. O dalın üzerindeyken
-        // `--porcelain=v2` yine "# branch.head (detached)" yazıyor, yani çıktı ayırt
-        // EDİLEMİYOR. Kullanıcı bir dalın üzerindeyken "ayrık HEAD, commit'leriniz
+        // 🔴 MEASURED: "(detached)" is a VALID branch name — `check-ref-format --branch` accepts it,
+        // `git branch "(detached)"` really creates it. While on that branch `--porcelain=v2` still
+        // writes "# branch.head (detached)", so the output is INDISTINGUISHABLE. The user would get
+        // a "detached HEAD, your commits may be lost" warning while sitting on a branch.
         // kaybolabilir" uyarısı alırdı.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("switch", "-c", "(detached)");
@@ -89,9 +89,9 @@ public class DetachedHeadTests
     [Fact]
     public async Task Rebase_sirasinda_HEAD_ayrik_ama_ISLEM_bildiriliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: rebase sırasında HEAD gerçekten ayrık. Düz bir "ayrık HEAD" uyarısı
-        // burada da açılırdı; oysa kullanıcı bilerek bir işlemin ortasında ve ona
-        // söylenmesi gereken şey "buradan dal oluştur" değil, hangi işlemin sürdüğü.
+        // 🔴 MEASURED: during a rebase HEAD really is detached. A plain "detached HEAD" warning would
+        // pop up here too; but the user is deliberately in the middle of an operation and what they
+        // need to be told is not "create a branch here" but which operation is in progress.
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git("switch", "-c", "dal");
@@ -120,7 +120,7 @@ public class DetachedHeadTests
     [Fact]
     public async Task Bisect_sirasinda_ISLEM_bildiriliyor()
     {
-        // ÖLÇÜLDÜ: bisect de HEAD'i ayırıyor.
+        // MEASURED: bisect detaches HEAD too.
         using Harness harness = await CreateAsync();
 
         for (int i = 1; i <= 4; i++)
@@ -164,8 +164,8 @@ public class DetachedHeadTests
     [Fact]
     public async Task Ayrik_HEAD_te_atilan_commit_reflog_ta_KALIYOR()
     {
-        // Uyarının tonu buna bağlı: içerik anında kaybolmuyor, ama hiçbir dalda görünmüyor.
-        // "Kaybettiniz" demek yanlış, "hiçbir dal göstermiyor" demek doğru.
+        // The tone of the warning depends on this: the content is not lost instantly, but it is not visible on any branch.
+        // Saying "you lost it" is wrong, saying "no branch points at it" is right.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("switch", "--detach", "HEAD~1");
         harness.Repository.WriteFile("x.txt", "ayrık işi\n");
@@ -191,9 +191,9 @@ public class DetachedHeadTests
         bool isDirectory,
         InProgressOperation expected)
     {
-        // Saf sınıflandırma: her durumu gerçek git ile kurmak yavaş ve bazıları (revert
-        // çakışması) kurulumu kırılgan. Gerçek git ile kurulabilenler yukarıda ayrıca test
-        // ediliyor; bu tablo eşlemenin tamamını sabitliyor.
+        // Pure classification: setting up every state with real git is slow and some of them (a revert
+        // conflict) are fragile to set up. The ones that can be set up with real git are tested separately
+        // above; this table pins down the whole mapping.
         string root = Directory.CreateTempSubdirectory("gitext-op").FullName;
 
         try
@@ -220,8 +220,8 @@ public class DetachedHeadTests
     [Fact]
     public void rebase_apply_git_am_den_AYIRT_ediliyor()
     {
-        // `rebase-apply` hem `rebase --apply` hem `git am` tarafından kullanılıyor;
-        // ayrımı içindeki `applying` dosyası veriyor.
+        // `rebase-apply` is used by both `rebase --apply` and `git am`;
+        // the `applying` file inside it makes the distinction.
         string root = Directory.CreateTempSubdirectory("gitext-op").FullName;
 
         try

@@ -5,16 +5,16 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P09-T08 — commit okumada metin havuzu (interning).
+/// P09-T08 — string pool (interning) in commit reading.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Ölçüm: 500.000 commit'lik depoda yazar/committer alanları 46 MB tutuyordu ama
-/// benzersiz değer sayısı <b>2</b>'ydi. Havuz sonrası tutulan bellek 460 MB → 368 MB.
+/// Measurement: on a 500,000-commit repository the author/committer fields held 46 MB but
+/// the number of unique values was <b>2</b>. Retained memory after pooling: 460 MB → 368 MB.
 /// </para>
 /// <para>
-/// Buradaki testlerin işi kazancı değil, <b>kazancın doğruluğu bozmadığını</b>
-/// doğrulamak: paylaşılan bir örnek döndürmek, okunan verinin kendisini değiştirmemeli.
+/// The job of the tests here is not the gain but <b>verifying that the gain does not break correctness</b>:
+/// returning a shared instance must not change the data that was read.
 /// </para>
 /// </remarks>
 public class CommitLogInterningTests
@@ -47,9 +47,9 @@ public class CommitLogInterningTests
     }
 
     /// <remarks>
-    /// Havuzun işi bu: aynı yazar adı iki commit'te de <b>aynı örnek</b> olmalı.
-    /// Referans eşitliği kontrol ediliyor çünkü ölçülen kazanç tam olarak bu — değer
-    /// eşitliği havuz olmadan da sağlanırdı ve hiçbir şey kanıtlamazdı.
+    /// This is the pool's job: the same author name must be the <b>same instance</b> in both commits.
+    /// Reference equality is checked because that is exactly the measured gain — value
+    /// equality would hold without the pool too and would prove nothing.
     /// </remarks>
     [Fact]
     public async Task Ayni_yazar_ayni_ORNEGI_paylasiyor()
@@ -71,9 +71,9 @@ public class CommitLogInterningTests
     }
 
     /// <remarks>
-    /// 🔴 Havuz <b>değeri</b> değiştirmemeli. Bir eşleme hatası, iki farklı yazarı tek
-    /// isim altında birleştirir; commit listesi sessizce yanlış kişiyi gösterirdi —
-    /// bellek kazancının hiçbir şekilde haklı çıkaramayacağı bir hata.
+    /// 🔴 The pool must not change the <b>value</b>. A mapping bug would merge two different authors
+    /// under a single name; the commit list would silently show the wrong person —
+    /// a bug that no amount of memory gain could ever justify.
     /// </remarks>
     [Fact]
     public async Task Farkli_yazarlar_birbirine_karismiyor()
@@ -92,8 +92,8 @@ public class CommitLogInterningTests
     }
 
     /// <remarks>
-    /// Akış yolu ayrı bir kod yolu ve grafik tam olarak oradan besleniyor; havuz orada
-    /// da devrede olmalı.
+    /// The streaming path is a separate code path and the graph is fed from exactly there; the pool must
+    /// be active there too.
     /// </remarks>
     [Fact]
     public async Task Akis_yolunda_da_paylasim_var()
@@ -118,8 +118,8 @@ public class CommitLogInterningTests
     }
 
     /// <remarks>
-    /// Boş alan (kodlaması olmayan commit) havuza girmemeli; <see cref="string.Empty"/>
-    /// zaten tek örnek ve sözlüğe boş anahtar koymak yalnızca gürültü olurdu.
+    /// An empty field (a commit with no encoding) must not enter the pool; <see cref="string.Empty"/>
+    /// is already a single instance and putting an empty key in the dictionary would only be noise.
     /// </remarks>
     [Fact]
     public async Task Bos_kodlama_alani_bos_dize_kaliyor()

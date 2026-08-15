@@ -4,13 +4,13 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P09-T07 — <c>commit-graph</c> algılama ve öneri.
+/// P09-T07 — <c>commit-graph</c> detection and advice.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Ölçülen kazanç 500k commit'lik depoda grafiğin <b>ilk satırında</b> 1.281 ms → 7.8 ms.
-/// Ama dosya kullanıcının deposuna yazılıyor; bu yüzden buradaki testlerin yarısı
-/// "yazmadığını" doğruluyor.
+/// The measured gain on a 500k-commit repository was 1,281 ms → 7.8 ms on the <b>first row</b> of the graph.
+/// But the file is written into the user's repository; that is why half of the tests here
+/// verify that it does <i>not</i> write.
 /// </para>
 /// </remarks>
 public class CommitGraphAdvisorTests
@@ -37,8 +37,8 @@ public class CommitGraphAdvisorTests
     }
 
     /// <remarks>
-    /// 🔒 Denetlemenin kendisi dosyayı yazmamalı. Yazsaydı, "öneriyoruz" diyen kod
-    /// kullanıcının deposunu sormadan değiştirmiş olurdu — planın açıkça yasakladığı şey.
+    /// 🔒 The inspection itself must not write the file. If it did, the code that says "we advise"
+    /// would have changed the user's repository without asking — exactly what the plan forbids.
     /// </remarks>
     [Fact]
     public async Task Denetleme_dosyayi_YAZMIYOR()
@@ -66,9 +66,9 @@ public class CommitGraphAdvisorTests
     }
 
     /// <remarks>
-    /// 🔴 <c>--split</c> ile yazılan depoda tek dosyalık <c>commit-graph</c> <b>yok</b>;
-    /// zincir <c>commit-graphs/commit-graph-chain</c>'de. Yalnızca birinciye bakmak
-    /// "dosya yok" derdi ve öneri, gereği yokken her açılışta tekrar gösterilirdi.
+    /// 🔴 In a repository written with <c>--split</c> there is <b>no</b> single-file <c>commit-graph</c>;
+    /// the chain is in <c>commit-graphs/commit-graph-chain</c>. Looking only at the first one
+    /// would say "no file" and the advice would be shown again on every open, needlessly.
     /// </remarks>
     [Fact]
     public async Task Zincirlenmis_bicim_de_taniniyor()
@@ -78,7 +78,7 @@ public class CommitGraphAdvisorTests
 
         repo.Git("commit-graph", "write", "--reachable", "--split");
 
-        // Ölçümün kendisi: gerçekten zincirlenmiş biçim mi yazıldı?
+        // The measurement itself: was the truly chained form written?
         bool chained = File.Exists(Path.Combine(
             repo.Path, ".git", "objects", "info", "commit-graphs", "commit-graph-chain"));
 
@@ -88,9 +88,9 @@ public class CommitGraphAdvisorTests
     }
 
     /// <remarks>
-    /// Küçük depoda öneri gösterilmemeli: 10.000 commit zaten 99 ms'de okunuyor (P09-T04).
-    /// Kazandırmayan bir işlem için kullanıcıyı rahatsız etmek, öneriyi bütünüyle
-    /// güvenilmez yapardı.
+    /// The advice must not be shown on a small repository: 10,000 commits are already read in 99 ms (P09-T04).
+    /// Bothering the user with an operation that gains nothing would make the advice
+    /// entirely untrustworthy.
     /// </remarks>
     [Fact]
     public async Task Kucuk_depoda_oneri_YOK()
@@ -105,7 +105,7 @@ public class CommitGraphAdvisorTests
     }
 
     /// <remarks>
-    /// Dosya varken öneri gösterilmemeli — eşiğin üstünde olsa bile.
+    /// The advice must not be shown when the file exists — even above the threshold.
     /// </remarks>
     [Fact]
     public async Task Dosya_varken_oneri_YOK()
@@ -119,8 +119,8 @@ public class CommitGraphAdvisorTests
     }
 
     /// <remarks>
-    /// Bare depoda da çalışmalı: <c>--git-path objects</c> orada da doğru yolu veriyor.
-    /// Çalışma ağacı varsayan bir uygulama burada patlardı.
+    /// It must work in a bare repository too: <c>--git-path objects</c> gives the correct path there as well.
+    /// An implementation that assumes a working tree would blow up here.
     /// </remarks>
     [Fact]
     public async Task Bare_depoda_calisiyor()

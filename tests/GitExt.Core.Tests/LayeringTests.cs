@@ -3,12 +3,12 @@ using System.Reflection;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P01-T11 / ADR-0003 — Katman kuralının çalışma zamanında da doğrulanması.
+/// P01-T11 / ADR-0003 — Verifying the layering rule at run time as well.
 /// </summary>
 /// <remarks>
-/// Asıl koruma <c>build/NoUiDependencies.props</c> içindeki MSBuild hedefidir ve derleme
-/// zamanında çalışır. Bu test ikinci bir emniyet kemeridir: birisi MSBuild hedefini kaldırırsa
-/// veya atlarsa burada yakalanır.
+/// The real protection is the MSBuild target in <c>build/NoUiDependencies.props</c> and it runs at
+/// build time. This test is a second seat belt: if someone removes or skips the MSBuild target it is
+/// caught here.
 /// </remarks>
 public class LayeringTests
 {

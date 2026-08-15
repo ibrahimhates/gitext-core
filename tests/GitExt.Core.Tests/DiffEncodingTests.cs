@@ -6,14 +6,14 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T07 — Kodlama, satır sonu ve kalan fixture senaryoları.
+/// P04-T07 — Encoding, line endings and the remaining fixture scenarios.
 /// </summary>
 /// <remarks>
-/// <b>ÖLÇÜLDÜ:</b> <c>git diff</c> çıktısı <b>tek bir kodlamada değil</b> — başlıklar ve
-/// işaretler ASCII, satır içerikleri ise <b>dosyanın kendi baytları</b>. git commit
-/// mesajlarında yaptığı gibi bir çeviri yapmıyor (Faz 02'de <c>i18n.logOutputEncoding</c>
-/// vardı; diff'te karşılığı yok). Çözüm GitExtensions'ın <c>PatchProcessor</c>'ından alındı:
-/// çıktı kayıpsız okunup içerik ayrıca çözülüyor.
+/// <b>MEASURED:</b> <c>git diff</c> output is <b>not in a single encoding</b> — the headers and
+/// markers are ASCII, while the line contents are <b>the file's own bytes</b>. It does not do a
+/// conversion the way it does for commit messages (in Phase 02 there was <c>i18n.logOutputEncoding</c>;
+/// there is no equivalent for diff). The solution was taken from GitExtensions' <c>PatchProcessor</c>:
+/// the output is read losslessly and the content is decoded separately.
 /// </remarks>
 public class DiffEncodingTests
 {
@@ -58,8 +58,8 @@ public class DiffEncodingTests
     [Fact]
     public async Task Yanlis_kodlama_secilirse_icerik_bozulur_ama_YAPI_bozulmaz()
     {
-        // Kodlama depo başına bir ayar; yanlış seçilirse metin bozulur. Kritik olan
-        // AYRIŞTIRMANIN bozulmaması: satır sayıları, türleri ve dosya adı doğru kalmalı.
+        // The encoding is a per-repository setting; if it is chosen wrong the text is corrupted. What is
+        // critical is that the PARSING is not corrupted: line counts, kinds and the file name must stay correct.
         Encoding latin5 = TextEncodings.TryGet("ISO-8859-9").ShouldNotBeNull();
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -104,7 +104,7 @@ public class DiffEncodingTests
     [Fact]
     public async Task ASCII_disi_dosya_adi_yol_olarak_dogru_okunur()
     {
-        // Yollar her zaman UTF-8; içerik kodlaması yolları etkilememeli.
+        // Paths are always UTF-8; the content encoding must not affect the paths.
         Encoding latin5 = TextEncodings.TryGet("ISO-8859-9").ShouldNotBeNull();
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -128,10 +128,10 @@ public class DiffEncodingTests
     [Fact]
     public async Task CRLF_satir_sonu_icerikte_KORUNUR()
     {
-        // ÖLÇÜLDÜ: CRLF dosyada içerik satırı `\r` ile bitiyor. git'in gözünde satırın
-        // içeriği `iki\r`, ayraç ise `\n`. Bu `\r` KORUNUYOR çünkü Faz 05'te yamayı
-        // `git apply`'a geri vermek için birebir gerekiyor.
-        // ⚠️ Arayüz göstermeden önce kırpmalı (P04-T09'a not).
+        // MEASURED: in a CRLF file the content line ends with `\r`. In git's eyes the line's content
+        // is `iki\r` and the separator is `\n`. This `\r` is PRESERVED because in Phase 05 it is needed
+        // byte-for-byte in order to hand the patch back to `git apply`.
+        // ⚠️ The UI must trim it before display (a note for P04-T09).
         using TestRepository repository = TestRepository.CreateEmpty();
         WriteBytes(repository, "crlf.txt", "bir\r\niki\r\nuc\r\n"u8.ToArray());
         repository.Git("add", "-A");
@@ -149,7 +149,7 @@ public class DiffEncodingTests
         hunk.Lines.Single(l => l.Kind == DiffLineKind.Removed).Content.ShouldBe("iki\r");
         hunk.Lines.Single(l => l.Kind == DiffLineKind.Added).Content.ShouldBe("IKI\r");
 
-        // Bağlam satırları da aynı şekilde.
+        // The same goes for context lines.
         hunk.Lines.Where(l => l.Kind == DiffLineKind.Context)
             .Select(l => l.Content).ShouldBe(["bir\r", "uc\r"]);
     }
@@ -173,7 +173,7 @@ public class DiffEncodingTests
 
         hunk.Lines.Single(l => l.Kind == DiffLineKind.Added).Content.ShouldBe("crlf DEGISTI\r");
 
-        // LF satırlarında `\r` OLMAMALI.
+        // There must be NO `\r` on LF lines.
         hunk.Lines.Where(l => l.Kind == DiffLineKind.Context)
             .Select(l => l.Content).ShouldBe(["lf", "lf2"]);
     }
@@ -204,7 +204,7 @@ public class DiffEncodingTests
         diff.SimilarityScore.ShouldNotBeNull();
         diff.SimilarityScore!.Value.ShouldBeLessThan(100);
 
-        // %100 rename'den farklı olarak burada hunk VAR.
+        // Unlike a 100% rename, here there IS a hunk.
         diff.HasHunks.ShouldBeTrue();
         diff.AddedLines.ShouldBe(1);
         diff.RemovedLines.ShouldBe(1);
@@ -219,7 +219,7 @@ public class DiffEncodingTests
         outer.AddSubmodule(inner, "alt");
         outer.Git("commit", "-m", "submodule eklendi");
 
-        // Alt depoda yeni bir commit → dış depoda gösterici değişir.
+        // A new commit in the submodule → the pointer changes in the outer repository.
         inner.WriteFile("README.md", "# test\ndeğişti\n");
         inner.Git("add", "-A");
         inner.Git("commit", "-m", "alt değişiklik");
@@ -243,9 +243,9 @@ public class DiffEncodingTests
     [Fact]
     public void Eski_kod_sayfalari_cozulebilir()
     {
-        // ÖLÇÜLDÜ: .NET varsayılan olarak bunları KAYITLI tutmuyor; doğrudan
-        // Encoding.GetEncoding("ISO-8859-9") istisna fırlatıyor. TextEncodings sağlayıcıyı
-        // kaydediyor — kullanıcının Windows-1254 kodlamalı Türkçe dosyaları okunabilsin.
+        // MEASURED: .NET does not keep these REGISTERED by default; calling
+        // Encoding.GetEncoding("ISO-8859-9") directly throws. TextEncodings registers the provider —
+        // so that the user's Turkish files in Windows-1254 encoding can be read.
         TextEncodings.TryGet("ISO-8859-9").ShouldNotBeNull();
         TextEncodings.TryGet("windows-1254").ShouldNotBeNull();
         TextEncodings.TryGet("shift_jis").ShouldNotBeNull();
@@ -255,7 +255,7 @@ public class DiffEncodingTests
     [Fact]
     public void Gecersiz_kodlama_adi_istisna_firlatmaz()
     {
-        // Ayar dosyasından gelen bozuk bir ad yüzünden diff hiç gösterilmemeli.
+        // A diff must not go entirely unshown because of a bad name coming from the settings file.
         TextEncodings.TryGet("boyle-bir-kodlama-yok").ShouldBeNull();
         TextEncodings.TryGet(null).ShouldBeNull();
         TextEncodings.TryGet("   ").ShouldBeNull();

@@ -1,52 +1,52 @@
 namespace GitExt.Core;
 
 /// <summary>
-/// Commit mesajı metni üzerinde git'in kendi kurallarıyla çalışan yardımcılar (P05-T13).
+/// Helpers that work on commit message text with git's own rules (P05-T13).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Bu sınıfın var olma sebebi ölçüldü.</b> Bizim commit yolumuz
-/// <c>git commit -F - --cleanup=whitespace</c> (P05-T06) ve bu modda yorum satırları
-/// <b>korunuyor</b> — bilinçli bir karardı, kullanıcının <c>#123</c> gibi issue referansları
-/// kaybolmasın diye. Ama git'in <b>editör</b> yolu (<c>--cleanup=default</c>) yorum
-/// satırlarını <b>siliyor</b>, ve <c>commit.template</c> ile <c>.git/MERGE_MSG</c>
-/// tam olarak o yolun girdisi:
+/// 🔴 <b>The reason this class exists was measured.</b> Our commit path is
+/// <c>git commit -F - --cleanup=whitespace</c> (P05-T06), and in that mode comment lines are
+/// <b>kept</b> — a deliberate decision, so the user's issue references such as <c>#123</c> are
+/// not lost. But git's <b>editor</b> path (<c>--cleanup=default</c>) <b>deletes</b> comment
+/// lines, and <c>commit.template</c> together with <c>.git/MERGE_MSG</c> is exactly the input
+/// of that path:
 /// </para>
 /// <code>
-/// MERGE_MSG:                          git'in editörle ürettiği commit:
-///   Merge branch 'dal'                  Merge branch 'dal'
-///                                    ←  (yorumlar YOK)
+/// MERGE_MSG:                          the commit git produces via the editor:
+///   Merge branch 'dev'                  Merge branch 'dev'
+///                                    ←  (NO comments)
 ///   # Conflicts:
 ///   #	a.txt
 /// </code>
 /// <para>
-/// Yani bu dosyaları kutuya olduğu gibi yükleyip commit'leseydik, kullanıcı git'in kendisiyle
-/// yaptığında <b>almayacağı</b> bir mesaj alırdı — commit gövdesinde <c># Conflicts:</c>
-/// satırları. Yorumlar <b>yüklenirken</b> temizleniyor (kutuda görünen = commit'lenen);
-/// kullanıcının kendi yazdığı metne asla dokunulmuyor.
+/// So if we loaded these files into the box as they are and committed, the user would get a
+/// message they would <b>not</b> get doing it with git itself — <c># Conflicts:</c> lines in
+/// the commit body. Comments are cleaned <b>while loading</b> (what is in the box = what gets
+/// committed); the text the user typed themselves is never touched.
 /// </para>
 /// </remarks>
 public static class CommitMessageText
 {
-    /// <summary>git'in <c>core.commentChar</c> ayarlanmadığındaki varsayılanı.</summary>
+    /// <summary>git's default when <c>core.commentChar</c> is not set.</summary>
     public const string DefaultCommentCharacter = "#";
 
     /// <summary>
-    /// Yorum karakteri ayarını gerçek bir değere çevirir.
+    /// Turns the comment character setting into a concrete value.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> <c>core.commentChar</c> <c>#</c> olmak zorunda değil. <c>;</c> yapılınca
-    /// git <c>;</c> ile başlayan satırları siliyor ve <c>#</c> ile başlayanları
-    /// <b>koruyor</b> — kör bir <c>#</c> filtresi bu depoda hem gerçek yorumları bırakır hem
-    /// de kullanıcının issue satırlarını siler. Değer <b>çok karakterli</b> de olabiliyor
-    /// (git 2.45+; <c>//</c> kabul edildi).
+    /// <b>MEASURED:</b> <c>core.commentChar</c> does not have to be <c>#</c>. Set to <c>;</c>, git
+    /// deletes lines starting with <c>;</c> and <b>keeps</b> those starting with <c>#</c> — a blind
+    /// <c>#</c> filter would in that repository both leave the real comments in and delete the
+    /// user's issue lines. The value can also be <b>multi-character</b>
+    /// (git 2.45+; <c>//</c> was accepted).
     /// </para>
     /// <para>
-    /// <c>auto</c> özel bir değer (git 2.55'te <i>deprecated</i>, git 3.0'da kalkıyor): git
-    /// mesajda kullanılmayan bir karakter seçiyor, yani sabit bir cevabı yok. Bu durumda
-    /// varsayılana dönülüyor — yanlış tahminle kullanıcının satırını silmektense yorumu
-    /// bırakmak yeğdir.
+    /// <c>auto</c> is a special value (<i>deprecated</i> in git 2.55, gone in git 3.0): git picks
+    /// a character unused in the message, so it has no fixed answer. In that case we fall back to
+    /// the default — leaving the comment in is better than deleting the user's line on a wrong
+    /// guess.
     /// </para>
     /// </remarks>
     public static string ResolveCommentCharacter(string? configuredValue) =>
@@ -58,14 +58,14 @@ public static class CommitMessageText
         };
 
     /// <summary>
-    /// Yorum satırlarını siler — git'in <c>--cleanup=default</c> yolunun yaptığının aynısı.
+    /// Deletes comment lines — exactly what git's <c>--cleanup=default</c> path does.
     /// </summary>
-    /// <param name="text">Şablon veya <c>MERGE_MSG</c> içeriği.</param>
-    /// <param name="commentCharacter">Yorum ön eki; boşsa varsayılan kullanılır.</param>
+    /// <param name="text">Template or <c>MERGE_MSG</c> content.</param>
+    /// <param name="commentCharacter">Comment prefix; the default is used when empty.</param>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> yalnızca <b>satır başındaki</b> ön ek yorum sayılıyor —
-    /// <c>␣␣# girintili</c> satırı git'in kendisi de <b>silmiyor</b>. <c>TrimStart</c>
-    /// eklemek, bir kod parçasını içeren şablonda gerçek metni silmek olurdu.
+    /// <b>MEASURED:</b> only a prefix at the <b>start of a line</b> counts as a comment — git
+    /// itself does <b>not</b> delete a <c>␣␣# indented</c> line either. Adding a <c>TrimStart</c>
+    /// would mean deleting real text in a template that contains a code snippet.
     /// </remarks>
     public static string RemoveComments(string text, string? commentCharacter = null)
     {
@@ -78,8 +78,8 @@ public static class CommitMessageText
             return text;
         }
 
-        // Satır sonu biçimi korunuyor: dosya CRLF ise CRLF kalır. Yamalarda olduğu gibi
-        // (P04-T07) burada da satır sonlarını normalleştirmek bizim işimiz değil.
+        // The line ending style is preserved: if the file is CRLF it stays CRLF. As with patches
+        // (P04-T07), normalising line endings is not our job here either.
         string[] lines = text.Split('\n');
 
         IEnumerable<string> kept = lines.Where(line =>
@@ -89,12 +89,12 @@ public static class CommitMessageText
     }
 
     /// <summary>
-    /// Kutuya yüklenecek metni hazırlar: yorumlar silinir, baştaki/sondaki boş satırlar atılır.
+    /// Prepares the text to load into the box: comments removed, leading/trailing blank lines dropped.
     /// </summary>
     /// <remarks>
-    /// Yorumlar gidince geriye çoğu zaman bir sürü boş satır kalıyor (<c>MERGE_MSG</c>'de
-    /// konu satırından sonra iki boş satır ve dosya sonu). Kutuda imlecin metnin
-    /// <b>ortasında</b> başlaması kullanıcıya "burada bir şey vardı" hissi verirdi.
+    /// Once the comments are gone a lot of blank lines usually remain (in <c>MERGE_MSG</c>, two
+    /// blank lines after the subject line, plus the end of file). Having the caret start in the
+    /// <b>middle</b> of the text would give the user the feeling that "something was here".
     /// </remarks>
     public static string PrepareForEditing(string text, string? commentCharacter = null) =>
         RemoveComments(text, commentCharacter).Trim('\n', '\r', ' ', '\t');

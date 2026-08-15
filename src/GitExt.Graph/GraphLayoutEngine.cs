@@ -1,48 +1,48 @@
 namespace GitExt.Graph;
 
 /// <summary>
-/// Commit DAG'ını dikey şeritlere yerleştirir (P03-T03, P03-T04).
+/// Lays the commit DAG out into vertical lanes (P03-T03, P03-T04).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Tek geçişli ileri tarama.</b> Commit'ler <c>--topo-order</c> ile geldiği için her çocuk
-/// ebeveyninden önce işlenir (ADR-0007). Motor durumu tutar: bir satır üretildikten sonra
-/// bir daha dokunulmaz, bu yüzden yeni commit'ler eklemek önceki satırların şeritlerini
-/// <b>değiştirmez</b> — görsel kararlılık böyle sağlanıyor.
+/// <b>Single forward pass.</b> Because commits arrive with <c>--topo-order</c>, every child is
+/// processed before its parent (ADR-0007). The engine keeps state: once a row has been produced it
+/// is never touched again, so adding new commits does <b>not</b> change the lanes of earlier rows —
+/// that is how visual stability is achieved.
 /// </para>
 /// <para>
-/// <b>Çekirdek fikir:</b> bir commit işlenirken, ebeveynleri için şerit <i>rezerve edilir</i>.
-/// Rezerve edilen şerit, o ebeveyne ulaşılana kadar dolu kalır. Böylece uzun mesafeli bir kenar
-/// geçtiği satırlarda kendi şeridini işgal eder ve başka hiçbir şey oraya yerleşemez —
-/// çakışma yapısal olarak imkânsız hale gelir.
+/// <b>Core idea:</b> when a commit is processed, a lane is <i>reserved</i> for its parents. A reserved
+/// lane stays occupied until that parent is reached. That way a long-distance edge occupies its own
+/// lane on every row it crosses and nothing else can be placed there — a collision becomes
+/// structurally impossible.
 /// </para>
 /// <para>
-/// <b>Düz şeritler:</b> bir commit'in ilk ebeveyni <i>aynı şeritte</i> devam eder. Dolayısıyla
-/// bir dalın ana zinciri tek sütunda kalır ve gözle takip edilebilir (ADR-0007).
+/// <b>Straight lanes:</b> the first parent of a commit continues <i>in the same lane</i>. So the main
+/// chain of a branch stays in a single column and can be followed by eye (ADR-0007).
 /// </para>
 /// </remarks>
 public sealed class GraphLayoutEngine
 {
     /// <summary>
-    /// Şerit rezervasyonu: bu şerit hangi commit'i bekliyor ve hangi renge sahip.
+    /// Lane reservation: which commit this lane is waiting for and which color it has.
     /// </summary>
     private readonly record struct LaneSlot(string Target, int ColorIndex);
 
     private readonly List<LaneSlot?> _lanes = [];
     private int _nextColor;
 
-    /// <summary>Şu ana kadar kullanılmış en geniş şerit sayısı.</summary>
+    /// <summary>The widest lane count used so far.</summary>
     public int MaxLaneCount { get; private set; }
 
-    /// <summary>İşlenmiş satır sayısı.</summary>
+    /// <summary>Number of rows processed.</summary>
     public int RowCount { get; private set; }
 
     /// <summary>
-    /// Bir commit dizisini yerleştirir.
+    /// Lays out a sequence of commits.
     /// </summary>
     /// <remarks>
-    /// Motoru sıfırlamaz; art arda çağrılabilir. Sonsuz kaydırmada bir sonraki sayfa
-    /// bu şekilde eklenir (P03-T06).
+    /// Does not reset the engine; it can be called repeatedly. This is how the next page is appended
+    /// during infinite scrolling (P03-T06).
     /// </remarks>
     public IReadOnlyList<GraphRow> Add(IEnumerable<DagCommit> commits)
     {
@@ -59,15 +59,15 @@ public sealed class GraphLayoutEngine
     }
 
     /// <summary>
-    /// Tek bir commit'i yerleştirir ve satırını üretir.
+    /// Lays out a single commit and produces its row.
     /// </summary>
     public GraphRow Add(DagCommit commit)
     {
         ArgumentNullException.ThrowIfNull(commit);
 
-        // 1. Bu commit için önceden rezerve edilmiş şeritleri bul.
-        //    Birden fazla varsa, bu commit birden fazla çocuğun ortak ebeveyni demektir
-        //    (dallanma noktası); hepsi bu satırda birleşir.
+        // 1. Find the lanes already reserved for this commit.
+        //    If there is more than one, this commit is the shared parent of several children
+        //    (a branch point); they all join on this row.
         List<int> reserved = FindReservedLanes(commit.Id);
 
         int lane;
@@ -75,43 +75,43 @@ public sealed class GraphLayoutEngine
 
         if (reserved.Count == 0)
         {
-            // Hiçbir çocuğu işlenmemiş: bu bir dal ucu (tip). Yeni şerit aç.
+            // None of its children have been processed: this is a branch tip. Open a new lane.
             lane = AllocateLane();
             color = NextColor();
         }
         else
         {
-            // En soldaki rezervasyonu kullan — dal solda kalsın, yeni dallar sağa açılsın.
+            // Use the leftmost reservation — keep the branch on the left, open new branches to the right.
             lane = reserved[0];
             color = _lanes[lane]!.Value.ColorIndex;
 
-            // Diğer rezervasyonlar bu satırda son buluyor; şeritleri serbest bırak.
+            // The other reservations end on this row; release their lanes.
             for (int i = 1; i < reserved.Count; i++)
             {
                 _lanes[reserved[i]] = null;
             }
         }
 
-        // 2. Ebeveynler için şerit rezerve et.
-        //    İlk ebeveyn AYNI şeritte devam eder — "düz şerit" kuralı budur.
+        // 2. Reserve lanes for the parents.
+        //    The first parent continues in the SAME lane — that is the "straight lane" rule.
         List<GraphEdge> edges = [];
 
         if (commit.Parents.Count == 0)
         {
-            // Kök commit: zincir burada bitiyor, şerit boşalıyor.
+            // Root commit: the chain ends here, the lane is freed.
             _lanes[lane] = null;
         }
         else
         {
-            // İlk ebeveyn BAŞKA bir şeritte zaten bekleniyorsa, bu şerit burada biter ve
-            // kenar oraya diyagonal olarak bağlanır.
+            // If the first parent is already awaited in ANOTHER lane, this lane ends here and the
+            // edge connects to it diagonally.
             //
-            // GERÇEK VERİDEN ÇIKTI: aynı tabandan açılmış birden fazla konu dalı
-            // (ör. üç dependabot dalı, hepsinin ebeveyni `init`) aksi halde her biri kendi
-            // şeridini tabana kadar rezerve eder ve grafik gereksiz genişler.
-            // Kendi depomuzda 4 şerit çıkıyordu; git'in kendi grafiği 2 ile yetiniyor.
+            // FROM REAL DATA: several topic branches opened off the same base
+            // (e.g. three dependabot branches, all parented at `init`) would otherwise each reserve
+            // their own lane down to the base, and the graph gets needlessly wide.
+            // Our own repository produced 4 lanes; git's own graph makes do with 2.
             //
-            // "Düz şerit" kuralını bozmuyor: dal burada gerçekten birleşiyor.
+            // It does not break the "straight lane" rule: the branch really does join here.
             int existingFirst = FindReservedLanes(commit.Parents[0]).FirstOrDefault(-1);
 
             if (existingFirst >= 0 && existingFirst != lane)
@@ -139,14 +139,14 @@ public sealed class GraphLayoutEngine
                 });
             }
 
-            // Ek ebeveynler (merge): her biri yeni bir şerit alır.
+            // Extra parents (merge): each one gets a new lane.
             for (int i = 1; i < commit.Parents.Count; i++)
             {
                 string parent = commit.Parents[i];
 
-                // Bu ebeveyn zaten bir şerit bekliyorsa (başka bir çocuğu onu rezerve etmiş)
-                // yeni şerit açma — mevcut rezervasyona bağlan. Aksi halde aynı commit için
-                // iki şerit oluşur ve grafik gereksiz genişler.
+                // If this parent is already awaited in a lane (another child reserved it), do not open
+                // a new lane — connect to the existing reservation. Otherwise two lanes are created for
+                // the same commit and the graph gets needlessly wide.
                 int existing = FindReservedLanes(parent).FirstOrDefault(-1);
 
                 if (existing >= 0)
@@ -176,8 +176,8 @@ public sealed class GraphLayoutEngine
             }
         }
 
-        // 3. Bu satırdan geçen ama bu commit'le ilgisi olmayan şeritler.
-        //    Çizim katmanı bunları düğümsüz düz çizgi olarak çizecek.
+        // 3. Lanes that pass through this row but have nothing to do with this commit.
+        //    The render layer will draw them as a straight line with no node.
         for (int i = 0; i < _lanes.Count; i++)
         {
             if (i == lane || _lanes[i] is not { } slot)
@@ -185,7 +185,7 @@ public sealed class GraphLayoutEngine
                 continue;
             }
 
-            // Bu satırda zaten bir kenarla ele alınmışsa tekrar ekleme.
+            // If it has already been handled by an edge on this row, do not add it again.
             if (edges.Any(e => e.ToLane == i))
             {
                 continue;
@@ -233,12 +233,12 @@ public sealed class GraphLayoutEngine
     }
 
     /// <summary>
-    /// En soldaki boş şeridi döndürür; yoksa yeni şerit ekler.
+    /// Returns the leftmost free lane; if there is none, adds a new lane.
     /// </summary>
     /// <remarks>
-    /// Soldan doldurmak grafiği dar tutar. Serbest kalan şeritler yeniden kullanılır —
-    /// bu, "düz şerit" kuralını bozmaz çünkü şerit ancak gerçekten boşaldıktan sonra
-    /// başkasına verilir.
+    /// Filling from the left keeps the graph narrow. Freed lanes are reused — this does not break the
+    /// "straight lane" rule, because a lane is only given to someone else after it has genuinely been
+    /// released.
     /// </remarks>
     private int AllocateLane()
     {
@@ -255,7 +255,7 @@ public sealed class GraphLayoutEngine
     }
 
     /// <summary>
-    /// Sondaki boş şeritleri atarak grafiğin gereksiz geniş görünmesini engeller.
+    /// Drops trailing empty lanes so the graph does not look needlessly wide.
     /// </summary>
     private void TrimTrailingFreeLanes()
     {
@@ -269,11 +269,11 @@ public sealed class GraphLayoutEngine
     }
 
     /// <summary>
-    /// Şu an kullanımda olmayan en küçük renk indeksini seçer.
+    /// Picks the smallest color index that is not currently in use.
     /// </summary>
     /// <remarks>
-    /// Amaç: aynı anda görünen şeritlerin renkleri farklı olsun. Palet boyutu ve gerçek
-    /// renkler tema katmanının işi (Faz 08); burada yalnızca ayırt edilebilirlik garanti ediliyor.
+    /// Goal: lanes visible at the same time should have different colors. Palette size and the real
+    /// colors are the theme layer's job (Phase 08); only distinguishability is guaranteed here.
     /// </remarks>
     private int NextColor()
     {

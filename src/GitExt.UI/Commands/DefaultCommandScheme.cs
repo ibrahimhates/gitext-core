@@ -4,58 +4,58 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Commands;
 
 /// <summary>
-/// Varsayılan komut ve kısayol şeması (P08-T02).
+/// The default command and shortcut scheme (P08-T02).
 /// </summary>
 /// <remarks>
 /// <para>
-/// ⚠️ <b>Bu şema <c>v1.0.0</c> ile DONAR</b> (ADR-0006): sonrasında bir kısayolu değiştirmek
-/// MAJOR sürüm gerektirir. Bu yüzden her atama ya GitExtensions'tan geliyor ya da sapma
-/// olarak <b>gerekçesiyle</b> yazılı.
+/// ⚠️ <b>This scheme FREEZES at <c>v1.0.0</c></b> (ADR-0006): after that, changing a shortcut
+/// requires a MAJOR release. That is why every assignment either comes from GitExtensions or
+/// is written down as a deviation <b>with its rationale</b>.
 /// </para>
 /// <para>
-/// <b>Kaynak:</b> GitExtensions <c>src/app/GitUI/Hotkey/HotkeySettingsManager.cs</c> →
-/// <c>CreateDefaultSettings()</c>. Orada kısayollar forma/kontrole göre gruplanmış
+/// <b>Source:</b> GitExtensions <c>src/app/GitUI/Hotkey/HotkeySettingsManager.cs</c> →
+/// <c>CreateDefaultSettings()</c>. There the shortcuts are grouped by form/control
 /// (<c>FormBrowse</c>, <c>RevisionGridControl</c>, <c>FileViewer</c>,
-/// <c>RevisionDiffControl</c>, <c>RepoObjectsTree</c>) — bizim
-/// <see cref="CommandContext"/>'imizin karşılığı bu. Aynı jestin iki grupta farklı iş
-/// yapması orada da olağan (<c>Ctrl+D</c>, <c>S</c>, <c>F5</c>), dolayısıyla
-/// "farklı bağlam çakışma değildir" kuralı GitExtensions'ta da geçerli.
+/// <c>RevisionDiffControl</c>, <c>RepoObjectsTree</c>) — that is the counterpart of our
+/// <see cref="CommandContext"/>. The same gesture doing different work in two groups is
+/// routine there too (<c>Ctrl+D</c>, <c>S</c>, <c>F5</c>), so the rule
+/// "a different context is not a conflict" holds in GitExtensions as well.
 /// </para>
 /// <para>
-/// <b>Bilinçli sapmalar</b> (körü körüne kopyalanmadı):
+/// <b>Deliberate deviations</b> (nothing was copied blindly):
 /// </para>
 /// <list type="bullet">
 ///   <item>
-///     <b>Diff'te üç seviyeli gezinme.</b> GitExtensions'ın <c>FileViewer</c>'ında yalnızca
-///     "sonraki değişiklik" var. Bizde değişiklik / hunk / dosya ayrı ayrı geziliyor:
-///     <c>Alt+↓↑</c> değişiklik (GitExtensions'la aynı), <c>Ctrl+PgDn/PgUp</c> hunk,
-///     <c>Alt+→←</c> dosya. Üstkümeyiz; GitExtensions'ın <c>Alt+→←</c>'i
-///     (<c>NextOccurrence</c>) bizde yok, o yüzden boşta.
+/// <b>Three levels of navigation in the diff.</b> GitExtensions' <c>FileViewer</c> only
+///     has "next change". We navigate change / hunk / file separately:
+///     <c>Alt+↓↑</c> change (same as GitExtensions), <c>Ctrl+PgDn/PgUp</c> hunk,
+///     <c>Alt+→←</c> file. We are a superset; GitExtensions' <c>Alt+→←</c>
+///     (<c>NextOccurrence</c>) does not exist here, so it is free.
 ///   </item>
 ///   <item>
-///     <b>Commit listesinde arama <c>Ctrl+F</c>.</b> GitExtensions'ta SHA'ya atlama
-///     <c>Ctrl+Shift+G</c>. <c>Ctrl+F</c> "bul" anlamında evrensel ve plan onu açıkça
-///     "tanıdık olanı koru" listesine almış.
+/// <b>Search in the commit list is <c>Ctrl+F</c>.</b> In GitExtensions jumping to a SHA is
+///     <c>Ctrl+Shift+G</c>. <c>Ctrl+F</c> is universal for "find", and the plan explicitly
+///     put it on the "keep what is familiar" list.
 ///   </item>
 ///   <item>
-///     <b>Stage/unstage tümü <c>Ctrl+Shift+S</c> / <c>Ctrl+Shift+U</c>.</b> GitExtensions
-///     <c>FormBrowse</c>'da <c>Ctrl+Space</c>'i <i>commit ekranını aç</i> için kullanıyor;
-///     o daha sık bir işlem, bu yüzden <c>Ctrl+Space</c> ona verildi.
+/// <b>Stage/unstage all is <c>Ctrl+Shift+S</c> / <c>Ctrl+Shift+U</c>.</b> GitExtensions
+///     uses <c>Ctrl+Space</c> in <c>FormBrowse</c> for <i>open the commit screen</i>; that is
+///     the more frequent operation, so <c>Ctrl+Space</c> was given to it.
 ///   </item>
 ///   <item>
-///     <b><c>Ctrl+Q</c> çıkış.</b> GitExtensions'ta yok; Linux masaüstlerinde standart.
+/// <b><c>Ctrl+Q</c> quit.</b> Not in GitExtensions; standard on Linux desktops.
 ///   </item>
 ///   <item>
-///     <b><c>Ctrl+Shift+P</c> komut paleti</b> ve <b><c>F1</c> kısayol listesi</b>: GitExtensions'ta
-///     karşılığı yok, ikisi de bu projenin eklediği keşfedilebilirlik araçları.
-///     <c>F6</c> panel gezinmesi de öyle — P08-T00/M09'da ölçüldü, <c>F6</c> Avalonia'da boşta.
+/// <b><c>Ctrl+Shift+P</c> command palette</b> and <b><c>F1</c> shortcut list</b>: no
+///     counterpart in GitExtensions, both are discoverability tools this project adds.
+///     So is <c>F6</c> panel navigation — MEASURED in P08-T00/M09, <c>F6</c> is free in Avalonia.
 ///   </item>
 /// </list>
 /// <para>
-/// <b>Kasıtlı olarak varsayılansız</b> bırakılanlar (menüden ve paletten erişilir): yıkıcı ya da
-/// nadir işlemler — cherry-pick, revert, reset, dal silme, uzak depo yönetimi. Yıkıcı bir
-/// işlemi yanlışlıkla basılan bir tuşa bağlamak, geri alma yolunu her seferinde sınamak
-/// demekti.
+/// <b>Deliberately left without a default</b> (reachable from the menu and the palette):
+/// destructive or rare operations — cherry-pick, revert, reset, branch deletion, remote
+/// management. Binding a destructive operation to a key that can be pressed by accident
+/// would mean testing the undo path every single time.
 /// </para>
 /// </remarks>
 public static class DefaultCommandScheme
@@ -123,11 +123,11 @@ public static class DefaultCommandScheme
 
         Define(CommandIds.ToolsCommandLog, Loc.T("default_command_scheme.git_command_log"), CommandCategory.Tools,
             CommandContext.Global, Key.D9, KeyModifiers.Control),
-        // Ctrl+Shift+F12: teşhis paneli (P09-T03). Menüde yok, bilerek — kısayol ve komut
-        // paleti yeterli erişim, günlük kullanımda görünmemesi tercih edildi.
+        // Ctrl+Shift+F12: diagnostics panel (P09-T03). Not in the menu, on purpose — the shortcut
+        // and the command palette are access enough; staying invisible in daily use was preferred.
         //
-        // 🔴 İlk seçilen Ctrl+Shift+D, "Compare the two selected commits" ile çakışıyordu;
-        // çakışma testi yakaladı. Sessizce kalsaydı iki komuttan biri ölü tuşa dönerdi.
+        // 🔴 The first pick, Ctrl+Shift+D, collided with "Compare the two selected commits";
+        // the conflict test caught it. Left silent, one of the two commands would be a dead key.
         Define(CommandIds.ToolsDiagnostics, Loc.T("default_command_scheme.performance_diagnostics"), CommandCategory.Tools,
             CommandContext.Global, Key.F12, KeyModifiers.Control | KeyModifiers.Shift),
         Define(CommandIds.ToolsSettings, "Ayarlar…", CommandCategory.Tools,
@@ -188,7 +188,7 @@ public static class DefaultCommandScheme
         Define(CommandIds.DiffCopyPatch, Loc.T("default_command_scheme.copy_the_patch"), CommandCategory.Tools,
             CommandContext.Diff, Key.C, KeyModifiers.Control | KeyModifiers.Shift),
 
-        // ------------------------------------------------------------- Çalışma ağacı
+        // ------------------------------------------------------------- Working tree
         Define(CommandIds.WorkingTreeToggleStage, Loc.T("default_command_scheme.stage_unstage_the_selection"),
             CommandCategory.Commit, CommandContext.WorkingTree, Key.Space),
         Define(CommandIds.WorkingTreeStageAll, Loc.T("default_command_scheme.stage_all"), CommandCategory.Commit,
@@ -205,7 +205,7 @@ public static class DefaultCommandScheme
             CommandContext.RefTree, Key.F2),
     ];
 
-    /// <summary>Şemanın tamamı, tanım sırasında.</summary>
+    /// <summary>The whole scheme, in definition order.</summary>
     public static IReadOnlyList<CommandDefinition> Definitions => All;
 
     private static CommandDefinition Define(

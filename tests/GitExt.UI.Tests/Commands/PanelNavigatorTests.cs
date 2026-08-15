@@ -3,7 +3,7 @@ using GitExt.UI.Commands;
 namespace GitExt.UI.Tests.Commands;
 
 /// <summary>
-/// P08-T05 — panel gezinmesi.
+/// P08-T05 — panel navigation.
 /// </summary>
 public class PanelNavigatorTests
 {
@@ -78,12 +78,12 @@ public class PanelNavigatorTests
     }
 
     /// <summary>
-    /// 🔴 Görünmeyen panel <b>atlanıyor</b>.
+    /// 🔴 An invisible panel is <b>skipped</b>.
     /// </summary>
     /// <remarks>
-    /// Gizli bir panele odak vermek, kullanıcının odağı kaybetmesi demektir: tuşlar hiçbir
-    /// yere gitmez ve ekranda hiçbir şey değişmez. Belirti "F6 çalışmıyor" olur ve sebebi
-    /// hiçbir yerde görünmez.
+    /// Giving focus to a hidden panel means the user loses focus: the keys go nowhere and nothing
+    /// on the screen changes. The symptom is "F6 does not work" and the reason is visible
+    /// nowhere.
     /// </remarks>
     [Fact]
     public void Gorunmeyen_panel_atlaniyor()
@@ -98,7 +98,7 @@ public class PanelNavigatorTests
         fake.Current.ShouldBe("c");
     }
 
-    /// <summary>Odak hiçbir panelde değilse ilk kullanılabilir panele gidiliyor.</summary>
+    /// <summary>If focus is on no panel at all, it moves to the first available panel.</summary>
     [Fact]
     public void Odak_disaridayken_ilk_panele_gidiliyor()
     {

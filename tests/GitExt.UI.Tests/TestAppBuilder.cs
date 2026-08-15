@@ -11,12 +11,12 @@ using GitExt.UI.Tests;
 namespace GitExt.UI.Tests;
 
 /// <summary>
-/// Headless test uygulaması.
+/// Headless test application.
 /// </summary>
 /// <remarks>
-/// <c>UseHeadlessDrawing = false</c> ile gerçek Skia render'ı devreye girer; bu sayede
-/// <c>CaptureRenderedFrame()</c> gerçek pikseller üretir ve metin çiziminin doğruluğu
-/// doğrulanabilir (P01-T16).
+/// With <c>UseHeadlessDrawing = false</c> real Skia rendering kicks in; that way
+/// <c>CaptureRenderedFrame()</c> produces real pixels and the correctness of text rendering can be
+/// verified (P01-T16).
 /// </remarks>
 public static class TestAppBuilder
 {
@@ -33,22 +33,22 @@ public sealed class TestApp : Application
     {
         Styles.Add(new FluentTheme());
 
-        // Uygulamanın gerçek teması (P08-T07). Eklenmezse testler paletsiz çalışır ve
-        // `DynamicResource` bulamadığında SESSİZCE değer atamaz — yani tema kaynaklarının
-        // yanlış olduğu bir kod da yeşil test verirdi.
+        // The application's real theme (P08-T07). If it is not added the tests run without a palette
+        // and when `DynamicResource` cannot be found it SILENTLY assigns no value — meaning code with
+        // wrong theme resources would give a green test too.
         Styles.Add(new StyleInclude(new Uri("avares://GitExt.UI/Themes/GitExtTheme.axaml"))
         {
             Source = new Uri("avares://GitExt.UI/Themes/GitExtTheme.axaml"),
         });
 
-        // Varsayılan açık tema — uygulamayla aynı (kullanıcı kararı, 2026-07-29).
+        // Default light theme — same as the application (user decision, 2026-07-29).
         RequestedThemeVariant = ThemeVariant.Light;
 
-        // Çevirmen (P11-T02). Uygulamada bunu composition root yapıyor; testlerde
-        // yapılmazsa {loc:Translate ...} bağlamaları anahtar ADINI döndürüyor ve
-        // yerleşim testleri "main.repository" gibi değerler görüyor.
+        // Translator (P11-T02). In the application the composition root does this; if it is not done
+        // in the tests the {loc:Translate ...} bindings return the NAME of the key and the layout
+        // tests see values like "main.repository".
         //
-        // Varsayılan İngilizce: testlerin beklediği metinler de İngilizce.
+        // Default English: the texts the tests expect are English as well.
         Translator translator = new(new InMemorySettingsStore());
         TranslateExtension.Attach(translator);
         Loc.Attach(translator);

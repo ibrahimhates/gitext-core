@@ -3,35 +3,35 @@ using System.Runtime.Versioning;
 namespace GitExt.Core;
 
 /// <summary>
-/// Kullanıcının verdiği kimlik bilgisini <c>git</c>'e <b>güvenli biçimde</b> geçirir
+/// Passes the credential supplied by the user to <c>git</c> <b>safely</b>
 /// (P06-T09).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden argüman ya da yapılandırma değil?</b> Parolayı <c>-c credential.helper='!echo …'</c>
-/// gibi bir argümana koymak, onu aynı makinedeki <b>her sürece</b> <c>ps</c> ile görünür
-/// yapardı. Diske yazan <c>credential.helper store</c> ise parolayı düz metin bırakır
-/// (bu yüzden öneri listesinde de yok).
+/// <b>Why not an argument or a config value?</b> Putting the password into an argument
+/// like <c>-c credential.helper='!echo …'</c> would make it visible to <b>every process</b>
+/// on the same machine via <c>ps</c>. And <c>credential.helper store</c>, which writes to
+/// disk, leaves the password in plain text (that is why it is not on the suggestion list).
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLDÜ — <c>GIT_ASKPASS</c>, <c>GIT_TERMINAL_PROMPT=0</c> iken de çalışıyor.</b>
-/// git betiği iki kez çağırıyor ve istemi argüman olarak veriyor:
-/// <c>Username for 'https://github.com': </c> ve
-/// <c>Password for 'https://deneme@github.com': </c> — yani ikisi <b>istem metninden</b>
-/// ayırt ediliyor. Gizli değerler betiğin içine değil, sürecin <b>ortamına</b> konuyor;
-/// ortam <c>/proc/&lt;pid&gt;/environ</c> üzerinden yalnızca aynı kullanıcıya görünür.
+/// <b>MEASURED — <c>GIT_ASKPASS</c> works even when <c>GIT_TERMINAL_PROMPT=0</c>.</b>
+/// git calls the script twice and passes the prompt as an argument:
+/// <c>Username for 'https://github.com': </c> and
+/// <c>Password for 'https://deneme@github.com': </c> — so the two are told apart <b>from the
+/// prompt text</b>. Secrets go into the process <b>environment</b>, not inside the script;
+/// the environment is visible only to the same user via <c>/proc/&lt;pid&gt;/environ</c>.
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLDÜ — kimlik hiçbir yere kaydedilmiyor.</b> <c>credential.helper</c> ayarı yokken
-/// git <c>~/.git-credentials</c> oluşturmuyor; bu oturumdaki değer süreçle birlikte gidiyor.
+/// <b>MEASURED — the credential is not stored anywhere.</b> With no <c>credential.helper</c>
+/// setting git never creates <c>~/.git-credentials</c>; the value dies with the process.
 /// </para>
 /// </remarks>
 public sealed class AskPassSession : IDisposable
 {
-    /// <summary>Kullanıcı adının okunacağı değişken.</summary>
+    /// <summary>Variable the user name is read from.</summary>
     internal const string UsernameVariable = "GITEXT_ASKPASS_USERNAME";
 
-    /// <summary>Gizli değerin okunacağı değişken.</summary>
+    /// <summary>Variable the secret value is read from.</summary>
     internal const string SecretVariable = "GITEXT_ASKPASS_SECRET";
 
     private readonly string _scriptPath;
@@ -43,16 +43,16 @@ public sealed class AskPassSession : IDisposable
         Environment = environment;
     }
 
-    /// <summary>Komuta eklenecek ortam değişkenleri.</summary>
+    /// <summary>Environment variables to add to the command.</summary>
     public IReadOnlyDictionary<string, string> Environment { get; }
 
     /// <summary>
-    /// Kimlik bilgisini taşıyan geçici bir askpass betiği kurar.
+    /// Sets up a temporary askpass script that carries the credential.
     /// </summary>
     /// <remarks>
-    /// Betik yalnızca sahibinin okuyup çalıştırabileceği izinlerle (<c>0700</c>) yazılıyor
-    /// ve <see cref="Dispose"/> ile siliniyor. İçinde gizli bir değer <b>yok</b>; yalnızca
-    /// ortamdan okuyor.
+    /// The script is written with owner-only read/write/execute permissions (<c>0700</c>) and is
+    /// deleted by <see cref="Dispose"/>. It holds <b>no</b> secret value itself; it only reads
+    /// from the environment.
     /// </remarks>
     public static AskPassSession Create(GitCredentials credentials)
     {
@@ -75,8 +75,8 @@ public sealed class AskPassSession : IDisposable
             [UsernameVariable] = credentials.Username,
             [SecretVariable] = credentials.Secret,
 
-            // git bazı sürümlerde `SSH_ASKPASS`i de tercih edebiliyor; ikisini de aynı
-            // betiğe bağlamak davranışı öngörülebilir kılıyor.
+            // some git versions may prefer `SSH_ASKPASS` as well; binding both to the same
+            // script keeps the behaviour predictable.
             ["SSH_ASKPASS"] = path,
         };
 
@@ -98,7 +98,7 @@ public sealed class AskPassSession : IDisposable
         }
         catch (IOException)
         {
-            // Silinememesi işlevi bozmuyor; betikte gizli bir şey yok.
+            // Failing to delete it breaks nothing; there is nothing secret inside the script.
         }
         catch (UnauthorizedAccessException)
         {
@@ -111,8 +111,8 @@ public sealed class AskPassSession : IDisposable
         UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
     /// <remarks>
-    /// İstem metnine bakarak kullanıcı adı mı parola mı istendiğini ayırıyor — ölçülen
-    /// metinler <c>Username for '…'</c> ve <c>Password for '…'</c>.
+    /// Tells apart whether the user name or the password is being asked by looking at the
+    /// prompt text — the measured strings are <c>Username for '…'</c> and <c>Password for '…'</c>.
     /// </remarks>
     private const string PosixScript =
         "#!/bin/sh\n"

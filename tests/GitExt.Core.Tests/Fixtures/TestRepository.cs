@@ -4,12 +4,12 @@ using System.Text;
 namespace GitExt.Core.Tests.Fixtures;
 
 /// <summary>
-/// P02-T13 — Testler için <b>gerçek <c>git</c></b> ile geçici depo oluşturur.
+/// P02-T13 — Creates a temporary repository with <b>real <c>git</c></b> for the tests.
 /// </summary>
 /// <remarks>
-/// Elle yazılmış sahte <c>git</c> çıktısına karşı test yazmak, ayrıştırıcıyı değil bizim
-/// çıktının nasıl göründüğüne dair varsayımımızı test eder. Bu yüzden fixture'lar gerçek
-/// <c>git</c> çalıştırılarak üretilir (ADR-0003).
+/// Writing tests against hand-written fake <c>git</c> output tests our assumption about how the
+/// output looks, not the parser. That is why the fixtures are produced by running real
+/// <c>git</c> (ADR-0003).
 /// </remarks>
 public sealed class TestRepository : IDisposable
 {
@@ -21,7 +21,7 @@ public sealed class TestRepository : IDisposable
         _root = root;
     }
 
-    /// <summary>Deponun çalışma dizini.</summary>
+    /// <summary>The repository's working directory.</summary>
     public string Path => _root;
 
     private static string NewTemporaryDirectory() =>
@@ -30,7 +30,7 @@ public sealed class TestRepository : IDisposable
             "gitext-test-" + Guid.NewGuid().ToString("N")[..12]);
 
     /// <summary>
-    /// Boş bir depo oluşturur (<c>git init</c>, hiç commit yok).
+    /// Creates an empty repository (<c>git init</c>, no commits at all).
     /// </summary>
     public static TestRepository CreateEmpty()
     {
@@ -38,12 +38,12 @@ public sealed class TestRepository : IDisposable
         Directory.CreateDirectory(root);
         TestRepository repository = new(root);
 
-        // --initial-branch: git'in varsayılan dal adı sürüme ve kullanıcı yapılandırmasına
-        // göre değişiyor (master/main). Testler deterministik olmalı.
+        // --initial-branch: git's default branch name varies with the version and the user's
+        // configuration (master/main). Tests must be deterministic.
         repository.Git("init", "--initial-branch=main");
 
-        // Commit atabilmek için kimlik gerekli. Yerel yapılandırma, kullanıcının global
-        // ayarlarından etkilenmemek için --local.
+        // An identity is required to be able to commit. Local configuration, with --local, so as not to
+        // be affected by the user's global settings.
         repository.Git("config", "--local", "user.name", "gitext-core tests");
         repository.Git("config", "--local", "user.email", "tests@gitext-core.invalid");
         repository.Git("config", "--local", "commit.gpgsign", "false");
@@ -53,7 +53,7 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Tek commit içeren basit bir depo oluşturur.
+    /// Creates a simple repository containing a single commit.
     /// </summary>
     public static TestRepository CreateWithSingleCommit()
     {
@@ -65,7 +65,7 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Deponun içinde bir dosya oluşturur veya üzerine yazar.
+    /// Creates a file inside the repository or overwrites it.
     /// </summary>
     public void WriteFile(string relativePath, string content)
     {
@@ -77,12 +77,12 @@ public sealed class TestRepository : IDisposable
             Directory.CreateDirectory(directory);
         }
 
-        // LF sabitlenir: CRLF farkı diff ve yama testlerini sessizce bozar.
+        // LF is pinned: a CRLF difference silently breaks the diff and patch tests.
         File.WriteAllText(full, content.ReplaceLineEndings("\n"), new UTF8Encoding(false));
     }
 
     /// <summary>
-    /// Commit atar. Mesaj stdin üzerinden geçirilir — komut satırına gömülmez.
+    /// Makes a commit. The message is passed via stdin — it is not embedded in the command line.
     /// </summary>
     public void Commit(string message)
     {
@@ -90,19 +90,19 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Belirtilen tarihle commit atar.
+    /// Makes a commit with the given date.
     /// </summary>
-    /// <param name="message">Commit mesajı.</param>
-    /// <param name="isoDate">ISO-8601 tarih, örn. <c>2020-01-01T00:00:00</c>.</param>
+    /// <param name="message">The commit message.</param>
+    /// <param name="isoDate">ISO-8601 date, e.g. <c>2020-01-01T00:00:00</c>.</param>
     /// <remarks>
-    /// Çarpık tarihli geçmişleri (rebase, içe aktarma, saat kayması) simüle etmek için.
-    /// Tarih hem yazar hem kaydeden için ayarlanır — git sıralamada <b>kaydeden</b> tarihini
-    /// kullanır, yalnızca yazar tarihini ayarlamak yetmez.
+    /// For simulating skewed histories (rebase, import, clock drift).
+    /// The date is set for both the author and the committer — git uses the <b>committer</b> date for
+    /// ordering, so setting only the author date is not enough.
     /// </remarks>
     public void CommitAtDate(string message, string isoDate)
     {
-        // git sıralamada KAYDEDEN tarihini kullanır. `--date` yalnızca yazar tarihini
-        // ayarladığı için tek başına yetmez; kaydeden tarihi ortam değişkeniyle verilir.
+        // git uses the COMMITTER date for ordering. Because `--date` sets only the author date, it is
+        // not enough on its own; the committer date is given via an environment variable.
         GitWithEnvironment(
             new Dictionary<string, string>
             {
@@ -113,7 +113,7 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Çalışma ağacı olmayan (bare) bir depo oluşturur.
+    /// Creates a repository with no working tree (bare).
     /// </summary>
     public static TestRepository CreateBare()
     {
@@ -126,11 +126,11 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Bu depoya bağlı (linked) bir worktree ekler ve onu temsil eden nesneyi döndürür.
+    /// Adds a linked worktree to this repository and returns the object representing it.
     /// </summary>
     /// <remarks>
-    /// Dönen nesne <b>sahiplenmez</b>: worktree dizini bu deponun temizliğiyle birlikte
-    /// gitmez, ayrıca elden çıkarılmalıdır.
+    /// The returned object does <b>not take ownership</b>: the worktree directory does not go away with
+    /// this repository's cleanup, it must be disposed separately.
     /// </remarks>
     public TestRepository AddWorkTree(string branchName)
     {
@@ -140,24 +140,24 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Bu depoya submodule olarak başka bir depo ekler.
+    /// Adds another repository to this one as a submodule.
     /// </summary>
     public void AddSubmodule(TestRepository other, string relativePath)
     {
-        // protocol.file.allow: git 2.38.1'den beri yerel dosya yolundan submodule eklemek
-        // varsayılan olarak yasak (CVE-2022-39253). Testlerde bilinçli olarak açıyoruz.
+        // protocol.file.allow: since git 2.38.1 adding a submodule from a local file path is forbidden
+        // by default (CVE-2022-39253). We enable it deliberately in the tests.
         Git("-c", "protocol.file.allow=always", "submodule", "add", "--", other.Path, relativePath);
     }
 
     /// <summary>
-    /// Bu depoda SSH imzalamayı açar ve imzalı commit atılabilir hale getirir.
+    /// Enables SSH signing in this repository and makes signed commits possible.
     /// </summary>
     /// <remarks>
-    /// GPG yerine SSH imzalama kullanılıyor: anahtar üretimi etkileşimsiz ve hızlı,
-    /// GPG keyring kurulumu gerekmiyor. İmzanın commit nesnesindeki yapısı ikisinde de aynı
-    /// (<c>gpgsig</c> başlığı, çok satırlı).
+    /// SSH signing is used instead of GPG: key generation is non-interactive and fast, and no GPG
+    /// keyring setup is needed. The structure of the signature in the commit object is the same for both
+    /// (a <c>gpgsig</c> header, multi-line).
     /// </remarks>
-    /// <returns>İmzalama kurulabildiyse <see langword="true"/>.</returns>
+    /// <returns><see langword="true"/> if signing could be set up.</returns>
     public bool TryEnableSshSigning()
     {
         string keyPath = System.IO.Path.Combine(_root, "imza-anahtari");
@@ -180,7 +180,7 @@ public sealed class TestRepository : IDisposable
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            // ssh-keygen yok (bazı Windows kurulumlarında). Test atlanır.
+            // No ssh-keygen (on some Windows installations). The test is skipped.
             return false;
         }
 
@@ -190,12 +190,12 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// İmzalama anahtarını güvenilir kabul edilenler listesine ekler.
+    /// Adds the signing key to the list of allowed signers.
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> bu yapılmadan git, imzalı bir commit için <c>%G?</c> alanında
-    /// <c>N</c> — yani "imzasız" — döndürür ve yalnızca stderr'e hata yazar. Yani
-    /// <see cref="TryEnableSshSigning"/> tek başına "geçerli imza" senaryosunu üretmez.
+    /// <b>MEASURED:</b> without this git returns <c>N</c> — i.e. "unsigned" — in the <c>%G?</c> field
+    /// for a signed commit and only writes the error to stderr. In other words
+    /// <see cref="TryEnableSshSigning"/> on its own does not produce the "valid signature" scenario.
     /// </remarks>
     public void TrustSigningKey()
     {
@@ -210,17 +210,17 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Depoya bir hook kurar.
+    /// Installs a hook into the repository.
     /// </summary>
-    /// <param name="name">Hook adı, örn. <c>pre-commit</c>.</param>
-    /// <param name="shellScript">Kabuk betiği gövdesi (shebang olmadan).</param>
+    /// <param name="name">The hook name, e.g. <c>pre-commit</c>.</param>
+    /// <param name="shellScript">The shell script body (without the shebang).</param>
     /// <remarks>
-    /// Windows'ta da çalışır: Git for Windows hook'ları kendi bundled <c>sh</c>'ı ile yürütür.
+    /// Works on Windows too: Git for Windows executes hooks with its own bundled <c>sh</c>.
     /// </remarks>
     public void InstallHook(string name, string shellScript)
     {
-        // Bare depoda kancalar `.git/hooks` altında DEĞİL, deponun kökünde; yeri git'in
-        // kendisine sorulur (P06-T08'de uzak taraf kancası bare depoya kuruluyor).
+        // In a bare repository the hooks are NOT under `.git/hooks` but at the repository root; the
+        // location is asked of git itself (in P06-T08 the remote-side hook is installed into a bare repository).
         string hooksDirectory = System.IO.Path.GetFullPath(
             Git("rev-parse", "--git-path", "hooks").Trim(),
             _root);
@@ -244,33 +244,33 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Depoda bir <c>git</c> komutu çalıştırır ve stdout'unu döndürür.
+    /// Runs a <c>git</c> command in the repository and returns its stdout.
     /// </summary>
     /// <remarks>
-    /// Bu, test kurulumu içindir ve kasıtlı olarak <see cref="Core.Git.IGitProcessRunner"/>
-    /// kullanmaz — test ettiğimiz şeyi fixture kurmak için kullanmak, ikisinin aynı hatayı
-    /// paylaşması durumunda testi işe yaramaz hale getirir.
+    /// This is for test setup and deliberately does not use <see cref="Core.Git.IGitProcessRunner"/> —
+    /// using the very thing we are testing to set up the fixture makes the test useless if the two
+    /// share the same bug.
     /// </remarks>
     public string Git(params string[] arguments) =>
         GitWithEnvironment(null, arguments);
 
     /// <summary>
-    /// Bir <c>git</c> komutunu çalıştırıp çıktısını <b>kayıpsız</b> döndürür.
+    /// Runs a <c>git</c> command and returns its output <b>losslessly</b>.
     /// </summary>
     /// <remarks>
-    /// Her bayt bire bir bir karaktere karşılık gelir. <c>DiffParser</c> girdisini bu biçimde
-    /// bekliyor: diff çıktısı tek bir kodlamada değil, satır içerikleri dosyanın kendi
-    /// baytları (bkz. <c>GitResult.GetStandardOutputLossless</c>).
+    /// Every byte corresponds one-to-one to a character. <c>DiffParser</c> expects its input in this
+    /// form: the diff output is not in a single encoding, the line contents are the file's own
+    /// bytes (see <c>GitResult.GetStandardOutputLossless</c>).
     /// </remarks>
     public string GitLossless(params string[] arguments)
     {
         ProcessStartInfo startInfo = CreateStartInfo(null, arguments);
 
-        // 🔴 P05-T16'da yakalandı. Önceki hâli çıktıyı önce UTF-8 ile string'e çeviriyordu;
-        // ASCII olmayan her bayt orada U+FFFD'ye dönüşüyor ve Latin1'e geri çevirmek onu
-        // ONARMIYOR. Yani "lossless" adına rağmen Latin-5 içerikli bir çıktı sessizce
-        // bozuluyordu — testin ölçüm aracı bozuk olduğu için doğru kod hatalı görünüyordu.
-        // Çözüm çıktının BAŞTAN Latin1 ile okunması: bayt ↔ karakter birebir.
+        // 🔴 Caught in P05-T16. The previous version first converted the output to a string with UTF-8;
+        // every non-ASCII byte turns into U+FFFD there and converting back to Latin1 does NOT REPAIR it.
+        // So despite the name "lossless", output with Latin-5 content was silently corrupted — because
+        // the test's measuring instrument was broken, correct code looked buggy.
+        // The fix is to read the output with Latin1 FROM THE START: byte ↔ character one-to-one.
         startInfo.StandardOutputEncoding = System.Text.Encoding.Latin1;
 
         using Process process = Process.Start(startInfo)
@@ -290,11 +290,11 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Bir <c>git</c> komutu çalıştırır ve <b>başarısızlıkta fırlatmaz</b>.
+    /// Runs a <c>git</c> command and <b>does not throw on failure</b>.
     /// </summary>
     /// <remarks>
-    /// Kilit çakışması gibi <i>beklenen</i> hataları ölçen testler için (P05-T01):
-    /// <see cref="Git"/> fırlattığı için orada kullanılamaz.
+    /// For tests that measure <i>expected</i> errors such as a lock collision (P05-T01):
+    /// <see cref="Git"/> cannot be used there because it throws.
     /// </remarks>
     public (int ExitCode, string Error) TryGit(params string[] arguments)
     {
@@ -311,7 +311,7 @@ public sealed class TestRepository : IDisposable
     }
 
     /// <summary>
-    /// Ek ortam değişkenleriyle bir <c>git</c> komutu çalıştırır.
+    /// Runs a <c>git</c> command with additional environment variables.
     /// </summary>
     public string GitWithEnvironment(
         IReadOnlyDictionary<string, string>? environment,
@@ -357,7 +357,7 @@ public sealed class TestRepository : IDisposable
         startInfo.Environment["LC_ALL"] = "C";
         startInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";
         startInfo.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
-        // Kullanıcının ~/.gitconfig'i testleri etkilemesin (hook'lar, template'ler, imzalama).
+        // Keep the user's ~/.gitconfig from affecting the tests (hooks, templates, signing).
         startInfo.Environment["HOME"] = _root;
         startInfo.Environment["XDG_CONFIG_HOME"] = _root;
 
@@ -383,7 +383,7 @@ public sealed class TestRepository : IDisposable
 
         try
         {
-            // .git altındaki nesne dosyaları salt okunur olabilir; silmeden önce izinleri aç.
+            // Object files under .git can be read-only; open the permissions before deleting.
             foreach (string file in Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories))
             {
                 File.SetAttributes(file, FileAttributes.Normal);
@@ -393,8 +393,8 @@ public sealed class TestRepository : IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
         {
-            // Geçici dizin temizlenemedi. Testi bu yüzden kırmak, gerçek bir hatayı
-            // maskelemekten daha zararlı olur; işletim sistemi er geç temizler.
+            // The temporary directory could not be cleaned up. Breaking the test for that would do more
+            // harm than masking a real bug; the operating system will clean it up sooner or later.
         }
     }
 }

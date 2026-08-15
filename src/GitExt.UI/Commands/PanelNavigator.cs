@@ -3,18 +3,18 @@ using Avalonia.Controls;
 namespace GitExt.UI.Commands;
 
 /// <summary>
-/// Paneller arası odak gezinmesi (P08-T05).
+/// Focus navigation between panels (P08-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>Tab</c> tek tek denetimler arasında dolaşır; büyük bir pencerede bir panelden diğerine
-/// geçmek onlarca <c>Tab</c> demek. <c>F6</c> panel atlar — P08-T00/M09'da ölçüldü:
-/// Avalonia'da <c>F6</c> varsayılan olarak <b>hiçbir şey yapmıyor</b>, yani serbest.
+/// <c>Tab</c> walks control by control; in a large window moving from one panel to the next
+/// means dozens of <c>Tab</c> presses. <c>F6</c> jumps panels — MEASURED in P08-T00/M09:
+/// in Avalonia <c>F6</c> does <b>nothing</b> by default, so it is free.
 /// </para>
 /// <para>
-/// 🔴 <b>Görünmeyen paneller atlanıyor.</b> Gizli bir panele odak vermek, kullanıcının
-/// odağı <b>kaybetmesi</b> demektir: tuşlar hiçbir yere gitmez ve ekranda hiçbir şey
-/// değişmez — klavye sessizce ölür (Faz 03'te ölçülen tuzağın aynısı).
+/// 🔴 <b>Invisible panels are skipped.</b> Giving focus to a hidden panel means the user
+/// <b>loses</b> focus: keys go nowhere and nothing changes on screen — the keyboard dies
+/// silently (the same trap measured in Phase 03).
 /// </para>
 /// </remarks>
 public sealed class PanelNavigator
@@ -23,7 +23,7 @@ public sealed class PanelNavigator
 
     private sealed record Panel(string Id, Func<bool> IsAvailable, Func<bool> Focus);
 
-    /// <summary>Sıraya bir panel ekler. Ekleme sırası gezinme sırasıdır.</summary>
+    /// <summary>Adds a panel to the order. The order of addition is the navigation order.</summary>
     public PanelNavigator Add(string id, Func<bool> isAvailable, Func<bool> focus)
     {
         _panels.Add(new Panel(id, isAvailable, focus));
@@ -31,11 +31,11 @@ public sealed class PanelNavigator
         return this;
     }
 
-    /// <summary>Şu an odağı taşıyan panelin sırası; hiçbiri değilse <c>-1</c>.</summary>
+    /// <summary>The index of the panel that currently has focus; <c>-1</c> if none does.</summary>
     public int CurrentIndex(Func<string, bool> hasFocus) =>
         _panels.FindIndex(p => hasFocus(p.Id));
 
-    /// <summary>Belirli bir panele odaklanır.</summary>
+    /// <summary>Focuses a specific panel.</summary>
     public bool FocusPanel(string id)
     {
         Panel? panel = _panels.Find(p => p.Id == id);
@@ -44,10 +44,10 @@ public sealed class PanelNavigator
     }
 
     /// <summary>
-    /// Odağı sıradaki kullanılabilir panele taşır.
+    /// Moves focus to the next usable panel.
     /// </summary>
-    /// <param name="hasFocus">Verilen panelin şu an odağı taşıyıp taşımadığı.</param>
-    /// <param name="delta">İleri için <c>1</c>, geri için <c>-1</c>.</param>
+    /// <param name="hasFocus">Whether the given panel currently has focus.</param>
+    /// <param name="delta"><c>1</c> for forward, <c>-1</c> for backward.</param>
     public bool Move(Func<string, bool> hasFocus, int delta)
     {
         if (_panels.Count == 0)
@@ -57,8 +57,8 @@ public sealed class PanelNavigator
 
         int start = CurrentIndex(hasFocus);
 
-        // Odak hiçbir panelde değilse (menüde, şeritte…) ilk panele gidiliyor: kullanıcı
-        // F6'ya bastıysa "bir panele geç" demek istiyor, "hiçbir yerde kal" değil.
+        // If focus is in no panel (in the menu, in the toolbar…) we go to the first panel: if
+        // the user pressed F6 they mean "go to a panel", not "stay nowhere".
         if (start < 0)
         {
             start = delta > 0 ? -1 : 0;
@@ -85,11 +85,11 @@ public sealed class PanelNavigator
     }
 
     /// <summary>
-    /// Bir denetimin ya da alt ağacının odağı taşıyıp taşımadığı.
+    /// Whether a control or its subtree has focus.
     /// </summary>
     /// <remarks>
-    /// <c>IsFocused</c> yetmiyor: odak neredeyse her zaman panelin <b>içindeki</b> bir
-    /// öğede (bir <c>ListBoxItem</c>, bir <c>TextBox</c>). <c>:focus-within</c> ile aynı soru.
+    /// <c>IsFocused</c> is not enough: focus is almost always on an element <b>inside</b> the
+    /// panel (a <c>ListBoxItem</c>, a <c>TextBox</c>). Same question as <c>:focus-within</c>.
     /// </remarks>
     public static bool ContainsFocus(Control? control) =>
         control is not null && control.IsKeyboardFocusWithin;

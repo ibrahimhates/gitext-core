@@ -5,7 +5,7 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P02-T08 / P02-T04 — Commit geçmişi okuma. Tümü gerçek <c>git</c> ile.
+/// P02-T08 / P02-T04 — Reading commit history. All of it with real <c>git</c>.
 /// </summary>
 public class CommitLogReaderTests
 {
@@ -20,16 +20,16 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Bos_repo_bos_liste_dondurur()
     {
-        // Commit'i olmayan repoda `git log` hata verir; bu, kullanıcının ilk açtığı
-        // repo olabilir ve çökmemeli.
+        // In a repo with no commits `git log` errors out; this may be the first repo the
+        // user opens and it must not crash.
         using TestRepository repository = TestRepository.CreateEmpty();
         CommitLogReader reader = await CreateReaderAsync();
 
         GitException exception = await Should.ThrowAsync<GitException>(
             reader.ReadAsync(repository.Path, new CommitLogQuery(), Ct));
 
-        // Şimdilik sınıflandırılmış bir hata bekliyoruz; boş repo davranışı
-        // P02-T14'te ayrıca ele alınacak.
+        // For now we expect a classified error; empty-repo behaviour
+        // is handled separately in P02-T14.
         exception.Kind.ShouldBeOneOf(GitFailureKind.UnknownRevision, GitFailureKind.Unknown);
     }
 
@@ -60,9 +60,9 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Bos_govdeli_commitler_alan_hizasini_bozmaz()
     {
-        // KRİTİK: %x00 ayraçlı sabit alanlı kayıtlarda boş bir alan atılırsa sonraki
-        // tüm alanlar kayar ve veri SESSİZCE yanlış olur. Boş ve dolu gövdeleri
-        // dönüşümlü koyarak hizanın korunduğunu doğruluyoruz.
+        // CRITICAL: in %x00-delimited fixed-field records, if an empty field is dropped, all
+        // subsequent fields shift and the data becomes SILENTLY wrong. By alternating empty and
+        // non-empty bodies we verify that the alignment is preserved.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -78,7 +78,7 @@ public class CommitLogReaderTests
             await reader.ReadAsync(repository.Path, new CommitLogQuery(), Ct);
 
         commits.Count.ShouldBe(4);
-        // En yeni önce.
+        // Newest first.
         commits[0].Subject.ShouldBe("yine gövdeli");
         commits[0].Body.ShouldBe("ikinci gövde");
         commits[1].Subject.ShouldBe("gövdesiz iki");
@@ -92,7 +92,7 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Satir_sonu_iceren_govde_kaydi_bolmez()
     {
-        // Ayraç olarak \n kullanılsaydı bu commit birden fazla kayıt gibi görünürdü.
+        // Had \n been used as the separator, this commit would look like more than one record.
         const string body = "Birinci satır\nİkinci satır\n\nBoş satırdan sonra üçüncü";
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -137,7 +137,7 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Octopus_merge_ikiden_fazla_ebeveyn_dondurur()
     {
-        // Ebeveyn listesi bilinçli olarak sınırsız; "en fazla 2" varsayımı yanlış olurdu.
+        // The parent list is deliberately unbounded; an "at most 2" assumption would be wrong.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
         foreach (string branch in new[] { "dal1", "dal2", "dal3" })
@@ -163,13 +163,13 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Utf8_olmayan_kodlamali_commit_utf8_olarak_gelir()
     {
-        // ISO-8859-9 (Latin-5) olarak SAKLANAN bir mesaj, i18n.logOutputEncoding=UTF-8
-        // sayesinde doğru karakterlerle gelmeli.
+        // A message STORED as ISO-8859-9 (Latin-5) must arrive with the correct characters
+        // thanks to i18n.logOutputEncoding=UTF-8.
         //
-        // Mesaj GERÇEK Latin-5 baytlarıyla yazılmalı. `-m "Türkçe"` yazıp commitEncoding'i
-        // Latin-5 ilan etmek işe yaramaz: .NET argümanı UTF-8 olarak geçirir, git onu
-        // Latin-5 sanıp bir kez daha çevirir ve mojibake üretir. Bu git'in doğru davranışıdır;
-        // kodlama etiketi ile baytların uyuşması gerekir.
+        // The message must be written with REAL Latin-5 bytes. Writing `-m "Türkçe"` and declaring
+        // commitEncoding as Latin-5 does not work: .NET passes the argument as UTF-8, git assumes it
+        // is Latin-5 and converts it once more, producing mojibake. This is git's correct behaviour;
+        // the encoding label and the bytes have to match.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -258,7 +258,7 @@ public class CommitLogReaderTests
 
         for (int i = 0; i < 25; i++)
         {
-            // Gövdeli ve gövdesiz karışık: akışta da hiza korunmalı.
+            // Mixed with and without a body: the alignment must hold in the stream too.
             if (i % 3 == 0)
             {
                 repository.Git("commit", "--allow-empty", "-m", $"commit {i}");
@@ -289,7 +289,7 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Akis_erken_sonlandirilabilir()
     {
-        // Sonsuz kaydırmanın temeli: ilk N kaydı alıp bırakabilmeliyiz.
+        // The foundation of infinite scrolling: we must be able to take the first N records and stop.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -318,10 +318,10 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Imzali_commit_mesaji_bozmaz()
     {
-        // P02-T14 — İmza, commit nesnesine `gpgsig` başlığı olarak ÇOK SATIRLI biçimde
-        // yazılır ve mesajdan önce gelir. Ölçüldü: `%s`/`%b` alanlarına sızmıyor,
-        // ama bu doğrulanmadan varsayılamaz — imza satırları mesaj sanılsaydı
-        // her imzalı commit'in gövdesi çöp olurdu.
+        // P02-T14 — The signature is written into the commit object as a `gpgsig` header in
+        // MULTI-LINE form and comes before the message. Measured: it does not leak into the `%s`/`%b`
+        // fields, but that cannot be assumed without verification — had the signature lines been
+        // mistaken for the message, the body of every signed commit would be garbage.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -343,23 +343,23 @@ public class CommitLogReaderTests
 
         CommitInfo signed = commits.Single(c => c.Subject == "imzalı başlık");
         signed.Body.ShouldBe("gövde satırı bir\ngövde satırı iki");
-        // İmza metni hiçbir alana sızmamalı.
+        // The signature text must not leak into any field.
         signed.Body.ShouldNotContain("SSH SIGNATURE");
         signed.Subject.ShouldNotContain("gpgsig");
         signed.Author.Name.ShouldBe("gitext-core tests");
 
-        // İmzalı kayıttan sonraki commit de doğru okunmalı — hiza korunmuş olmalı.
+        // The commit after the signed record must also be read correctly — the alignment must have held.
         commits.Single(c => c.Subject == "imzasız sonraki").Body.ShouldBeEmpty();
     }
 
     [Fact]
     public async Task Carpik_tarihli_depoda_cocuk_her_zaman_ebeveynden_once_gelir()
     {
-        // ADR-0007'nin değişmezi. Grafik yerleşimi tek geçişli ileri tarama yapıyor;
-        // bir ebeveyn çocuğundan önce gelirse kenar YUKARI bakar ve grafik bozulur.
+        // The invariant of ADR-0007. The graph layout does a single-pass forward scan;
+        // if a parent comes before its child the edge points UPWARDS and the graph breaks.
         //
-        // git log'un varsayılan (tarih) sırası bu garantiyi VERMEZ — ölçüldü.
-        // Aşağıdaki depo tam olarak o durumu üretiyor: yan dalın tarihi merge base'inden eski.
+        // git log's default (date) order does NOT give this guarantee — measured.
+        // The repository below produces exactly that situation: the side branch's date is older than its merge base.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -400,7 +400,7 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Topolojik_sira_kapatilabilir()
     {
-        // Sıranın önemsiz olduğu durumlarda (tek dosya geçmişi gibi) maliyetten kaçınmak için.
+        // To avoid the cost in cases where order does not matter (such as single-file history).
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("commit", "--allow-empty", "-m", "ikinci");
 
@@ -439,10 +439,10 @@ public class CommitLogReaderTests
     [Fact]
     public async Task Yazarin_orijinal_saat_dilimi_korunur()
     {
-        // Detay paneli tarihi hem yerel hem ORİJİNAL saat diliminde gösteriyor (P03-T15).
-        // Bu ancak ofset ayrıştırmada kaybolmazsa mümkün; DateTimeStyles yanlış seçilirse
-        // (AssumeLocal / AdjustToUniversal) ofset sessizce yerele çevrilir ve panel
-        // "yazarın saatiyle" yanlış bir değer gösterir.
+        // The detail panel shows the date in both local and the ORIGINAL time zone (P03-T15).
+        // That is only possible if the offset is not lost during parsing; if DateTimeStyles is chosen wrong
+        // (AssumeLocal / AdjustToUniversal) the offset is silently converted to local and the panel
+        // shows a wrong value "in the author's time".
         using TestRepository repository = TestRepository.CreateEmpty();
 
         repository.GitWithEnvironment(
@@ -460,7 +460,7 @@ public class CommitLogReaderTests
         commit.Author.When.Offset.ShouldBe(TimeSpan.FromHours(9));
         commit.Committer.When.Offset.ShouldBe(TimeSpan.FromHours(-5));
 
-        // Ofset korunsa bile mutlak an doğru olmalı.
+        // Even if the offset is preserved, the absolute instant must be correct.
         commit.Author.When.ToUniversalTime()
             .ShouldBe(new DateTimeOffset(2021, 3, 3, 20, 6, 7, TimeSpan.Zero));
     }

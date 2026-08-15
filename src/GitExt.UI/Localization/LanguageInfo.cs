@@ -1,25 +1,26 @@
 namespace GitExt.UI.Localization;
 
 /// <summary>
-/// Kullanılabilir bir arayüz dili (P11-T01).
+/// An available user interface language (P11-T01).
 /// </summary>
-/// <param name="Code">Dosya adından gelen dil kodu: <c>en</c>, <c>tr</c>.</param>
+/// <param name="Code">Language code taken from the file name: <c>en</c>, <c>tr</c>.</param>
 /// <param name="Name">
-/// Dilin <b>kendi dilindeki</b> adı: <c>English</c>, <c>Türkçe</c>.
+/// The language's name <b>in that language</b>: <c>English</c>, <c>Türkçe</c>.
 /// </param>
 /// <remarks>
-/// Ad, dil dosyasının <c>_meta.name</c> alanından okunuyor; koda gömülü bir tablodan değil.
-/// Sebebi: yeni bir dil eklemek <b>yalnızca</b> bir JSON dosyası eklemek olmalı. Adlar kodda
-/// tutulsaydı, <c>fr.json</c> ekleyen biri listede "fr" görür ve adı yazmak için C# dosyasına
-/// dokunmak zorunda kalırdı.
+/// The name is read from the <c>_meta.name</c> field of the language file, not from a table
+/// baked into the code. The reason: adding a language should be <b>only</b> adding a JSON
+/// file. If names lived in code, someone adding <c>fr.json</c> would see "fr" in the list and
+/// would have to touch a C# file just to write the name.
 /// <para>
-/// Ad neden İngilizce değil kendi dilinde: dil seçicide "Turkish" yazması, o dili arayan
-/// kullanıcının anlamadığı bir dilde yazılmış demektir. Dil listesi, o dili bilmeyen birinin
-/// değil, arayan birinin okuyabilmesi için var.
+/// Why the name is in its own language rather than English: showing "Turkish" in the language
+/// picker means it is written in a language the person looking for it does not read. The list
+/// exists to be read by someone searching for that language, not by someone who does not
+/// speak it.
 /// </para>
 /// </remarks>
 public sealed record LanguageInfo(string Code, string Name)
 {
-    /// <summary>Açılır listede gösterilen metin.</summary>
+    /// <summary>Text shown in the dropdown.</summary>
     public override string ToString() => Name;
 }

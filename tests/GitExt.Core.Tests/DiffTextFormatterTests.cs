@@ -3,11 +3,11 @@ using GitExt.Core.Model;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T13 — Gösterim dönüşümleri: sekme açma ve boşluk gösterimi.
+/// P04-T13 — Display transformations: tab expansion and whitespace rendering.
 /// </summary>
 /// <remarks>
-/// <b>ÖLÇÜLDÜ:</b> Avalonia'nın <c>TextBlock</c>'unda sekme <b>tab-stop değil</b>, sabit dört
-/// boşluk genişliğinde çiziliyor ve ayarlanamıyor. Dönüşüm bu yüzden burada yapılıyor.
+/// <b>MEASURED:</b> in Avalonia's <c>TextBlock</c> a tab is <b>not a tab stop</b>, it is drawn at a
+/// fixed width of four spaces and cannot be configured. That is why the transformation is done here.
 /// </remarks>
 public class DiffTextFormatterTests
 {
@@ -16,13 +16,13 @@ public class DiffTextFormatterTests
     [Fact]
     public void Sekme_tab_stop_a_kadar_doldurur()
     {
-        // Kritik ayrım: sabit genişlik DEĞİL. "ab" iki sütun, sonraki durak 4 → iki boşluk.
+        // The critical distinction: NOT a fixed width. "ab" is two columns, the next stop is 4 → two spaces.
         DiffTextFormatter.Format("ab\tc", Tabs()).ShouldBe("ab  c");
 
-        // "a" bir sütun → üç boşluk.
+        // "a" is one column → three spaces.
         DiffTextFormatter.Format("a\tb", Tabs()).ShouldBe("a   b");
 
-        // Tam durakta olan sekme TAM genişlik ilerletir (sıfır değil).
+        // A tab exactly on a stop advances a FULL width (not zero).
         DiffTextFormatter.Format("abcd\te", Tabs()).ShouldBe("abcd    e");
     }
 
@@ -46,11 +46,11 @@ public class DiffTextFormatterTests
 
         string result = DiffTextFormatter.Format("a b\tc", options);
 
-        // "a b" üç sütun; sonraki durak 4 olduğu için sekme YALNIZCA bir sütun ilerletir,
-        // yani işaretten sonra boşluk kalmaz. (İlk beklentim yanlıştı; doğrusu ölçülen bu.)
+        // "a b" is three columns; since the next stop is 4 the tab advances ONLY one column,
+        // so no space remains after the marker. (My first expectation was wrong; this is what was measured.)
         result.ShouldBe($"a{DiffTextFormatter.SpaceMarker}b{DiffTextFormatter.TabMarker}c");
 
-        // İşaretten sonra dolgu kaldığı durum:
+        // The case where padding remains after the marker:
         DiffTextFormatter.Format("a\tb", options)
             .ShouldBe($"a{DiffTextFormatter.TabMarker}  b");
     }
@@ -66,9 +66,9 @@ public class DiffTextFormatterTests
     [Fact]
     public void Parcalar_arasinda_sutun_sayaci_devam_eder()
     {
-        // ⚠️ Asıl tuzak bu: tab-stop satırın BAŞINDAN hesaplanır. Sayaç her parçada
-        // sıfırlansaydı satır içi vurgulaması olan satırlarda sekmeler farklı yere
-        // hizalanır ve iki satır görsel olarak kaymış görünürdü.
+        // ⚠️ This is the real trap: the tab stop is computed from the START of the line. If the counter
+        // were reset in each segment, tabs on lines with intra-line highlighting would align to different
+        // places and two lines would look visually shifted.
         DiffSegment[] segments =
         [
             new(DiffLineKind.Context, "ab"),
@@ -79,7 +79,7 @@ public class DiffTextFormatterTests
 
         result[0].Text.ShouldBe("ab");
 
-        // "ab" iki sütun tuttuğu için sekme yalnızca iki boşluk açmalı.
+        // Since "ab" occupies two columns, the tab must open only two spaces.
         result[1].Text.ShouldBe("  c");
     }
 
@@ -104,7 +104,7 @@ public class DiffTextFormatterTests
     [Fact]
     public void Degisiklik_gerekmiyorsa_ayni_liste_dondurulur()
     {
-        // Satır sayısı on binlere çıkabiliyor; gereksiz dize üretmemek önemli.
+        // The line count can reach tens of thousands; not producing unnecessary strings matters.
         DiffSegment[] segments = [new(DiffLineKind.Context, "sekmesiz metin")];
 
         DiffTextFormatter.Format(segments, new DiffTextOptions { TabWidth = 0 })

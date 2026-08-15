@@ -4,65 +4,65 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Commands;
 
 /// <summary>
-/// Uygulamadaki bütün komutların ve kısayollarının <b>tek kayıt yeri</b> (P08-T01).
+/// The <b>single registry</b> for every command and shortcut in the application (P08-T01).
 /// </summary>
 /// <remarks>
-/// Kısayolları XAML'e ve kod-arkası <c>switch</c>'lere dağıtmak sürdürülemez: Faz 08'e
-/// girilirken jestler <b>altı ayrı dosyada</b>, üstelik iki farklı mekanizmayla duruyordu
-/// (<c>MenuItem.InputGesture</c> ve elle yazılmış tünelleyen işleyiciler). Bir komutun
-/// kısayolunu öğrenmek için altı dosya okumak gerekiyordu ve çakışmayı görecek kimse yoktu.
+/// Spreading shortcuts across XAML and code-behind <c>switch</c>es does not scale: entering
+/// Phase 08 the gestures sat in <b>six separate files</b>, and in two different mechanisms on
+/// top of that (<c>MenuItem.InputGesture</c> and hand-written tunneling handlers). Learning a
+/// command's shortcut meant reading six files, and nobody was there to see the conflicts.
 /// </remarks>
 public interface ICommandRegistry
 {
-    /// <summary>Tanımlı bütün komutlar, tanım sırasında.</summary>
+    /// <summary>Every defined command, in definition order.</summary>
     IReadOnlyList<CommandDefinition> Definitions { get; }
 
-    /// <summary>Kısayol ataması ya da tanım kümesi değiştiğinde tetiklenir.</summary>
+    /// <summary>Raised when a shortcut assignment or the set of definitions changes.</summary>
     event EventHandler? Changed;
 
     CommandDefinition? Find(string commandId);
 
     /// <summary>
-    /// Komutun <b>yürürlükteki</b> kısayolu: kullanıcı atadıysa onunki, yoksa varsayılan.
+    /// The command's <b>effective</b> shortcut: the user's if assigned, otherwise the default.
     /// </summary>
     KeyGesture? GetGesture(string commandId);
 
-    /// <summary>Kullanıcı bu komutun kısayolunu değiştirmiş mi?</summary>
+    /// <summary>Has the user changed this command's shortcut?</summary>
     bool IsCustomized(string commandId);
 
     /// <summary>
-    /// Kısayolu değiştirir. <see langword="null"/> vermek kısayolu <b>kaldırır</b> —
-    /// varsayılana dönmek için <see cref="Reset"/> kullanılır.
+    /// Changes the shortcut. Passing <see langword="null"/> <b>removes</b> the shortcut —
+    /// use <see cref="Reset"/> to go back to the default.
     /// </summary>
     void SetGesture(string commandId, KeyGesture? gesture);
 
-    /// <summary>Komutu varsayılan kısayoluna döndürür.</summary>
+    /// <summary>Resets the command to its default shortcut.</summary>
     void Reset(string commandId);
 
-    /// <summary>Bütün kısayolları varsayılana döndürür.</summary>
+    /// <summary>Resets every shortcut to its default.</summary>
     void ResetAll();
 
     /// <summary>
-    /// Aynı jesti paylaşan ve bağlamları örtüşen komutlar.
+    /// Commands that share the same gesture and whose contexts overlap.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>Bunu bizim hesaplamamız şart.</b> P08-T00/M10: Avalonia aynı jeste iki kayıt
-    /// bulursa <b>yalnızca ilkini</b> çalıştırır ve hiçbir şey söylemez. Kullanıcı kısayolunu
-    /// yeniden atar, çalışmaz ve sebebini göremez.
+    /// 🔴 <b>We have to compute this ourselves.</b> P08-T00/M10: when Avalonia finds two
+    /// registrations for the same gesture it runs <b>only the first</b> and says nothing. The
+    /// user reassigns a shortcut, it does not work, and they cannot see why.
     /// </remarks>
     IReadOnlyList<ShortcutConflict> Conflicts { get; }
 
     /// <summary>
-    /// Verilen bağlamda bu jeste bağlı komutun kimliği.
+    /// The id of the command bound to this gesture in the given context.
     /// </summary>
     /// <remarks>
-    /// Bağlam <b>tam olarak</b> istenen kümeyle eşleşir; <see cref="CommandContext.Global"/>
-    /// otomatik eklenmez. Aksi hâlde küresel bir kısayol hem pencere bağlamasından hem panel
-    /// dağıtımından <b>iki kez</b> çalışırdı.
+    /// The context matches the requested set <b>exactly</b>; <see cref="CommandContext.Global"/>
+    /// is not added automatically. Otherwise a global shortcut would run <b>twice</b> — once
+    /// from the window binding and once from the panel dispatch.
     /// </remarks>
     string? Resolve(KeyGesture gesture, CommandContext context);
 
-    /// <summary>Verilen bağlamda geçerli komutlar.</summary>
+    /// <summary>The commands valid in the given context.</summary>
     IReadOnlyList<CommandDefinition> InContext(CommandContext context);
 }
 
@@ -83,8 +83,8 @@ public sealed class CommandRegistry : ICommandRegistry
         _settings = settings;
         _definitions = definitions;
 
-        // Kimlik çakışması bir program hatası, çalışma zamanı durumu değil: iki komut aynı
-        // kimliği paylaşırsa kullanıcının yeniden ataması hangisine gideceği belirsizleşir.
+        // An id clash is a programming error, not a runtime state: if two commands share the
+        // same id it becomes undefined which one the user's reassignment lands on.
         _byId = definitions.ToDictionary(d => d.Id, StringComparer.Ordinal);
     }
 
@@ -109,8 +109,8 @@ public sealed class CommandRegistry : ICommandRegistry
 
         if (stored.Length == 0)
         {
-            // Kullanıcı kısayolu bilerek kaldırmış. Varsayılana dönmek onun kararını
-            // geri almak olurdu; bu yüzden "yok" ile "atanmamış" ayrı tutuluyor.
+            // The user removed the shortcut deliberately. Falling back to the default would
+            // undo that decision; that is why "none" and "unassigned" are kept apart.
             return null;
         }
 
@@ -162,8 +162,8 @@ public sealed class CommandRegistry : ICommandRegistry
         {
             List<ShortcutConflict> conflicts = [];
 
-            // Jeste göre grupla, sonra grup içinde bağlamı örtüşen çiftleri ara.
-            // Aynı jestin farklı panellerde farklı iş yapması ÇAKIŞMA DEĞİLDİR.
+            // Group by gesture, then look for pairs with overlapping contexts inside the group.
+            // The same gesture doing different work in different panels is NOT A CONFLICT.
             IEnumerable<IGrouping<KeyGesture, CommandDefinition>> groups = _definitions
                 .Select(d => (Definition: d, Gesture: GetGesture(d.Id)))
                 .Where(pair => pair.Gesture is not null)
@@ -224,12 +224,12 @@ public sealed class CommandRegistry : ICommandRegistry
         [.. _definitions.Where(d => (d.Context & context) != CommandContext.None)];
 
     /// <summary>
-    /// Ayar dosyasındaki jest metnini çözer.
+    /// Parses the gesture text from the settings file.
     /// </summary>
     /// <remarks>
-    /// Hoşgörülü: elle düzenlenmiş bozuk bir satır yalnızca o komutu varsayılanına düşürür.
-    /// <c>KeyGesture.Parse</c> tanımadığı metinde istisna atıyor (P08-T00/M06) ve bu istisna
-    /// yakalanmasaydı bozuk tek bir satır <b>uygulamayı açılmaz</b> hâle getirirdi.
+    /// Forgiving: one hand-edited broken line only drops that command back to its default.
+    /// <c>KeyGesture.Parse</c> throws on text it does not recognise (P08-T00/M06), and if that
+    /// exception were not caught a single broken line would make <b>the app fail to start</b>.
     /// </remarks>
     private static KeyGesture? TryParse(string text)
     {

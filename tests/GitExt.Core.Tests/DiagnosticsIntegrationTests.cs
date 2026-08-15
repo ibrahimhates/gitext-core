@@ -5,21 +5,21 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P09-T03 — teşhisin gerçek git çağrılarıyla uçtan uca doğrulanması.
+/// P09-T03 — end-to-end verification of the diagnostics with real git calls.
 /// </summary>
 /// <remarks>
-/// Birim testleri toplayıcının kendisini doğruluyor; buradaki soru farklı: <b>gerçekten
-/// bağlanmış mı?</b> Bir teşhis paneli, ölçtüğünü sandığı yola bağlı değilse sessizce
-/// boş kalır ve o boşluk "sorun yok" diye okunur.
+/// The unit tests verify the collector itself; the question here is different: <b>is it really
+/// wired up?</b> If a diagnostics panel is not attached to the path it thinks it measures, it silently
+/// stays empty and that emptiness reads as "no problem".
 /// </remarks>
 public class DiagnosticsIntegrationTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <remarks>
-    /// Ölçüm noktası <see cref="GitProcessRunner"/>'a bağlandı: ADR-0002 gereği her git
-    /// çağrısı oradan geçiyor. Yazıcı/okuyucu sınıflarına tek tek eklemek, eklenmeyi
-    /// unutulan yollar üretirdi.
+    /// The measurement point is attached to <see cref="GitProcessRunner"/>: per ADR-0002 every git
+    /// call goes through there. Adding it to the writer/reader classes one by one would produce
+    /// paths where someone forgot to add it.
     /// </remarks>
     [Fact]
     public async Task ShouldRecordStatisticsForRealGitCalls()
@@ -45,15 +45,15 @@ public class DiagnosticsIntegrationTests
         statistics.Single(s => s.Name == "log").Count.ShouldBe(2);
         statistics.Single(s => s.Name == "status").Count.ShouldBe(1);
 
-        // Gerçek bir süreç ölçülebilir bir süre alıyor; sıfır çıkması ölçümün hiç
-        // bağlanmadığı anlamına gelirdi.
+        // A real process takes a measurable amount of time; getting zero would mean the measurement
+        // was never wired up at all.
         statistics.Single(s => s.Name == "status").TotalDuration.ShouldBeGreaterThan(TimeSpan.Zero);
     }
 
     /// <remarks>
-    /// 🔴 Başarısız komut da sayılmalı. Yalnızca başarılıları saymak, teşhis panelini
-    /// "her şey yolunda" gösterirken kullanıcının arayüzünün hata döngüsünde olmasına
-    /// izin verirdi.
+    /// 🔴 A failed command must be counted too. Counting only the successful ones would let
+    /// the diagnostics panel show "everything is fine" while the user's UI is stuck in an
+    /// error loop.
     /// </remarks>
     [Fact]
     public async Task ShouldCountFailedRealGitCall()
@@ -66,7 +66,7 @@ public class DiagnosticsIntegrationTests
         GitExecutable executable = await GitExecutable.LocateAsync(cancellationToken: Ct).ConfigureAwait(true);
         GitProcessRunner runner = new(executable, log, logger: null, diagnostics: diagnostics);
 
-        // Var olmayan bir ref: git sıfır olmayan kodla çıkıyor.
+        // A ref that does not exist: git exits with a non-zero code.
         await runner.RunAsync(
                 GitCommand.Create(repo.Path, "rev-parse", "--verify", "yok-boyle-bir-ref"),
                 Ct)
@@ -79,8 +79,8 @@ public class DiagnosticsIntegrationTests
     }
 
     /// <remarks>
-    /// Komut bittiğinde aktif listeden düşmeli. Düşmezse panel, biten işleri "devam
-    /// ediyor" diye gösterir — teşhisi tam tersine çevirir.
+    /// It must drop off the active list when the command finishes. If it does not, the panel shows
+    /// finished work as "in progress" — turning the diagnosis on its head.
     /// </remarks>
     [Fact]
     public async Task ShouldNotLeaveFinishedCallsActive()
@@ -99,9 +99,9 @@ public class DiagnosticsIntegrationTests
     }
 
     /// <remarks>
-    /// Akış yolu (<see cref="GitProcessRunner.StreamNulSeparatedAsync"/>) ayrı bir kod
-    /// yolu; commit listesi tam olarak oradan geliyor ve teşhiste en çok merak edilen
-    /// süre de o. İzlenmezse panel, uygulamanın en pahalı çağrısını hiç göstermezdi.
+    /// The streaming path (<see cref="GitProcessRunner.StreamNulSeparatedAsync"/>) is a separate code
+    /// path; the commit list comes from exactly there and it is also the duration people care about most
+    /// in the diagnostics. If it were not tracked, the panel would never show the app's most expensive call.
     /// </remarks>
     [Fact]
     public async Task ShouldNotLeaveStreamingCallsActive()
@@ -118,7 +118,7 @@ public class DiagnosticsIntegrationTests
 
         await foreach (string _ in runner.StreamNulSeparatedAsync(command, Ct).ConfigureAwait(true))
         {
-            // Akış tüketiliyor; ilgilenilen şey bitişte listenin boşalması.
+            // The stream is consumed; what we care about is that the list empties out when it finishes.
         }
 
         diagnostics.ActiveOperations.ShouldBeEmpty();

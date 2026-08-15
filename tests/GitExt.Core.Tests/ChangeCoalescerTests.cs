@@ -3,11 +3,11 @@
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// Olay birleştirme kuralları (P05-T14).
+/// Event coalescing rules (P05-T14).
 /// </summary>
 /// <remarks>
-/// Zaman elle ilerletiliyor: gerçek zamanlayıcı kullanılsaydı bu testler hem yavaş hem
-/// yavaş makinede kırılgan olurdu.
+/// Time is advanced manually: had a real timer been used these tests would be both slow and
+/// fragile on a slow machine.
 /// </remarks>
 public class ChangeCoalescerTests
 {
@@ -42,7 +42,7 @@ public class ChangeCoalescerTests
     [Fact]
     public void Iki_bin_olay_TEK_tazelemeye_iner()
     {
-        // ÖLÇÜLDÜ: 800 dosyalık dal değişimi 2102 olay üretti, hepsi ~50 ms içinde.
+        // MEASURED: a branch switch over 800 files produced 2102 events, all within ~50 ms.
         ChangeCoalescer coalescer = Create();
 
         for (int i = 0; i < 2102; i++)
@@ -53,7 +53,7 @@ public class ChangeCoalescerTests
         coalescer.TryTake(Start.AddMilliseconds(600), out _)
             .ShouldBe(RepositoryChangeKind.WorkingTree);
 
-        // İkinci alışta bekleyen bir şey kalmamalı.
+        // On the second drain nothing should be left pending.
         coalescer.TryTake(Start.AddMilliseconds(2000), out TimeSpan? wait).ShouldBeNull();
         wait.ShouldBeNull();
     }
@@ -61,17 +61,17 @@ public class ChangeCoalescerTests
     [Fact]
     public void Surekli_akan_olaylar_tazelemeyi_SONSUZA_KADAR_erteleyemez()
     {
-        // ÖLÇÜLDÜ: tek projelik bir `dotnet build` 1,5 saniye boyunca 92 olay üretti.
-        // Saf "her olayda sayacı sıfırla" debounce bu süre boyunca hiç tetiklenmezdi.
+        // MEASURED: a single-project `dotnet build` produced 92 events over 1.5 seconds.
+        // A pure "reset the counter on every event" debounce would never fire during that time.
         ChangeCoalescer coalescer = Create(debounceMs: 500, maximumMs: 2000);
 
-        // Her 100 ms'de bir olay: debounce penceresi hiç dolmuyor.
+        // One event every 100 ms: the debounce window never fills.
         for (int ms = 0; ms <= 1900; ms += 100)
         {
             coalescer.Add(RepositoryChangeKind.WorkingTree, Start.AddMilliseconds(ms));
         }
 
-        // Üst sınır dolduğu an tetiklenmeli.
+        // It must fire the moment the upper bound is reached.
         coalescer.TryTake(Start.AddMilliseconds(2000), out _)
             .ShouldBe(RepositoryChangeKind.WorkingTree);
     }
@@ -83,7 +83,7 @@ public class ChangeCoalescerTests
 
         coalescer.Add(RepositoryChangeKind.WorkingTree, Start);
 
-        // 1800 ms sonra gelen olay için 500 ms beklenirse üst sınır aşılır: 200 ms kalmalı.
+        // If 500 ms were waited for an event arriving after 1800 ms the upper bound would be exceeded: 200 ms must remain.
         coalescer.Add(RepositoryChangeKind.WorkingTree, Start.AddMilliseconds(1800))
             .ShouldBe(TimeSpan.FromMilliseconds(200));
     }
@@ -97,8 +97,8 @@ public class ChangeCoalescerTests
         coalescer.Add(RepositoryChangeKind.Repository, Start.AddMilliseconds(10));
         coalescer.Add(RepositoryChangeKind.WorkingTree, Start.AddMilliseconds(20));
 
-        // Daha kapsamlı olan kazanmalı; aksi halde dal değişiminden sonra commit listesi
-        // bayat kalırdı.
+        // The broader one must win; otherwise the commit list would stay stale after a
+        // branch switch.
         coalescer.TryTake(Start.AddMilliseconds(600), out _)
             .ShouldBe(RepositoryChangeKind.Repository);
     }
@@ -112,8 +112,8 @@ public class ChangeCoalescerTests
         coalescer.TryTake(Start.AddMilliseconds(100), out _)
             .ShouldBe(RepositoryChangeKind.WorkingTree);
 
-        // Hemen ardından gelen olay minimum aralık dolana kadar beklemeli — üst sınır
-        // (200 ms) dolmuş olsa bile.
+        // An event arriving immediately afterwards must wait until the minimum interval elapses —
+        // even if the upper bound (200 ms) has already been reached.
         coalescer.Add(RepositoryChangeKind.WorkingTree, Start.AddMilliseconds(200));
         coalescer.TryTake(Start.AddMilliseconds(1000), out TimeSpan? wait).ShouldBeNull();
         wait.ShouldBe(TimeSpan.FromMilliseconds(4100));
@@ -125,7 +125,7 @@ public class ChangeCoalescerTests
     [Fact]
     public void Ilk_tazeleme_minimum_araliktan_etkilenmez()
     {
-        // Depo yeni açıldığında "son tazeleme" yok; kullanıcı ilk değişikliği hemen görmeli.
+        // When a repository is freshly opened there is no "last refresh"; the user must see the first change immediately.
         ChangeCoalescer coalescer = Create(debounceMs: 100, maximumMs: 200, minimumIntervalMs: 30_000);
 
         coalescer.Add(RepositoryChangeKind.WorkingTree, Start);

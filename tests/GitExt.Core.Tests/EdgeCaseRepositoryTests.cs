@@ -5,17 +5,17 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P09-T15 — kenar durum depoları.
+/// P09-T15 — edge case repositories.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Planın listesi: boş repo · tek commit · çok dal · çok tag · derin dizin ağacı ·
-/// büyük dosyalar · binary ağırlıklı · shallow clone · bare repo.
+/// The plan's list: empty repo · single commit · many branches · many tags · deep directory tree ·
+/// large files · binary-heavy · shallow clone · bare repo.
 /// </para>
 /// <para>
-/// Bunların ortak yanı, "normal" bir depoda hiç görünmeyen varsayımları kırmaları:
-/// <c>HEAD</c>'in var olduğu, çalışma ağacının bulunduğu, geçmişin kökten başladığı.
-/// Bir kenar durum çöküyorsa kullanıcı onu <b>ilk açılışta</b> yaşar.
+/// What they have in common is that they break assumptions that never show up in a "normal" repository:
+/// that <c>HEAD</c> exists, that there is a working tree, that history starts at a root.
+/// If an edge case crashes, the user hits it <b>on the very first open</b>.
 /// </para>
 /// </remarks>
 public class EdgeCaseRepositoryTests
@@ -33,18 +33,18 @@ public class EdgeCaseRepositoryTests
     }
 
     /// <summary>
-    /// Boş depoda <c>--all</c> ile okuma hata değil boş liste veriyor (P09-T15).
+    /// In an empty repository reading with <c>--all</c> gives an empty list, not an error (P09-T15).
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — iki çağrı biçimi boş depoda AYRI davranıyor:</b>
+    /// 🔴 <b>MEASURED — the two call forms behave DIFFERENTLY on an empty repository:</b>
     /// <code>
     /// git log                → fatal: your current branch 'main' does not have any commits yet  (128)
-    /// git log --all          → (boş çıktı, 0)
+    /// git log --all          → (empty output, 0)
     /// </code>
-    /// Arayüz <c>IncludeAllRefs</c> ile okuduğu için yeni oluşturulmuş bir depo hata
-    /// ekranıyla değil boş listeyle açılıyor. Ama fark <b>tesadüfi değil, korunması
-    /// gereken</b> bir seçim: sorguyu <c>--all</c>'suz kurmak yeni deponun ilk
-    /// açılışını hataya çevirirdi.
+    /// Because the UI reads with <c>IncludeAllRefs</c>, a freshly created repository opens with an empty
+    /// list rather than an error screen. But the difference is <b>not accidental, it is a choice that
+    /// must be preserved</b>: building the query without <c>--all</c> would turn the first open of a new
+    /// repository into an error.
     /// </remarks>
     [Fact]
     public async Task Bos_depo_hata_degil_bos_liste_veriyor()
@@ -60,9 +60,9 @@ public class EdgeCaseRepositoryTests
     }
 
     /// <remarks>
-    /// Aynı deponun <c>--all</c>'suz okunması git tarafından <b>hata</b> sayılıyor.
-    /// Bu test o farkı sabitliyor: davranış değişirse — git bir gün 0 döndürmeye
-    /// başlarsa ya da biri sorguyu değiştirirse — burada görünür.
+    /// Reading the same repository without <c>--all</c> is treated as an <b>error</b> by git.
+    /// This test pins that difference down: if the behaviour changes — if git one day starts returning 0,
+    /// or if someone changes the query — it shows up here.
     /// </remarks>
     [Fact]
     public async Task Bos_depoda_HEAD_uzerinden_okuma_hata_veriyor()
@@ -90,8 +90,8 @@ public class EdgeCaseRepositoryTests
     }
 
     /// <remarks>
-    /// Bare depoda çalışma ağacı <b>yok</b>. Ağaç varsayan bir okuma yolu burada
-    /// "must be run in a work tree" ile ölürdü.
+    /// In a bare repository there is <b>no</b> working tree. A read path that assumes a tree would die
+    /// here with "must be run in a work tree".
     /// </remarks>
     [Fact]
     public async Task Bare_depo_calisma_agaci_olmadan_okunuyor()
@@ -106,9 +106,9 @@ public class EdgeCaseRepositoryTests
     }
 
     /// <remarks>
-    /// Çok sayıda ref, <c>for-each-ref</c> çıktısını büyütüyor. 500 etiket, ayrıştırıcının
-    /// tek seferde okuduğu metni ~kilobaytlara çıkarıyor; kayıt ayracı hatası burada
-    /// görünür hâle gelirdi.
+    /// A large number of refs makes the <c>for-each-ref</c> output big. 500 tags push the text the parser
+    /// reads in one go up to ~kilobytes; a record-separator bug would become visible
+    /// here.
     /// </remarks>
     [Fact]
     public async Task Cok_sayida_etiket_okunuyor()
@@ -128,8 +128,8 @@ public class EdgeCaseRepositoryTests
     }
 
     /// <remarks>
-    /// Boş bir konu satırı (<c>--allow-empty-message</c>) alan ayracını iki NUL yan yana
-    /// getiriyor — Faz 07'de kayıtları ortadan bölen hata tam olarak buydu.
+    /// An empty subject line (<c>--allow-empty-message</c>) puts two NULs next to each other in the field
+    /// separator — that was exactly the bug that split records in half in Phase 07.
     /// </remarks>
     [Fact]
     public async Task Bos_commit_mesaji_kaydi_bolmuyor()
@@ -151,9 +151,9 @@ public class EdgeCaseRepositoryTests
     }
 
     /// <remarks>
-    /// Shallow clone'da geçmiş <b>kesik</b>: en eski commit'in ebeveyni tanımlı ama
-    /// depoda yok. Ebeveyni çözmeye çalışan bir kod burada patlardı; grafik bunu
-    /// "geçmişin sınırı" olarak göstermeli.
+    /// In a shallow clone the history is <b>truncated</b>: the oldest commit's parent is defined but not
+    /// present in the repository. Code that tries to resolve the parent would blow up here; the graph must
+    /// show this as "the boundary of history".
     /// </remarks>
     [Fact]
     public async Task Shallow_clone_kesik_gecmisle_okunuyor()
@@ -192,8 +192,8 @@ public class EdgeCaseRepositoryTests
     }
 
     /// <remarks>
-    /// Binary içerik metin olarak çözülmeye çalışılırsa ya patlar ya da bozuk veri
-    /// üretir. Commit meta verisi binary dosyalardan etkilenmemeli.
+    /// If binary content is decoded as text it either blows up or produces corrupt data.
+    /// Commit metadata must not be affected by binary files.
     /// </remarks>
     [Fact]
     public async Task Binary_dosyali_depo_okunuyor()
@@ -217,8 +217,8 @@ public class EdgeCaseRepositoryTests
     }
 
     /// <remarks>
-    /// Türkçe karakterli yollar <c>-z</c> olmadan C-tırnaklanıyor (Faz 06'da ölçüldü).
-    /// Depo adında da geçebiliyor.
+    /// Paths with Turkish characters are C-quoted without <c>-z</c> (measured in Phase 06).
+    /// They can occur in the repository name too.
     /// </remarks>
     [Fact]
     public async Task Turkce_karakterli_yol_okunuyor()
@@ -240,8 +240,8 @@ public class EdgeCaseRepositoryTests
 
     private static void DeleteRecursive(string path)
     {
-        // Klonlanan depodaki nesne dosyaları salt okunur olabiliyor; doğrudan silmek
-        // erişim hatası verir.
+        // Object files in a cloned repository can be read-only; deleting them directly
+        // gives an access error.
         foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
         {
             File.SetAttributes(file, FileAttributes.Normal);

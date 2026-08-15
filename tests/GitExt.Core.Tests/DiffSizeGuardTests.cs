@@ -5,12 +5,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T06 — Büyük ve binary dosya koruması.
+/// P04-T06 — Large and binary file protection.
 /// </summary>
 /// <remarks>
-/// <b>ÖLÇÜLDÜ:</b> tamamı değişen 12,7 MB'lık bir metin dosyası <b>23 MB</b> yama üretiyor ve
-/// git bunu 0,12 saniyede yapıyor — yani sorun git'te değil, o çıktıyı belleğe alıp yüz
-/// binlerce satır nesnesi yaratmakta (Faz 03'te nesne başı ek yük ölçülmüştü).
+/// <b>MEASURED:</b> a 12.7 MB text file that changed entirely produces a <b>23 MB</b> patch and
+/// git does it in 0.12 seconds — so the problem is not git, it is taking that output into memory
+/// and creating hundreds of thousands of line objects (the per-object overhead was measured in Phase 03).
 /// </remarks>
 public class DiffSizeGuardTests
 {
@@ -25,7 +25,7 @@ public class DiffSizeGuardTests
     private static CommitId Head(TestRepository repository) =>
         CommitId.Parse(repository.Git("rev-parse", "HEAD").Trim());
 
-    /// <summary>Tamamı değişen <paramref name="lines"/> satırlık bir dosya içeren depo.</summary>
+    /// <summary>A repository containing a file of <paramref name="lines"/> lines that changed entirely.</summary>
     private static TestRepository CreateWithLargeChange(int lines)
     {
         TestRepository repository = TestRepository.CreateEmpty();
@@ -62,7 +62,7 @@ public class DiffSizeGuardTests
         big.IsTooLarge.ShouldBeTrue();
         big.HasHunks.ShouldBeFalse();
 
-        // Küçük dosya etkilenmemeli — koruma dosya BAŞINA uygulanıyor.
+        // A small file must not be affected — the guard is applied PER file.
         small.IsTooLarge.ShouldBeFalse();
         small.HasHunks.ShouldBeTrue();
     }
@@ -70,8 +70,8 @@ public class DiffSizeGuardTests
     [Fact]
     public async Task Icerik_okunmasa_da_satir_sayilari_DOGRU_kalir()
     {
-        // Sayılar --numstat'tan geliyor ve içerik üretilmeden alınıyor; dosya listesinde
-        // "+500 −500" göstermek için yamayı okumak gerekmiyor.
+        // The numbers come from --numstat and are obtained without generating content; showing
+        // "+500 −500" in the file list does not require reading the patch.
         using TestRepository repository = CreateWithLargeChange(500);
 
         DiffReader reader = await CreateReaderAsync();
@@ -88,7 +88,7 @@ public class DiffSizeGuardTests
     [Fact]
     public async Task Sinir_kapatilinca_icerik_yine_de_okunur()
     {
-        // Arayüzdeki "yine de göster" bunu kullanır.
+        // The "show anyway" in the UI uses this.
         using TestRepository repository = CreateWithLargeChange(500);
 
         DiffReader reader = await CreateReaderAsync();
@@ -119,8 +119,8 @@ public class DiffSizeGuardTests
     [Fact]
     public async Task Numstat_binary_dosyada_sayi_vermez()
     {
-        // ÖLÇÜLDÜ: binary dosyada numstat `-` veriyor. Bunu 0 saymak "hiç değişmedi"
-        // demek olurdu; null bırakılıp hunk'lardan hesaplanan değere düşülüyor.
+        // MEASURED: numstat gives `-` for a binary file. Treating that as 0 would mean "nothing changed";
+        // it is left null instead, falling back to the value computed from the hunks.
         using TestRepository repository = TestRepository.CreateEmpty();
         File.WriteAllBytes(Path.Combine(repository.Path, "veri.bin"), [0, 1, 2, 3]);
         repository.Git("add", "-A");
@@ -144,9 +144,9 @@ public class DiffSizeGuardTests
     [Fact]
     public async Task Yeniden_adlandirmada_numstat_dogru_eslesir()
     {
-        // ÖLÇÜLDÜ: rename'de numstat yolu BOŞ bırakıp iki yolu ayrı NUL jetonu olarak
-        // veriyor (`0⇥0⇥` + eski + yeni). Bunu okumayan bir ayrıştırıcı sonraki tüm
-        // dosyaların satır sayılarını kaydırırdı.
+        // MEASURED: on a rename numstat leaves the path EMPTY and gives the two paths as separate NUL
+        // tokens (`0⇥0⇥` + old + new). A parser that does not read this would shift the line counts of
+        // all subsequent files.
         using TestRepository repository = TestRepository.CreateEmpty();
 
         string content = string.Join('\n', Enumerable.Range(1, 30).Select(i => $"satır {i}")) + "\n";
@@ -172,7 +172,7 @@ public class DiffSizeGuardTests
         renamed.AddedLines.ShouldBe(0);
         renamed.RemovedLines.ShouldBe(0);
 
-        // Kayma olsaydı bu dosya rename'in sayılarını alırdı.
+        // If there were a shift, this file would get the rename's numbers.
         other.AddedLines.ShouldBe(2);
         other.RemovedLines.ShouldBe(0);
     }
@@ -180,7 +180,7 @@ public class DiffSizeGuardTests
     [Fact]
     public async Task Cikti_siniri_asilinca_yarim_veri_ayristirilmaz()
     {
-        // Son savunma hattı: yarım çıktıyı ayrıştırmak sessizce EKSİK diff göstermek olurdu.
+        // The last line of defence: parsing truncated output would mean silently showing an INCOMPLETE diff.
         using TestRepository repository = CreateWithLargeChange(2000);
 
         DiffReader reader = await CreateReaderAsync();
@@ -191,14 +191,14 @@ public class DiffSizeGuardTests
             new DiffOptions { MaximumChangedLines = 0, MaximumOutputBytes = 4096 },
             Ct);
 
-        // Dosya listesi yine gelmeli — kullanıcı neyin değiştiğini görmeli.
+        // The file list must still arrive — the user has to see what changed.
         diffs.Select(d => d.Path.Value).ShouldBe(["buyuk.txt", "kucuk.txt"], ignoreOrder: true);
 
-        // Ama içerik yok ve bu açıkça işaretli.
+        // But there is no content and that is explicitly flagged.
         diffs.ShouldAllBe(d => !d.HasHunks);
         diffs.ShouldAllBe(d => d.IsTooLarge);
 
-        // Satır sayıları yine doğru.
+        // The line counts are still correct.
         diffs.Single(d => d.Path.Value == "buyuk.txt").AddedLines.ShouldBe(2000);
     }
 

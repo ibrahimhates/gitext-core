@@ -4,15 +4,15 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P05-T02 — Kilit çakışmasının ele alınması.
+/// P05-T02 — Handling lock collisions.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ:</b> kilit dosyası <b>boş</b> (süreç kimliği yok) ve git eski bir kilide farklı
-/// davranmıyor — yani "sahibi öldü mü" sorusunun güvenilir cevabı yok. Bu yüzden kilit
-/// <b>asla kendiliğinden silinmiyor</b>; kullanıcıya yaşı gösterilip karar ona bırakılıyor
-/// (GitExtensions da aynısını yapıyor: <c>IndexLockManager</c> yalnızca varlığı kontrol edip
-/// silmeyi menü komutuna bağlıyor).
+/// <b>MEASURED:</b> the lock file is <b>empty</b> (no process id) and git does not treat an old lock
+/// differently — so there is no reliable answer to the question "did the owner die". That is why the
+/// lock is <b>never removed on its own</b>; the user is shown its age and the decision is left to them
+/// (GitExtensions does the same: <c>IndexLockManager</c> only checks for existence and ties removal to
+/// a menu command).
 /// </para>
 /// </remarks>
 public class GitLockTests
@@ -22,7 +22,7 @@ public class GitLockTests
     private static GitException Locked() =>
         new(GitFailureKind.IndexLocked, "kilitli", "git add", 128, "index.lock");
 
-    // ---- Kilit incelemesi ----
+    // ---- Lock inspection ----
 
     [Fact]
     public void Kilit_yoksa_null_doner()
@@ -53,8 +53,8 @@ public class GitLockTests
     [Fact]
     public void Yeni_kilit_bayat_SAYILMAZ()
     {
-        // Meşru kilit süresi milisaniyeler mertebesinde (ölçüldü: 300 dosyalık add 12 ms),
-        // ama eşik bilinçli olarak çok geniş: yanlış "bayat" kararı index'i bozar.
+        // A legitimate lock lasts on the order of milliseconds (measured: an add of 300 files took 12 ms),
+        // but the threshold is deliberately very wide: a wrong "stale" decision corrupts the index.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
         string gitDirectory = Path.Combine(repository.Path, ".git");
@@ -77,12 +77,12 @@ public class GitLockTests
         GitLock.Inspect(gitDirectory).ShouldNotBeNull().Age.ShouldBe(TimeSpan.Zero);
     }
 
-    // ---- Silme ----
+    // ---- Removal ----
 
     [Fact]
     public void Onaysiz_silme_REDDEDILIR()
     {
-        // Kural yorumda kalsaydı biri ileride onaysız çağırabilirdi; imza zorunlu kılıyor.
+        // Had the rule stayed in a comment, someone could later call it without confirmation; the signature makes it mandatory.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
         string gitDirectory = Path.Combine(repository.Path, ".git");
@@ -115,7 +115,7 @@ public class GitLockTests
         repository.TryGit("add", "-A").ExitCode.ShouldBe(0);
     }
 
-    // ---- Yeniden deneme ----
+    // ---- Retry ----
 
     [Fact]
     public async Task Kilit_hatasi_yeniden_denenir()
@@ -161,8 +161,8 @@ public class GitLockTests
     [Fact]
     public async Task Kilit_disindaki_hatalar_YENIDEN_DENENMEZ()
     {
-        // Kimlik doğrulama hatasını sekiz kez tekrarlamak kullanıcıyı bekletmekten
-        // başka işe yaramaz.
+        // Retrying an authentication error eight times does nothing but keep the user
+        // waiting.
         int attempts = 0;
 
         await Should.ThrowAsync<GitException>(
@@ -179,7 +179,7 @@ public class GitLockTests
         attempts.ShouldBe(1);
     }
 
-    // ---- Sınıflandırma ----
+    // ---- Classification ----
 
     [Fact]
     public void Index_kilidi_siniflandirilir()
@@ -198,9 +198,9 @@ public class GitLockTests
     [Fact]
     public void REF_kilidi_de_siniflandirilir()
     {
-        // ⚠️ ÖLÇÜLDÜ: ref kilidi mesajında "index.lock" GEÇMİYOR —
+        // ⚠️ MEASURED: "index.lock" does NOT appear in the ref lock message —
         // "cannot lock ref 'HEAD': Unable to create '…/main.lock': File exists."
-        // Yalnızca ilk kalıba bakan sınıflandırıcı bunu `Unknown` sayardı.
+        // A classifier that only looks at the first pattern would count this as `Unknown`.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
         string branch = repository.Git("rev-parse", "--abbrev-ref", "HEAD").Trim();

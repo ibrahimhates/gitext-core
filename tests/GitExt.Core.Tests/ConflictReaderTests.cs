@@ -6,12 +6,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P07-T01 + P07-T02 — çakışma tespiti ve üç sürüme erişim.
+/// P07-T01 + P07-T02 — conflict detection and access to the three versions.
 /// </summary>
 /// <remarks>
-/// Çakışma türleri elle uydurulmuyor; her biri <b>gerçek bir merge</b> ile üretiliyor.
-/// Uydurma <c>u</c> satırı yazmak, ayrıştırıcıyı değil bizim çıktının nasıl göründüğüne
-/// dair varsayımımızı test ederdi.
+/// The conflict kinds are not made up by hand; each one is produced by a <b>real merge</b>.
+/// Writing a made-up <c>u</c> line would test our assumption about how the output looks,
+/// not the parser.
 /// </remarks>
 public class ConflictReaderTests
 {
@@ -23,7 +23,7 @@ public class ConflictReaderTests
         return new ConflictReader(new GitProcessRunner(executable));
     }
 
-    /// <summary>İki tarafın da aynı dosyaya dokunduğu bir çakışma kurar.</summary>
+    /// <summary>Sets up a conflict where both sides touched the same file.</summary>
     private static TestRepository Conflicting(
         Action<TestRepository> onBranch,
         Action<TestRepository> onMain,
@@ -45,12 +45,12 @@ public class ConflictReaderTests
         repository.Git("add", "-A");
         repository.Git("commit", "-m", "ana");
 
-        // Çakışacağı için başarısız olacak; fixture bunu bekliyor.
+        // It will fail because it conflicts; the fixture expects this.
         repository.TryGit("merge", "yan");
         return repository;
     }
 
-    // ------------------------------------------------------------ türler
+    // ------------------------------------------------------------ kinds
 
     [Fact]
     public async Task BOTH_MODIFIED_dogru_okunuyor()
@@ -74,8 +74,8 @@ public class ConflictReaderTests
     [Fact]
     public async Task DELETED_BY_US_de_OURS_asamasi_YOK()
     {
-        // Biz sildik, onlar değiştirdi. Üç yollu metin görünümü burada anlamsız:
-        // birleştirilecek iki metin yok, verilecek bir karar var.
+        // We deleted, they modified. A three-way text view is meaningless here:
+        // there are no two texts to merge, there is a decision to make.
         using TestRepository repository = Conflicting(
             branch => branch.WriteFile("f.txt", "DEGISTI\n"),
             main => main.Git("rm", "-q", "f.txt"));
@@ -138,7 +138,7 @@ public class ConflictReaderTests
     [Fact]
     public async Task Cakismayan_degisiklikler_LISTEYE_GIRMIYOR()
     {
-        // Çakışan dosyanın yanında düz değişiklikler de olabilir; onlar buraya ait değil.
+        // Plain changes can sit next to the conflicted file; they do not belong here.
         using TestRepository repository = Conflicting(
             branch => branch.WriteFile("f.txt", "a\nYAN\nc\n"),
             main => main.WriteFile("f.txt", "a\nANA\nc\n"));
@@ -152,13 +152,13 @@ public class ConflictReaderTests
         files.ShouldHaveSingleItem().Path.Value.ShouldBe("f.txt");
     }
 
-    // ------------------------------------------------------------ yol
+    // ------------------------------------------------------------ path
 
     [Fact]
     public async Task TURKCE_ve_BOSLUKLU_yol_BOZULMUYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: `-z` olmadan git yolu C-tırnaklıyor (`şğüıöç.txt` →
-        // `"\305\237\304\237…"`). Türkçe yollar sessizce bozulurdu.
+        // 🔴 MEASURED: without `-z` git C-quotes the path (`şğüıöç.txt` →
+        // `"\305\237\304\237…"`). Turkish paths would silently be corrupted.
         const string path = "bir dizin/şğüıöç dosyası.txt";
 
         using TestRepository repository = Conflicting(
@@ -173,7 +173,7 @@ public class ConflictReaderTests
         files.ShouldHaveSingleItem().Path.Value.ShouldBe(path);
     }
 
-    // ------------------------------------------------------------ içerik
+    // ------------------------------------------------------------ content
 
     [Fact]
     public async Task Uc_surum_de_AYRI_AYRI_okunuyor()
@@ -197,9 +197,9 @@ public class ConflictReaderTests
     [Fact]
     public async Task EKSIK_asama_null_donduruyor_BOS_METIN_DEGIL()
     {
-        // 🔴 ÖLÇÜLDÜ: `git show :2:f.txt` eksik aşamada `fatal: … but not at stage 2`
-        // veriyor. Hatayı yutup boş metin döndürmek "dosya boştu" gibi okunurdu; oysa
-        // silinmiş bir dosyayla boş bir dosya kullanıcı için çok farklı şeyler.
+        // 🔴 MEASURED: `git show :2:f.txt` on a missing stage gives `fatal: … but not at stage 2`.
+        // Swallowing the error and returning empty text would read as "the file was empty"; but
+        // a deleted file and an empty file are very different things for the user.
         using TestRepository repository = Conflicting(
             branch => branch.WriteFile("f.txt", "DEGISTI\n"),
             main => main.Git("rm", "-q", "f.txt"));
@@ -217,7 +217,7 @@ public class ConflictReaderTests
     [Fact]
     public async Task GERCEKTEN_BOS_dosya_null_DEGIL_bos_dizi()
     {
-        // Yukarıdaki ayrımın diğer yarısı: boş içerik "yok" demek değil.
+        // The other half of the distinction above: empty content does not mean "absent".
         using TestRepository repository = Conflicting(
             branch => branch.WriteFile("f.txt", string.Empty),
             main => main.WriteFile("f.txt", "a\nANA\nc\n"));

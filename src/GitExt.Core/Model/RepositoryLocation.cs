@@ -1,10 +1,10 @@
 namespace GitExt.Core.Model;
 
 /// <summary>
-/// Keşfedilmiş bir Git deposunun konum bilgisi.
+/// Location information for a discovered Git repository.
 /// </summary>
 /// <remarks>
-/// Bu tipin bir örneği varsa, yolun gerçekten bir Git deposu olduğu doğrulanmış demektir.
+/// If an instance of this type exists, the path has been verified to really be a Git repository.
 /// </remarks>
 public sealed class RepositoryLocation
 {
@@ -21,50 +21,50 @@ public sealed class RepositoryLocation
     }
 
     /// <summary>
-    /// Bu çalışma ağacına ait git dizini — <c>HEAD</c> ve <c>index</c> burada.
+    /// The git directory of this working tree — <c>HEAD</c> and <c>index</c> live here.
     /// </summary>
     /// <remarks>
-    /// Bağlı (linked) bir worktree'de bu <c>&lt;ana&gt;/.git/worktrees/&lt;ad&gt;</c> olur,
-    /// <see cref="CommonDirectory"/> ile aynı değildir.
+    /// In a linked worktree this becomes <c>&lt;main&gt;/.git/worktrees/&lt;name&gt;</c>, which is
+    /// not the same as <see cref="CommonDirectory"/>.
     /// </remarks>
     public string GitDirectory { get; }
 
     /// <summary>
-    /// Paylaşılan git dizini — <b>ref'ler, nesneler ve config burada</b>.
+    /// The shared git directory — <b>refs, objects and config live here</b>.
     /// </summary>
     /// <remarks>
-    /// Normal bir depoda <see cref="GitDirectory"/> ile aynıdır. Worktree'lerde farklıdır ve
-    /// ref/nesne okuyan her şey <b>bunu</b> kullanmalıdır — worktree'ye özel dizini değil.
+    /// In a normal repository this equals <see cref="GitDirectory"/>. In worktrees it differs, and
+    /// everything that reads refs/objects must use <b>this</b> — not the worktree-specific directory.
     /// </remarks>
     public string CommonDirectory { get; }
 
     /// <summary>
-    /// Çalışma ağacının kökü. Bare depoda <see langword="null"/>.
+    /// The root of the working tree. <see langword="null"/> in a bare repository.
     /// </summary>
     public string? WorkTreeRoot { get; }
 
     /// <summary>
-    /// Bu depo bir submodule ise üst projenin çalışma ağacı; değilse <see langword="null"/>.
+    /// The superproject's working tree if this repository is a submodule; otherwise <see langword="null"/>.
     /// </summary>
     public string? SuperprojectWorkTree { get; }
 
-    /// <summary>Çalışma ağacı olmayan (bare) depo mu?</summary>
+    /// <summary>Is this a repository without a working tree (bare)?</summary>
     public bool IsBare => WorkTreeRoot is null;
 
     /// <summary>
-    /// Bağlı bir worktree mi (<c>git worktree add</c> ile oluşturulmuş)?
+    /// Is this a linked worktree (created with <c>git worktree add</c>)?
     /// </summary>
     public bool IsLinkedWorkTree =>
         !string.Equals(GitDirectory, CommonDirectory, StringComparison.Ordinal);
 
-    /// <summary>Bu depo bir submodule mü?</summary>
+    /// <summary>Is this repository a submodule?</summary>
     public bool IsSubmodule => SuperprojectWorkTree is not null;
 
     /// <summary>
-    /// Komutların çalıştırılacağı dizin.
+    /// The directory commands are run in.
     /// </summary>
     /// <remarks>
-    /// Çalışma ağacı varsa onun kökü, bare depoda git dizininin kendisi.
+    /// The working tree root if there is one; the git directory itself in a bare repository.
     /// </remarks>
     public string WorkingDirectory => WorkTreeRoot ?? GitDirectory;
 

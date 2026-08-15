@@ -4,17 +4,17 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P06-T10 — ağ işlemlerinde ilerleme ve iptal.
+/// P06-T10 — progress and cancellation on network operations.
 /// </summary>
 /// <remarks>
-/// Ölçümün iki sessiz noktası: ilerleme satırlarının <c>\n</c> ile <b>değil</b> <c>\r</c>
-/// ile ayrılması, ve iptal edilen bir fetch'in geride kilit bırakıp bırakmadığı.
+/// The two silent points of the measurement: progress lines being separated by <c>\r</c> and <b>not</b>
+/// by <c>\n</c>, and whether a cancelled fetch leaves a lock behind.
 /// </remarks>
 public class GitProgressTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    // ---------------------------------------------------------- ayrıştırıcı
+    // ------------------------------------------------------------- parser
 
     [Theory]
     [InlineData("remote: Counting objects:   5% (207/4125)        ", "Counting objects", 5, 207, 4125, true, false)]
@@ -64,8 +64,8 @@ public class GitProgressTests
     [Fact]
     public void Satirlar_CR_ile_de_boluuyor()
     {
-        // 🔴 Ölçümün kalbi: gerçek bir klonda 404 `\r`'ye karşılık 7 `\n` vardı. `\n` ile
-        // bölen bir okuyucu işlem bitene kadar HİÇBİR ilerleme göstermezdi.
+        // 🔴 The heart of the measurement: in a real clone there were 404 `\r`s against 7 `\n`s. A reader
+        // that splits on `\n` would show NO progress at all until the operation finished.
         const string text = "a: 1% (1/9)\rb: 2% (2/9)\rc: 3% (3/9)\n";
 
         (IReadOnlyList<string> lines, string remainder) = GitProgressParser.SplitLines(text);
@@ -77,8 +77,8 @@ public class GitProgressTests
     [Fact]
     public void YARIM_satir_ayristirilmiyor_sonraki_parcaya_birakiliyor()
     {
-        // Akışta bir satır iki okuma arasında bölünebilir; yarısını ayrıştırmak yanlış
-        // yüzde üretirdi (`Counting objects:  1` -> %1 yerine %12).
+        // A line in the stream can be split across two reads; parsing half of it would produce a wrong
+        // percentage (`Counting objects:  1` -> 1% instead of 12%).
         (IReadOnlyList<string> lines, string remainder) =
             GitProgressParser.SplitLines("tam: 5% (1/2)\ryarim: 12");
 
@@ -89,7 +89,7 @@ public class GitProgressTests
         rest.Single().ShouldBe("yarim: 12% (3/4)");
     }
 
-    // ------------------------------------------------------------- gerçek git
+    // ------------------------------------------------------------- real git
 
     private sealed record Harness(
         TestRepository Local,
@@ -107,8 +107,8 @@ public class GitProgressTests
     }
 
     /// <remarks>
-    /// Uzak taraf <c>file://</c> ile veriliyor: yol olarak verilseydi git yerel kopyalama
-    /// kısayolunu seçer ve <b>ilerleme hiç üretmezdi</b> (ölçüldü).
+    /// The remote is given with <c>file://</c>: had it been given as a path, git would choose the local
+    /// copy shortcut and <b>would produce no progress at all</b> (measured).
     /// </remarks>
     private static async Task<Harness> CreateAsync(int fileCount = 60)
     {
@@ -152,8 +152,8 @@ public class GitProgressTests
             },
             Ct);
 
-        // `Progress<T>` bildirimleri senkronizasyon bağlamına kuyruklayabiliyor; testte
-        // bağlam yok, yine de son bildirimlerin işlenmesine kısa bir pay bırakılıyor.
+        // `Progress<T>` notifications can be queued onto the synchronization context; there is no context
+        // in the test, but a short margin is still left for the last notifications to be processed.
         await Task.Delay(200, Ct);
 
         steps.ShouldNotBeEmpty("ilerleme hiç bildirilmedi");
@@ -164,8 +164,8 @@ public class GitProgressTests
     [Fact]
     public async Task Ilerleme_istenmezse_TAM_metin_yine_de_okunuyor()
     {
-        // Mevcut ayrıştırıcılar (fetch'in kısmi başarısı, push'un `remote:` satırları)
-        // stderr'in TAMAMINA bakıyor; akış moduna geçmek onu bozmamalı.
+        // The existing parsers (fetch's partial success, push's `remote:` lines) look at the WHOLE of
+        // stderr; switching to streaming mode must not break that.
         using Harness harness = await CreateAsync(5);
 
         GitResult result = await harness.Runner.RunAsync(
@@ -193,13 +193,13 @@ public class GitProgressTests
         result.StandardError.ShouldContain("origin/main");
     }
 
-    // ------------------------------------------------------------- iptal
+    // ------------------------------------------------------------- cancellation
 
     [Fact]
     public async Task Iptal_edilen_fetch_geride_KILIT_birakmiyor()
     {
-        // 🔴 Yarıda kesilen bir ağ işlemi depoyu kullanılamaz bırakırsa kullanıcı bir daha
-        // hiçbir şey yapamaz. Ölçüldü: SIGTERM sonrası kilit yok, `fsck` temiz.
+        // 🔴 If a network operation interrupted halfway leaves the repository unusable, the user cannot do
+        // anything again. Measured: no lock after SIGTERM, `fsck` clean.
         using Harness harness = await CreateAsync(200);
 
         using CancellationTokenSource cancellation = new();
@@ -210,14 +210,14 @@ public class GitProgressTests
                 WorkingDirectory = harness.Local.Path,
                 Arguments = ["fetch", "--progress", "origin"],
 
-                // İlk ilerleme bildiriminde iptal et: süreç gerçekten çalışıyorken.
+                // Cancel on the first progress notification: while the process is really running.
                 Progress = new Progress<GitProgress>(_ => cancellation.Cancel()),
             },
             cancellation.Token);
 
         await Should.ThrowAsync<OperationCanceledException>(() => running);
 
-        // Depo hâlâ çalışır durumda olmalı.
+        // The repository must still be in working order.
         harness.Local.Git("fsck", "--no-progress");
         harness.Local.Git("status", "--porcelain=v2");
 
@@ -231,8 +231,8 @@ public class GitProgressTests
     [Fact]
     public async Task Iptal_ONCESINDE_biten_komut_iptal_sayilmiyor()
     {
-        // İptal jetonu iptal edilmiş olsa bile bitmiş bir işi "iptal edildi" diye
-        // bildirmek, kullanıcıya olmamış bir şeyi anlatırdı.
+        // Even if the cancellation token has been cancelled, reporting a finished job as "cancelled"
+        // would tell the user about something that did not happen.
         using Harness harness = await CreateAsync(3);
 
         GitResult result = await harness.Runner.RunAsync(

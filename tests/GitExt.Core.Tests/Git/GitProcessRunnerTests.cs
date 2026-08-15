@@ -5,12 +5,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests.Git;
 
 /// <summary>
-/// Süreç yürütme katmanının davranış sözleşmesi (P02-T01, P02-T03).
-/// Tümü <b>gerçek <c>git</c></b> süreçleri çalıştırır.
+/// The behavioural contract of the process execution layer (P02-T01, P02-T03).
+/// All of it runs <b>real <c>git</c></b> processes.
 /// </summary>
 public class GitProcessRunnerTests
 {
-    /// <summary>Test iptal edildiğinde alt süreçlerin de durması için.</summary>
+    /// <summary>So that child processes stop too when the test is cancelled.</summary>
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static async Task<GitProcessRunner> CreateRunnerAsync(IGitCommandLog? log = null)
@@ -42,7 +42,7 @@ public class GitProcessRunnerTests
         GitResult result = await runner.RunAsync(
             GitCommand.Create(repository.Path, "rev-parse", "boyle-bir-ref-yok"), Ct);
 
-        // RunAsync sözleşmesi: çıkış kodu ne olursa olsun sonuç döner.
+        // The RunAsync contract: a result is returned whatever the exit code is.
         result.IsSuccess.ShouldBeFalse();
         result.ExitCode.ShouldNotBe(0);
         result.StandardError.ShouldNotBeNullOrWhiteSpace();
@@ -59,7 +59,7 @@ public class GitProcessRunnerTests
                 GitCommand.Create(repository.Path, "rev-parse", "boyle-bir-ref-yok"), Ct));
 
         exception.Kind.ShouldBe(GitFailureKind.UnknownRevision);
-        // Ham stderr her zaman erişilebilir kalmalı (P02-T12).
+        // The raw stderr must always stay accessible (P02-T12).
         exception.StandardError.ShouldNotBeNullOrWhiteSpace();
         exception.CommandLine.ShouldContain("rev-parse");
     }
@@ -88,8 +88,8 @@ public class GitProcessRunnerTests
     [Fact]
     public async Task Bosluk_ve_ozel_karakter_iceren_dosya_adlari_bozulmadan_gecer()
     {
-        // Argümanlar dizi olarak geçtiği için kabuk yorumlaması olmamalı (ADR-0002 kural 4).
-        // Bu isim kabuğa gitseydi $(whoami) çalışır, & komutu bölerdi.
+        // Because the arguments are passed as an array there must be no shell interpretation (ADR-0002 rule 4).
+        // Had this name gone to a shell, $(whoami) would run and & would split the command.
         const string awkwardName = "dosya adı 'tırnaklı' $(whoami) & ; şey.txt";
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -108,7 +108,7 @@ public class GitProcessRunnerTests
     [Fact]
     public async Task Unicode_dosya_adlari_kacis_dizisi_olmadan_gelir()
     {
-        // core.quotepath=false olmadan git bunu \303\247... diye sekizlik kaçışlarla döndürür.
+        // Without core.quotepath=false git returns this with octal escapes such as \303\247….
         const string turkishName = "çalışma-günlüğü-ÖĞÜŞİ.txt";
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -127,7 +127,7 @@ public class GitProcessRunnerTests
     [Fact]
     public async Task Standart_girdi_uzerinden_commit_mesaji_gecirilebilir()
     {
-        // Commit mesajları komut satırına gömülmez; stdin'den geçer (ADR-0002 kural 4).
+        // Commit messages are not embedded in the command line; they go through stdin (ADR-0002 rule 4).
         const string message = "başlık satırı\n\nGövde: $HOME `whoami` \"tırnak\" ve 'tek tırnak'.";
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -157,8 +157,8 @@ public class GitProcessRunnerTests
     [Fact]
     public async Task Buyuk_cikti_deadlock_olmadan_okunur()
     {
-        // stdout ve stderr eşzamanlı okunmazsa boru dolar, süreç yazamaz ve asla bitmez.
-        // Bu test o deadlock'ı yakalar: geçmezse zaman aşımına düşer.
+        // If stdout and stderr are not read concurrently the pipe fills up, the process cannot write and never finishes.
+        // This test catches that deadlock: if it does not pass, it times out.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -188,8 +188,8 @@ public class GitProcessRunnerTests
     [Fact]
     public async Task Ikili_icerik_bozulmadan_okunur()
     {
-        // stdout string olarak okunsaydı geçersiz UTF-8 baytları U+FFFD'ye dönüşür ve
-        // içerik geri dönülemez şekilde bozulurdu.
+        // Had stdout been read as a string, invalid UTF-8 bytes would turn into U+FFFD and the
+        // content would be corrupted irreversibly.
         byte[] binaryContent = [0x00, 0xFF, 0xFE, 0x42, 0x00, 0x80, 0x81, 0x0A];
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -210,9 +210,9 @@ public class GitProcessRunnerTests
     [Fact]
     public async Task Zaman_asimi_siniflandirilmis_hata_uretir()
     {
-        // Deterministik olması için gerçekten yavaş bir iş gerekiyor: küçük bir depoda
-        // `git log` milisaniyeler içinde biter ve kısa zaman aşımıyla yarışa girer.
-        // Uzun süren bir pre-commit hook'u hem kesin yavaş, hem de gerçek bir senaryo.
+        // A genuinely slow job is needed for determinism: on a small repository
+        // `git log` finishes within milliseconds and races with a short timeout.
+        // A long-running pre-commit hook is both reliably slow and a real scenario.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -237,9 +237,9 @@ public class GitProcessRunnerTests
     [Fact]
     public async Task Zaman_asimi_sureci_gercekten_oldurur()
     {
-        // Zaman aşımı hatası fırlatmak yetmez; alt süreç ağacı da ölmeli.
-        // Hook hâlâ çalışıyor olsaydı index.lock tutulmaya devam ederdi ve
-        // sonraki commit "Another git process seems to be running" ile kırılırdı.
+        // Throwing a timeout error is not enough; the child process tree must die too.
+        // Were the hook still running, index.lock would keep being held and the
+        // next commit would break with "Another git process seems to be running".
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -258,7 +258,7 @@ public class GitProcessRunnerTests
                 },
                 Ct));
 
-        // Hook'u kaldır ve depo hâlâ kullanılabilir mi diye bak.
+        // Remove the hook and check whether the repository is still usable.
         repository.InstallHook("pre-commit", "exit 0\n");
 
         GitResult status = await runner.RunAsync(
@@ -316,7 +316,7 @@ public class GitProcessRunnerTests
         GitCommand command = GitCommand.Create(
             "/tmp/repo", "commit", "-m", "boşluklu 'mesaj'");
 
-        // Tırnaklama olmasaydı kullanıcı bu satırı kopyalayıp çalıştıramazdı.
+        // Without quoting the user could not copy this line and run it.
         command.ToDisplayString().ShouldBe("git commit -m 'boşluklu '\\''mesaj'\\'''");
     }
 }
