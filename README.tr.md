@@ -16,6 +16,9 @@
 > Linux günlük olarak kullanılıyor ve her Linux paketi temiz konteynerde doğrulanıyor.
 > Windows çalışıyor (Wine ve CI ile doğrulandı) ama günlük kullanımda denenmedi;
 > **macOS gerçek donanımda çalıştırılmadı** — topluluk destekli kabul edin.
+>
+> Arayüz **varsayılan olarak İngilizce**, Türkçe de mevcut; *Ayarlar → Görünüm → Dil*
+> üzerinden çalışma anında değiştirilebiliyor.
 
 </div>
 

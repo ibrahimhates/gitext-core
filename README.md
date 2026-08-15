@@ -17,7 +17,8 @@
 > Windows runs (verified under Wine and on CI) but has not been used as a daily driver;
 > **macOS has not been run on real hardware** — treat it as community-supported.
 >
-> The interface is currently **Turkish only**; English localisation is the next piece of work.
+> The interface is **English by default**, with Turkish available; you can switch at runtime
+> from *Settings → Appearance → Language*.
 
 </div>
 

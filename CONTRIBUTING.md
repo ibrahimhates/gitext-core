@@ -175,9 +175,57 @@ number of commits, branches, whether there are submodules, worktrees, or unusual
 
 ## Localisation
 
-UI strings are being moved to a localisation layer (English first, Turkish second). Until that
-lands, please **do not** add new hard-coded UI strings in a language other than English, and
-do not translate existing ones ad hoc — it makes the eventual extraction harder.
+The UI is translated from JSON files in `src/GitExt.UI/Locales/`. **English is the source
+language**; Turkish ships alongside it. Users switch at runtime from *Settings → Appearance →
+Language*.
+
+### Adding a UI string
+
+Never hard-code user-visible text. In XAML use the markup extension, in code use `Loc`:
+
+```xml
+<TextBlock Text="{loc:Translate settings.theme}" />
+```
+
+```csharp
+Notice = Loc.T("merge.already_up_to_date");
+Warning = Loc.F("merge.commits_will_be_merged", count);   // with placeholders
+```
+
+Then add the key to **both** `en.json` and `tr.json`. Forgetting one is not possible to miss:
+`LocaleCompletenessTests` fails when the key sets differ, when a value is empty, or when the
+`{0}` placeholders do not match between languages.
+
+Key format is `area.purpose`, lower-case, derived from the **English** text — never from a
+translation.
+
+### Adding a language
+
+Drop a file into `src/GitExt.UI/Locales/`. That is the whole procedure — no code change, no
+`.csproj` change:
+
+```json
+{
+  "_meta": { "code": "fr", "name": "Français" },
+  "settings.theme": "Thème"
+}
+```
+
+The file name is the language code; `_meta.name` is what appears in the language dropdown, and
+it should be written **in that language** ("Français", not "French") — the person looking for
+it is the person who reads it. Keys missing from a translation fall back to English, so a
+partial translation is usable from the first commit.
+
+### What is *not* translated
+
+- **Code comments.** They stay in Turkish.
+- **Git terminology and product names** — `SHA`, `URL`, `Push`, `Git`, `gitext-core` — which
+  read the same in both languages.
+- **`GitExt.Core` messages.** The core layer cannot depend on the UI (ADR-0003), so its
+  exception text stays English and diagnostic. What the user sees is chosen in the UI from
+  `GitException.Kind`; see `Loc.GitError`. An unclassified failure (`GitFailureKind.Unknown`)
+  falls through to git's own message on purpose — hiding an unknown git error behind invented
+  text would make it undiagnosable.
 
 ---
 
