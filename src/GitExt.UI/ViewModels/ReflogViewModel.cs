@@ -112,6 +112,9 @@ public sealed class ReflogViewModel : ViewModelBase
 
     public int UnreachableCount => All.Count(row => row.IsUnreachable);
 
+    /// <summary>Ulaşılamaz commit sayısının çevrilmiş metni (P11-T08).</summary>
+    public string UnreachableCountText => Loc.F("reflog.unreachable_count", UnreachableCount);
+
     public bool IsEmpty => Rows.Count == 0;
 
     public string? Error
@@ -175,6 +178,7 @@ public sealed class ReflogViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(UnreachableCount));
+        OnPropertyChanged(nameof(UnreachableCountText));
     }
 
     private bool CanReturn() => Selected is not null && _reset is not null && !IsBusy;

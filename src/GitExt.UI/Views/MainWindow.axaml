@@ -137,7 +137,7 @@
                     yanlış klasörü açtığını fark edebilir; bitmesini beklemek zorunda kalmamalı.
                 -->
                 <TextBlock Grid.Column="1"
-                           Text="{Binding Commits.LoadedCount, StringFormat='{}{0} commits loaded…'}"
+                           Text="{Binding Commits.LoadedCountText}"
                            IsVisible="{Binding Commits.IsLoading}"
                            FontSize="12"
                            Opacity="0.7"

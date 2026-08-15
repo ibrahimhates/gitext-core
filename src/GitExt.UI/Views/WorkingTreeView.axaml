@@ -409,7 +409,7 @@
                                      FontFamily="{DynamicResource GitExtMonospaceFont}"
                                      FontSize="12"
                                      VerticalContentAlignment="Top"
-                                     PlaceholderText="Commit message (Ctrl+Enter to commit)" />
+                                     PlaceholderText="{loc:Translate working_tree.commit_message_ctrl_enter_to_commit}" />
                         </Panel>
                     </Border>
 

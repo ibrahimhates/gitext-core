@@ -3,6 +3,7 @@ using System.Globalization;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.Core.Git;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -140,6 +141,9 @@ public sealed class CommandLogViewModel : ViewModelBase, IDisposable
     /// <summary>Başarısız komut sayısı — süzme kutusunun yanında gösteriliyor.</summary>
     public int FailureCount => All.Count(row => !row.IsSuccess);
 
+    /// <summary>Başarısız komut sayısının çevrilmiş metni (P11-T08).</summary>
+    public string FailureCountText => Loc.F("command_log.failed_commands", FailureCount);
+
     public IRelayCommand ClearCommand { get; }
 
     private void OnRecorded(object? sender, GitCommandLogEntry entry)
@@ -188,6 +192,7 @@ public sealed class CommandLogViewModel : ViewModelBase, IDisposable
 
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(FailureCount));
+        OnPropertyChanged(nameof(FailureCountText));
     }
 
     public void Dispose()

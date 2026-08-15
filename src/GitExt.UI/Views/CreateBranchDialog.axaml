@@ -24,7 +24,7 @@
 
         <StackPanel Spacing="4">
             <TextBlock Text="{loc:Translate create_branch.branch_name}" />
-            <TextBox Name="BranchNameTextBox" PlaceholderText="feature/new-thing" />
+            <TextBox Name="BranchNameTextBox" PlaceholderText="{loc:Translate create_branch.feature_new_thing}" />
             <TextBlock Name="ValidationText"
                        FontSize="11"
                        TextWrapping="Wrap"

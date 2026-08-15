@@ -221,6 +221,18 @@ public sealed partial class CommitListViewModel : ViewModelBase
     public partial int LoadedCount { get; private set; }
 
     /// <summary>
+    /// Yüklenen commit sayısının çevrilmiş metni (P11-T08).
+    /// </summary>
+    /// <remarks>
+    /// XAML'de <c>StringFormat</c> ile yazılamıyor: biçim dizesinin kendisi çevrilmeli ve
+    /// Avalonia <c>StringFormat</c>'ı bağlanabilir bir özellik olarak sunmuyor. Metin
+    /// burada kuruluyor.
+    /// </remarks>
+    public string LoadedCountText => Loc.F("commit_list.commits_loaded", LoadedCount);
+
+    partial void OnLoadedCountChanged(int value) => OnPropertyChanged(nameof(LoadedCountText));
+
+    /// <summary>
     /// Depo açık ama hiç commit yok mu? (Yeni <c>git init</c> — hata değil.)
     /// </summary>
     [ObservableProperty]

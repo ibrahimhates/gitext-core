@@ -12,7 +12,7 @@
 
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
       <TextBox Name="MessageBox" Width="280"
-               PlaceholderText="Stash message (optional)"
+               PlaceholderText="{loc:Translate stash.stash_message_optional}"
                Text="{Binding NewMessage}" />
       <CheckBox Name="UntrackedBox" Content="{loc:Translate stash.include_untracked}" IsChecked="{Binding IncludeUntracked}" />
       <CheckBox Name="KeepIndexBox" Content="{loc:Translate stash.keep_index}" IsChecked="{Binding KeepIndex}" />
@@ -54,7 +54,7 @@
         <Button Name="PopButton" Content="{loc:Translate stash.pop}" Command="{Binding PopCommand}" />
         <Button Name="DropButton" Content="{loc:Translate stash.drop}" Command="{Binding DropCommand}" />
         <Border Width="1" Background="{DynamicResource GitExtSeparatorBrush}" Margin="4,2" />
-        <TextBox Name="BranchNameBox" Width="160" PlaceholderText="New branch name" />
+        <TextBox Name="BranchNameBox" Width="160" PlaceholderText="{loc:Translate stash.new_branch_name}" />
         <Button Name="BranchButton" Content="{loc:Translate stash.branch_from_stash}" Command="{Binding BranchCommand}" />
         <Button Name="CloseButton" Content="{loc:Translate stash.close}" Click="OnClose" />
       </StackPanel>

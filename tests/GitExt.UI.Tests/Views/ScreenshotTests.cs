@@ -3,6 +3,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
 using GitExt.Core.Model;
+using GitExt.UI.Localization;
 using GitExt.UI.Settings;
 using GitExt.UI.Themes;
 using GitExt.UI.ViewModels;
@@ -121,11 +122,21 @@ public class ScreenshotTests
     [AvaloniaTheory]
     [InlineData(ThemePreference.Light, "screenshot-main-light.png")]
     [InlineData(ThemePreference.Dark, "screenshot-main-dark.png")]
-    public async Task Ana_pencere_ekran_goruntusu_uretiliyor(ThemePreference theme, string fileName)
+    [InlineData(ThemePreference.Light, "screenshot-main-tr.png", "tr")]
+    public async Task Ana_pencere_ekran_goruntusu_uretiliyor(
+        ThemePreference theme,
+        string fileName,
+        string language = "en")
     {
         InMemorySettingsStore settings = new();
         AppearanceService appearance = new(Application.Current!, settings);
         appearance.SetTheme(theme);
+
+        // Türkçe görüntü, çevirinin GERÇEKTEN arayüze ulaştığının gözle görülür kanıtı.
+        Translator translator = new(settings);
+        translator.Use(language);
+        TranslateExtension.Attach(translator);
+        Loc.Attach(translator);
 
         MainWindowViewModel model = BuildModel();
 

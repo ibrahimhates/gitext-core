@@ -15,7 +15,7 @@
                 IsChecked="{Binding OnlyUnreachable}" />
       <TextBlock Name="UnreachableCountLabel"
                  VerticalAlignment="Center" Opacity="0.7"
-                 Text="{Binding UnreachableCount, StringFormat='{}{0} unreachable'}" />
+                 Text="{Binding UnreachableCountText}" />
     </StackPanel>
 
     <ListBox Grid.Row="1" Name="ReflogList"

@@ -9,7 +9,7 @@
 
         <TextBox Grid.Row="0"
                  Name="FilterBox"
-                 PlaceholderText="Search commands or shortcuts…"
+                 PlaceholderText="{loc:Translate shortcut_settings.search_commands_or_shortcuts}"
                  Text="{Binding Filter}"
                  Margin="0,0,0,8" />
 

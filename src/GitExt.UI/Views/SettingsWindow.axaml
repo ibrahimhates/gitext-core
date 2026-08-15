@@ -83,7 +83,7 @@
                         <TextBox Grid.Row="2" Grid.Column="1"
                                  Name="MonoFontBox"
                                  Text="{Binding MonospaceFontFamily}"
-                                 PlaceholderText="Platform default if left empty"
+                                 PlaceholderText="{loc:Translate settings.platform_default_if_left_empty}"
                                  Margin="0,2" />
                     </Grid>
                 </StackPanel>
