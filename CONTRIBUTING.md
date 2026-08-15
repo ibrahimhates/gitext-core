@@ -241,6 +241,14 @@ partial translation is usable from the first commit.
 
 ---
 
+## Releasing
+
+Maintainers only — see **[docs/RELEASING.md](./docs/RELEASING.md)**. The short version: add a
+`<release>` entry to the AppStream metadata, push a `v`-prefixed tag, review the draft release
+the workflow opens.
+
+---
+
 ## License
 
 By contributing you agree that your contribution is licensed under

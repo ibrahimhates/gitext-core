@@ -93,11 +93,32 @@
     Sürüm geçmişi. Yeni sürümde buraya yeni bir <release> eklenmesi gerekiyor;
     P10-T29'da yayın kontrol listesinin parçası.
   -->
+  <!--
+    ⚠️ Her yayında buraya YENİ bir <release> eklenmesi gerekiyor; en yeni EN ÜSTTE.
+    Yazılım merkezleri bu listeyi "neler değişti" olarak gösteriyor ve eksik kalırsa
+    kullanıcı sürüm geçmişini hiç göremiyor.
+
+    `type="development"`: kararlı sürüm değil. Bunu atlamak, yazılım merkezlerinin
+    0.x bir sürümü kararlı gibi listelemesi demek olurdu.
+  -->
   <releases>
-    <release version="1.0.0" date="2026-08-14">
+    <release version="0.1.0" date="2026-08-15" type="development">
       <description>
-        <p>First stable release.</p>
+        <p>
+          First packaged release. Git works end to end: browsing history, diffing, staging by
+          line, committing, branching, fetch/pull/push, rebase, cherry-pick, revert, stash and
+          conflict resolution.
+        </p>
+        <p>
+          The interface is English by default, with Turkish available and switchable at runtime.
+        </p>
+        <p>
+          Linux is exercised daily and every package format is verified in a clean container.
+          Windows runs but has not been used as a daily driver; macOS has not been run on real
+          hardware.
+        </p>
       </description>
+      <url type="details">https://github.com/ibrahimhates/gitext-core/releases/tag/v0.1.0</url>
     </release>
   </releases>
 </component>
