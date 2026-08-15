@@ -1,0 +1,6 @@
+{
+  "_meta": { "code": "tr", "name": "Türkçe" },
+  "settings.title": "Ayarlar",
+  "test.format": "{0} öğe",
+  "test.broken_format": "{0 bozuk"
+}

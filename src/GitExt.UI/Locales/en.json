@@ -1,0 +1,6 @@
+{
+  "_meta": { "code": "en", "name": "English" },
+  "settings.title": "Settings",
+  "test.format": "{0} items",
+  "test.broken_format": "{0 broken"
+}

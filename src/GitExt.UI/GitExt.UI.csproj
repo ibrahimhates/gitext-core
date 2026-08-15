@@ -24,6 +24,19 @@
 
   <ItemGroup>
     <!--
+      Dil dosyaları ikiliye gömülüyor (P11-T01). JOKER bilinçli: yeni bir dil eklemek
+      yalnızca bu klasöre bir JSON bırakmak olmalı — .csproj'a da, C# koduna da dokunmadan.
+      Translator dilleri çalışma anında gömülü kaynak adlarından keşfediyor.
+
+      Gömülü (EmbeddedResource), yanına kopyalanan (Content) DEĞİL: tek dosyalık publish
+      çıktısında yan dosya bırakmak, kullanıcının silebileceği/bozabileceği bir bağımlılık
+      yaratırdı.
+    -->
+    <EmbeddedResource Include="Locales\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
       Görünümlerin test kancaları (örn. CommitListView.ComparisonRequested) testlere açık
       ama public API'nin parçası değil: pencere açmayı headless ortamda saymak güvenilir
       olmadığı için tuş → komut bağlantısı bu olay üzerinden doğrulanıyor.
