@@ -74,11 +74,27 @@ public sealed class Translator : ITranslator
 
         _settings = settings;
         _catalogs = LoadCatalogs(resources, out List<LanguageInfo> languages);
-        Available = languages;
 
-        _fallback = _catalogs.GetValueOrDefault(FallbackLanguage) ?? new Dictionary<string, string>();
+        // 🔴 Yedek dil dosyadan DEĞİL koddan geliyor (P11-T10). Önceden
+        // `_catalogs["en"]` kullanılıyordu ve `en.json` silinir/bozulursa yedek BOŞ
+        // sözlük oluyordu: Türkçede olmayan her anahtar arayüzde ham anahtar olarak
+        // görünürdü ("settings.language"). Ölçüldü ve doğrulandı.
+        //
+        // BuiltInEnglish aynı dosyadan ÜRETİLİYOR (tools/i18n/generate-fallback.py) ve
+        // CI ikisinin ayrışmadığını doğruluyor — elle yazılmış ikinci bir İngilizce
+        // kaynağı olsaydı er ya da geç farklılaşırdı.
+        _fallback = BuiltInEnglish.Entries;
         _active = _fallback;
         Current = FallbackLanguage;
+
+        // `en.json` yoksa bile İngilizce seçilebilir olmalı: gömülü kopya zaten tam.
+        if (!languages.Any(l => l.Code == FallbackLanguage))
+        {
+            languages.Add(new LanguageInfo(FallbackLanguage, "English"));
+            languages.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        Available = languages;
     }
 
     /// <summary>
@@ -208,7 +224,14 @@ public sealed class Translator : ITranslator
 
         if (!_catalogs.TryGetValue(normalized, out IReadOnlyDictionary<string, string>? catalog))
         {
-            return false;
+            // İngilizce her zaman seçilebilir: dosyası olmasa bile gömülü kopya tam
+            // (P11-T10). Başka bir dil için dosya yoksa gerçekten seçilemez.
+            if (!string.Equals(normalized, FallbackLanguage, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            catalog = BuiltInEnglish.Entries;
         }
 
         if (string.Equals(normalized, Current, StringComparison.Ordinal) && ReferenceEquals(_active, catalog))

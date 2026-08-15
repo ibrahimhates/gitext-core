@@ -192,12 +192,24 @@ Notice = Loc.T("merge.already_up_to_date");
 Warning = Loc.F("merge.commits_will_be_merged", count);   // with placeholders
 ```
 
-Then add the key to **both** `en.json` and `tr.json`. Forgetting one is not possible to miss:
-`LocaleCompletenessTests` fails when the key sets differ, when a value is empty, or when the
-`{0}` placeholders do not match between languages.
+Then add the key to **both** `en.json` and `tr.json`, and regenerate the built-in fallback:
+
+```bash
+tools/i18n/generate-fallback.py    # rewrites Localization/BuiltInEnglish.cs
+```
+
+Forgetting any of these is not possible to miss. `LocaleCompletenessTests` fails when the key
+sets differ, when a value is empty, or when the `{0}` placeholders do not match between
+languages; CI fails when `BuiltInEnglish.cs` has drifted from `en.json`.
 
 Key format is `area.purpose`, lower-case, derived from the **English** text — never from a
 translation.
+
+> **Why English is compiled in as well:** the translator falls back to English for any key a
+> translation is missing — but that English used to come from `en.json` too. Delete or corrupt
+> that file and the fallback became an empty dictionary, so the UI filled with raw key names
+> (`settings.language`). This was measured. `BuiltInEnglish.cs` is generated *from* `en.json`
+> so the two cannot disagree, and it costs about 32 KB.
 
 ### Adding a language
 

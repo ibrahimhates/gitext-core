@@ -34,6 +34,19 @@ jobs:
       - name: Check Conventional Commits
         run: build/check-commits.sh "origin/${{ github.base_ref }}..HEAD"
 
+  # P11-T10 — Gömülü İngilizce yedek, en.json'dan ÜRETİLİYOR. İkisi ayrışırsa hangi
+  # metnin geçerli olduğu belirsizleşir: dosya bir şey, kod başka bir şey söyler.
+  # Burada ayrışma derleme hatası hâline getiriliyor.
+  localization:
+    name: Localization fallback in sync
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check generated fallback
+        run: tools/i18n/generate-fallback.py --check
+
   build:
     name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

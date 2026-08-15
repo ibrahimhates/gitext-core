@@ -126,34 +126,32 @@ public class TranslatorTests
     [Fact]
     public void Format_yer_tutuculari_dolduruyor()
     {
-        // Test verisi ÜRETİM dil dosyalarından değil, testin kendisinden geliyor:
-        // en.json'a "test.*" anahtarları koymak, kullanıcıya giden dosyaya test
-        // artığı sokmak olurdu.
-        Translator translator = Translator.ForTesting(
-            new InMemorySettingsStore(),
-            Locale("en", """{"_meta":{"code":"en","name":"English"},"count":"{0} items"}"""));
+        // Gerçek bir yer tutuculu anahtar kullanılıyor: yedek İngilizce artık dosyadan
+        // değil koddan geliyor (P11-T10), uydurma bir "en" katalogu enjekte edilemiyor.
+        Translator translator = new(new InMemorySettingsStore());
 
-        translator.Format("count", 42).ShouldBe("42 items");
+        translator.Format("commit_list.commits_loaded", 42).ShouldBe("42 commits loaded…");
     }
 
     [Fact]
     public void Bozuk_yer_tutucu_cokmuyor()
     {
         // Çeviride bozuk bir "{0" uygulamayı çökertmemeli: ham şablon gösteriliyor,
-        // hata görünür kalıyor ama arayüz ayakta.
+        // hata görünür kalıyor ama arayüz ayakta. Bozuk şablon bir ÇEVİRİDEN gelebilir,
+        // o yüzden etkin dil üzerinden kuruluyor.
         Translator translator = Translator.ForTesting(
             new InMemorySettingsStore(),
-            Locale("en", """{"_meta":{"code":"en","name":"English"},"broken":"{0 broken"}"""));
+            new Dictionary<string, Func<Stream>>
+            {
+                ["GitExt.UI.Locales.tr.json"] = () => new MemoryStream(
+                    System.Text.Encoding.UTF8.GetBytes(
+                        """{"_meta":{"code":"tr","name":"Türkçe"},"commit_list.commits_loaded":"{0 bozuk"}""")),
+            });
 
-        Should.NotThrow(() => translator.Format("broken", 1));
+        translator.Use("tr");
+
+        Should.NotThrow(() => translator.Format("commit_list.commits_loaded", 1));
     }
-
-    private static Dictionary<string, Func<Stream>> Locale(string code, string json) =>
-        new()
-        {
-            [$"GitExt.UI.Locales.{code}.json"] =
-                () => new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json)),
-        };
 
     [Fact]
     public void Kayitli_tercih_baslangicta_uygulaniyor()

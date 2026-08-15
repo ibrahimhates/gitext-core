@@ -62,14 +62,18 @@ public class LanguageDiscoveryTests
     {
         // Eksik çeviri, o dili kullanılamaz hâle getirmemeli: çevrilmemiş satır
         // İngilizce görünüyor, arayüz çalışmaya devam ediyor.
+        //
+        // ⚠️ Yedek İngilizce artık DOSYADAN değil koddan geliyor (P11-T10), bu yüzden
+        // uydurma anahtar ("a", "b") kullanılamıyor — gerçek anahtarlarla doğrulanıyor.
         Translator translator = Build(
-            ("en", """{"_meta":{"code":"en","name":"English"},"a":"Alpha","b":"Beta"}"""),
-            ("fr", """{"_meta":{"code":"fr","name":"Français"},"a":"Alpha (fr)"}"""));
+            ("fr", """{"_meta":{"code":"fr","name":"Français"},"settings.theme":"Thème"}"""));
 
         translator.Use("fr");
 
-        translator["a"].ShouldBe("Alpha (fr)");
-        translator["b"].ShouldBe("Beta");
+        translator["settings.theme"].ShouldBe("Thème");
+
+        // fr.json'da yok → gömülü İngilizceden geliyor.
+        translator["settings.language"].ShouldBe("Language");
     }
 
     [Fact]
@@ -88,12 +92,14 @@ public class LanguageDiscoveryTests
     {
         // Bir dosyadaki söz dizimi hatası uygulamayı açılmaz hâle getirmemeli.
         Translator translator = Build(
-            ("en", """{"_meta":{"code":"en","name":"English"},"a":"Alpha"}"""),
+            ("tr", """{"_meta":{"code":"tr","name":"Türkçe"},"settings.theme":"Tema"}"""),
             ("xx", "{ bu geçerli JSON değil"));
 
-        translator.Available.Select(l => l.Code).ShouldContain("en");
+        translator.Available.Select(l => l.Code).ShouldContain("tr");
         translator.Available.Select(l => l.Code).ShouldNotContain("xx");
-        translator["a"].ShouldBe("Alpha");
+
+        // İngilizce her zaman kullanılabilir: gömülü kopya dosyaya bağlı değil (P11-T10).
+        translator["settings.theme"].ShouldBe("Theme");
     }
 
     [Fact]
