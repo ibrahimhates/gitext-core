@@ -6,19 +6,27 @@
 
 **Hızlı, yerel (native), çapraz platform bir Git arayüzü — GitExtensions deneyimi, Windows'a bağlı kalmadan.**
 
-<!-- TODO(readme-01): CI çalıştıktan ve ilk sürüm yayınlandıktan sonra rozetler eklenecek.
-     Planlanan: build durumu, son sürüm, indirme sayısı, lisans. -->
+[![Build](https://github.com/ibrahimhates/gitext-core/actions/workflows/ci.yml/badge.svg)](https://github.com/ibrahimhates/gitext-core/actions/workflows/ci.yml)
+[![Sürüm](https://img.shields.io/github/v/release/ibrahimhates/gitext-core)](https://github.com/ibrahimhates/gitext-core/releases)
+[![Lisans](https://img.shields.io/badge/lisans-GPL--3.0--or--later-blue)](./LICENSE)
 
-> ⚠️ **Durum: alfa — kullanılabilir, ama kararlı sürüm olarak yayınlanmadı.**
-> Git çalışıyor: geçmişte gezinme, diff, satır satır staging, commit, dallanma, fetch/pull/push,
-> rebase (interaktif dahil), cherry-pick, revert, stash ve çakışma çözümü uygulandı ve test
-> edildi. Linux günlük olarak kullanılıyor; Windows ve macOS derleniyor ama **hedef platformda
-> çalıştırılmadı**. Aşağıda *(planlanan)* diye işaretlenenler henüz yapılmadı.
+> ⚠️ **Durum: beta — günlük Git işleri için tamam, üç platform için paketlendi.**
+> Geçmişte gezinme, diff, satır satır staging, commit, dallanma, fetch/pull/push, rebase
+> (interaktif dahil), cherry-pick, revert, stash ve çakışma çözümü uygulandı ve test edildi.
+> Linux günlük olarak kullanılıyor ve her Linux paketi temiz konteynerde doğrulanıyor.
+> Windows çalışıyor (Wine ve CI ile doğrulandı) ama günlük kullanımda denenmedi;
+> **macOS gerçek donanımda çalıştırılmadı** — topluluk destekli kabul edin.
 
 </div>
 
-<!-- TODO(readme-02): Ana ekran görüntüsü buraya (commit grafiği, koyu tema, gerçek bir repo).
-     Commit grafiği gösterilebilir hale gelene kadar bekliyor. -->
+![gitext-core — commit grafiği, koyu tema](./docs/assets/screenshot-main-dark.png)
+
+<details>
+<summary>Açık tema</summary>
+
+![gitext-core — commit grafiği, açık tema](./docs/assets/screenshot-main-light.png)
+
+</details>
 
 ---
 
@@ -50,7 +58,9 @@ ve GitExtensions projesiyle bağlantılı değildir.
 
 ---
 
-## Özellikler *(planlanan)*
+## Özellikler
+
+Aksi belirtilmedikçe aşağıdakilerin tamamı **uygulandı ve test edildi**.
 
 - **Görsel commit grafiği** — dallar, merge'ler, tag'ler ve ref'ler renk kodlu bir DAG olarak; çok büyük geçmişler için sanallaştırılmış.
 - **Diff ve dosya inceleme** — yan yana ve birleşik (unified) diff, kelime seviyesinde vurgulama, boşluk kontrolleri.
@@ -59,9 +69,12 @@ ve GitExtensions projesiyle bağlantılı değildir.
 - **İleri düzey işlemler** — interactive rebase, cherry-pick, revert, stash yönetimi, reset, tag yönetimi.
 - **Merge conflict çözümü** — uygulama içi üç yollu görünüm, artı kendi `merge.tool` ayarınla entegrasyon.
 - **Repo gezinme** — herhangi bir revizyondaki dosya ağacı, blame, dosya geçmişi, yeniden adlandırmalar boyunca takip.
-- **Submodule, worktree ve Git LFS farkındalığı.**
 - **Reflog tarayıcı** — kaybolan commit'leri bul, son işlemini geri al.
 - **Arama** — commit mesajları, diff içeriği ve dosya içeriği üzerinde.
+- **Submodule ve worktree** — tanınıyor ve gezilebiliyor.
+- **Git LFS** — gerçek `git`'i çalıştırdığımız için çalışıyor (LFS bir clean/smudge filtresi,
+  kendiliğinden devreye giriyor). Henüz **LFS'e özel arayüz yok**: pointer mı gerçek içerik mi
+  göstergesi yok, LFS nesnelerini açıkça çekme yok.
 
 ---
 
@@ -69,10 +82,10 @@ ve GitExtensions projesiyle bağlantılı değildir.
 
 | Platform | Durum |
 |---|---|
-| Linux — X11 | Derleniyor ve çalışıyor |
+| Linux — X11 | **Günlük kullanılıyor.** Her paket biçimi temiz konteynerde doğrulandı. |
 | Linux — Wayland | Derleniyor ve çalışıyor (opt-in backend, aşağıya bak) |
-| Windows 10/11 | Cross-compile ediliyor; hedef platformda henüz çalıştırılmadı |
-| macOS (Apple Silicon + Intel) | Cross-compile ediliyor; hedef platformda henüz çalıştırılmadı |
+| Windows 10/11 | **Çalışıyor** — Wine ve CI ile doğrulandı; günlük kullanımda denenmedi |
+| macOS (Apple Silicon + Intel) | CI'da derlenip açılıyor; **gerçek donanımda çalıştırılmadı** |
 
 Linux birinci sınıf hedef ve geliştirmenin yapıldığı yer. Windows ve macOS yapıları aynı kod
 tabanından, aynı yayın hattıyla üretiliyor.
@@ -111,107 +124,218 @@ Depoda `commit-graph` dosyası varsa — gitext-core bunu algılayıp öneriyor,
 
 ## Kurulum
 
-> **Şu an hazır olanlar: AppImage ve taşınabilir tarball** (Linux x86-64, `v0.2.0`'dan itibaren).
-> Aşağıdaki diğer kanallar hâlâ planlanan durumda — çalıştıkları için değil, hedeflenen
-> dağıtım hikâyesi görünsün diye listeleniyorlar.
+> **Bu bölümdeki her komut çalıştırıldı.** Aşağıdaki paketlerin her biri, kendi dağıtımının
+> temiz bir konteynerinde kurulup açıldı — her şeyin zaten kurulu olduğu geliştirme
+> makinesinde değil. Doğrulanmamış olan yerlerde bu açıkça yazıyor.
 
-Dağıtım öncelikli olarak **GitHub Releases** üzerinden, ayrıca topluluk paket depolarıyla yapılır.
+Dağıtım **GitHub Releases** üzerinden ve topluluk paket depolarıyla yapılıyor.
+`<sürüm>` yerine kurduğunuz sürümü yazın.
 
 ### Gereksinimler
 
 - **Git ≥ 2.30** kurulu ve `PATH` üzerinde olmalı.
-  gitext-core, Git'i yeniden yazmak yerine gerçek `git` binary'sini çalıştırır; bu sayede
-  hook'ların, credential helper'ların, `.gitconfig`'in, LFS kurulumun ve alias'ların terminalde
-  olduğu gibi çalışmaya devam eder.
-- .NET çalışma zamanı gerekmez — resmi yapılar self-contained'dir.
+  gitext-core git'i yeniden yazmak yerine gerçek `git` ikilisini çalıştırıyor; bu yüzden
+  hook'larınız, kimlik bilgisi yardımcılarınız, `.gitconfig`'iniz, LFS kurulumunuz ve
+  takma adlarınız terminalde olduğu gibi çalışmaya devam ediyor.
+- .NET runtime gerekmiyor — resmi yapılar self-contained.
+
+### İndirdiğinizi doğrulama
+
+Her sürüm bir `SHA256SUMS` dosyasıyla geliyor:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+Bu, yarım inen bir dosyayı veya bozuk bir aynayı yakalar. **Güvenlik garantisi değildir:**
+paketi değiştirebilen bir saldırgan checksum dosyasını da değiştirebilir. Yanında bir
+`SHA256SUMS.asc` varsa, asıl güçlü kontrol o imzadır.
 
 ### Linux
 
-#### AppImage *(evrensel seçenek)*
+#### AppImage *(her yerde çalışan seçenek)*
 
 ```bash
-curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v0.2.0/gitext-core-0.2.0-x86_64.AppImage
-chmod +x gitext-core-0.2.0-x86_64.AppImage
-./gitext-core-0.2.0-x86_64.AppImage
+curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v<sürüm>/gitext-core-<sürüm>-x86_64.AppImage
+chmod +x gitext-core-<sürüm>-x86_64.AppImage
+./gitext-core-<sürüm>-x86_64.AppImage
 ```
 
-AppImage kendi kendine yeter: .NET çalışma zamanı, Avalonia paketi, kurulacak hiçbir şey yok.
-Yine de `PATH` üzerinde `git` ister — yukarıdaki *Gereksinimler*'e bakın.
+Self-contained: .NET runtime yok, Avalonia paketi yok, kurulacak bir şey yok. Yalnızca
+`PATH` üzerinde `git` gerekiyor.
 
-Pencere açmadan çalıştığını doğrulamak için:
+**Debian 11, Ubuntu 22.04, Debian 12, Fedora 41 ve Arch** üzerinde doğrulandı — yani
+glibc 2.31'den 2.44'e. En eskisi taban değil: ikili `GLIBC_2.27` ve üzerini istiyor.
 
-```bash
-./gitext-core-0.2.0-x86_64.AppImage --headless
-```
+Masaüstü entegrasyonu (menü girdisi, ikon) için
+[Gear Lever](https://github.com/mijorus/gearlever) veya `appimaged` kullanabilirsiniz.
 
-Masaüstü entegrasyonu (menü girdisi, ikon) için [Gear Lever](https://github.com/mijorus/gearlever)
-veya `appimaged` kullanılabilir.
-
-#### Flatpak *(planlanan — Flathub)*
-
-```bash
-flatpak install flathub io.github.ibrahimhates.GitExtCore
-flatpak run io.github.ibrahimhates.GitExtCore
-```
-
-#### Arch Linux / Manjaro *(AUR)*
-
-```bash
-yay -S gitext-core-bin      # hazır binary (önerilen)
-yay -S gitext-core          # kaynaktan derle
-```
-
-#### Fedora / RHEL / openSUSE *(RPM)*
-
-```bash
-sudo dnf install ./gitext-core-<sürüm>-1.x86_64.rpm
-```
-
-#### Debian / Ubuntu / Linux Mint *(DEB)*
+#### Debian / Ubuntu / Linux Mint
 
 ```bash
 sudo apt install ./gitext-core_<sürüm>_amd64.deb
 ```
 
-#### Taşınabilir arşiv
+`apt` `git`'i kendiliğinden kuruyor. Temiz **Debian 12** ve **Ubuntu 24.04**
+konteynerlerinde, kaldırma dahil doğrulandı (`apt remove gitext-core` geriye hiçbir şey
+bırakmıyor).
+
+**apt deposu yok** ve şimdilik olmayacak — aşağıdaki [karara](#paketleme-kararları) bakın.
+
+#### Fedora / RHEL
 
 ```bash
-curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v0.2.0/gitext-core-0.2.0-linux-x64.tar.gz
-tar -xzf gitext-core-0.2.0-linux-x64.tar.gz
-./gitext-core/gitext-core
+sudo dnf install ./gitext-core-<sürüm>-1.fc41.x86_64.rpm
 ```
 
-#### Paketleri kendiniz üretmek
+Temiz **Fedora 41** konteynerinde, kaldırma dahil doğrulandı.
+
+#### Arch Linux / Manjaro *(AUR)*
 
 ```bash
-build/linux/package.sh          # sürüm Directory.Build.props'tan gelir
-build/linux/package.sh 0.3.0    # ya da elle verin
+yay -S gitext-core-bin      # hazır ikili (önerilen)
+yay -S gitext-core          # kaynaktan derle
 ```
 
-İkisi de `dist/` altına çıkar. AppImage adımı ilk çalıştırmada `appimagetool` indirir;
-indirme başarısız olursa tarball yine üretilir ve betik bunu **söyler**, sessizce geçmez.
+Paket tanımları [`build/arch/`](./build/arch/) altında. Üretilen paket temiz bir **Arch**
+konteynerinde `pacman -U` ile doğrulandı.
+
+#### Taşınabilir tarball
+
+```bash
+curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v<sürüm>/gitext-core-<sürüm>-linux-x64.tar.gz
+tar -xzf gitext-core-<sürüm>-linux-x64.tar.gz
+cd gitext-core
+
+./install.sh                # ~/.local altına — root gerekmez
+sudo ./install.sh --system  # veya /usr/local altına, tüm kullanıcılar için
+./install.sh --uninstall    # nereye kurulduğunu kendisi buluyor
+```
+
+`install.sh` ikiliyi, `.desktop` girdisini, ikon setini ve AppStream metadata'sını yerleştirip
+masaüstü önbelleklerini tazeliyor. `git` yoksa ve hedef `bin` dizini `PATH` üzerinde değilse
+uyarıyor. Çalıştırmak zorunlu değil — açılan `gitext-core` ikilisi tek başına da çalışıyor.
+
+Temiz **Debian 11** konteynerinde doğrulandı: kuruldu, gerçek bir depoya karşı çalıştı,
+kaldırıldığında geriye sıfır dosya kaldı.
+
+#### Flatpak
+
+```bash
+flatpak install flathub io.github.ibrahimhates.GitExtCore
+```
+
+> ⚠️ **Flatpak yapısı anlamlı biçimde sandbox'lanmış DEĞİL ve bu bilinçli bir karar.**
+> `--filesystem=host` (bir Git arayüzü diskin her yerindeki depolara ulaşmak zorunda) ve
+> `--talk-name=org.freedesktop.Flatpak` izinlerini taşıyor; ikincisi *sizin* git'inizi host
+> üzerinde çalıştırmasını sağlıyor.
+>
+> Alternatif — git'i sandbox'a gömmek — ölçüldü ve reddedildi: Python ile yazılmış bir
+> `pre-commit` hook'u varken ve runtime'da yorumlayıcı yokken, `git commit` **çıkış kodu 0
+> döndürerek başarısız oldu.** Commit sessizce atılmadı. Gerekçenin tamamı
+> [ADR-0009](./docs/adr/0009-flatpak-and-git-access.md) içinde.
+>
+> Yalıtım istiyorsanız bu uygulamayı kurmayın. Hiçbir paketleme numarası, bir Git arayüzünü
+> düzenlemek için var olduğu depolardan yalıtılmış hâle getiremez. Yukarıdaki diğer Linux
+> kanalları size aynı programı bu ödün olmadan veriyor.
 
 ### Windows
 
 ```powershell
-winget install gitext-core   # planlanan
+winget install io.github.ibrahimhates.GitExtCore
 ```
 
-Ya da Releases'ten taşınabilir `gitext-core-<sürüm>-win-x64.zip` dosyasını indirip
-`gitext-core.exe` çalıştırılabilir.
+Ya da Releases'tan `gitext-core-<sürüm>-setup.exe` (kurulum paketi) veya
+`gitext-core-<sürüm>-win-x64.zip` (taşınabilir) indirin.
+
+Kurulum paketi Başlat menüsü kısayolu ekliyor, isteğe bağlı masaüstü kısayolu ve `PATH`
+girdisi sunuyor, temiz kaldırmayı destekliyor ve **yönetici hakkı istemiyor**. `git`
+bulunamazsa kurulumdan önce uyarıyor.
+
+> ⚠️ **Windows yapıları kod imzalı değil.** SmartScreen ilk çalıştırmada *"Windows protected
+> your PC"* uyarısı gösteriyor; uygulamaya **More info → Run anyway** ile ulaşıyorsunuz.
+>
+> Bu bir gözden kaçma değil, maliyet kararı: kod imzalama sertifikası tek geliştiricili bir
+> proje için orantısız yinelenen bir yıllık gider ve EV sürümünün donanım jetonu otomatik
+> yayını kırardı. Bunun yerine indirdiğinizi `SHA256SUMS` ile doğrulayın. Proje büyürse bu
+> karar yeniden değerlendirilecek.
+
+`git.exe`; `PATH`, Git for Windows kurulum konumları ve Scoop ile Chocolatey yolları üzerinden
+aranıyor. Hepsi gerçek bir Git for Windows kurulumuyla doğrulandı.
 
 ### macOS
 
 ```bash
-brew install --cask gitext-core   # planlanan
+brew tap ibrahimhates/tap
+brew install --cask gitext-core
 ```
+
+Ya da Releases'tan `gitext-core-<sürüm>-osx-arm64.dmg` (Apple Silicon) veya
+`gitext-core-<sürüm>-osx-x64.dmg` (Intel) indirin.
+
+> ⚠️ **macOS yapısı notarize edilmedi.** Gatekeeper uygulamayı açmayı reddedecek ve
+> *"hasarlı"* olduğunu söyleyecek. Hasarlı değil — imzasız, ve macOS'un gösterdiği mesaj bu.
+> Notarization ücretli bir Apple Developer hesabı gerektiriyor; bu projenin böyle bir hesabı
+> yok.
+>
+> Homebrew cask'ı karantina özniteliğini kurulum sırasında sizin için kaldırıyor. `.dmg`'yi
+> elle kurduysanız kendiniz kaldırın:
+>
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/gitext-core.app
+> ```
+>
+> Bu komutu doğrulamadığınız yazılımlar için çalıştırmayın. Önce `SHA256SUMS`'a bakın.
+
+> **Gerçek donanımda henüz çalıştırılmadı.** macOS paketi Linux'tan çapraz derleniyor ve
+> CI'ın macOS runner'ında açılıyor, ama kimse onu günlük olarak kullanmadı. macOS'u
+> **topluluk destekli** kabul edin: çalışması gerekiyor, geri bildirim memnuniyetle karşılanır.
+
+### Paketleme kararları
+
+Bazı şeyler bilinçli olarak yok:
+
+| Sağlanmayan | Neden |
+|---|---|
+| apt deposu / PPA | Sonsuza kadar ayakta kalması gerekiyor — ölen bir depo, ekleyen herkesin `apt update` çıktısını kalıcı olarak kirletiyor. Bu ölçekte orantısız. Flatpak ve AUR zaten otomatik güncelleme veriyor. |
+| Kod imzalama (Windows) | Yinelenen yıllık gider; EV sertifikaları ayrıca otomatik CI imzalamasını kırıyor. |
+| Notarization (macOS) | Ücretli Apple Developer hesabı gerektiriyor. |
+| Uygulama içi güncelleme kontrolü | Proje telemetri olmayacağına söz veriyor. Sürüm kontrolü telemetri değil, ama varsayılan kapalı olmak zorunda ve "paket yöneticisiyle mi kuruldu?" sorusunun güvenilir bir cevabı yok — yanlış tahmin, `apt` ile yönetilen bir kuruluma "tarball indirin" demek olur. Paket yöneticileri bunu zaten çözüyor. |
+
+Bunların hepsi geri alınabilir ve hiçbiri sizden gizlenmiyor.
+
+### Paketleri kendiniz üretme
+
+```bash
+build/linux/package.sh            # tarball + AppImage
+build/linux/package-deb-rpm.sh    # .deb + .rpm (araçlar yoksa konteyner kullanıyor)
+build/windows/package.sh          # taşınabilir ZIP + Inno Setup betiği
+build/macos/package.sh            # .app bundle
+build/checksums.sh                # SHA256SUMS (GPG_KEY_ID verilirse imza da)
+```
+
+Tüm çıktılar `dist/` altına düşüyor. **Sürüm git tag'inden geliyor** — hiçbir dosyadan ve
+hiçbir argümandan değil ([ADR-0006](./docs/adr/0006-versioning-and-dependencies.md)).
+Tag atmadan derlemek için:
+
+```bash
+MINVER_VERSION_OVERRIDE=1.0.0-test build/linux/package.sh
+```
+
+Her betik, ikilinin içindeki sürümle paket adındaki sürümün aynı olduğunu doğruluyor ve
+etiketsiz bir "sürüm" üretmeyi reddediyor.
 
 ---
 
 ## Kullanım
 
-> **Henüz geçerli değil.** Uygulama şu an boş bir pencere açıyor. Bu bölüm, özellikler
-> tamamlandıkça gerçek iş akışını belgeleyecek.
+> **Uygulama çalışıyor ama bu kılavuz henüz yazılmadı.** Geçmişe göz atma, diff, satır
+> satır staging, commit, dallanma, fetch/pull/push, rebase, cherry-pick, revert, stash ve
+> çakışma çözümü çalışıyor — yukarıdaki ekran görüntülerine bakın. Eksik olan, bunları
+> anlatan metin.
+>
+> O zamana kadar: `F1` klavye kısayolu referansını, `Ctrl+Shift+P` komut paletini açıyor —
+> uygulamanın neler yapabildiğini görmenin en hızlı yolu bu.
 
 <!-- TODO(readme-15): Gerçek kullanım kılavuzu yazılacak. Sırasıyla kapsaması gerekenler:
      1. Repo açma (klasör seçici, son açılanlar, sürükle-bırak)
@@ -321,10 +445,14 @@ oradaki kararların birkaçı kod incelemesiyle değil, derlemeyle zorlanıyor.
 
 ## Katkı
 
-Temel oturduktan sonra katkılar memnuniyetle karşılanır.
+Kurulum, commit mesajı kuralı (CI zorunlu tutuyor) ve buradaki en önemli kural —
+*kod yazmadan önce ölç* — için **[CONTRIBUTING.md](./CONTRIBUTING.md)** dosyasına bakın.
 
-O zamana kadar en faydalı katkı issue açmaktır: hata bildirimleri, eksik kapsam ve GitExtensions
-kullanıcılarının günlük hayatta neyin gerçekten önemli olduğuna dair deneyim aktarımları.
+Katılım [Davranış Kuralları](./CODE_OF_CONDUCT.md) kapsamındadır.
+
+Şu an en faydalı katkılar büyük özellikler **değil**: karmaşık geçmişi olan gerçek depolardan
+gelen hata bildirimleri ve GitExtensions kullanıcılarının günlük hayatta neyin gerçekten
+önemli olduğuna dair deneyim aktarımları. Büyük bir şeye başlamadan önce issue açın.
 
 ---
 

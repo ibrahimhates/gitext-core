@@ -6,25 +6,29 @@
 
 **A fast, native, cross-platform Git GUI — the GitExtensions experience, freed from Windows.**
 
-<!-- TODO(readme-01): Add badges once CI has run and a release exists.
-     Planned: build status, latest release, downloads, license.
-     [![Build](https://github.com/ibrahimhates/gitext-core/actions/workflows/ci.yml/badge.svg)](…)
-     [![Release](https://img.shields.io/github/v/release/ibrahimhates/gitext-core)](…)
-     [![License](https://img.shields.io/github/license/ibrahimhates/gitext-core)](./LICENSE)
--->
+[![Build](https://github.com/ibrahimhates/gitext-core/actions/workflows/ci.yml/badge.svg)](https://github.com/ibrahimhates/gitext-core/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ibrahimhates/gitext-core)](https://github.com/ibrahimhates/gitext-core/releases)
+[![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](./LICENSE)
 
-> ⚠️ **Status: alpha — usable, but not yet released as stable.**
-> Git works: browsing history, diffing, staging by line, committing, branching, fetch/pull/push,
-> rebase (including interactive), cherry-pick, revert, stash and conflict resolution are all
-> implemented and tested. Linux is exercised daily; Windows and macOS cross-compile but have
-> **not been run on target**. Items marked *(planned)* below are not built yet.
+> ⚠️ **Status: beta — feature-complete for daily Git work, packaged for all three platforms.**
+> Browsing history, diffing, staging by line, committing, branching, fetch/pull/push, rebase
+> (including interactive), cherry-pick, revert, stash and conflict resolution are implemented
+> and tested. Linux is exercised daily and every Linux package is verified in a clean container.
+> Windows runs (verified under Wine and on CI) but has not been used as a daily driver;
+> **macOS has not been run on real hardware** — treat it as community-supported.
+>
+> The interface is currently **Turkish only**; English localisation is the next piece of work.
 
 </div>
 
-<!-- TODO(readme-02): Insert the main screenshot here (commit graph, dark theme, real repo).
-     Blocked on the commit graph being presentable.
-     Target: docs/assets/screenshot-graph-dark.png @ 2x, plus a light variant.
-     Also add a short animated GIF/WebM of staging + committing. -->
+![gitext-core — commit graph, dark theme](./docs/assets/screenshot-main-dark.png)
+
+<details>
+<summary>Light theme</summary>
+
+![gitext-core — commit graph, light theme](./docs/assets/screenshot-main-light.png)
+
+</details>
 
 ---
 
@@ -57,7 +61,9 @@ with the GitExtensions project.
 
 ---
 
-## Features *(planned)*
+## Features
+
+Everything below is **implemented and tested** unless marked otherwise.
 
 - **Visual commit graph** — branches, merges, tags and refs rendered as a colour-coded DAG, virtualized for very large histories.
 - **Diff & file inspection** — side-by-side and unified diffs with word-level highlighting and whitespace controls.
@@ -66,9 +72,12 @@ with the GitExtensions project.
 - **Advanced operations** — interactive rebase, cherry-pick, revert, stash management, reset, tag management.
 - **Merge conflict resolution** — in-app three-way view plus integration with your configured `merge.tool`.
 - **Repository browsing** — file tree at any revision, blame, file history, and history-following across renames.
-- **Submodules, worktrees and Git LFS awareness.**
 - **Reflog browser** — find lost commits and undo your last action.
 - **Search** — across commit messages, diff contents and file contents.
+- **Submodules and worktrees** — recognised and navigable.
+- **Git LFS** — works because we drive the real `git` (LFS is a clean/smudge filter, so it
+  engages on its own). There is **no LFS-specific UI** yet: no pointer/actual-content
+  indicator, no explicit fetch of LFS objects.
 
 ---
 
@@ -76,18 +85,25 @@ with the GitExtensions project.
 
 | Platform | Status |
 |---|---|
-| Linux — X11 | Builds and runs |
+| Linux — X11 | **Used daily.** Every package format verified in a clean container. |
 | Linux — Wayland | Builds and runs (opt-in backend, see below) |
-| Windows 10/11 | Cross-compiles; not yet run on target |
-| macOS (Apple Silicon + Intel) | Cross-compiles; not yet run on target |
+| Windows 10/11 | **Runs** — verified under Wine and on CI; not yet used as a daily driver |
+| macOS (Apple Silicon + Intel) | Builds and launches on CI; **not run on real hardware** |
 
 Linux is the first-class target and where development happens. Windows and macOS builds come from
 the same codebase and the same release pipeline.
 
-<!-- NOTE(readme-03): Minimum OS versions still unconfirmed. Avalonia 12 baseline is .NET 8+;
-     the glibc floor for self-contained Linux builds needs pinning (likely Ubuntu 22.04 /
-     glibc 2.35), as does the macOS floor (likely 12.0). Confirm when building the AppImage
-     on an old-glibc container. -->
+**Minimum versions**, measured rather than assumed:
+
+| Platform | Floor | How it was established |
+|---|---|---|
+| Linux | **glibc 2.27** | `objdump -T` on the shipped binary; the highest symbol version required comes from `libSkiaSharp.so`. Verified running on Debian 11 (glibc 2.31) through Arch (2.44). |
+| Windows | **Windows 10** | Declared in the application manifest. |
+| macOS | **12.0 (Monterey)** | `LSMinimumSystemVersion` in the bundle. Not verified on hardware. |
+
+> The native libraries come pre-built from NuGet, so the glibc floor is a property of those
+> packages — not of the machine that built the release. Building on an older distribution
+> would not lower it.
 
 ---
 
@@ -123,11 +139,12 @@ instead of 1.3 s.
 
 ## Installation
 
-> **Available now: AppImage and the portable tarball** (Linux x86-64, from `v0.2.0`).
-> The other channels below are still planned — they are listed so the intended distribution
-> story is visible, not because they work yet.
+> **Every command in this section has been run.** Each package below was installed and
+> launched in a clean container or VM of its own distribution — not on the developer's
+> machine, where everything is already present. Where something is *not* verified, it says so.
 
-Distribution happens primarily through **GitHub Releases**, plus community package repositories.
+Distribution happens through **GitHub Releases**, plus community package repositories.
+Replace `<version>` with the release you are installing.
 
 ### Requirements
 
@@ -136,37 +153,56 @@ Distribution happens primarily through **GitHub Releases**, plus community packa
   helpers, `.gitconfig`, LFS setup and aliases all keep working exactly as they do in a terminal.
 - No .NET runtime required — official builds are self-contained.
 
+### Verifying your download
+
+Every release ships a `SHA256SUMS` file:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+This catches a truncated download or a broken mirror. It is **not** a security guarantee: an
+attacker who can replace the package can replace the checksum file too. If a `SHA256SUMS.asc`
+is present, that signature is the stronger check.
+
 ### Linux
 
 #### AppImage *(the universal option)*
 
 ```bash
-curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v0.2.0/gitext-core-0.2.0-x86_64.AppImage
-chmod +x gitext-core-0.2.0-x86_64.AppImage
-./gitext-core-0.2.0-x86_64.AppImage
+curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v<version>/gitext-core-<version>-x86_64.AppImage
+chmod +x gitext-core-<version>-x86_64.AppImage
+./gitext-core-<version>-x86_64.AppImage
 ```
 
-The AppImage is self-contained: no .NET runtime, no Avalonia packages, nothing to install.
-It still needs `git` on your `PATH` — see *Requirements* above.
+Self-contained: no .NET runtime, no Avalonia packages, nothing to install. It still needs
+`git` on your `PATH`.
 
-Check that it works without opening a window:
+Verified on **Debian 11, Ubuntu 22.04, Debian 12, Fedora 41 and Arch** — that is glibc 2.31
+through 2.44. The oldest of those is the floor: the binary requires `GLIBC_2.27` or newer.
+
+Optional desktop integration (menu entry, icon) via
+[Gear Lever](https://github.com/mijorus/gearlever) or `appimaged`.
+
+#### Debian / Ubuntu / Linux Mint
 
 ```bash
-./gitext-core-0.2.0-x86_64.AppImage --headless
+sudo apt install ./gitext-core_<version>_amd64.deb
 ```
 
-Optional desktop integration (menu entry, icon) via [Gear Lever](https://github.com/mijorus/gearlever) or `appimaged`.
+`apt` pulls in `git` automatically. Verified in clean **Debian 12** and **Ubuntu 24.04**
+containers, including removal (`apt remove gitext-core` leaves nothing behind).
 
-#### Flatpak *(planned — Flathub)*
+There is **no apt repository**, and there will not be one for now — see
+[the decision](#packaging-decisions) below.
+
+#### Fedora / RHEL
 
 ```bash
-flatpak install flathub io.github.ibrahimhates.GitExtCore
-flatpak run io.github.ibrahimhates.GitExtCore
+sudo dnf install ./gitext-core-<version>-1.fc41.x86_64.rpm
 ```
 
-<!-- NOTE(readme-05): The Flatpak sandbox needs filesystem=host to reach user repositories, and
-     access to the host `git` via flatpak-spawn or a bundled git. Decide before submitting to
-     Flathub — this determines whether user hooks still work under Flatpak. -->
+Verified in a clean **Fedora 41** container, including removal.
 
 #### Arch Linux / Manjaro *(AUR)*
 
@@ -175,72 +211,145 @@ yay -S gitext-core-bin      # prebuilt binary (recommended)
 yay -S gitext-core          # build from source
 ```
 
-#### Fedora / RHEL / openSUSE *(RPM)*
-
-```bash
-sudo dnf install ./gitext-core-<version>-1.x86_64.rpm
-```
-
-<!-- TODO(readme-06): Evaluate publishing to Fedora COPR for `dnf copr enable` installs. -->
-
-#### Debian / Ubuntu / Linux Mint *(DEB)*
-
-```bash
-sudo apt install ./gitext-core_<version>_amd64.deb
-```
-
-<!-- TODO(readme-07): Evaluate hosting an apt repository (or a PPA) so users get updates
-     automatically rather than re-downloading a .deb each release. -->
+The package definitions live in [`build/arch/`](./build/arch/). The built package was
+verified with `pacman -U` in a clean **Arch** container.
 
 #### Portable tarball
 
 ```bash
-curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v0.2.0/gitext-core-0.2.0-linux-x64.tar.gz
-tar -xzf gitext-core-0.2.0-linux-x64.tar.gz
-./gitext-core/gitext-core
+curl -LO https://github.com/ibrahimhates/gitext-core/releases/download/v<version>/gitext-core-<version>-linux-x64.tar.gz
+tar -xzf gitext-core-<version>-linux-x64.tar.gz
+cd gitext-core
+
+./install.sh              # into ~/.local — no root needed
+sudo ./install.sh --system  # or into /usr/local, for all users
+./install.sh --uninstall  # finds wherever it was installed
 ```
 
-#### Building the packages yourself
+`install.sh` places the binary, the `.desktop` entry, the icon set and the AppStream
+metadata, then refreshes the desktop caches. It warns if `git` is missing and if the target
+`bin` directory is not on your `PATH`. Running it is optional — the extracted `gitext-core`
+binary works on its own.
+
+Verified in a clean **Debian 11** container: installed, ran against a real repository,
+uninstalled with zero files left behind.
+
+#### Flatpak
 
 ```bash
-build/linux/package.sh          # version comes from Directory.Build.props
-build/linux/package.sh 0.3.0    # or pass one explicitly
+flatpak install flathub io.github.ibrahimhates.GitExtCore
 ```
 
-Both artifacts land in `dist/`. The AppImage step downloads `appimagetool` on first run;
-if that download fails the tarball is still produced and the script says so rather than
-failing silently.
+> ⚠️ **The Flatpak build is not meaningfully sandboxed, and this is deliberate.**
+> It holds `--filesystem=host` (a Git GUI must reach repositories anywhere on disk) and
+> `--talk-name=org.freedesktop.Flatpak`, which lets it run *your* `git` on the host.
+>
+> The alternative — bundling `git` inside the sandbox — was measured and rejected: with a
+> Python `pre-commit` hook and no interpreter in the runtime, `git commit` **failed while
+> returning exit code 0**. The commit silently did not happen. The reasoning is written up in
+> [ADR-0009](./docs/adr/0009-flatpak-and-git-access.md).
+>
+> If you want confinement, do not install this application. No packaging trick makes a Git GUI
+> safe to sandbox away from the repositories it exists to edit. The other Linux channels above
+> give you the same program without the pretence.
 
 ### Windows
 
-<!-- TODO(readme-08): Fill in once the Windows pipeline exists.
-     Planned: portable .zip, an MSI or Inno Setup installer, and a winget manifest.
-     Code signing is unresolved — an unsigned installer triggers SmartScreen. Decide whether to
-     buy a certificate or ship portable-only at first. -->
-
 ```powershell
-winget install gitext-core   # planned
+winget install io.github.ibrahimhates.GitExtCore
 ```
 
-Or download the portable `gitext-core-<version>-win-x64.zip` from Releases and run `gitext-core.exe`.
+Or download `gitext-core-<version>-setup.exe` (installer) or
+`gitext-core-<version>-win-x64.zip` (portable) from Releases.
+
+The installer adds a Start Menu shortcut, offers an optional desktop shortcut and optional
+`PATH` entry, supports clean uninstallation, and does **not** require administrator rights.
+It warns before installing if `git` is not found.
+
+> ⚠️ **The Windows builds are not code-signed.** SmartScreen will show
+> *"Windows protected your PC"* on first run; you reach the application through
+> **More info → Run anyway**.
+>
+> This is a cost decision, not an oversight: a code-signing certificate is a recurring annual
+> expense that is out of proportion for a single-developer project, and the EV variant's
+> hardware token would break automated releases. Verify your download against `SHA256SUMS`
+> instead. If the project grows, this decision gets revisited.
+
+`git.exe` is found via `PATH`, the Git for Windows install locations, and the Scoop and
+Chocolatey paths. All of these were verified against a real Git for Windows installation.
 
 ### macOS
 
-<!-- TODO(readme-09): Fill in once the macOS pipeline exists.
-     Planned: a .dmg with a signed + notarized .app bundle, and a Homebrew cask.
-     Notarization requires a paid Apple Developer account — unresolved. Until then users need
-     `xattr -dr com.apple.quarantine`, which must be documented honestly here. -->
+```bash
+brew tap ibrahimhates/tap
+brew install --cask gitext-core
+```
+
+Or download `gitext-core-<version>-osx-arm64.dmg` (Apple Silicon) or
+`gitext-core-<version>-osx-x64.dmg` (Intel) from Releases.
+
+> ⚠️ **The macOS build is not notarized.** Gatekeeper will refuse to open it and will claim
+> the app *"is damaged"*. It is not damaged — it is unsigned, and that is the message macOS
+> shows. Notarization requires a paid Apple Developer account, which this project does not have.
+>
+> The Homebrew cask clears the quarantine attribute for you during installation. If you
+> install the `.dmg` by hand, do it yourself:
+>
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/gitext-core.app
+> ```
+>
+> Do not run that command on software you did not verify. Check `SHA256SUMS` first.
+
+> **Not yet run on real hardware.** The macOS bundle cross-compiles from Linux and is launched
+> by CI on a macOS runner, but no one has used it as a daily driver. Treat macOS as
+> community-supported: it should work, and reports are welcome.
+
+### Packaging decisions
+
+A few things are deliberately absent:
+
+| Not provided | Why |
+|---|---|
+| apt repository / PPA | It has to stay alive forever — a dead repository permanently pollutes `apt update` for everyone who added it. Out of proportion at this scale. Flatpak and the AUR already give automatic updates. |
+| Code signing (Windows) | Recurring annual cost; EV certificates additionally break unattended CI signing. |
+| Notarization (macOS) | Requires a paid Apple Developer account. |
+| In-app update check | The project promises no telemetry. A version check is not telemetry, but it would have to be off by default, and "was this installed by a package manager?" has no reliable answer — guessing wrong means telling an `apt`-managed install to download a tarball. Package managers already solve this. |
+
+Every one of these is reversible, and none of them is hidden from you.
+
+### Building the packages yourself
 
 ```bash
-brew install --cask gitext-core   # planned
+build/linux/package.sh            # tarball + AppImage
+build/linux/package-deb-rpm.sh    # .deb + .rpm (uses containers if the tools are missing)
+build/windows/package.sh          # portable ZIP + Inno Setup script
+build/macos/package.sh            # .app bundle
+build/checksums.sh                # SHA256SUMS (+ GPG if GPG_KEY_ID is set)
 ```
+
+All artifacts land in `dist/`. **The version comes from the Git tag** — never from a file and
+never from an argument (see [ADR-0006](./docs/adr/0006-versioning-and-dependencies.md)). To
+build without tagging:
+
+```bash
+MINVER_VERSION_OVERRIDE=1.0.0-test build/linux/package.sh
+```
+
+Each script verifies that the version inside the binary matches the version in the package
+name, and refuses to produce an untagged "release".
 
 ---
 
 ## Usage
 
-> **Not yet applicable.** The application currently opens an empty window. This section will
-> document the real workflow as features land.
+> **The application is functional but this guide is not written yet.** Browsing history,
+> diffing, staging by line, committing, branching, fetch/pull/push, rebase, cherry-pick,
+> revert, stash and conflict resolution all work — see the screenshots above. What is missing
+> here is the prose that walks you through them.
+>
+> In the meantime: `F1` opens the keyboard shortcut reference and `Ctrl+Shift+P` opens the
+> command palette, which is the fastest way to find out what the application can do.
 
 <!-- TODO(readme-15): Write the actual usage guide. It should cover, in this order:
      1. Opening a repository (folder picker, recent list, drag-and-drop)
@@ -277,12 +386,32 @@ If the window fails to appear or renders incorrectly, switching backends is the 
 | .NET SDK | **10.0** or later | [download](https://dotnet.microsoft.com/download) |
 | Git | **2.30** or later | Also a runtime dependency |
 
-On Linux you also need the desktop libraries Avalonia renders against. On a normal desktop
-install these are already present.
+On Linux you also need the libraries Avalonia renders against. On any normal desktop install
+they are already present — this list matters for containers and minimal systems.
 
-<!-- NOTE(readme-10): The exact per-distro package names still need pinning by building in a
-     clean container for Debian/Fedora/Arch. Verified only on an Arch-based system so far,
-     where everything was already installed. -->
+Determined by inspecting the shipped binaries (`objdump -p`, plus the names Avalonia loads at
+runtime), not by guessing:
+
+| Needed | Why |
+|---|---|
+| `libfontconfig1` | Linked by `libSkiaSharp.so`. **The only hard link-time dependency.** |
+| `libX11`, `libICE`, `libGL` | Loaded at runtime by the X11 backend (the default). |
+| `libwayland-client`, `libwayland-egl`, `libxkbcommon` | Loaded only when `GITEXT_BACKEND=wayland`. |
+
+```bash
+# Debian / Ubuntu
+sudo apt install libfontconfig1 libx11-6 libice6 libgl1 libxkbcommon0
+
+# Fedora
+sudo dnf install fontconfig libX11 libICE mesa-libGL libxkbcommon
+
+# Arch
+sudo pacman -S fontconfig libx11 libice libglvnd libxkbcommon
+```
+
+> Everything else — the .NET runtime, Skia, HarfBuzz — is inside the binary. A self-contained
+> build in a bare `mcr.microsoft.com/dotnet/sdk` container runs `gitext-core --version` with
+> no extra packages at all; the list above is what the *window* needs.
 
 ### Clone, build, run
 
@@ -321,10 +450,29 @@ dotnet publish src/GitExt.Desktop -c Release -r osx-arm64 --self-contained \
 ```
 
 All four target RIDs (`linux-x64`, `win-x64`, `osx-arm64`, `osx-x64`) cross-compile from Linux.
-Only the Linux output has been executed and verified so far.
+The Linux output is used daily; the Windows output has been run under Wine and on CI; the
+macOS output has only been run on CI.
 
-<!-- NOTE(readme-11): NativeAOT has not been evaluated yet. Trimming currently produces zero IL
-     warnings, but this must be re-verified as reflection-heavy features land. -->
+<details>
+<summary><b>Why not NativeAOT?</b> — it wins on every metric, and is still not used</summary>
+
+Measured during the performance phase:
+
+| | Trimmed (shipped) | NativeAOT |
+|---|---:|---:|
+| Cold start to first frame | 370 ms | **186 ms** |
+| Idle memory (PSS) | 76 MB | **54 MB** |
+| Binary size | 59 MB | **28 MB** |
+
+It also passed smoke tests. It is still not what ships, for one reason: **the whole
+application has not been exercised under AOT.** Avalonia resolves parts of XAML through
+reflection, and when that breaks under AOT it breaks *at runtime* — on a user's machine,
+in a dialog nobody opened during testing, not during publish. A crash there costs more
+than 184 ms of startup buys.
+
+This is a decision to revisit once there is coverage that actually drives every window.
+
+</details>
 
 ### Project layout
 
@@ -357,14 +505,14 @@ areas; several of the decisions there are enforced by the build rather than by c
 
 ## Contributing
 
-Contributions are welcome once the foundation is in place.
+See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for setup, the commit message convention (enforced
+by CI), and the one rule that matters most here: *measure before you code*.
 
-<!-- TODO(readme-13): Write CONTRIBUTING.md and CODE_OF_CONDUCT.md.
-     Should cover: coding style (.editorconfig), commit message convention, branch naming,
-     how to run tests, how to add a Git operation end to end, and PR review expectations. -->
+Participation is covered by the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
-Until then, the most useful contributions are issues: bug reports, missing scope, and experience
-reports from GitExtensions users about what actually matters day to day.
+The most useful contributions right now are **not** large features: bug reports from real
+repositories with awkward history, and experience reports from GitExtensions users about what
+actually matters day to day. Before starting anything large, open an issue first.
 
 ---
 
