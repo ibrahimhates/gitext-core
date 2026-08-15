@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         x:Class="GitExt.UI.Views.CreateBranchDialog"
-        Title="Dal oluştur"
+        Title="{loc:Translate create_branch.create_branch}"
         Width="520"
         SizeToContent="Height"
         MinHeight="220"
@@ -22,7 +23,7 @@
     <StackPanel Margin="16" Spacing="10">
 
         <StackPanel Spacing="4">
-            <TextBlock Text="Dal adı" />
+            <TextBlock Text="{loc:Translate create_branch.branch_name}" />
             <TextBox Name="BranchNameTextBox" PlaceholderText="ozellik/yeni-sey" />
             <TextBlock Name="ValidationText"
                        FontSize="11"
@@ -32,7 +33,7 @@
         </StackPanel>
 
         <StackPanel Spacing="4">
-            <TextBlock Name="StartPointLabel" Text="Bu revizyonda dal oluştur" />
+            <TextBlock Name="StartPointLabel" Text="{loc:Translate create_branch.create_branch_at_this_revision}" />
             <!--
                 GitExtensions'ta bu bir commit seçici. Bizde başlangıç noktası çağıran
                 taraftan geliyor (commit listesindeki seçim ya da HEAD), o yüzden salt
@@ -42,7 +43,7 @@
         </StackPanel>
 
         <CheckBox Name="CheckoutAfterCreateBox"
-                  Content="Oluşturduktan sonra dala geç"
+                  Content="{loc:Translate create_branch.check_out_after_creating}"
                   IsChecked="True" />
 
         <TextBlock Name="DirtyWarning"
@@ -52,15 +53,15 @@
                    Opacity="0.85" />
 
         <StackPanel Name="OrphanGroup" Spacing="4" IsEnabled="False">
-            <CheckBox Name="CreateOrphanBox" Content="Orphan (ebeveynsiz) dal oluştur" FontSize="11" />
-            <CheckBox Name="ClearOrphanBox" Content="Orphan dalda çalışma ağacını temizle" FontSize="11" Margin="18,0,0,0" />
+            <CheckBox Name="CreateOrphanBox" Content="{loc:Translate create_branch.create_an_orphan_branch_no_parent}" FontSize="11" />
+            <CheckBox Name="ClearOrphanBox" Content="{loc:Translate create_branch.clear_the_working_tree_on_the_orphan_branch}" FontSize="11" Margin="18,0,0,0" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="8">
-            <Button Name="CancelButton" Content="İptal" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
-            <Button Name="CreateButton" Content="Oluştur" MinWidth="90" IsDefault="True" Click="OnCreateClick" />
+            <Button Name="CancelButton" Content="{loc:Translate create_branch.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="CreateButton" Content="{loc:Translate create_branch.create}" MinWidth="90" IsDefault="True" Click="OnCreateClick" />
         </StackPanel>
     </StackPanel>
 </Window>

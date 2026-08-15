@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.DiagnosticsWindow"
         x:DataType="vm:DiagnosticsViewModel"
-        Title="Performans teşhisi"
+        Title="{loc:Translate diagnostics.performance_diagnostics}"
         Width="720"
         Height="560"
         WindowStartupLocation="CenterOwner">
@@ -19,33 +20,33 @@
 
         <Grid Grid.Row="0" ColumnDefinitions="*,*" Margin="0,0,0,8">
             <StackPanel Grid.Column="0" Spacing="3">
-                <TextBlock Text="Bellek" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Text="{loc:Translate diagnostics.memory}" FontWeight="SemiBold" FontSize="11" />
                 <Grid ColumnDefinitions="110,*">
-                    <TextBlock Grid.Column="0" Text="Yönetilen" FontSize="11" Opacity="0.75" />
+                    <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.managed}" FontSize="11" Opacity="0.75" />
                     <TextBlock Name="ManagedMemoryText" Grid.Column="1" Text="{Binding ManagedMemory}" FontSize="11" />
                 </Grid>
                 <Grid ColumnDefinitions="110,*">
-                    <TextBlock Grid.Column="0" Text="Süreç" FontSize="11" Opacity="0.75" />
+                    <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.process}" FontSize="11" Opacity="0.75" />
                     <TextBlock Name="ProcessMemoryText" Grid.Column="1" Text="{Binding ProcessMemory}" FontSize="11" />
                 </Grid>
                 <Grid ColumnDefinitions="110,*">
-                    <TextBlock Grid.Column="0" Text="Toplama" FontSize="11" Opacity="0.75" />
+                    <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.collection}" FontSize="11" Opacity="0.75" />
                     <TextBlock Name="CollectionsText" Grid.Column="1" Text="{Binding Collections}" FontSize="11" />
                 </Grid>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Spacing="3">
-                <TextBlock Text="Oturum" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Text="{loc:Translate diagnostics.session}" FontWeight="SemiBold" FontSize="11" />
                 <Grid ColumnDefinitions="110,*">
-                    <TextBlock Grid.Column="0" Text="Çalışma süresi" FontSize="11" Opacity="0.75" />
+                    <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.uptime}" FontSize="11" Opacity="0.75" />
                     <TextBlock Name="UptimeText" Grid.Column="1" Text="{Binding Uptime}" FontSize="11" />
                 </Grid>
                 <Grid ColumnDefinitions="110,*">
-                    <TextBlock Grid.Column="0" Text="Git çağrısı" FontSize="11" Opacity="0.75" />
+                    <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.git_calls}" FontSize="11" Opacity="0.75" />
                     <TextBlock Name="TotalCommandCountText" Grid.Column="1" Text="{Binding TotalCommandCount}" FontSize="11" />
                 </Grid>
                 <Grid ColumnDefinitions="110,*">
-                    <TextBlock Grid.Column="0" Text="Toplam süre" FontSize="11" Opacity="0.75" />
+                    <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.total_time}" FontSize="11" Opacity="0.75" />
                     <TextBlock Name="TotalCommandDurationText" Grid.Column="1" Text="{Binding TotalCommandDuration}" FontSize="11" />
                 </Grid>
             </StackPanel>
@@ -53,17 +54,17 @@
 
         <!-- Kare ölçümü yalnızca bir pencereye bağlıysa var. -->
         <StackPanel Grid.Row="1" Spacing="3" Margin="0,0,0,8" IsVisible="{Binding HasFrameStatistics}">
-            <TextBlock Text="Kare süresi" FontWeight="SemiBold" FontSize="11" />
+            <TextBlock Text="{loc:Translate diagnostics.frame_time}" FontWeight="SemiBold" FontSize="11" />
             <Grid ColumnDefinitions="110,*">
-                <TextBlock Grid.Column="0" Text="Ortalama" FontSize="11" Opacity="0.75" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.average}" FontSize="11" Opacity="0.75" />
                 <TextBlock Name="AverageFrameTimeText" Grid.Column="1" Text="{Binding AverageFrameTime}" FontSize="11" />
             </Grid>
             <Grid ColumnDefinitions="110,*">
-                <TextBlock Grid.Column="0" Text="En kötü" FontSize="11" Opacity="0.75" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.worst}" FontSize="11" Opacity="0.75" />
                 <TextBlock Name="WorstFrameTimeText" Grid.Column="1" Text="{Binding WorstFrameTime}" FontSize="11" />
             </Grid>
             <Grid ColumnDefinitions="110,*">
-                <TextBlock Grid.Column="0" Text="Bütçeyi aşan" FontSize="11" Opacity="0.75" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.over_budget}" FontSize="11" Opacity="0.75" />
                 <TextBlock Name="DroppedFramesText"
                            Grid.Column="1"
                            Text="{Binding DroppedFrames}"
@@ -78,7 +79,7 @@
         </StackPanel>
 
         <StackPanel Grid.Row="2" Spacing="3" Margin="0,0,0,8" IsVisible="{Binding HasActiveOperations}">
-            <TextBlock Text="Devam eden işler" FontWeight="SemiBold" FontSize="11" />
+            <TextBlock Text="{loc:Translate diagnostics.work_in_progress}" FontWeight="SemiBold" FontSize="11" />
             <ItemsControl Name="ActiveOperationsList" ItemsSource="{Binding ActiveOperations}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -89,15 +90,15 @@
         </StackPanel>
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,*">
-            <TextBlock Grid.Row="0" Text="Git komutları" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,4" />
+            <TextBlock Grid.Row="0" Text="{loc:Translate diagnostics.git_commands}" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,4" />
 
             <Grid Grid.Row="1" ColumnDefinitions="*,60,80,80,80,60" Margin="4,0,4,3">
-                <TextBlock Grid.Column="0" Text="Komut" FontWeight="SemiBold" FontSize="11" />
-                <TextBlock Grid.Column="1" Text="Adet" FontWeight="SemiBold" FontSize="11" />
-                <TextBlock Grid.Column="2" Text="Toplam" FontWeight="SemiBold" FontSize="11" />
-                <TextBlock Grid.Column="3" Text="Ortalama" FontWeight="SemiBold" FontSize="11" />
-                <TextBlock Grid.Column="4" Text="En uzun" FontWeight="SemiBold" FontSize="11" />
-                <TextBlock Grid.Column="5" Text="Hata" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate diagnostics.command}" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="1" Text="{loc:Translate diagnostics.count}" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="2" Text="{loc:Translate diagnostics.total}" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="3" Text="{loc:Translate diagnostics.average}" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="4" Text="{loc:Translate diagnostics.longest}" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="5" Text="{loc:Translate diagnostics.error}" FontWeight="SemiBold" FontSize="11" />
             </Grid>
 
             <ListBox Name="CommandList" Grid.Row="2" ItemsSource="{Binding Commands}">
@@ -127,7 +128,7 @@
 
             <TextBlock Name="EmptyText"
                        Grid.Row="2"
-                       Text="Henüz git komutu çalıştırılmadı."
+                       Text="{loc:Translate diagnostics.no_git_commands_have_run_yet}"
                        FontSize="11"
                        Opacity="0.7"
                        HorizontalAlignment="Center"
@@ -136,8 +137,8 @@
         </Grid>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button Name="RefreshButton" Content="Tazele" Command="{Binding RefreshCommand}" />
-            <Button Name="ResetButton" Content="Sayaçları sıfırla" Command="{Binding ResetCommand}" />
+            <Button Name="RefreshButton" Content="{loc:Translate diagnostics.refresh}" Command="{Binding RefreshCommand}" />
+            <Button Name="ResetButton" Content="{loc:Translate diagnostics.reset_counters}" Command="{Binding ResetCommand}" />
         </StackPanel>
     </Grid>
 </Window>

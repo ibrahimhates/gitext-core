@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
@@ -105,70 +106,70 @@
             -->
             <ListBox.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="Revizyonu bozuk işaretle" IsEnabled="False" />
-                    <MenuItem Header="Revizyonu sağlam işaretle" IsEnabled="False" />
-                    <MenuItem Header="Revizyonu atla" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.mark_revision_bad}" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.mark_revision_good}" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.skip_revision}" IsEnabled="False" />
                     <Separator />
 
                     <!-- GitExtensions'ta bu alt menü dinamik: dallar/etiketler + sabit alanlar -->
-                    <MenuItem Header="Panoya _kopyala">
-                        <MenuItem Header="Commit hash" Click="OnCopyHashClick" />
-                        <MenuItem Header="Mesaj" Click="OnCopyMessageClick" />
-                        <MenuItem Header="Yazar" Click="OnCopyAuthorClick" />
-                        <MenuItem Header="Tarih" Click="OnCopyDateClick" />
+                    <MenuItem Header="{loc:Translate commit_list.copy_to_clipboard}">
+                        <MenuItem Header="{loc:Translate commit_list.commit_hash}" Click="OnCopyHashClick" />
+                        <MenuItem Header="{loc:Translate commit_list.message}" Click="OnCopyMessageClick" />
+                        <MenuItem Header="{loc:Translate commit_list.author}" Click="OnCopyAuthorClick" />
+                        <MenuItem Header="{loc:Translate commit_list.date}" Click="OnCopyDateClick" />
                         <Separator />
-                        <MenuItem Header="Dal adı" Click="OnCopyBranchClick" />
+                        <MenuItem Header="{loc:Translate commit_list.branch_name}" Click="OnCopyBranchClick" />
                     </MenuItem>
                     <Separator />
 
-                    <MenuItem Header="Stash'i uygula" IsEnabled="False" />
-                    <MenuItem Header="Stash'i pop'la" IsEnabled="False" />
-                    <MenuItem Header="Stash'i sil…" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.apply_stash}" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.pop_stash}" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.drop_stash}" IsEnabled="False" />
                     <Separator />
 
-                    <MenuItem Header="Dala geç (chec_kout)…" Click="OnCheckoutClick" />
-                    <MenuItem Name="MenuContextPush" Header="Dalı pus_hla…" Click="OnPushClick" />
-                    <MenuItem Name="MenuContextMerge" Header="Mevcut dala _birleştir…" Click="OnMergeClick" />
-                    <MenuItem Name="MenuContextRebase" Header="Mevcut dalı buna _rebase et"
+                    <MenuItem Header="{loc:Translate commit_list.chec_k_out_branch}" Click="OnCheckoutClick" />
+                    <MenuItem Name="MenuContextPush" Header="{loc:Translate commit_list.pus_h_branch}" Click="OnPushClick" />
+                    <MenuItem Name="MenuContextMerge" Header="{loc:Translate commit_list.merge_into_current_branch}" Click="OnMergeClick" />
+                    <MenuItem Name="MenuContextRebase" Header="{loc:Translate commit_list.rebase_current_branch_onto_this}"
                               Click="OnRebaseClick" />
-                    <MenuItem Name="MenuContextReset" Header="Mevcut dalı buraya sıfırla…"
+                    <MenuItem Name="MenuContextReset" Header="{loc:Translate commit_list.reset_current_branch_here}"
                               Click="OnResetClick" />
                     <Separator />
 
-                    <MenuItem Header="Değişiklikleri sıfırla" IsEnabled="False" />
-                    <MenuItem Header="_Commit" IsEnabled="False" />
-                    <MenuItem Header="Burada yeni dal oluştur…" Click="OnCreateBranchClick" />
-                    <MenuItem Header="Başka bir dalı buraya sıfırla…" IsEnabled="False" />
-                    <MenuItem Header="Dalı yeniden adlandır…" Click="OnRenameBranchClick" />
-                    <MenuItem Header="Dalı sil…" Click="OnDeleteBranchClick" />
+                    <MenuItem Header="{loc:Translate commit_list.reset_changes}" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.commit}" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.create_new_branch_here}" Click="OnCreateBranchClick" />
+                    <MenuItem Header="{loc:Translate commit_list.reset_another_branch_here}" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.rename_branch}" Click="OnRenameBranchClick" />
+                    <MenuItem Header="{loc:Translate commit_list.delete_branch}" Click="OnDeleteBranchClick" />
                     <Separator />
 
-                    <MenuItem Header="Burada yeni etiket oluştur…" IsEnabled="False" />
-                    <MenuItem Header="Etiketi sil…" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.create_new_tag_here}" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.delete_tag}" IsEnabled="False" />
                     <Separator />
 
-                    <MenuItem Header="Bu commit'e geç…" Click="OnCheckoutClick" />
-                    <MenuItem Name="MenuContextRevert" Header="Bu commit'i geri al…" Click="OnRevertClick" />
-                    <MenuItem Name="MenuContextCherryPick" Header="Bu commit'i cherry pick'le…" Click="OnCherryPickClick" />
-                    <MenuItem Header="Bu commit'i arşivle…" IsEnabled="False" />
+                    <MenuItem Header="{loc:Translate commit_list.check_out_this_commit}" Click="OnCheckoutClick" />
+                    <MenuItem Name="MenuContextRevert" Header="{loc:Translate commit_list.revert_this_commit}" Click="OnRevertClick" />
+                    <MenuItem Name="MenuContextCherryPick" Header="{loc:Translate commit_list.cherry_pick_this_commit}" Click="OnCherryPickClick" />
+                    <MenuItem Header="{loc:Translate commit_list.archive_this_commit}" IsEnabled="False" />
                     <Separator />
 
                     <!-- Faz 04'te geldi: çalışan tek grup. -->
-                    <MenuItem Header="Karşılaştı_r">
-                        <MenuItem Header="Seçili iki commit'i karşılaştır"
+                    <MenuItem Header="{loc:Translate commit_list.compa_re}">
+                        <MenuItem Header="{loc:Translate commit_list.compare_the_two_selected_commits}"
                                   InputGesture="Ctrl+D"
                                   Click="OnCompareSelectedClick" />
-                        <MenuItem Header="Çalışma ağacıyla karşılaştır"
+                        <MenuItem Header="{loc:Translate commit_list.compare_with_working_tree}"
                                   Click="OnCompareWorkingTreeClick" />
-                        <MenuItem Header="HEAD ile karşılaştır"
+                        <MenuItem Header="{loc:Translate commit_list.compare_with_head}"
                                   InputGesture="Ctrl+Shift+D"
                                   Click="OnCompareHeadClick" />
                     </MenuItem>
                     <Separator />
 
-                    <MenuItem Header="_Git">
-                        <MenuItem Header="Ebeveyne" InputGesture="Alt+Down" Click="OnGoToParentClick" />
-                        <MenuItem Header="Çocuğa" InputGesture="Alt+Up" Click="OnGoToChildClick" />
+                    <MenuItem Header="{loc:Translate commit_list.go}">
+                        <MenuItem Header="{loc:Translate commit_list.to_parent}" InputGesture="Alt+Down" Click="OnGoToParentClick" />
+                        <MenuItem Header="{loc:Translate commit_list.to_child}" InputGesture="Alt+Up" Click="OnGoToChildClick" />
                     </MenuItem>
                 </ContextMenu>
             </ListBox.ContextMenu>

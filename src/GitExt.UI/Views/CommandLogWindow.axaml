@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.CommandLogWindow"
         x:DataType="vm:CommandLogViewModel"
-        Title="Git komut günlüğü"
+        Title="{loc:Translate command_log.git_command_log}"
         Width="880"
         Height="520"
         WindowStartupLocation="CenterOwner">
@@ -19,7 +20,7 @@
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,6">
             <CheckBox Name="OnlyFailuresBox"
                       Grid.Column="0"
-                      Content="Yalnızca başarısızlar"
+                      Content="{loc:Translate command_log.failures_only}"
                       IsChecked="{Binding OnlyFailures}" />
             <TextBlock Name="FailureCountText"
                        Grid.Column="1"
@@ -30,16 +31,16 @@
                        Text="{Binding FailureCount, StringFormat='{}{0} başarısız komut'}" />
             <Button Name="ClearButton"
                     Grid.Column="2"
-                    Content="Temizle"
+                    Content="{loc:Translate command_log.clear}"
                     Command="{Binding ClearCommand}" />
         </Grid>
 
         <Grid Grid.Row="1" RowDefinitions="Auto,*">
             <Grid Grid.Row="0" ColumnDefinitions="70,*,80,60" Margin="4,0,4,3">
-                <TextBlock Grid.Column="0" Text="Saat" FontWeight="SemiBold" FontSize="11" />
-                <TextBlock Grid.Column="1" Text="Komut" FontWeight="SemiBold" FontSize="11" />
-                <TextBlock Grid.Column="2" Text="Süre" FontWeight="SemiBold" FontSize="11" />
-                <TextBlock Grid.Column="3" Text="Çıkış" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="0" Text="{loc:Translate command_log.time}" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="1" Text="{loc:Translate command_log.command}" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="2" Text="{loc:Translate command_log.duration}" FontWeight="SemiBold" FontSize="11" />
+                <TextBlock Grid.Column="3" Text="{loc:Translate command_log.exit}" FontWeight="SemiBold" FontSize="11" />
             </Grid>
 
             <ListBox Name="LogList"
@@ -84,7 +85,7 @@
 
             <TextBlock Name="EmptyText"
                        Grid.Row="1"
-                       Text="Henüz komut çalıştırılmadı."
+                       Text="{loc:Translate command_log.no_commands_have_run_yet}"
                        FontSize="11"
                        Opacity="0.7"
                        HorizontalAlignment="Center"
@@ -93,7 +94,7 @@
         </Grid>
 
         <TextBlock Grid.Row="2"
-                   Text="Seçili komutun çıktısı:"
+                   Text="{loc:Translate command_log.output_of_the_selected_command}"
                    FontSize="11"
                    Opacity="0.8"
                    Margin="0,8,0,3" />

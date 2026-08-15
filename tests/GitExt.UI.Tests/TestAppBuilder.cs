@@ -3,6 +3,7 @@ using Avalonia.Headless;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
+using GitExt.UI.Localization;
 using GitExt.UI.Tests;
 
 [assembly: AvaloniaTestApplication(typeof(TestAppBuilder))]
@@ -42,5 +43,12 @@ public sealed class TestApp : Application
 
         // Varsayılan açık tema — uygulamayla aynı (kullanıcı kararı, 2026-07-29).
         RequestedThemeVariant = ThemeVariant.Light;
+
+        // Çevirmen (P11-T02). Uygulamada bunu composition root yapıyor; testlerde
+        // yapılmazsa {loc:Translate ...} bağlamaları anahtar ADINI döndürüyor ve
+        // yerleşim testleri "main.repository" gibi değerler görüyor.
+        //
+        // Varsayılan İngilizce: testlerin beklediği metinler de İngilizce.
+        TranslateExtension.Attach(new Translator(new InMemorySettingsStore()));
     }
 }

@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.ResetDialog"
         x:DataType="vm:ResetViewModel"
-        Title="Reset current branch" Width="580" SizeToContent="Height"
+        Title="{loc:Translate reset.reset_current_branch}" Width="580" SizeToContent="Height"
         WindowStartupLocation="CenterOwner">
 
   <!-- GitExtensions FormResetCurrentBranch (§ 9): radyo düğmeleri + açıklama + onay. -->
@@ -15,11 +16,11 @@
     <TextBlock Name="DroppedLabel" Text="{Binding DroppedText}" TextWrapping="Wrap" />
 
     <StackPanel Spacing="4">
-      <RadioButton Name="SoftRadio" GroupName="mode" Content="Soft — keep changes staged"
+      <RadioButton Name="SoftRadio" GroupName="mode" Content="{loc:Translate reset.soft_keep_changes_staged}"
                    IsChecked="{Binding IsSoft}" />
-      <RadioButton Name="MixedRadio" GroupName="mode" Content="Mixed — keep changes, unstage them"
+      <RadioButton Name="MixedRadio" GroupName="mode" Content="{loc:Translate reset.mixed_keep_changes_unstage_them}"
                    IsChecked="{Binding IsMixed}" />
-      <RadioButton Name="HardRadio" GroupName="mode" Content="Hard — discard all changes"
+      <RadioButton Name="HardRadio" GroupName="mode" Content="{loc:Translate reset.hard_discard_all_changes}"
                    IsChecked="{Binding IsHard}" />
     </StackPanel>
 
@@ -31,7 +32,7 @@
     <CheckBox Name="ConfirmBox"
               IsChecked="{Binding Confirmed}"
               IsVisible="{Binding RequiresConfirmation}"
-              Content="I understand that uncommitted changes will be lost permanently" />
+              Content="{loc:Translate reset.i_understand_that_uncommitted_changes_will_b}" />
 
     <TextBlock Name="CommandLabel" FontFamily="{DynamicResource GitExtMonospaceFont}" FontSize="11" Opacity="0.7"
                Text="{Binding CommandLine}" />
@@ -42,8 +43,8 @@
                IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-      <Button Name="ResetButton" Content="Reset" Command="{Binding ResetCommand}" IsDefault="True" />
-      <Button Name="CancelButton" Content="Close" Click="OnClose" IsCancel="True" />
+      <Button Name="ResetButton" Content="{loc:Translate reset.reset}" Command="{Binding ResetCommand}" IsDefault="True" />
+      <Button Name="CancelButton" Content="{loc:Translate reset.close}" Click="OnClose" IsCancel="True" />
     </StackPanel>
   </StackPanel>
 </Window>

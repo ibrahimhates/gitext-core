@@ -76,7 +76,7 @@ public class AuthenticationLayoutTests
         });
 
         (window.GetControl<TextBlock>("StorageNoticeText").Text ?? string.Empty)
-            .ShouldContain("kaydedilmiyor");
+            .ShouldContain("not stored anywhere");
 
         window.Close();
     }

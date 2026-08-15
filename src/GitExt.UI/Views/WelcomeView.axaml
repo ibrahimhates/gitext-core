@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
@@ -59,13 +60,13 @@
 
                 <!-- Logo alanı (`pnlLogo`) -->
                 <StackPanel Grid.Row="0" Spacing="2" Margin="4,0,0,18">
-                    <TextBlock Text="gitext-core" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock Text="Git Extensions Core" FontSize="11" Opacity="0.55" />
+                    <TextBlock Text="{loc:Translate welcome.gitext_core}" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Translate welcome.git_extensions_core}" FontSize="11" Opacity="0.55" />
                 </StackPanel>
 
                 <!-- Start bağlantıları (`flpnlStart`) — GitExtensions'taki sırayla -->
                 <StackPanel Grid.Row="1" Spacing="2">
-                    <TextBlock Text="Başlangıç" Classes="section" />
+                    <TextBlock Text="{loc:Translate welcome.start}" Classes="section" />
 
                     <!--
                         Henüz uygulanmamış komutlar KALDIRILMIYOR, devre dışı bırakılıyor:
@@ -74,22 +75,22 @@
                     -->
                     <Button Name="CreateRepositoryButton"
                             Classes="link"
-                            Content="Yeni depo oluştur"
+                            Content="{loc:Translate welcome.create_new_repository}"
                             IsEnabled="False"
-                            ToolTip.Tip="Faz 06'da gelecek" />
+                            ToolTip.Tip="{loc:Translate welcome.coming_in_phase_06}" />
 
                     <Button Name="OpenFolderButton"
                             Classes="link"
-                            Content="Depo aç"
+                            Content="{loc:Translate welcome.open_repository}"
                             Click="OnOpenFolderClick" />
 
                     <Button Name="CloneRepositoryButton"
                             Classes="link"
-                            Content="Depo klonla"
+                            Content="{loc:Translate welcome.clone_repository}"
                             IsEnabled="False"
-                            ToolTip.Tip="Faz 06'da gelecek" />
+                            ToolTip.Tip="{loc:Translate welcome.coming_in_phase_06}" />
 
-                    <TextBlock Text="…veya bir klasörü pencereye sürükleyin"
+                    <TextBlock Text="{loc:Translate welcome.or_drag_a_folder_onto_the_window}"
                                FontSize="11"
                                Opacity="0.5"
                                TextWrapping="Wrap"
@@ -98,16 +99,16 @@
 
                 <!-- Contribute (`flpnlContribute`) — altta sabit -->
                 <StackPanel Grid.Row="2" Spacing="2">
-                    <TextBlock Text="Katkı" Classes="section" />
+                    <TextBlock Text="{loc:Translate welcome.contribute}" Classes="section" />
 
                     <Button Name="DevelopButton"
                             Classes="link"
-                            Content="Geliştir"
+                            Content="{loc:Translate welcome.develop}"
                             Click="OnDevelopClick" />
 
                     <Button Name="IssuesButton"
                             Classes="link"
-                            Content="Sorun bildir"
+                            Content="{loc:Translate welcome.report_an_issue}"
                             Click="OnIssuesClick" />
                 </StackPanel>
             </Grid>
@@ -117,7 +118,7 @@
         <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" Margin="20,18">
 
             <TextBlock Grid.Row="0"
-                       Text="Son açılan depolar"
+                       Text="{loc:Translate welcome.recently_opened_repositories}"
                        Classes="section" />
 
             <!-- Açma başarısız olduysa sebebi burada; ekrandan ayrılmadan görünür. -->
@@ -149,7 +150,7 @@
                 ölçüldü); ayrı bir bool özellik kullanılıyor.
             -->
             <TextBlock Grid.Row="2"
-                       Text="Henüz depo açılmadı. Soldaki “Depo aç” ile başlayın."
+                       Text="{loc:Translate welcome.no_repository_open_yet_start_with_open_repos}"
                        IsVisible="{Binding !HasRecentRepositories}"
                        FontSize="12"
                        Opacity="0.55"

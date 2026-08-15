@@ -62,7 +62,7 @@ public class GitExtensionsLayoutTests
 
         Menu menu = window.GetVisualDescendants().OfType<Menu>().Single();
 
-        Headers(menu).ShouldBe(["_Başlangıç", "_Pano", "_Depo", "_Komutlar", "_Araçlar", "_Yardım"]);
+        Headers(menu).ShouldBe(["_Start", "_Dashboard", "_Repository", "_Commands", "_Tools", "_Help"]);
 
         window.Close();
     }
@@ -80,13 +80,13 @@ public class GitExtensionsLayoutTests
             .Items.OfType<MenuItem>().First();
 
         Rows(start).ShouldBe([
-            "Yeni depo oluştur…",
-            "_Aç…",
-            "Depo k_lonla…",
+            "Create new repository…",
+            "_Open…",
+            "C_lone repository…",
             "──",
-            "Son _depolar",
+            "_Recent repositories",
             "──",
-            "Çı_kış",
+            "E_xit",
         ]);
 
         window.Close();
@@ -107,7 +107,7 @@ public class GitExtensionsLayoutTests
         MenuItem create = start.Items.OfType<MenuItem>().First();
         MenuItem open = start.Items.OfType<MenuItem>().ElementAt(1);
 
-        create.Header!.ToString().ShouldBe("Yeni depo oluştur…");
+        create.Header!.ToString().ShouldBe("Create new repository…");
         create.IsEnabled.ShouldBeFalse();
 
         open.IsEnabled.ShouldBeTrue();
@@ -124,10 +124,10 @@ public class GitExtensionsLayoutTests
 
         MenuItem[] items = [.. window.GetVisualDescendants().OfType<Menu>().Single().Items.OfType<MenuItem>()];
 
-        items[2].Header!.ToString().ShouldBe("_Depo");
+        items[2].Header!.ToString().ShouldBe("_Repository");
         items[2].IsEnabled.ShouldBeFalse();
 
-        items[3].Header!.ToString().ShouldBe("_Komutlar");
+        items[3].Header!.ToString().ShouldBe("_Commands");
         items[3].IsEnabled.ShouldBeFalse();
 
         window.Close();
@@ -148,7 +148,7 @@ public class GitExtensionsLayoutTests
             .Where(b => b.Classes.Contains("link"))
             .Select(b => b.Content?.ToString() ?? string.Empty)];
 
-        links.ShouldBe(["Yeni depo oluştur", "Depo aç", "Depo klonla", "Geliştir", "Sorun bildir"]);
+        links.ShouldBe(["Create new repository", "Open repository", "Clone repository", "Develop", "Report an issue"]);
 
         window.Close();
     }
@@ -200,40 +200,40 @@ public class GitExtensionsLayoutTests
         ContextMenu menu = commitList.ContextMenu!;
 
         Rows(menu).ShouldBe([
-            "Revizyonu bozuk işaretle",
-            "Revizyonu sağlam işaretle",
-            "Revizyonu atla",
+            "Mark revision bad",
+            "Mark revision good",
+            "Skip revision",
             "──",
-            "Panoya _kopyala",
+            "_Copy to clipboard",
             "──",
-            "Stash'i uygula",
-            "Stash'i pop'la",
-            "Stash'i sil…",
+            "Apply stash",
+            "Pop stash",
+            "Drop stash…",
             "──",
-            "Dala geç (chec_kout)…",
-            "Dalı pus_hla…",
-            "Mevcut dala _birleştir…",
-            "Mevcut dalı buna _rebase et",
-            "Mevcut dalı buraya sıfırla…",
+            "Chec_k out branch…",
+            "Pus_h branch…",
+            "_Merge into current branch…",
+            "_Rebase current branch onto this",
+            "Reset current branch here…",
             "──",
-            "Değişiklikleri sıfırla",
+            "Reset changes",
             "_Commit",
-            "Burada yeni dal oluştur…",
-            "Başka bir dalı buraya sıfırla…",
-            "Dalı yeniden adlandır…",
-            "Dalı sil…",
+            "Create new branch here…",
+            "Reset another branch here…",
+            "Rename branch…",
+            "Delete branch…",
             "──",
-            "Burada yeni etiket oluştur…",
-            "Etiketi sil…",
+            "Create new tag here…",
+            "Delete tag…",
             "──",
-            "Bu commit'e geç…",
-            "Bu commit'i geri al…",
-            "Bu commit'i cherry pick'le…",
-            "Bu commit'i arşivle…",
+            "Check out this commit…",
+            "Revert this commit…",
+            "Cherry-pick this commit…",
+            "Archive this commit…",
             "──",
-            "Karşılaştı_r",
+            "Compa_re",
             "──",
-            "_Git",
+            "_Go",
         ]);
 
         window.Close();
@@ -259,9 +259,9 @@ public class GitExtensionsLayoutTests
         Dispatcher.UIThread.RunJobs();
 
         ContextMenu menu = view.GetVisualDescendants().OfType<ListBox>().First().ContextMenu!;
-        MenuItem copy = menu.Items.OfType<MenuItem>().Single(i => i.Header!.ToString() == "Panoya _kopyala");
+        MenuItem copy = menu.Items.OfType<MenuItem>().Single(i => i.Header!.ToString() == "_Copy to clipboard");
 
-        Rows(copy).ShouldBe(["Commit hash", "Mesaj", "Yazar", "Tarih", "──", "Dal adı"]);
+        Rows(copy).ShouldBe(["Commit hash", "Message", "Author", "Date", "──", "Branch name"]);
 
         window.Close();
     }
@@ -314,20 +314,20 @@ public class GitExtensionsLayoutTests
 
         Headers(menu).ShouldBe(
         [
-            "Seçili satırları _stage'le",
-            "Seçili satırları _geri al",
-            "Seçili satırları sıfırla…",
-            "_Kopyala",
-            "_Yama olarak kopyala",
-            "Yeni sürümü kopyala",
-            "Eski sürümü kopyala",
+            "_Stage selected lines",
+            "_Revert selected lines",
+            "Reset selected lines…",
+            "_Copy",
+            "Copy as _patch",
+            "Copy new version",
+            "Copy old version",
         ]);
 
         // ⚠️ Burada kullanılabilirlik SINANMIYOR, yalnızca sıra. Menü açılmadan bağlamalar
         // değerlendirilmiyor ve `IsEnabled` değerlendirilmemiş varsayılanında (true) kalıyor
         // — P05-T13'te ölçülen tuzak. Üç eylemin kullanılabilirliği, kaynağı olan
         // `IPartialStagingHost` üzerinden `PartialStagingTests` içinde test ediliyor.
-        // "Sıfırla" P05-T15'te açıldı; sıradaki yeri değişmedi (§ 9).
+        // "Reset" P05-T15'te açıldı; sıradaki yeri değişmedi (§ 9).
 
         window.Close();
 

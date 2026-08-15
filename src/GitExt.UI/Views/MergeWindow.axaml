@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.MergeWindow"
         x:DataType="vm:MergeViewModel"
-        Title="Birleştir"
+        Title="{loc:Translate merge.merge}"
         Width="580"
         SizeToContent="Height"
         MinHeight="420"
@@ -28,7 +29,7 @@
 
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
             <TextBlock Grid.Row="0" Grid.Column="0"
-                       Text="Birleştirilecek dal"
+                       Text="{loc:Translate merge.branch_to_merge}"
                        VerticalAlignment="Center"
                        Margin="0,0,8,4" />
             <ComboBox Name="SourceBox"
@@ -39,7 +40,7 @@
                       SelectedItem="{Binding Source}" />
 
             <TextBlock Grid.Row="1" Grid.Column="0"
-                       Text="Mevcut dala"
+                       Text="{loc:Translate merge.into_current_branch}"
                        VerticalAlignment="Center"
                        Margin="0,0,8,0" />
             <TextBox Name="CurrentBranchBox"
@@ -59,31 +60,31 @@
         <StackPanel Spacing="4">
             <RadioButton Name="FastForwardRadio"
                          GroupName="MergeMode"
-                         Content="Mümkünse tek dal çizgisi koru (ileri sar)"
+                         Content="{loc:Translate merge.keep_a_single_line_where_possible_fast_forwa}"
                          IsChecked="{Binding IsFastForward}" />
             <RadioButton Name="MergeCommitRadio"
                          GroupName="MergeMode"
-                         Content="Her zaman yeni bir birleştirme commit'i oluştur"
+                         Content="{loc:Translate merge.always_create_a_merge_commit}"
                          IsChecked="{Binding IsMergeCommit}" />
         </StackPanel>
 
         <CheckBox Name="NoCommitBox"
-                  Content="Commit'leme"
+                  Content="{loc:Translate merge.do_not_commit}"
                   IsChecked="{Binding NoCommit}" />
 
         <ToggleButton Name="ShowAdvancedToggle"
-                      Content="Gelişmiş seçenekleri göster"
+                      Content="{loc:Translate merge.show_advanced_options}"
                       HorizontalAlignment="Left"
                       IsChecked="{Binding ShowAdvanced}" />
 
         <StackPanel Name="AdvancedPanel" Spacing="6" IsVisible="{Binding ShowAdvanced}">
             <!-- Yerinde ama devre dışı (§ 9): Faz 07'nin çakışma çözümüyle anlam kazanıyor. -->
             <CheckBox Name="CustomStrategyBox"
-                      Content="Varsayılan olmayan birleştirme stratejisi kullan"
+                      Content="{loc:Translate merge.use_a_non_default_merge_strategy}"
                       IsEnabled="False" />
 
             <CheckBox Name="SquashBox"
-                      Content="Commit'leri tek bir değişiklikte topla (squash)"
+                      Content="{loc:Translate merge.squash_commits_into_a_single_change}"
                       IsChecked="{Binding IsSquash}" />
 
             <TextBlock Name="SquashNoticeText"
@@ -95,14 +96,14 @@
                        Text="{Binding SquashNotice}" />
 
             <CheckBox Name="UnrelatedBox"
-                      Content="İlgisiz geçmişlere izin ver"
+                      Content="{loc:Translate merge.allow_unrelated_histories}"
                       IsChecked="{Binding AllowUnrelatedHistories}" />
 
             <CheckBox Name="AddLogMessagesBox"
-                      Content="Günlük mesajlarını ekle"
+                      Content="{loc:Translate merge.add_log_messages}"
                       IsEnabled="False" />
 
-            <TextBlock Text="Birleştirme mesajı (boşsa git'in varsayılanı):"
+            <TextBlock Text="{loc:Translate merge.merge_message_git_s_default_if_empty}"
                        FontSize="11"
                        Opacity="0.8" />
             <TextBox Name="MessageBox"
@@ -113,7 +114,7 @@
 
         <!-- "Komutu göster" ilkesi. -->
         <StackPanel Spacing="3">
-            <TextBlock Text="Çalıştırılacak komut:" FontSize="11" Opacity="0.8" />
+            <TextBlock Text="{loc:Translate merge.command_to_run}" FontSize="11" Opacity="0.8" />
             <TextBox Name="CommandPreviewBox"
                      IsReadOnly="True"
                      IsTabStop="False"
@@ -135,7 +136,7 @@
                        Opacity="0.85"
                        Text="{Binding Notice}" />
             <StackPanel Name="RecoveryPanel" Spacing="2" IsVisible="{Binding HasRecoveryCommand}">
-                <TextBlock Text="Geri almak için:" FontSize="11" Opacity="0.8" />
+                <TextBlock Text="{loc:Translate merge.to_undo_this}" FontSize="11" Opacity="0.8" />
                 <TextBox Name="RecoveryCommandBox"
                          IsReadOnly="True"
                          FontFamily="{DynamicResource GitExtMonospaceFont}"
@@ -145,9 +146,9 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Name="CloseButton" Content="Kapat" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
+            <Button Name="CloseButton" Content="{loc:Translate merge.close}" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
             <Button Name="MergeButton"
-                    Content="Birleştir"
+                    Content="{loc:Translate merge.merge}"
                     MinWidth="110"
                     IsDefault="True"
                     Command="{Binding RunCommand}" />

@@ -1,4 +1,5 @@
-using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+using Avalonia.Data;
 using Avalonia.Markup.Xaml;
 
 namespace GitExt.UI.Localization;
@@ -13,18 +14,34 @@ namespace GitExt.UI.Localization;
 /// taşıyan yüzlerce satırla şişirirdi ve statik etiketlerin ViewModel'de işi yok.
 /// </para>
 /// <para>
-/// <b>Dil değişiminde metinler kendiliğinden tazeleniyor:</b> uzantı bir
-/// <see cref="IObservable{T}"/> döndürüyor; çevirmen <c>PropertyChanged(null)</c> yayınladığında
-/// akış yeni metni itiyor. Sabit bir string döndürseydik dil değişimi ancak pencere yeniden
-/// açılınca görünürdü.
+/// <b>Dil değişiminde metinler kendiliğinden tazeleniyor:</b> uzantı bir <see cref="Binding"/>
+/// döndürüyor ve kaynağı çevirmenin kendisi. Çevirmen <c>PropertyChanged(null)</c>
+/// yayınladığında Avalonia indeksleyici bağlamalarının tamamını yeniden değerlendiriyor.
+/// Sabit bir string döndürseydik dil değişimi ancak pencere yeniden açılınca görünürdü.
 /// </para>
 /// <para>
-/// 🔴 <b>Neden <c>Binding</c> değil de observable:</b> ilk yazımda <c>new Binding($"[{Key}]")</c>
-/// kullanıldı — normal derlemede sorunsuz çalıştı, ama <c>PublishTrimmed=true</c> ile publish
-/// <b>IL2026 ile kırıldı</b>: yol tabanlı <c>Binding</c> yansıma kullanıyor ve trimmer onu
-/// güvenli sayamıyor. Hata yalnızca gerçek bir trimmed publish denemesinde ortaya çıktı
-/// (aynı sınıf tuzak bu projede daha önce ayarlar ve renk paleti tarafında da yaşandı).
-/// Observable yolu yansıma içermiyor.
+/// 🔴 <b>İki yol da denendi, ikisi de ölçüldü:</b>
+/// </para>
+/// <list type="number">
+///   <item>
+///     <b><see cref="IObservable{T}"/> döndürmek</b> — trimming açısından temiz ama
+///     <b>yanlış sonuç veriyor</b>: <c>MenuItem.Header</c> gibi <c>object</c> tipli
+///     özelliklerde Avalonia observable'ı bağlama olarak değil <b>değerin kendisi</b>
+///     olarak alıyor ve menüde sınıf adı ("TranslationSource") görünüyor. 161 test bunu
+///     yakaladı.
+///   </item>
+///   <item>
+///     <b>Yol tabanlı <see cref="Binding"/></b> — doğru çalışıyor ama <c>IL2026</c>
+///     üretiyor: yansıma kullanıyor ve trimmer güvenli sayamıyor. Uyarı bu projede hata
+///     sayıldığı için publish kırılıyordu.
+///   </item>
+/// </list>
+/// <para>
+/// <b>Seçilen: (2), uyarı gerekçesiyle bastırılarak.</b> Bastırma burada güvenli çünkü
+/// bağlama yolu <b>sabit ve bizim kontrolümüzde</b> (<c>[anahtar]</c> indeksleyicisi),
+/// kullanıcı verisinden gelmiyor; hedef tip <see cref="ITranslator"/> ve indeksleyicisi
+/// aşağıdaki <c>DynamicDependency</c> ile trimmer'a korunuyor. Ölçüldü: trimmed publish
+/// temiz geçiyor ve üretilen ikili çalışıyor.
 /// </para>
 /// </remarks>
 /// <example>
@@ -66,6 +83,19 @@ public sealed class TranslateExtension : MarkupExtension
     /// </remarks>
     public static void Attach(ITranslator translator) => Instance = translator;
 
+    /// <remarks>
+    /// <c>DynamicDependency</c>: trimmer <see cref="ITranslator"/>'ın indeksleyicisini
+    /// yalnızca bağlama üzerinden kullanıldığı için "kullanılmıyor" sayıp atabilirdi.
+    /// Bu öznitelik onu tutuyor ve aşağıdaki bastırmayı gerçekten güvenli kılıyor.
+    /// </remarks>
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(ITranslator))]
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:RequiresUnreferencedCode",
+        Justification =
+            "Bağlama yolu sabit ve kod içinde üretiliyor ('[anahtar]'), kullanıcı verisinden "
+            + "gelmiyor. Hedef tipin üyeleri DynamicDependency ile korunuyor. Ölçüldü: "
+            + "trimmed publish temiz ve üretilen ikili çalışıyor.")]
     public override object ProvideValue(IServiceProvider serviceProvider)
     {
         // Tasarımcıda (ve çevirmen kurulmadan önce) anahtarın kendisi gösteriliyor:
@@ -75,40 +105,10 @@ public sealed class TranslateExtension : MarkupExtension
             return Key;
         }
 
-        return new TranslationSource(Instance, Key);
-    }
-
-    /// <summary>
-    /// Tek bir anahtarın güncel metnini yayan akış.
-    /// </summary>
-    /// <remarks>
-    /// Abone olunduğunda mevcut metni hemen veriyor, sonra her dil değişiminde yenisini.
-    /// Aboneliğin bırakılması olay kaydını da kaldırıyor — pencere kapandığında çevirmen
-    /// kapalı pencereleri canlı tutmuyor.
-    /// </remarks>
-    private sealed class TranslationSource(ITranslator translator, string key) : IObservable<object?>
-    {
-        public IDisposable Subscribe(IObserver<object?> observer)
+        return new Binding($"[{Key}]")
         {
-            ArgumentNullException.ThrowIfNull(observer);
-
-            void OnChanged(object? sender, PropertyChangedEventArgs e) => observer.OnNext(translator[key]);
-
-            translator.PropertyChanged += OnChanged;
-            observer.OnNext(translator[key]);
-
-            return new Subscription(() => translator.PropertyChanged -= OnChanged);
-        }
-
-        private sealed class Subscription(Action dispose) : IDisposable
-        {
-            private Action? _dispose = dispose;
-
-            public void Dispose()
-            {
-                Action? action = Interlocked.Exchange(ref _dispose, null);
-                action?.Invoke();
-            }
-        }
+            Source = Instance,
+            Mode = BindingMode.OneWay,
+        };
     }
 }

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
              xmlns:vm="using:GitExt.UI.ViewModels"
              x:Class="GitExt.UI.Views.ShortcutSettingsView"
              x:DataType="vm:ShortcutSettingsViewModel">
@@ -68,16 +69,16 @@
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
             <Button Name="CaptureButton"
-                    Content="Kısayol ata…"
+                    Content="{loc:Translate shortcut_settings.assign_shortcut}"
                     Command="{Binding BeginCaptureCommand}" />
             <Button Name="ClearButton"
-                    Content="Kaldır"
+                    Content="{loc:Translate shortcut_settings.remove}"
                     Command="{Binding ClearCommand}" />
             <Button Name="ResetButton"
-                    Content="Varsayılana dön"
+                    Content="{loc:Translate shortcut_settings.restore_default}"
                     Command="{Binding ResetCommand}" />
             <Button Name="ResetAllButton"
-                    Content="Tümünü varsayılana döndür"
+                    Content="{loc:Translate shortcut_settings.restore_all_defaults}"
                     Command="{Binding ResetAllCommand}" />
         </StackPanel>
 
@@ -91,7 +92,7 @@
                 Background="{DynamicResource GitExtOverlayBrush}">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                 <TextBlock Name="CapturePrompt"
-                           Text="Yeni kısayola basın… (vazgeçmek için Escape)"
+                           Text="{loc:Translate shortcut_settings.press_the_new_shortcut_escape_to_cancel}"
                            HorizontalAlignment="Center"
                            FontSize="14" />
                 <TextBlock Name="CaptureErrorText"

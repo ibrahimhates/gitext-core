@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:GitExt.UI.ViewModels"
@@ -8,7 +9,7 @@
         d:DesignWidth="1000" d:DesignHeight="600"
         x:Class="GitExt.UI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="gitext-core"
+        Title="{loc:Translate main.gitext_core}"
         Width="1000" Height="600"
         MinWidth="640" MinHeight="400"
         WindowStartupLocation="CenterScreen"
@@ -27,13 +28,13 @@
         -->
         <Menu Grid.Row="0" Name="MainMenu">
 
-            <MenuItem Header="_Başlangıç">
-                <MenuItem Name="MenuCreateRepository" Header="Yeni depo oluştur…" IsEnabled="False" />
-                <MenuItem Name="MenuOpen" Header="_Aç…" />
-                <MenuItem Name="MenuClone" Header="Depo k_lonla…" IsEnabled="False" />
+            <MenuItem Header="{loc:Translate main.start}">
+                <MenuItem Name="MenuCreateRepository" Header="{loc:Translate main.create_new_repository}" IsEnabled="False" />
+                <MenuItem Name="MenuOpen" Header="{loc:Translate main.open}" />
+                <MenuItem Name="MenuClone" Header="{loc:Translate main.c_lone_repository}" IsEnabled="False" />
                 <Separator />
                 <MenuItem Name="MenuRecentRepositories"
-                          Header="Son _depolar"
+                          Header="{loc:Translate main.recent_repositories}"
                           ItemsSource="{Binding RecentRepositories}">
                     <MenuItem.ItemTemplate>
                         <DataTemplate DataType="vm:RecentRepositoryItem">
@@ -48,73 +49,73 @@
                     </MenuItem.Styles>
                 </MenuItem>
                 <Separator />
-                <MenuItem Name="MenuExit" Header="Çı_kış" />
+                <MenuItem Name="MenuExit" Header="{loc:Translate main.e_xit}" />
             </MenuItem>
 
-            <MenuItem Header="_Pano">
+            <MenuItem Header="{loc:Translate main.dashboard}">
                 <MenuItem Name="MenuDashboardRefresh"
-                          Header="_Yenile"
+                          Header="{loc:Translate main.refresh}"
                           Command="{Binding RefreshCommand}" />
             </MenuItem>
 
-            <MenuItem Header="_Depo" IsEnabled="{Binding HasRepository}">
+            <MenuItem Header="{loc:Translate main.repository}" IsEnabled="{Binding HasRepository}">
                 <!--
                     🔴 Buradaki `InputGesture="F5"` KALDIRILDI. P08-T00/M03'te ölçüldü:
                     `InputGesture` komutu çalıştırmıyor, yalnızca etiket çiziyor — yani
                     F5 ölü bir tuştu. Hem etiket hem gerçek bağlama artık komut kaydından
                     geliyor (GlobalShortcuts).
                 -->
-                <MenuItem Name="MenuRepositoryRefresh" Header="_Yenile" />
-                <MenuItem Name="MenuFileExplorer" Header="Dosya _gezgini" IsEnabled="False" />
+                <MenuItem Name="MenuRepositoryRefresh" Header="{loc:Translate main.refresh}" />
+                <MenuItem Name="MenuFileExplorer" Header="{loc:Translate main.file_explorer}" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuRemotes" Header="Uzak _depolar…" />
+                <MenuItem Name="MenuRemotes" Header="{loc:Translate main.remotes}" />
                 <Separator />
-                <MenuItem Name="MenuSubmodules" Header="Alt modülleri yö_net…" IsEnabled="False" />
-                <MenuItem Name="MenuWorktrees" Header="Ça_lışma ağaçlarını yönet…" IsEnabled="False" />
+                <MenuItem Name="MenuSubmodules" Header="{loc:Translate main.ma_nage_submodules}" IsEnabled="False" />
+                <MenuItem Name="MenuWorktrees" Header="{loc:Translate main.manage_worktrees}" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuEditGitignore" Header=".git_ignore düzenle" IsEnabled="False" />
-                <MenuItem Name="MenuRepositorySettings" Header="Depo aya_rları…" IsEnabled="False" />
+                <MenuItem Name="MenuEditGitignore" Header="{loc:Translate main.edit_git_ignore}" IsEnabled="False" />
+                <MenuItem Name="MenuRepositorySettings" Header="{loc:Translate main.repository_setti_ngs}" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuCloseRepository" Header="_Kapat (panoya dön)" />
+                <MenuItem Name="MenuCloseRepository" Header="{loc:Translate main.close_back_to_dashboard}" />
             </MenuItem>
 
-            <MenuItem Header="_Komutlar" IsEnabled="{Binding HasRepository}">
+            <MenuItem Header="{loc:Translate main.commands}" IsEnabled="{Binding HasRepository}">
                 <!-- Faz 05 -->
-                <MenuItem Name="MenuCommit" Header="_Commit…" />
-                <MenuItem Name="MenuUndoLastCommit" Header="Son commit'i _geri al…" IsEnabled="False" />
+                <MenuItem Name="MenuCommit" Header="{loc:Translate main.commit}" />
+                <MenuItem Name="MenuUndoLastCommit" Header="{loc:Translate main.undo_last_commit}" IsEnabled="False" />
                 <!-- Faz 06 -->
-                <MenuItem Name="MenuPull" Header="Pull_/Fetch…" />
-                <MenuItem Name="MenuPush" Header="_Push…" />
+                <MenuItem Name="MenuPull" Header="{loc:Translate main.pull_fetch}" />
+                <MenuItem Name="MenuPush" Header="{loc:Translate main.push}" />
                 <Separator />
-                <MenuItem Name="MenuStashes" Header="Stash'leri yö_net…" />
-                <MenuItem Name="MenuResetChanges" Header="Değişiklikleri sıfı_rla…" IsEnabled="False" />
+                <MenuItem Name="MenuStashes" Header="{loc:Translate main.ma_nage_stashes}" />
+                <MenuItem Name="MenuResetChanges" Header="{loc:Translate main.reset_changes}" IsEnabled="False" />
                 <Separator />
-                <MenuItem Name="MenuCreateBranch" Header="_Dal oluştur…" />
-                <MenuItem Name="MenuDeleteBranch" Header="Da_l sil…" />
-                <MenuItem Name="MenuCheckoutBranch" Header="Dala geç (chec_kout)…" />
-                <MenuItem Name="MenuMerge" Header="Dalları _birleştir…" />
-                <MenuItem Name="MenuRebase" Header="R_ebase…" />
+                <MenuItem Name="MenuCreateBranch" Header="{loc:Translate main.create_branch}" />
+                <MenuItem Name="MenuDeleteBranch" Header="{loc:Translate main.de_lete_branch}" />
+                <MenuItem Name="MenuCheckoutBranch" Header="{loc:Translate main.chec_k_out_branch}" />
+                <MenuItem Name="MenuMerge" Header="{loc:Translate main.merge_branches}" />
+                <MenuItem Name="MenuRebase" Header="{loc:Translate main.r_ebase}" />
                 <Separator />
-                <MenuItem Name="MenuCreateTag" Header="Etiket oluş_tur…" IsEnabled="False" />
-                <MenuItem Name="MenuDeleteTag" Header="Etiket si_l…" IsEnabled="False" />
+                <MenuItem Name="MenuCreateTag" Header="{loc:Translate main.crea_te_tag}" IsEnabled="False" />
+                <MenuItem Name="MenuDeleteTag" Header="{loc:Translate main.de_lete_tag}" IsEnabled="False" />
                 <Separator />
                 <!-- Faz 07 -->
-                <MenuItem Name="MenuCherryPick" Header="Cherr_y pick…" />
-                <MenuItem Name="MenuCheckoutRevision" Header="Revizyona geç…" IsEnabled="False" />
-                <MenuItem Name="MenuRevert" Header="Commit'i ge_ri al (revert)…" />
-                <MenuItem Name="MenuResetToCommit" Header="Bu commit'e _sıfırla…" />
-                <MenuItem Name="MenuBisect" Header="B_isect…" IsEnabled="False" />
-                <MenuItem Name="MenuReflog" Header="Reflo_g'u göster…" />
+                <MenuItem Name="MenuCherryPick" Header="{loc:Translate main.cherr_y_pick}" />
+                <MenuItem Name="MenuCheckoutRevision" Header="{loc:Translate main.check_out_revision}" IsEnabled="False" />
+                <MenuItem Name="MenuRevert" Header="{loc:Translate main.re_vert_commit}" />
+                <MenuItem Name="MenuResetToCommit" Header="{loc:Translate main.re_set_to_this_commit}" />
+                <MenuItem Name="MenuBisect" Header="{loc:Translate main.b_isect}" IsEnabled="False" />
+                <MenuItem Name="MenuReflog" Header="{loc:Translate main.show_reflo_g}" />
             </MenuItem>
 
-            <MenuItem Header="_Araçlar">
-                <MenuItem Name="MenuCommandLog" Header="Git komut _günlüğü…" />
+            <MenuItem Header="{loc:Translate main.tools}">
+                <MenuItem Name="MenuCommandLog" Header="{loc:Translate main.git_command_log}" />
                 <Separator />
-                <MenuItem Name="MenuSettings" Header="Aya_rlar…" IsEnabled="False" />
+                <MenuItem Name="MenuSettings" Header="{loc:Translate main.setti_ngs}" IsEnabled="False" />
             </MenuItem>
 
-            <MenuItem Header="_Yardım">
-                <MenuItem Name="MenuAbout" Header="_Hakkında" />
+            <MenuItem Header="{loc:Translate main.help}">
+                <MenuItem Name="MenuAbout" Header="{loc:Translate main.about}" />
             </MenuItem>
         </Menu>
 
@@ -144,7 +145,7 @@
                            Margin="8,0" />
 
                 <Button Grid.Column="2"
-                        Content="İptal"
+                        Content="{loc:Translate main.cancel}"
                         Command="{Binding CancelLoadingCommand}"
                         IsVisible="{Binding Commits.IsLoading}"
                         FontSize="11"
@@ -206,14 +207,14 @@
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Grid.Column="0"
                            Name="DetachedText"
-                           Text="Ayrık HEAD: bir dalın üzerinde değilsiniz. Buradan atacağınız commit'ler hiçbir dalda görünmez."
+                           Text="{loc:Translate main.detached_head_you_are_not_on_a_branch_commit}"
                            TextWrapping="Wrap"
                            VerticalAlignment="Center"
                            FontSize="12" />
 
                 <Button Grid.Column="1"
                         Name="DetachedCreateBranchButton"
-                        Content="Buradan dal oluştur…"
+                        Content="{loc:Translate main.create_branch_from_here}"
                         FontSize="12"
                         Margin="8,0,0,0"
                         Command="{Binding CreateBranchCommand}" />
@@ -247,13 +248,13 @@
                            FontSize="12" />
                 <Button Name="ResolveConflictsButton"
                         Grid.Column="1"
-                        Content="Çakışmaları çöz…"
+                        Content="{loc:Translate main.resolve_conflicts}"
                         Margin="8,0,0,0"
                         IsVisible="{Binding CanResolveConflicts}"
                         Command="{Binding ResolveConflictsCommand}" />
                 <Button Name="AbortOperationButton"
                         Grid.Column="2"
-                        Content="İşlemi iptal et"
+                        Content="{loc:Translate main.cancel_the_operation}"
                         Margin="8,0,0,0"
                         IsVisible="{Binding CanAbortOperation}"
                         Command="{Binding AbortOperationCommand}" />
@@ -304,10 +305,10 @@
                     IsVisible="{Binding Commits.IsEmptyRepository}"
                     Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
-                    <TextBlock Text="Bu depoda henüz commit yok."
+                    <TextBlock Text="{loc:Translate main.no_commits_in_this_repository_yet}"
                                FontSize="14"
                                HorizontalAlignment="Center" />
-                    <TextBlock Text="İlk commit atıldığında geçmiş burada görünecek."
+                    <TextBlock Text="{loc:Translate main.history_will_appear_here_once_the_first_comm}"
                                FontSize="12"
                                Opacity="0.65"
                                HorizontalAlignment="Center" />
@@ -332,13 +333,13 @@
                         Padding="0"
                         IsVisible="{Binding Commits.Details.HasCommit}">
 
-                <TabItem Header="Detay" FontSize="12">
+                <TabItem Header="{loc:Translate main.details}" FontSize="12">
                     <Border Classes="panel">
                         <views:CommitDetailsView Name="Details" DataContext="{Binding Commits.Details}" />
                     </Border>
                 </TabItem>
 
-                <TabItem Header="Değişiklikler" FontSize="12">
+                <TabItem Header="{loc:Translate main.changes}" FontSize="12">
                     <Border Classes="panel">
                         <views:DiffView Name="ChangesDiff" DataContext="{Binding Commits.Diff}" />
                     </Border>

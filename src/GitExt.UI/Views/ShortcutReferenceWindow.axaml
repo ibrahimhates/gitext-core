@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.ShortcutReferenceWindow"
         x:DataType="vm:ShortcutReferenceViewModel"
-        Title="Klavye kısayolları"
+        Title="{loc:Translate shortcut_reference.keyboard_shortcuts}"
         Width="640" Height="620"
         WindowStartupLocation="CenterOwner">
 

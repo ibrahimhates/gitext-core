@@ -267,7 +267,7 @@ public class WorkingTreeLayoutTests
         Left("CommitOptionsButton").ShouldBeLessThan(Left("CommitTemplatesButton"));
         Left("CommitTemplatesButton").ShouldBeLessThan(Left("CreateBranchButton"));
 
-        // P05-T13'te ikisi, P05-T15'te "Seçenekler" açıldı; "Dal oluştur" Faz 06'da.
+        // P05-T13'te ikisi, P05-T15'te "Seçenekler" açıldı; "Create branch" Faz 06'da.
         view.GetControl<Button>("MessageHistoryButton").IsEnabled.ShouldBeTrue();
         view.GetControl<Button>("CommitTemplatesButton").IsEnabled.ShouldBeTrue();
         view.GetControl<Button>("CommitOptionsButton").IsEnabled.ShouldBeTrue();
@@ -306,7 +306,7 @@ public class WorkingTreeLayoutTests
         headers.ShouldContain("ilk konu");
 
         // Sabit öğe (filtre) korunuyor — geçmiş satırları onun üzerine yazmamalı.
-        headers.ShouldContain("Yalnızca benim mesajlarım");
+        headers.ShouldContain("Only my messages");
 
         flyout.Hide();
         window.Close();

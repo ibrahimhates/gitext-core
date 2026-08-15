@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
@@ -146,16 +147,16 @@
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="6,0,0,0">
                 <ToggleButton IsChecked="{Binding ShowAsTree}"
-                              Content="Ağaç"
+                              Content="{loc:Translate diff.tree}"
                               FontSize="11"
                               Padding="8,2"
-                              ToolTip.Tip="Ağaç ve düz liste görünümü arasında geçiş" />
+                              ToolTip.Tip="{loc:Translate diff.toggle_between_tree_and_flat_list}" />
 
                 <ToggleButton IsChecked="{Binding ShowSideBySide}"
-                              Content="Yan yana"
+                              Content="{loc:Translate diff.side_by_side}"
                               FontSize="11"
                               Padding="8,2"
-                              ToolTip.Tip="Birleşik (unified) ve yan yana diff görünümü arasında geçiş" />
+                              ToolTip.Tip="{loc:Translate diff.toggle_between_unified_and_side_by_side_diff}" />
 
                 <!--
                     Görsel ayarlar (P04-T13). Araç çubuğunu şişirmemek için açılır panelde;
@@ -163,21 +164,21 @@
                     ⚠️ Şu an yalnızca oturum boyunca yaşıyorlar — kalıcı saklama ayarlar
                     altyapısına bağlı (`P08-T14`).
                 -->
-                <Button Content="Görünüm" FontSize="11" Padding="8,2">
+                <Button Content="{loc:Translate diff.view}" FontSize="11" Padding="8,2">
                     <Button.Flyout>
                         <Flyout Placement="Bottom">
                             <StackPanel Spacing="8" Width="220">
                                 <CheckBox IsChecked="{Binding ShowWhitespace}"
-                                          Content="Boşlukları göster"
+                                          Content="{loc:Translate diff.show_whitespace}"
                                           FontSize="12"
-                                          ToolTip.Tip="Boşluk · ve sekme » olarak gösterilir" />
+                                          ToolTip.Tip="{loc:Translate diff.spaces_shown_as_and_tabs_as}" />
 
                                 <CheckBox IsChecked="{Binding WordWrap}"
-                                          Content="Satırları kaydır"
+                                          Content="{loc:Translate diff.wrap_lines}"
                                           FontSize="12" />
 
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="Sekme genişliği"
+                                    <TextBlock Text="{loc:Translate diff.tab_width}"
                                                FontSize="12"
                                                VerticalAlignment="Center" />
                                     <NumericUpDown Value="{Binding TabWidth}"
@@ -190,7 +191,7 @@
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="Punto"
+                                    <TextBlock Text="{loc:Translate diff.size}"
                                                FontSize="12"
                                                VerticalAlignment="Center" />
                                     <NumericUpDown Value="{Binding FontSize}"
@@ -215,7 +216,7 @@
                          PlaceholderText="Diff içinde ara (Ctrl+F)"
                          Width="200"
                          FontSize="12"
-                         ToolTip.Tip="Enter / F3 sonraki, Shift+Enter / Shift+F3 önceki" />
+                         ToolTip.Tip="{loc:Translate diff.enter_f3_for_next_shift_enter_shift_f3_for_p}" />
             </StackPanel>
         </Grid>
 
@@ -247,7 +248,7 @@
                    ZIndex="1" />
 
         <TextBlock Grid.Row="1"
-                   Text="Bu commit hiçbir dosyayı değiştirmemiş."
+                   Text="{loc:Translate diff.this_commit_did_not_change_any_files}"
                    IsVisible="{Binding IsEmpty}"
                    Opacity="0.65"
                    FontSize="12"
@@ -299,13 +300,13 @@
                         <!-- Binary ve çok büyük dosyalarda sayı yerine etiket. -->
                         <TextBlock Grid.Column="2"
                                    Classes="dim"
-                                   Text="ikili"
+                                   Text="{loc:Translate diff.binary}"
                                    IsVisible="{Binding IsBinary}"
                                    Margin="6,0" />
 
                         <TextBlock Grid.Column="2"
                                    Classes="dim"
-                                   Text="çok büyük"
+                                   Text="{loc:Translate diff.too_large}"
                                    IsVisible="{Binding IsTooLarge}"
                                    Margin="6,0" />
 
@@ -401,24 +402,24 @@
                 <ListBox.ContextMenu>
                     <ContextMenu>
                         <MenuItem Name="StageLinesMenuItem"
-                                  Header="Seçili satırları _stage'le"
+                                  Header="{loc:Translate diff.stage_selected_lines}"
                                   IsEnabled="{Binding CanStageSelection}"
                                   Click="OnStageLinesClick" />
 
                         <MenuItem Name="UnstageLinesMenuItem"
-                                  Header="Seçili satırları _geri al"
+                                  Header="{loc:Translate diff.revert_selected_lines}"
                                   IsEnabled="{Binding CanUnstageSelection}"
                                   Click="OnUnstageLinesClick" />
 
                         <MenuItem Name="ResetLinesMenuItem"
-                                  Header="Seçili satırları sıfırla…"
+                                  Header="{loc:Translate diff.reset_selected_lines}"
                                   IsEnabled="{Binding CanDiscardSelection}"
                                   Click="OnResetLinesClick" />
 
-                        <MenuItem Header="_Kopyala" Click="OnCopyCodeClick" />
-                        <MenuItem Header="_Yama olarak kopyala" Click="OnCopyPatchClick" />
-                        <MenuItem Header="Yeni sürümü kopyala" Click="OnCopyNewClick" />
-                        <MenuItem Header="Eski sürümü kopyala" Click="OnCopyOldClick" />
+                        <MenuItem Header="{loc:Translate diff.copy}" Click="OnCopyCodeClick" />
+                        <MenuItem Header="{loc:Translate diff.copy_as_patch}" Click="OnCopyPatchClick" />
+                        <MenuItem Header="{loc:Translate diff.copy_new_version}" Click="OnCopyNewClick" />
+                        <MenuItem Header="{loc:Translate diff.copy_old_version}" Click="OnCopyOldClick" />
                     </ContextMenu>
                 </ListBox.ContextMenu>
 

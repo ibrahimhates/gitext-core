@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         x:Class="GitExt.UI.Views.AbortMergeDialog"
-        Title="Birleştirmeyi iptal et"
+        Title="{loc:Translate abort_merge.abort_merge}"
         Width="480"
         SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
@@ -15,10 +16,10 @@
     <StackPanel Margin="16" Spacing="10">
         <TextBlock Name="ExplanationText"
                    TextWrapping="Wrap"
-                   Text="Birleştirme geri alınacak ve çalışma ağacı birleştirme öncesindeki hâline dönecek. Çakışmaları çözerken yaptığınız düzenlemeler KAYBOLUR." />
+                   Text="{loc:Translate abort_merge.the_merge_will_be_undone_and_the_working_tre}" />
 
         <StackPanel Name="ConflictPanel" Spacing="3">
-            <TextBlock Text="Çözülmemiş dosyalar:" FontSize="11" Opacity="0.8" />
+            <TextBlock Text="{loc:Translate abort_merge.unresolved_files}" FontSize="11" Opacity="0.8" />
             <ScrollViewer MaxHeight="140">
                 <ItemsControl Name="ConflictList">
                     <ItemsControl.ItemTemplate>
@@ -33,12 +34,12 @@
             </ScrollViewer>
         </StackPanel>
 
-        <CheckBox Name="ConfirmBox" Content="Anladım, düzenlemelerim kaybolabilir" />
+        <CheckBox Name="ConfirmBox" Content="{loc:Translate abort_merge.i_understand_my_edits_may_be_lost}" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Name="CancelButton" Content="Vazgeç" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="CancelButton" Content="{loc:Translate abort_merge.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
             <Button Name="ConfirmButton"
-                    Content="İptal et"
+                    Content="{loc:Translate abort_merge.abort}"
                     MinWidth="110"
                     IsEnabled="{Binding #ConfirmBox.IsChecked}"
                     Click="OnConfirmClick" />

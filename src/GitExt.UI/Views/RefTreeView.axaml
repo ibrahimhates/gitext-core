@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
              xmlns:vm="using:GitExt.UI.ViewModels"
              x:Class="GitExt.UI.Views.RefTreeView"
              x:DataType="vm:RefTreeViewModel">
@@ -36,18 +37,18 @@
             -->
             <TreeView.ContextMenu>
                 <ContextMenu Name="RefContextMenu">
-                    <MenuItem Name="MenuRefCheckout" Header="Bu dala geç (chec_kout)" Click="OnCheckoutClick" IsEnabled="{Binding CanCheckoutSelected}" />
-                    <MenuItem Name="MenuRefCreateBranch" Header="Burada yeni _dal oluştur…" Click="OnCreateBranchClick" IsEnabled="{Binding CanBranchFromSelected}" />
-                    <MenuItem Name="MenuRefMerge" Header="Mevcut dala _birleştir…" Click="OnMergeClick" IsEnabled="{Binding CanMergeSelected}" />
+                    <MenuItem Name="MenuRefCheckout" Header="{loc:Translate ref_tree.chec_k_out_this_branch}" Click="OnCheckoutClick" IsEnabled="{Binding CanCheckoutSelected}" />
+                    <MenuItem Name="MenuRefCreateBranch" Header="{loc:Translate ref_tree.create_new_branch_here}" Click="OnCreateBranchClick" IsEnabled="{Binding CanBranchFromSelected}" />
+                    <MenuItem Name="MenuRefMerge" Header="{loc:Translate ref_tree.merge_into_current_branch}" Click="OnMergeClick" IsEnabled="{Binding CanMergeSelected}" />
                     <Separator />
-                    <MenuItem Name="MenuRefRename" Header="Yeniden adlandır…" Click="OnRenameClick" IsEnabled="{Binding CanRenameSelected}" />
-                    <MenuItem Name="MenuRefDelete" Header="Si_l…" Click="OnDeleteClick" IsEnabled="{Binding CanDeleteSelected}" />
+                    <MenuItem Name="MenuRefRename" Header="{loc:Translate ref_tree.rename}" Click="OnRenameClick" IsEnabled="{Binding CanRenameSelected}" />
+                    <MenuItem Name="MenuRefDelete" Header="{loc:Translate ref_tree.de_lete}" Click="OnDeleteClick" IsEnabled="{Binding CanDeleteSelected}" />
                     <Separator />
-                    <MenuItem Name="MenuRefPush" Header="_Push…" Click="OnPushClick" IsEnabled="{Binding CanPushSelected}" />
-                    <MenuItem Name="MenuRefRebase" Header="Mevcut dalı buna _rebase et" IsEnabled="False" />
-                    <MenuItem Name="MenuRefSetUpstream" Header="Upstream ayarla…" IsEnabled="False" />
+                    <MenuItem Name="MenuRefPush" Header="{loc:Translate ref_tree.push}" Click="OnPushClick" IsEnabled="{Binding CanPushSelected}" />
+                    <MenuItem Name="MenuRefRebase" Header="{loc:Translate ref_tree.rebase_current_branch_onto_this}" IsEnabled="False" />
+                    <MenuItem Name="MenuRefSetUpstream" Header="{loc:Translate ref_tree.set_upstream}" IsEnabled="False" />
                     <Separator />
-                    <MenuItem Name="MenuRefCopyName" Header="Adı _kopyala" Click="OnCopyNameClick" IsEnabled="{Binding CanCopySelectedName}" />
+                    <MenuItem Name="MenuRefCopyName" Header="{loc:Translate ref_tree.copy_name}" Click="OnCopyNameClick" IsEnabled="{Binding CanCopySelectedName}" />
                 </ContextMenu>
             </TreeView.ContextMenu>
             <TreeView.ItemTemplate>
@@ -70,7 +71,7 @@
 
         <TextBlock Name="EmptyText"
                    Grid.Row="1"
-                   Text="Eşleşen dal yok."
+                   Text="{loc:Translate ref_tree.no_matching_branch}"
                    FontSize="11"
                    Opacity="0.7"
                    Margin="8"

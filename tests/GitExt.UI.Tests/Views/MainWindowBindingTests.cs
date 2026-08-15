@@ -69,8 +69,8 @@ public class MainWindowBindingTests
     }
 
     [AvaloniaTheory]
-    [InlineData("_Depo")]
-    [InlineData("_Komutlar")]
+    [InlineData("_Repository")]
+    [InlineData("_Commands")]
     public async Task Depo_acilinca_menu_ETKINLESIYOR(string header)
     {
         (Window window, MainWindowViewModel model) = await ShowAsync();
@@ -98,7 +98,7 @@ public class MainWindowBindingTests
         model.CloseRepositoryCommand.Execute(null);
         Dispatcher.UIThread.RunJobs();
 
-        TopLevelMenu(window, "_Depo").IsEnabled.ShouldBeFalse();
+        TopLevelMenu(window, "_Repository").IsEnabled.ShouldBeFalse();
 
         window.Close();
     }
@@ -115,7 +115,7 @@ public class MainWindowBindingTests
         await model.StartAsync(explicitPath: "/tmp/depo");
         Dispatcher.UIThread.RunJobs();
 
-        TopLevelMenu(window, "_Depo").IsEnabled.ShouldBeTrue();
+        TopLevelMenu(window, "_Repository").IsEnabled.ShouldBeTrue();
 
         window.Close();
     }

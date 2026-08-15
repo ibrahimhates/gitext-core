@@ -193,7 +193,7 @@ public class PushLayoutTests
             .. header.Children.OfType<TextBlock>().Select(block => block.Text ?? string.Empty),
         ];
 
-        labels.ShouldBe(["Yerel dal", "Uzak dal", "İleri/geri", "Gönder", "Uzaktakini sil"]);
+        labels.ShouldBe(["Local branch", "Remote branch", "Ahead/behind", "Push", "Delete on remote"]);
 
         window.Close();
     }

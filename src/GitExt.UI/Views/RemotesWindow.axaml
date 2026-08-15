@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.RemotesWindow"
         x:DataType="vm:RemotesViewModel"
-        Title="Uzak depolar"
+        Title="{loc:Translate remotes.remotes}"
         Width="760"
         Height="420"
         MinWidth="620"
@@ -27,7 +28,7 @@
     -->
     <TabControl Margin="8">
 
-        <TabItem Header="Uzak depolar">
+        <TabItem Header="{loc:Translate remotes.remotes}">
             <Grid ColumnDefinitions="220,Auto,*" Margin="4,8,4,4">
 
                 <ListBox Name="RemotesList"
@@ -47,15 +48,15 @@
 
                 <StackPanel Grid.Column="1" Margin="8,0" Spacing="6" VerticalAlignment="Top">
                     <Button Name="NewButton"
-                            Content="Yeni"
+                            Content="{loc:Translate remotes.new}"
                             MinWidth="90"
                             Command="{Binding NewCommand}"
-                            ToolTip.Tip="Yeni uzak depo ekle" />
+                            ToolTip.Tip="{loc:Translate remotes.add_a_new_remote}" />
                     <Button Name="DeleteButton"
-                            Content="Sil"
+                            Content="{loc:Translate remotes.delete}"
                             MinWidth="90"
                             Command="{Binding DeleteCommand}"
-                            ToolTip.Tip="Seçili uzak depoyu kaldır" />
+                            ToolTip.Tip="{loc:Translate remotes.remove_the_selected_remote}" />
                 </StackPanel>
 
                 <Grid Grid.Column="2"
@@ -65,7 +66,7 @@
 
                     <!-- Satır 0: Url (FormRemotes'ta da ilk satır) -->
                     <TextBlock Grid.Row="0" Grid.Column="0"
-                               Text="URL"
+                               Text="{loc:Translate remotes.url}"
                                Margin="0,0,8,6"
                                VerticalAlignment="Center" />
                     <TextBox Name="UrlBox"
@@ -75,7 +76,7 @@
 
                     <!-- Satır 1: Name -->
                     <TextBlock Grid.Row="1" Grid.Column="0"
-                               Text="Ad"
+                               Text="{loc:Translate remotes.name}"
                                Margin="0,0,8,2"
                                VerticalAlignment="Center" />
                     <TextBox Name="NameBox"
@@ -94,13 +95,13 @@
                     <!-- Satır 3: Separate Push Url (FormRemotes'taki checkBoxSepPushUrl) -->
                     <CheckBox Name="SeparatePushBox"
                               Grid.Row="3" Grid.Column="1"
-                              Content="Push için ayrı URL"
+                              Content="{loc:Translate remotes.separate_url_for_push}"
                               Margin="0,0,0,6"
                               IsChecked="{Binding SeparatePushUrl}" />
 
                     <!-- Satır 4: Push Url -->
                     <TextBlock Grid.Row="4" Grid.Column="0"
-                               Text="Push URL"
+                               Text="{loc:Translate remotes.push_url}"
                                Margin="0,0,8,6"
                                VerticalAlignment="Center"
                                IsEnabled="{Binding SeparatePushUrl}" />
@@ -136,12 +137,12 @@
                                 HorizontalAlignment="Right"
                                 Spacing="8">
                         <Button Name="CloseButton"
-                                Content="Kapat"
+                                Content="{loc:Translate remotes.close}"
                                 MinWidth="90"
                                 IsCancel="True"
                                 Click="OnCloseClick" />
                         <Button Name="SaveButton"
-                                Content="Değişiklikleri kaydet"
+                                Content="{loc:Translate remotes.save_changes}"
                                 MinWidth="140"
                                 IsDefault="True"
                                 Command="{Binding SaveCommand}" />
@@ -151,10 +152,10 @@
         </TabItem>
 
         <!-- Sıra bozulmasın diye YERİNDE ama devre dışı: içeriği P06-T07. -->
-        <TabItem Name="PullBehaviorTab" Header="Varsayılan pull davranışı" IsEnabled="False">
+        <TabItem Name="PullBehaviorTab" Header="{loc:Translate remotes.default_pull_behaviour}" IsEnabled="False">
             <TextBlock Margin="12"
                        TextWrapping="Wrap"
-                       Text="Dal bazlı varsayılan pull ayarları henüz uygulanmadı (P06-T07)." />
+                       Text="{loc:Translate remotes.per_branch_default_pull_settings_are_not_imp}" />
         </TabItem>
     </TabControl>
 </Window>

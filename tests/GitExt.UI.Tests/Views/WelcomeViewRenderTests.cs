@@ -118,7 +118,7 @@ public class WelcomeViewRenderTests
         bool messageShown = window.GetVisualDescendants()
             .OfType<TextBlock>()
             .Any(t => t.IsEffectivelyVisible
-                && t.Text?.Contains("henüz commit yok", StringComparison.Ordinal) == true);
+                && t.Text?.Contains("No commits in this repository", StringComparison.Ordinal) == true);
 
         messageShown.ShouldBeTrue();
 

@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.AuthenticationWindow"
         x:DataType="vm:AuthenticationViewModel"
-        Title="Kimlik doğrulama"
+        Title="{loc:Translate authentication.authentication}"
         Width="520"
         SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
@@ -26,7 +27,7 @@
                    Text="{Binding Explanation}" />
 
         <StackPanel Spacing="2" IsVisible="{Binding HasUrl}">
-            <TextBlock Text="Uzak depo:" FontSize="11" Opacity="0.8" />
+            <TextBlock Text="{loc:Translate authentication.remote}" FontSize="11" Opacity="0.8" />
             <TextBox Name="UrlBox"
                      IsReadOnly="True"
                      IsTabStop="False"
@@ -36,7 +37,7 @@
         </StackPanel>
 
         <StackPanel Name="SuggestionPanel" Spacing="4" IsVisible="{Binding HasSuggestions}">
-            <TextBlock Text="Şunları deneyebilirsiniz:" FontSize="11" Opacity="0.8" />
+            <TextBlock Text="{loc:Translate authentication.you_can_try}" FontSize="11" Opacity="0.8" />
             <ItemsControl Name="SuggestionList" ItemsSource="{Binding Suggestions}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="x:String">
@@ -53,7 +54,7 @@
         <StackPanel Name="CredentialPanel" Spacing="6" IsVisible="{Binding CanEnterCredentials}">
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                 <TextBlock Grid.Row="0" Grid.Column="0"
-                           Text="Kullanıcı adı"
+                           Text="{loc:Translate authentication.username}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,4" />
                 <TextBox Name="UsernameBox"
@@ -62,7 +63,7 @@
                          Text="{Binding Username}" />
 
                 <TextBlock Grid.Row="1" Grid.Column="0"
-                           Text="Parola / token"
+                           Text="{loc:Translate authentication.password_token}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0" />
                 <TextBox Name="SecretBox"
@@ -75,13 +76,13 @@
                        FontSize="11"
                        Opacity="0.85"
                        TextWrapping="Wrap"
-                       Text="Girdiğiniz bilgi hiçbir yere kaydedilmiyor; yalnızca bu işlem için kullanılıyor. Kalıcı olarak saklamak isterseniz yukarıdaki credential helper komutlarından birini çalıştırın." />
+                       Text="{loc:Translate authentication.what_you_enter_is_not_stored_anywhere_it_is_}" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Name="CancelButton" Content="İptal" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="CancelButton" Content="{loc:Translate authentication.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
             <Button Name="SubmitButton"
-                    Content="Tekrar dene"
+                    Content="{loc:Translate authentication.retry}"
                     MinWidth="110"
                     IsDefault="True"
                     IsVisible="{Binding CanEnterCredentials}"

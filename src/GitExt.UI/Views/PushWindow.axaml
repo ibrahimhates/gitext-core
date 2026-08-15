@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.PushWindow"
         x:DataType="vm:PushViewModel"
-        Title="Push"
+        Title="{loc:Translate push.push}"
         Width="660"
         SizeToContent="Height"
         MinHeight="520"
@@ -29,12 +30,12 @@
     -->
     <StackPanel Margin="16" Spacing="10">
 
-        <HeaderedContentControl Header="Nereye gönderilecek">
+        <HeaderedContentControl Header="{loc:Translate push.push_to}">
             <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="8,4">
                 <RadioButton Name="ToRemoteRadio"
                              Grid.Row="0" Grid.Column="0"
                              GroupName="PushTo"
-                             Content="Uzak depo"
+                             Content="{loc:Translate push.remote}"
                              IsChecked="True"
                              Margin="0,0,8,0" />
                 <ComboBox Name="RemoteBox"
@@ -44,7 +45,7 @@
                           SelectedItem="{Binding SelectedRemote}" />
                 <Button Name="ManageRemotesButton"
                         Grid.Row="0" Grid.Column="2"
-                        Content="Yönet…"
+                        Content="{loc:Translate push.manage}"
                         Margin="8,0,0,0"
                         Click="OnManageRemotesClick" />
 
@@ -52,7 +53,7 @@
                 <RadioButton Name="ToUrlRadio"
                              Grid.Row="1" Grid.Column="0"
                              GroupName="PushTo"
-                             Content="URL"
+                             Content="{loc:Translate push.url}"
                              IsEnabled="False"
                              Margin="0,6,8,0" />
                 <TextBox Name="UrlBox"
@@ -64,11 +65,11 @@
 
         <TabControl Name="TargetTabs" Margin="0,4">
 
-            <TabItem Name="BranchTab" Header="Dal gönder" IsSelected="{Binding IsBranchTab}">
+            <TabItem Name="BranchTab" Header="{loc:Translate push.push_branch}" IsSelected="{Binding IsBranchTab}">
                 <StackPanel Margin="8" Spacing="8">
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                         <TextBlock Grid.Row="0" Grid.Column="0"
-                                   Text="Gönderilecek dal"
+                                   Text="{loc:Translate push.branch_to_push}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,8,4" />
                         <ComboBox Name="SourceBranchBox"
@@ -79,7 +80,7 @@
                                   SelectedItem="{Binding SourceBranch}" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0"
-                                   Text="hedef"
+                                   Text="{loc:Translate push.target}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,8,0" />
                         <TextBox Name="RemoteBranchBox"
@@ -92,10 +93,10 @@
                                Opacity="0.85"
                                TextWrapping="Wrap"
                                IsVisible="{Binding WouldCreateRemoteBranch}"
-                               Text="Bu ad uzakta yok — yeni bir dal oluşturulacak." />
+                               Text="{loc:Translate push.this_name_does_not_exist_on_the_remote_a_new}" />
 
                     <ToggleButton Name="ShowOptionsToggle"
-                                  Content="Seçenekleri göster"
+                                  Content="{loc:Translate push.show_options}"
                                   HorizontalAlignment="Left"
                                   IsChecked="{Binding ShowOptions}" />
 
@@ -103,15 +104,15 @@
                                 Spacing="4"
                                 IsVisible="{Binding ShowOptions}">
                         <CheckBox Name="SetUpstreamBox"
-                                  Content="İzleme referansını ayarla (upstream)"
+                                  Content="{loc:Translate push.set_upstream_tracking_reference}"
                                   IsChecked="{Binding SetUpstream}" />
                         <CheckBox Name="ForceWithLeaseBox"
-                                  Content="Kirayla zorla (force with lease)"
+                                  Content="{loc:Translate push.force_with_lease}"
                                   IsChecked="{Binding ForceWithLease}" />
 
                         <!-- Yerinde ama devre dışı: plan kararı, aşağıdaki satır nedenini yazıyor. -->
                         <CheckBox Name="ForcePushBox"
-                                  Content="Zorla gönder"
+                                  Content="{loc:Translate push.force_push}"
                                   IsEnabled="False" />
                         <TextBlock Name="ForceDisabledText"
                                    FontSize="11"
@@ -121,10 +122,10 @@
                                    Text="{Binding ForceDisabledReason}" />
 
                         <CheckBox Name="RecursiveSubmodulesBox"
-                                  Content="Alt modülleri de gönder"
+                                  Content="{loc:Translate push.push_submodules_as_well}"
                                   IsEnabled="False" />
                         <CheckBox Name="CreatePullRequestBox"
-                                  Content="Gönderimden sonra pull request oluştur"
+                                  Content="{loc:Translate push.create_a_pull_request_after_pushing}"
                                   IsEnabled="False" />
                     </StackPanel>
 
@@ -137,11 +138,11 @@
                 </StackPanel>
             </TabItem>
 
-            <TabItem Name="TagTab" Header="Etiket gönder" IsSelected="{Binding IsTagTab}">
+            <TabItem Name="TagTab" Header="{loc:Translate push.push_tag}" IsSelected="{Binding IsTagTab}">
                 <StackPanel Margin="8" Spacing="8">
                     <Grid ColumnDefinitions="Auto,*">
                         <TextBlock Grid.Column="0"
-                                   Text="Gönderilecek etiket"
+                                   Text="{loc:Translate push.tag_to_push}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,8,0" />
                         <ComboBox Name="TagBox"
@@ -153,16 +154,16 @@
                     </Grid>
 
                     <CheckBox Name="AllTagsBox"
-                              Content="Tüm etiketleri gönder"
+                              Content="{loc:Translate push.push_all_tags}"
                               IsChecked="{Binding AllTags}" />
 
                     <CheckBox Name="ForceTagBox"
-                              Content="Zorla gönder"
+                              Content="{loc:Translate push.force_push}"
                               IsEnabled="False" />
                 </StackPanel>
             </TabItem>
 
-            <TabItem Name="MultipleTab" Header="Birden çok dal" IsSelected="{Binding IsMultipleTab}">
+            <TabItem Name="MultipleTab" Header="{loc:Translate push.multiple_branches}" IsSelected="{Binding IsMultipleTab}">
                 <StackPanel Margin="8" Spacing="6">
                     <!--
                         GitExtensions burada bir `DataGridView` kullanıyor. Avalonia'nın
@@ -171,11 +172,11 @@
                         ve başlıkları birebir korunarak `ItemsControl` ile kuruldu.
                     -->
                     <Grid Name="BranchGridHeader" ColumnDefinitions="*,*,90,70,110" Margin="2,0">
-                        <TextBlock Grid.Column="0" Text="Yerel dal" FontWeight="SemiBold" FontSize="11" />
-                        <TextBlock Grid.Column="1" Text="Uzak dal" FontWeight="SemiBold" FontSize="11" />
-                        <TextBlock Grid.Column="2" Text="İleri/geri" FontWeight="SemiBold" FontSize="11" />
-                        <TextBlock Grid.Column="3" Text="Gönder" FontWeight="SemiBold" FontSize="11" />
-                        <TextBlock Grid.Column="4" Text="Uzaktakini sil" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="0" Text="{loc:Translate push.local_branch}" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="1" Text="{loc:Translate push.remote_branch}" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="2" Text="{loc:Translate push.ahead_behind}" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="3" Text="{loc:Translate push.push}" FontWeight="SemiBold" FontSize="11" />
+                        <TextBlock Grid.Column="4" Text="{loc:Translate push.delete_on_remote}" FontWeight="SemiBold" FontSize="11" />
                     </Grid>
 
                     <ScrollViewer Height="180">
@@ -209,14 +210,14 @@
                                FontSize="11"
                                TextWrapping="Wrap"
                                Opacity="0.85"
-                               Text="Uzaktaki bir dalı silmek, o dalın uçtaki commit'lerini başkaları için de erişilemez yapar. Gönderme ve silme aynı satırda birlikte seçilemez." />
+                               Text="{loc:Translate push.deleting_a_remote_branch_makes_its_tip_commi}" />
                 </StackPanel>
             </TabItem>
         </TabControl>
 
         <!-- "Komutu göster" ilkesi: düğmeye basmadan ne olacağı okunabilmeli. -->
         <StackPanel Spacing="3">
-            <TextBlock Text="Çalıştırılacak komut:" FontSize="11" Opacity="0.8" />
+            <TextBlock Text="{loc:Translate push.command_to_run}" FontSize="11" Opacity="0.8" />
             <TextBox Name="CommandPreviewBox"
                      IsReadOnly="True"
                      IsTabStop="False"
@@ -267,7 +268,7 @@
                              Value="{Binding ProgressPercent}" />
                 <Button Name="CancelRunButton"
                         Grid.Column="1"
-                        Content="İptal"
+                        Content="{loc:Translate push.cancel}"
                         MinWidth="80"
                         Margin="8,0,0,0"
                         Command="{Binding CancelCommand}" />
@@ -275,11 +276,11 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Name="PullButton" Content="Pull…" MinWidth="90" Click="OnPullClick" />
-            <Button Name="LoadSshKeyButton" Content="SSH anahtarı yükle" MinWidth="140" IsEnabled="False" />
-            <Button Name="CloseButton" Content="Kapat" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
+            <Button Name="PullButton" Content="{loc:Translate push.pull}" MinWidth="90" Click="OnPullClick" />
+            <Button Name="LoadSshKeyButton" Content="{loc:Translate push.load_ssh_key}" MinWidth="140" IsEnabled="False" />
+            <Button Name="CloseButton" Content="{loc:Translate push.close}" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
             <Button Name="PushButton"
-                    Content="Gönder"
+                    Content="{loc:Translate push.push}"
                     MinWidth="110"
                     IsDefault="True"
                     Command="{Binding RunCommand}" />

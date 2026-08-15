@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.SequencerDialog"
         x:DataType="vm:SequencerViewModel"
@@ -10,10 +11,10 @@
 
     <TextBlock Name="SummaryLabel" Text="{Binding Summary}" FontWeight="Bold" />
 
-    <CheckBox Name="NoCommitBox" Content="Stage the changes without committing"
+    <CheckBox Name="NoCommitBox" Content="{loc:Translate sequencer.stage_the_changes_without_committing}"
               IsChecked="{Binding NoCommit}" />
 
-    <CheckBox Name="RecordOriginBox" Content="Record the source commit in the message (-x)"
+    <CheckBox Name="RecordOriginBox" Content="{loc:Translate sequencer.record_the_source_commit_in_the_message_x}"
               IsChecked="{Binding RecordOrigin}"
               IsVisible="{Binding SupportsRecordOrigin}" />
 
@@ -22,7 +23,7 @@
       ("is a merge but no -m option was given").
     -->
     <StackPanel Name="MainlinePanel" Spacing="4" IsVisible="{Binding IsMergeCommit}">
-      <TextBlock Text="This is a merge commit. Which parent is the mainline?" TextWrapping="Wrap" />
+      <TextBlock Text="{loc:Translate sequencer.this_is_a_merge_commit_which_parent_is_the_m}" TextWrapping="Wrap" />
       <NumericUpDown Name="MainlineBox" Minimum="1" Increment="1"
                      Maximum="{Binding ParentCount}"
                      Value="{Binding MainlineParent}" />
@@ -37,8 +38,8 @@
                IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-      <Button Name="RunButton" Content="Run" Command="{Binding RunCommand}" IsDefault="True" />
-      <Button Name="CancelButton" Content="Close" Click="OnClose" IsCancel="True" />
+      <Button Name="RunButton" Content="{loc:Translate sequencer.run}" Command="{Binding RunCommand}" IsDefault="True" />
+      <Button Name="CancelButton" Content="{loc:Translate sequencer.close}" Click="OnClose" IsCancel="True" />
     </StackPanel>
   </StackPanel>
 </Window>

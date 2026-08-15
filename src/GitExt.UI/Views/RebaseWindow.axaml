@@ -1,27 +1,28 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.RebaseWindow"
         x:DataType="vm:RebaseViewModel"
-        Title="Rebase" Width="820" Height="600"
+        Title="{loc:Translate rebase.rebase}" Width="820" Height="600"
         WindowStartupLocation="CenterOwner">
 
   <!-- GitExtensions FormRebase (§ 9): üstte hedef, ortada todo listesi, altta eylemler. -->
   <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12">
 
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">
-      <TextBlock Text="Rebase onto" VerticalAlignment="Center" />
+      <TextBlock Text="{loc:Translate rebase.rebase_onto}" VerticalAlignment="Center" />
       <TextBox Name="UpstreamBox" Width="220" Text="{Binding Upstream}" />
-      <CheckBox Name="InteractiveBox" Content="Interactive" IsChecked="{Binding IsInteractive}" />
-      <CheckBox Name="AutoStashBox" Content="Autostash" IsChecked="{Binding AutoStash}" />
+      <CheckBox Name="InteractiveBox" Content="{loc:Translate rebase.interactive}" IsChecked="{Binding IsInteractive}" />
+      <CheckBox Name="AutoStashBox" Content="{loc:Translate rebase.autostash}" IsChecked="{Binding AutoStash}" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,8,0,6"
                 IsVisible="{Binding IsInteractive}">
-      <Button Name="MoveUpButton" Content="Move up" Command="{Binding MoveUpCommand}" />
-      <Button Name="MoveDownButton" Content="Move down" Command="{Binding MoveDownCommand}" />
+      <Button Name="MoveUpButton" Content="{loc:Translate rebase.move_up}" Command="{Binding MoveUpCommand}" />
+      <Button Name="MoveDownButton" Content="{loc:Translate rebase.move_down}" Command="{Binding MoveDownCommand}" />
       <TextBlock VerticalAlignment="Center" Opacity="0.6" FontSize="11"
-                 Text="Steps run top to bottom. Drag to reorder." />
+                 Text="{loc:Translate rebase.steps_run_top_to_bottom_drag_to_reorder}" />
     </StackPanel>
 
     <ListBox Grid.Row="2" Name="StepList"
@@ -53,8 +54,8 @@
       <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="{DynamicResource GitExtErrorBrush}" TextWrapping="Wrap"
                  IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-        <Button Name="RunButton" Content="Rebase" Command="{Binding RunCommand}" IsDefault="True" />
-        <Button Name="CancelButton" Content="Close" Click="OnClose" IsCancel="True" />
+        <Button Name="RunButton" Content="{loc:Translate rebase.rebase}" Command="{Binding RunCommand}" IsDefault="True" />
+        <Button Name="CancelButton" Content="{loc:Translate rebase.close}" Click="OnClose" IsCancel="True" />
       </StackPanel>
     </StackPanel>
   </Grid>

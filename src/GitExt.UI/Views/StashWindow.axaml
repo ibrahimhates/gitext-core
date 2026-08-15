@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.StashWindow"
         x:DataType="vm:StashViewModel"
-        Title="Stashes" Width="900" Height="560"
+        Title="{loc:Translate stash.stashes}" Width="900" Height="560"
         WindowStartupLocation="CenterOwner">
 
   <!-- Yerleşim GitExtensions FormStash'ten (§ 9): solda liste, sağda diff, altta eylemler. -->
@@ -13,9 +14,9 @@
       <TextBox Name="MessageBox" Width="280"
                PlaceholderText="Stash message (optional)"
                Text="{Binding NewMessage}" />
-      <CheckBox Name="UntrackedBox" Content="Include untracked" IsChecked="{Binding IncludeUntracked}" />
-      <CheckBox Name="KeepIndexBox" Content="Keep index" IsChecked="{Binding KeepIndex}" />
-      <Button Name="PushButton" Content="Stash changes" Command="{Binding PushCommand}" />
+      <CheckBox Name="UntrackedBox" Content="{loc:Translate stash.include_untracked}" IsChecked="{Binding IncludeUntracked}" />
+      <CheckBox Name="KeepIndexBox" Content="{loc:Translate stash.keep_index}" IsChecked="{Binding KeepIndex}" />
+      <Button Name="PushButton" Content="{loc:Translate stash.stash_changes}" Command="{Binding PushCommand}" />
     </StackPanel>
 
     <Grid Grid.Row="1" ColumnDefinitions="300,4,*">
@@ -49,13 +50,13 @@
       <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="{DynamicResource GitExtErrorBrush}" TextWrapping="Wrap"
                  IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <Button Name="ApplyButton" Content="Apply" Command="{Binding ApplyCommand}" />
-        <Button Name="PopButton" Content="Pop" Command="{Binding PopCommand}" />
-        <Button Name="DropButton" Content="Drop" Command="{Binding DropCommand}" />
+        <Button Name="ApplyButton" Content="{loc:Translate stash.apply}" Command="{Binding ApplyCommand}" />
+        <Button Name="PopButton" Content="{loc:Translate stash.pop}" Command="{Binding PopCommand}" />
+        <Button Name="DropButton" Content="{loc:Translate stash.drop}" Command="{Binding DropCommand}" />
         <Border Width="1" Background="{DynamicResource GitExtSeparatorBrush}" Margin="4,2" />
         <TextBox Name="BranchNameBox" Width="160" PlaceholderText="New branch name" />
-        <Button Name="BranchButton" Content="Branch from stash" Command="{Binding BranchCommand}" />
-        <Button Name="CloseButton" Content="Close" Click="OnClose" />
+        <Button Name="BranchButton" Content="{loc:Translate stash.branch_from_stash}" Command="{Binding BranchCommand}" />
+        <Button Name="CloseButton" Content="{loc:Translate stash.close}" Click="OnClose" />
       </StackPanel>
     </StackPanel>
   </Grid>

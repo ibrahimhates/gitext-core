@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.CommandPaletteWindow"
         x:DataType="vm:CommandPaletteViewModel"
-        Title="Komut paleti"
+        Title="{loc:Translate command_palette.command_palette}"
         Width="620" Height="420"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
@@ -54,7 +55,7 @@
 
                 <!-- Boş sonuç sessiz kalmıyor: kullanıcı yazdığını mı yanlış yazdı, komut mu yok? -->
                 <TextBlock Name="EmptyLabel"
-                           Text="Eşleşen komut yok."
+                           Text="{loc:Translate command_palette.no_matching_command}"
                            IsVisible="{Binding IsEmpty}"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"

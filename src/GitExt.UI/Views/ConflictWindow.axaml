@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.ConflictWindow"
         x:DataType="vm:ConflictViewModel"
-        Title="Resolve conflicts"
+        Title="{loc:Translate conflict.resolve_conflicts}"
         Width="1000" Height="640"
         WindowStartupLocation="CenterOwner">
 
@@ -49,7 +50,7 @@
                       IsVisible="{Binding ShowThreeWay}">
 
                     <Grid Grid.Column="0" RowDefinitions="Auto,*" Margin="0,0,4,0">
-                        <TextBlock Grid.Row="0" Text="Base (common ancestor)" FontSize="11" Opacity="0.7" />
+                        <TextBlock Grid.Row="0" Text="{loc:Translate conflict.base_common_ancestor}" FontSize="11" Opacity="0.7" />
                         <TextBox Grid.Row="1" Name="BaseBox"
                                  Text="{Binding BaseText}"
                                  IsReadOnly="True"
@@ -59,7 +60,7 @@
                     </Grid>
 
                     <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="4,0">
-                        <TextBlock Grid.Row="0" Text="Ours (current branch)" FontSize="11" Opacity="0.7" />
+                        <TextBlock Grid.Row="0" Text="{loc:Translate conflict.ours_current_branch}" FontSize="11" Opacity="0.7" />
                         <TextBox Grid.Row="1" Name="OursBox"
                                  Text="{Binding OursText}"
                                  IsReadOnly="True"
@@ -69,7 +70,7 @@
                     </Grid>
 
                     <Grid Grid.Column="2" RowDefinitions="Auto,*" Margin="4,0,0,0">
-                        <TextBlock Grid.Row="0" Text="Theirs (incoming)" FontSize="11" Opacity="0.7" />
+                        <TextBlock Grid.Row="0" Text="{loc:Translate conflict.theirs_incoming}" FontSize="11" Opacity="0.7" />
                         <TextBox Grid.Row="1" Name="TheirsBox"
                                  Text="{Binding TheirsText}"
                                  IsReadOnly="True"
@@ -82,7 +83,7 @@
                 <GridSplitter Grid.Row="1" Background="Transparent" />
 
                 <Grid Grid.Row="2" RowDefinitions="Auto,*">
-                    <TextBlock Grid.Row="0" Text="Result" FontSize="11" Opacity="0.7" />
+                    <TextBlock Grid.Row="0" Text="{loc:Translate conflict.result}" FontSize="11" Opacity="0.7" />
                     <TextBox Grid.Row="1" Name="MergedBox"
                              Text="{Binding MergedText}"
                              AcceptsReturn="True"
@@ -101,22 +102,22 @@
                        IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <Button Name="TakeOursButton" Content="Take ours" Command="{Binding TakeOursCommand}" />
-                <Button Name="TakeTheirsButton" Content="Take theirs" Command="{Binding TakeTheirsCommand}" />
-                <Button Name="TakeBothButton" Content="Take both" Command="{Binding TakeBothCommand}" />
-                <Button Name="SaveMergedButton" Content="Save result" Command="{Binding SaveMergedCommand}" />
-                <Button Name="RemoveButton" Content="Delete file" Command="{Binding RemoveCommand}" />
-                <Button Name="MergeToolButton" Content="Open merge tool" Command="{Binding OpenMergeToolCommand}" />
+                <Button Name="TakeOursButton" Content="{loc:Translate conflict.take_ours}" Command="{Binding TakeOursCommand}" />
+                <Button Name="TakeTheirsButton" Content="{loc:Translate conflict.take_theirs}" Command="{Binding TakeTheirsCommand}" />
+                <Button Name="TakeBothButton" Content="{loc:Translate conflict.take_both}" Command="{Binding TakeBothCommand}" />
+                <Button Name="SaveMergedButton" Content="{loc:Translate conflict.save_result}" Command="{Binding SaveMergedCommand}" />
+                <Button Name="RemoveButton" Content="{loc:Translate conflict.delete_file}" Command="{Binding RemoveCommand}" />
+                <Button Name="MergeToolButton" Content="{loc:Translate conflict.open_merge_tool}" Command="{Binding OpenMergeToolCommand}" />
 
                 <Border Width="1" Background="{DynamicResource GitExtSeparatorBrush}" Margin="4,2" />
 
                 <!-- Devam yalnızca hepsi çözülünce etkin: erken çalıştırmak rc=128. -->
                 <Button Name="ContinueButton"
-                        Content="Continue"
+                        Content="{loc:Translate conflict.continue}"
                         Command="{Binding ContinueCommand}"
                         IsDefault="True" />
-                <Button Name="AbortButton" Content="Abort" Command="{Binding AbortCommand}" />
-                <Button Name="CloseButton" Content="Close" Click="OnClose" />
+                <Button Name="AbortButton" Content="{loc:Translate conflict.abort}" Command="{Binding AbortCommand}" />
+                <Button Name="CloseButton" Content="{loc:Translate conflict.close}" Click="OnClose" />
             </StackPanel>
         </StackPanel>
     </Grid>

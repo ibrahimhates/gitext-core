@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.PullWindow"
         x:DataType="vm:PullViewModel"
-        Title="Pull / Fetch"
+        Title="{loc:Translate pull.pull_fetch}"
         Width="620"
         SizeToContent="Height"
         MinHeight="480"
@@ -25,12 +26,12 @@
     -->
     <StackPanel Margin="16" Spacing="10">
 
-        <HeaderedContentControl Header="Nereden çekilecek">
+        <HeaderedContentControl Header="{loc:Translate pull.pull_from}">
             <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="8,4">
                 <RadioButton Name="FromRemoteRadio"
                              Grid.Row="0" Grid.Column="0"
                              GroupName="PullFrom"
-                             Content="Uzak depo"
+                             Content="{loc:Translate pull.remote}"
                              IsChecked="True"
                              Margin="0,0,8,0" />
                 <ComboBox Name="RemoteBox"
@@ -40,7 +41,7 @@
                           SelectedItem="{Binding SelectedRemote}" />
                 <Button Name="ManageRemotesButton"
                         Grid.Row="0" Grid.Column="2"
-                        Content="Yönet…"
+                        Content="{loc:Translate pull.manage}"
                         Margin="8,0,0,0"
                         Click="OnManageRemotesClick" />
 
@@ -48,7 +49,7 @@
                 <RadioButton Name="FromUrlRadio"
                              Grid.Row="1" Grid.Column="0"
                              GroupName="PullFrom"
-                             Content="URL"
+                             Content="{loc:Translate pull.url}"
                              IsEnabled="False"
                              Margin="0,6,8,0" />
                 <TextBox Name="UrlBox"
@@ -58,10 +59,10 @@
             </Grid>
         </HeaderedContentControl>
 
-        <HeaderedContentControl Header="Dal">
+        <HeaderedContentControl Header="{loc:Translate pull.branch}">
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="8,4">
                 <TextBlock Grid.Row="0" Grid.Column="0"
-                           Text="Yerel dal"
+                           Text="{loc:Translate pull.local_branch}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,4" />
                 <TextBox Name="LocalBranchBox"
@@ -72,7 +73,7 @@
                          Text="{Binding CurrentBranch}" />
 
                 <TextBlock Grid.Row="1" Grid.Column="0"
-                           Text="Uzak dal"
+                           Text="{loc:Translate pull.remote_branch}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0" />
                 <ComboBox Name="BranchBox"
@@ -83,19 +84,19 @@
             </Grid>
         </HeaderedContentControl>
 
-        <HeaderedContentControl Header="Birleştirme seçenekleri">
+        <HeaderedContentControl Header="{loc:Translate pull.merge_options}">
             <StackPanel Margin="8,4" Spacing="4">
                 <RadioButton Name="MergeRadio"
                              GroupName="Action"
-                             Content="Uzak dalı mevcut dala birleştir"
+                             Content="{loc:Translate pull.merge_the_remote_branch_into_the_current_bra}"
                              IsChecked="{Binding IsMerge}" />
                 <RadioButton Name="RebaseRadio"
                              GroupName="Action"
-                             Content="Mevcut dalı uzak dalın üstüne taşı (rebase)"
+                             Content="{loc:Translate pull.rebase_the_current_branch_onto_the_remote_br}"
                              IsChecked="{Binding IsRebase}" />
                 <RadioButton Name="FetchOnlyRadio"
                              GroupName="Action"
-                             Content="Birleştirme, yalnızca uzak değişiklikleri getir"
+                             Content="{loc:Translate pull.do_not_merge_only_fetch_remote_changes}"
                              IsChecked="{Binding IsFetchOnly}" />
 
                 <TextBlock Name="StrategyNoticeText"
@@ -107,41 +108,41 @@
             </StackPanel>
         </HeaderedContentControl>
 
-        <HeaderedContentControl Header="Etiket seçenekleri">
+        <HeaderedContentControl Header="{loc:Translate pull.tag_options}">
             <StackPanel Margin="8,4" Spacing="4">
                 <RadioButton Name="ReachableTagsRadio"
                              GroupName="Tags"
-                             Content="Ulaşılan commit'lerin etiketlerini getir"
+                             Content="{loc:Translate pull.fetch_tags_of_reachable_commits}"
                              IsChecked="{Binding IsReachableTags}" />
                 <RadioButton Name="AllTagsRadio"
                              GroupName="Tags"
-                             Content="Tüm etiketleri getir"
+                             Content="{loc:Translate pull.fetch_all_tags}"
                              IsChecked="{Binding IsAllTags}" />
                 <RadioButton Name="NoTagsRadio"
                              GroupName="Tags"
-                             Content="Etiket getirme"
+                             Content="{loc:Translate pull.do_not_fetch_tags}"
                              IsChecked="{Binding IsNoTags}" />
             </StackPanel>
         </HeaderedContentControl>
 
         <StackPanel Spacing="4">
             <CheckBox Name="PruneBox"
-                      Content="Uzakta silinmiş dalların izlerini temizle (prune)"
+                      Content="{loc:Translate pull.prune_branches_deleted_on_the_remote}"
                       IsChecked="{Binding Prune}" />
             <CheckBox Name="PruneTagsBox"
-                      Content="Uzakta silinmiş etiketleri de temizle"
+                      Content="{loc:Translate pull.also_prune_tags_deleted_on_the_remote}"
                       Margin="20,0,0,0"
                       IsEnabled="{Binding CanPruneTags}"
                       IsChecked="{Binding PruneTags}" />
             <CheckBox Name="AutoStashBox"
-                      Content="Kaydedilmemiş değişiklikleri otomatik stash'le"
+                      Content="{loc:Translate pull.automatically_stash_uncommitted_changes}"
                       IsEnabled="{Binding AutoStashApplies}"
                       IsChecked="{Binding AutoStash}" />
         </StackPanel>
 
         <!-- "Komutu göster" ilkesi: düğmeye basmadan ne olacağı okunabilmeli. -->
         <StackPanel Spacing="3">
-            <TextBlock Text="Çalıştırılacak komut:" FontSize="11" Opacity="0.8" />
+            <TextBlock Text="{loc:Translate pull.command_to_run}" FontSize="11" Opacity="0.8" />
             <TextBox Name="CommandPreviewBox"
                      IsReadOnly="True"
                      IsTabStop="False"
@@ -163,7 +164,7 @@
                        Opacity="0.85"
                        Text="{Binding Notice}" />
             <StackPanel Spacing="2" IsVisible="{Binding HasRecoveryCommand}">
-                <TextBlock Text="Geri almak için:" FontSize="11" Opacity="0.8" />
+                <TextBlock Text="{loc:Translate pull.to_undo_this}" FontSize="11" Opacity="0.8" />
                 <TextBox Name="RecoveryCommandBox"
                          IsReadOnly="True"
                          FontFamily="{DynamicResource GitExtMonospaceFont}"
@@ -194,7 +195,7 @@
                              Value="{Binding ProgressPercent}" />
                 <Button Name="CancelRunButton"
                         Grid.Column="1"
-                        Content="İptal"
+                        Content="{loc:Translate pull.cancel}"
                         MinWidth="80"
                         Margin="8,0,0,0"
                         Command="{Binding CancelCommand}" />
@@ -202,9 +203,9 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Name="CloseButton" Content="Kapat" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
+            <Button Name="CloseButton" Content="{loc:Translate pull.close}" MinWidth="90" IsCancel="True" Click="OnCloseClick" />
             <Button Name="PullButton"
-                    Content="Çalıştır"
+                    Content="{loc:Translate pull.run}"
                     MinWidth="110"
                     IsDefault="True"
                     Command="{Binding RunCommand}" />

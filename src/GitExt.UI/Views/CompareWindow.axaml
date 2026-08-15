@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:GitExt.UI.ViewModels"
@@ -45,7 +46,7 @@
                                VerticalAlignment="Center" />
 
                     <!-- Çalışma ağacı karşılaştırmasında sağ taraf bir revizyon değil. -->
-                    <TextBlock Text="çalışma ağacı"
+                    <TextBlock Text="{loc:Translate compare.working_tree}"
                                IsVisible="{Binding !!!ToRevision.Length}"
                                FontSize="12"
                                Opacity="0.75"
@@ -54,10 +55,10 @@
 
                 <Button Grid.Column="1"
                         Name="RefreshButton"
-                        Content="Yenile"
+                        Content="{loc:Translate compare.refresh}"
                         FontSize="11"
                         Padding="8,2"
-                        ToolTip.Tip="Karşılaştırmayı yeniden oku (F5)" />
+                        ToolTip.Tip="{loc:Translate compare.reload_the_comparison_f5}" />
             </Grid>
         </Border>
 

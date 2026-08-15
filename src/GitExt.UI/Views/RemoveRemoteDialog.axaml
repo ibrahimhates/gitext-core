@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         x:Class="GitExt.UI.Views.RemoveRemoteDialog"
-        Title="Uzak depoyu kaldır"
+        Title="{loc:Translate remove_remote.remove_remote}"
         Width="560"
         SizeToContent="Height"
         MinHeight="200"
@@ -23,7 +24,7 @@
         <TextBlock Name="ImpactText" TextWrapping="Wrap" />
 
         <StackPanel Spacing="3">
-            <TextBlock Text="Geri getirmek için:" FontSize="11" Opacity="0.85" />
+            <TextBlock Text="{loc:Translate remove_remote.to_restore_it}" FontSize="11" Opacity="0.85" />
             <TextBox Name="RecoveryCommands"
                      IsReadOnly="True"
                      AcceptsReturn="True"
@@ -34,16 +35,16 @@
                        FontSize="11"
                        TextWrapping="Wrap"
                        Opacity="0.75"
-                       Text="Bu komutlar yapılandırmayı geri kurar; commit'ler ise ancak yeniden fetch ile döner — yani uzak depoya erişiminiz olmalı." />
+                       Text="{loc:Translate remove_remote.these_commands_restore_the_configuration_com}" />
         </StackPanel>
 
-        <CheckBox Name="ConfirmBox" Content="Kaldırmayı onaylıyorum" />
+        <CheckBox Name="ConfirmBox" Content="{loc:Translate remove_remote.i_confirm_the_removal}" />
 
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="8">
-            <Button Name="CancelButton" Content="İptal" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
-            <Button Name="RemoveButton" Content="Kaldır" MinWidth="90" IsDefault="True" Click="OnRemoveClick" />
+            <Button Name="CancelButton" Content="{loc:Translate remove_remote.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="RemoveButton" Content="{loc:Translate remove_remote.remove}" MinWidth="90" IsDefault="True" Click="OnRemoveClick" />
         </StackPanel>
     </StackPanel>
 </Window>

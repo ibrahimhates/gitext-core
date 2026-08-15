@@ -1,0 +1,1678 @@
+{
+  "abort_merge|Anladım, düzenlemelerim kaybolabilir": {
+    "en": "I understand my edits may be lost",
+    "tr": "Anladım, düzenlemelerim kaybolabilir"
+  },
+  "abort_merge|Birleştirme geri alınacak ve çalışma ağacı birleştirme öncesindeki hâline dönecek. Çakışmaları çözerken yaptığınız düzenlemeler KAYBOLUR.": {
+    "en": "The merge will be undone and the working tree returned to its pre-merge state. Any edits you made while resolving conflicts WILL BE LOST.",
+    "tr": "Birleştirme geri alınacak ve çalışma ağacı birleştirme öncesindeki hâline dönecek. Çakışmaları çözerken yaptığınız düzenlemeler KAYBOLUR."
+  },
+  "abort_merge|Birleştirmeyi iptal et": {
+    "en": "Abort merge",
+    "tr": "Birleştirmeyi iptal et"
+  },
+  "abort_merge|Vazgeç": {
+    "en": "Cancel",
+    "tr": "Vazgeç"
+  },
+  "abort_merge|Çözülmemiş dosyalar:": {
+    "en": "Unresolved files:",
+    "tr": "Çözülmemiş dosyalar:"
+  },
+  "abort_merge|İptal et": {
+    "en": "Abort",
+    "tr": "İptal et"
+  },
+  "authentication|Girdiğiniz bilgi hiçbir yere kaydedilmiyor; yalnızca bu işlem için kullanılıyor. Kalıcı olarak saklamak isterseniz yukarıdaki credential helper komutlarından birini çalıştırın.": {
+    "en": "What you enter is not stored anywhere; it is used only for this operation. To save it permanently, run one of the credential helper commands above.",
+    "tr": "Girdiğiniz bilgi hiçbir yere kaydedilmiyor; yalnızca bu işlem için kullanılıyor. Kalıcı olarak saklamak isterseniz yukarıdaki credential helper komutlarından birini çalıştırın."
+  },
+  "authentication|Kimlik doğrulama": {
+    "en": "Authentication",
+    "tr": "Kimlik doğrulama"
+  },
+  "authentication|Kullanıcı adı": {
+    "en": "Username",
+    "tr": "Kullanıcı adı"
+  },
+  "authentication|Parola / token": {
+    "en": "Password / token",
+    "tr": "Parola / token"
+  },
+  "authentication|Tekrar dene": {
+    "en": "Retry",
+    "tr": "Tekrar dene"
+  },
+  "authentication|Uzak depo:": {
+    "en": "Remote:",
+    "tr": "Uzak depo:"
+  },
+  "authentication|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "authentication|Şunları deneyebilirsiniz:": {
+    "en": "You can try:",
+    "tr": "Şunları deneyebilirsiniz:"
+  },
+  "checkout_branch|Birleştir (merge)": {
+    "en": "Merge",
+    "tr": "Birleştir (merge)"
+  },
+  "checkout_branch|Bu bir dal değil, doğrudan bir commit. Geçtikten sonra HEAD ayrık (detached) olur: burada atacağınız commit'ler hiçbir dalda görünmez.": {
+    "en": "This is not a branch but a commit. After checkout HEAD will be detached: commits you make here will not appear on any branch.",
+    "tr": "Bu bir dal değil, doğrudan bir commit. Geçtikten sonra HEAD ayrık (detached) olur: burada atacağınız commit'ler hiçbir dalda görünmez."
+  },
+  "checkout_branch|Dala geç": {
+    "en": "Switch branch",
+    "tr": "Dala geç"
+  },
+  "checkout_branch|Dokunma": {
+    "en": "Leave alone",
+    "tr": "Dokunma"
+  },
+  "checkout_branch|Geç": {
+    "en": "Switch",
+    "tr": "Geç"
+  },
+  "checkout_branch|Geçilecek dal": {
+    "en": "Branch to switch to",
+    "tr": "Geçilecek dal"
+  },
+  "checkout_branch|Stash'le (takip edilmeyen dosyalar dahil)": {
+    "en": "Stash (including untracked files)",
+    "tr": "Stash'le (takip edilmeyen dosyalar dahil)"
+  },
+  "checkout_branch|Sıfırla — yerel değişiklikleri at": {
+    "en": "Reset — discard local changes",
+    "tr": "Sıfırla — yerel değişiklikleri at"
+  },
+  "checkout_branch|Yerel değişiklikler": {
+    "en": "Local changes",
+    "tr": "Yerel değişiklikler"
+  },
+  "checkout_branch|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "command_log|Git komut günlüğü": {
+    "en": "Git command log",
+    "tr": "Git komut günlüğü"
+  },
+  "command_log|Henüz komut çalıştırılmadı.": {
+    "en": "No commands have run yet.",
+    "tr": "Henüz komut çalıştırılmadı."
+  },
+  "command_log|Komut": {
+    "en": "Command",
+    "tr": "Komut"
+  },
+  "command_log|Saat": {
+    "en": "Time",
+    "tr": "Saat"
+  },
+  "command_log|Seçili komutun çıktısı:": {
+    "en": "Output of the selected command:",
+    "tr": "Seçili komutun çıktısı:"
+  },
+  "command_log|Süre": {
+    "en": "Duration",
+    "tr": "Süre"
+  },
+  "command_log|Temizle": {
+    "en": "Clear",
+    "tr": "Temizle"
+  },
+  "command_log|Yalnızca başarısızlar": {
+    "en": "Failures only",
+    "tr": "Yalnızca başarısızlar"
+  },
+  "command_log|Çıkış": {
+    "en": "Exit",
+    "tr": "Çıkış"
+  },
+  "command_palette|Eşleşen komut yok.": {
+    "en": "No matching command.",
+    "tr": "Eşleşen komut yok."
+  },
+  "command_palette|Komut paleti": {
+    "en": "Command palette",
+    "tr": "Komut paleti"
+  },
+  "commit_details|Ebeveyn": {
+    "en": "Parent",
+    "tr": "Ebeveyn"
+  },
+  "commit_details|Kaydeden": {
+    "en": "Committer",
+    "tr": "Kaydeden"
+  },
+  "commit_details|SHA": {
+    "en": "SHA",
+    "tr": "SHA"
+  },
+  "commit_details|Yazar": {
+    "en": "Author",
+    "tr": "Yazar"
+  },
+  "commit_details|İmza": {
+    "en": "Signature",
+    "tr": "İmza"
+  },
+  "commit_list|Başka bir dalı buraya sıfırla…": {
+    "en": "Reset another branch here…",
+    "tr": "Başka bir dalı buraya sıfırla…"
+  },
+  "commit_list|Bu commit'e geç…": {
+    "en": "Check out this commit…",
+    "tr": "Bu commit'e geç…"
+  },
+  "commit_list|Bu commit'i arşivle…": {
+    "en": "Archive this commit…",
+    "tr": "Bu commit'i arşivle…"
+  },
+  "commit_list|Bu commit'i cherry pick'le…": {
+    "en": "Cherry-pick this commit…",
+    "tr": "Bu commit'i cherry pick'le…"
+  },
+  "commit_list|Bu commit'i geri al…": {
+    "en": "Revert this commit…",
+    "tr": "Bu commit'i geri al…"
+  },
+  "commit_list|Burada yeni dal oluştur…": {
+    "en": "Create new branch here…",
+    "tr": "Burada yeni dal oluştur…"
+  },
+  "commit_list|Burada yeni etiket oluştur…": {
+    "en": "Create new tag here…",
+    "tr": "Burada yeni etiket oluştur…"
+  },
+  "commit_list|Commit hash": {
+    "en": "Commit hash",
+    "tr": "Commit hash"
+  },
+  "commit_list|Dal adı": {
+    "en": "Branch name",
+    "tr": "Dal adı"
+  },
+  "commit_list|Dala geç (chec_kout)…": {
+    "en": "Chec_k out branch…",
+    "tr": "Dala geç (chec_kout)…"
+  },
+  "commit_list|Dalı pus_hla…": {
+    "en": "Pus_h branch…",
+    "tr": "Dalı pus_hla…"
+  },
+  "commit_list|Dalı sil…": {
+    "en": "Delete branch…",
+    "tr": "Dalı sil…"
+  },
+  "commit_list|Dalı yeniden adlandır…": {
+    "en": "Rename branch…",
+    "tr": "Dalı yeniden adlandır…"
+  },
+  "commit_list|Değişiklikleri sıfırla": {
+    "en": "Reset changes",
+    "tr": "Değişiklikleri sıfırla"
+  },
+  "commit_list|Ebeveyne": {
+    "en": "To parent",
+    "tr": "Ebeveyne"
+  },
+  "commit_list|Etiketi sil…": {
+    "en": "Delete tag…",
+    "tr": "Etiketi sil…"
+  },
+  "commit_list|HEAD ile karşılaştır": {
+    "en": "Compare with HEAD",
+    "tr": "HEAD ile karşılaştır"
+  },
+  "commit_list|Karşılaştı_r": {
+    "en": "Compa_re",
+    "tr": "Karşılaştı_r"
+  },
+  "commit_list|Mesaj": {
+    "en": "Message",
+    "tr": "Mesaj"
+  },
+  "commit_list|Mevcut dala _birleştir…": {
+    "en": "_Merge into current branch…",
+    "tr": "Mevcut dala _birleştir…"
+  },
+  "commit_list|Mevcut dalı buna _rebase et": {
+    "en": "_Rebase current branch onto this",
+    "tr": "Mevcut dalı buna _rebase et"
+  },
+  "commit_list|Mevcut dalı buraya sıfırla…": {
+    "en": "Reset current branch here…",
+    "tr": "Mevcut dalı buraya sıfırla…"
+  },
+  "commit_list|Panoya _kopyala": {
+    "en": "_Copy to clipboard",
+    "tr": "Panoya _kopyala"
+  },
+  "commit_list|Revizyonu atla": {
+    "en": "Skip revision",
+    "tr": "Revizyonu atla"
+  },
+  "commit_list|Revizyonu bozuk işaretle": {
+    "en": "Mark revision bad",
+    "tr": "Revizyonu bozuk işaretle"
+  },
+  "commit_list|Revizyonu sağlam işaretle": {
+    "en": "Mark revision good",
+    "tr": "Revizyonu sağlam işaretle"
+  },
+  "commit_list|Seçili iki commit'i karşılaştır": {
+    "en": "Compare the two selected commits",
+    "tr": "Seçili iki commit'i karşılaştır"
+  },
+  "commit_list|Stash'i pop'la": {
+    "en": "Pop stash",
+    "tr": "Stash'i pop'la"
+  },
+  "commit_list|Stash'i sil…": {
+    "en": "Drop stash…",
+    "tr": "Stash'i sil…"
+  },
+  "commit_list|Stash'i uygula": {
+    "en": "Apply stash",
+    "tr": "Stash'i uygula"
+  },
+  "commit_list|Tarih": {
+    "en": "Date",
+    "tr": "Tarih"
+  },
+  "commit_list|Yazar": {
+    "en": "Author",
+    "tr": "Yazar"
+  },
+  "commit_list|_Commit": {
+    "en": "_Commit",
+    "tr": "_Commit"
+  },
+  "commit_list|_Git": {
+    "en": "_Go",
+    "tr": "_Git"
+  },
+  "commit_list|Çalışma ağacıyla karşılaştır": {
+    "en": "Compare with working tree",
+    "tr": "Çalışma ağacıyla karşılaştır"
+  },
+  "commit_list|Çocuğa": {
+    "en": "To child",
+    "tr": "Çocuğa"
+  },
+  "compare|Karşılaştırmayı yeniden oku (F5)": {
+    "en": "Reload the comparison (F5)",
+    "tr": "Karşılaştırmayı yeniden oku (F5)"
+  },
+  "compare|Yenile": {
+    "en": "Refresh",
+    "tr": "Yenile"
+  },
+  "compare|çalışma ağacı": {
+    "en": "working tree",
+    "tr": "çalışma ağacı"
+  },
+  "conflict|Abort": {
+    "en": "Abort",
+    "tr": "Abort"
+  },
+  "conflict|Base (common ancestor)": {
+    "en": "Base (common ancestor)",
+    "tr": "Base (common ancestor)"
+  },
+  "conflict|Close": {
+    "en": "Close",
+    "tr": "Close"
+  },
+  "conflict|Continue": {
+    "en": "Continue",
+    "tr": "Continue"
+  },
+  "conflict|Delete file": {
+    "en": "Delete file",
+    "tr": "Delete file"
+  },
+  "conflict|Open merge tool": {
+    "en": "Open merge tool",
+    "tr": "Open merge tool"
+  },
+  "conflict|Ours (current branch)": {
+    "en": "Ours (current branch)",
+    "tr": "Ours (current branch)"
+  },
+  "conflict|Resolve conflicts": {
+    "en": "Resolve conflicts",
+    "tr": "Resolve conflicts"
+  },
+  "conflict|Result": {
+    "en": "Result",
+    "tr": "Result"
+  },
+  "conflict|Save result": {
+    "en": "Save result",
+    "tr": "Save result"
+  },
+  "conflict|Take both": {
+    "en": "Take both",
+    "tr": "Take both"
+  },
+  "conflict|Take ours": {
+    "en": "Take ours",
+    "tr": "Take ours"
+  },
+  "conflict|Take theirs": {
+    "en": "Take theirs",
+    "tr": "Take theirs"
+  },
+  "conflict|Theirs (incoming)": {
+    "en": "Theirs (incoming)",
+    "tr": "Theirs (incoming)"
+  },
+  "create_branch|Bu revizyonda dal oluştur": {
+    "en": "Create branch at this revision",
+    "tr": "Bu revizyonda dal oluştur"
+  },
+  "create_branch|Dal adı": {
+    "en": "Branch name",
+    "tr": "Dal adı"
+  },
+  "create_branch|Dal oluştur": {
+    "en": "Create branch",
+    "tr": "Dal oluştur"
+  },
+  "create_branch|Oluştur": {
+    "en": "Create",
+    "tr": "Oluştur"
+  },
+  "create_branch|Oluşturduktan sonra dala geç": {
+    "en": "Check out after creating",
+    "tr": "Oluşturduktan sonra dala geç"
+  },
+  "create_branch|Orphan (ebeveynsiz) dal oluştur": {
+    "en": "Create an orphan branch (no parent)",
+    "tr": "Orphan (ebeveynsiz) dal oluştur"
+  },
+  "create_branch|Orphan dalda çalışma ağacını temizle": {
+    "en": "Clear the working tree on the orphan branch",
+    "tr": "Orphan dalda çalışma ağacını temizle"
+  },
+  "create_branch|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "delete_branch|Birleştirilmemiş olmasına rağmen sil": {
+    "en": "Delete even though it is not merged",
+    "tr": "Birleştirilmemiş olmasına rağmen sil"
+  },
+  "delete_branch|Bu dal, başka hiçbir yere birleştirilmemiş commit'ler içeriyor. Silinirse bu commit'ler hiçbir dalda görünmez.": {
+    "en": "This branch contains commits that are not merged anywhere else. If it is deleted, those commits will not appear on any branch.",
+    "tr": "Bu dal, başka hiçbir yere birleştirilmemiş commit'ler içeriyor. Silinirse bu commit'ler hiçbir dalda görünmez."
+  },
+  "delete_branch|Bu komutu not alın: dal silinince kendi reflog'u da silinir.": {
+    "en": "Note this command down: deleting a branch also deletes its own reflog.",
+    "tr": "Bu komutu not alın: dal silinince kendi reflog'u da silinir."
+  },
+  "delete_branch|Dalı sil": {
+    "en": "Delete branch",
+    "tr": "Dalı sil"
+  },
+  "delete_branch|Geri getirmek için:": {
+    "en": "To restore it:",
+    "tr": "Geri getirmek için:"
+  },
+  "delete_branch|Sil": {
+    "en": "Delete",
+    "tr": "Sil"
+  },
+  "delete_branch|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "diagnostics|Adet": {
+    "en": "Count",
+    "tr": "Adet"
+  },
+  "diagnostics|Bellek": {
+    "en": "Memory",
+    "tr": "Bellek"
+  },
+  "diagnostics|Bütçeyi aşan": {
+    "en": "Over budget",
+    "tr": "Bütçeyi aşan"
+  },
+  "diagnostics|Devam eden işler": {
+    "en": "Work in progress",
+    "tr": "Devam eden işler"
+  },
+  "diagnostics|En kötü": {
+    "en": "Worst",
+    "tr": "En kötü"
+  },
+  "diagnostics|En uzun": {
+    "en": "Longest",
+    "tr": "En uzun"
+  },
+  "diagnostics|Git komutları": {
+    "en": "Git commands",
+    "tr": "Git komutları"
+  },
+  "diagnostics|Git çağrısı": {
+    "en": "Git calls",
+    "tr": "Git çağrısı"
+  },
+  "diagnostics|Hata": {
+    "en": "Error",
+    "tr": "Hata"
+  },
+  "diagnostics|Henüz git komutu çalıştırılmadı.": {
+    "en": "No git commands have run yet.",
+    "tr": "Henüz git komutu çalıştırılmadı."
+  },
+  "diagnostics|Kare süresi": {
+    "en": "Frame time",
+    "tr": "Kare süresi"
+  },
+  "diagnostics|Komut": {
+    "en": "Command",
+    "tr": "Komut"
+  },
+  "diagnostics|Ortalama": {
+    "en": "Average",
+    "tr": "Ortalama"
+  },
+  "diagnostics|Oturum": {
+    "en": "Session",
+    "tr": "Oturum"
+  },
+  "diagnostics|Performans teşhisi": {
+    "en": "Performance diagnostics",
+    "tr": "Performans teşhisi"
+  },
+  "diagnostics|Sayaçları sıfırla": {
+    "en": "Reset counters",
+    "tr": "Sayaçları sıfırla"
+  },
+  "diagnostics|Süreç": {
+    "en": "Process",
+    "tr": "Süreç"
+  },
+  "diagnostics|Tazele": {
+    "en": "Refresh",
+    "tr": "Tazele"
+  },
+  "diagnostics|Toplam": {
+    "en": "Total",
+    "tr": "Toplam"
+  },
+  "diagnostics|Toplam süre": {
+    "en": "Total time",
+    "tr": "Toplam süre"
+  },
+  "diagnostics|Toplama": {
+    "en": "Collection",
+    "tr": "Toplama"
+  },
+  "diagnostics|Yönetilen": {
+    "en": "Managed",
+    "tr": "Yönetilen"
+  },
+  "diagnostics|Çalışma süresi": {
+    "en": "Uptime",
+    "tr": "Çalışma süresi"
+  },
+  "diff|Ağaç": {
+    "en": "Tree",
+    "tr": "Ağaç"
+  },
+  "diff|Ağaç ve düz liste görünümü arasında geçiş": {
+    "en": "Toggle between tree and flat list",
+    "tr": "Ağaç ve düz liste görünümü arasında geçiş"
+  },
+  "diff|Birleşik (unified) ve yan yana diff görünümü arasında geçiş": {
+    "en": "Toggle between unified and side-by-side diff",
+    "tr": "Birleşik (unified) ve yan yana diff görünümü arasında geçiş"
+  },
+  "diff|Boşluk · ve sekme » olarak gösterilir": {
+    "en": "Spaces shown as · and tabs as »",
+    "tr": "Boşluk · ve sekme » olarak gösterilir"
+  },
+  "diff|Boşlukları göster": {
+    "en": "Show whitespace",
+    "tr": "Boşlukları göster"
+  },
+  "diff|Bu commit hiçbir dosyayı değiştirmemiş.": {
+    "en": "This commit did not change any files.",
+    "tr": "Bu commit hiçbir dosyayı değiştirmemiş."
+  },
+  "diff|Enter / F3 sonraki, Shift+Enter / Shift+F3 önceki": {
+    "en": "Enter / F3 for next, Shift+Enter / Shift+F3 for previous",
+    "tr": "Enter / F3 sonraki, Shift+Enter / Shift+F3 önceki"
+  },
+  "diff|Eski sürümü kopyala": {
+    "en": "Copy old version",
+    "tr": "Eski sürümü kopyala"
+  },
+  "diff|Görünüm": {
+    "en": "View",
+    "tr": "Görünüm"
+  },
+  "diff|Punto": {
+    "en": "Size",
+    "tr": "Punto"
+  },
+  "diff|Satırları kaydır": {
+    "en": "Wrap lines",
+    "tr": "Satırları kaydır"
+  },
+  "diff|Sekme genişliği": {
+    "en": "Tab width",
+    "tr": "Sekme genişliği"
+  },
+  "diff|Seçili satırları _geri al": {
+    "en": "_Revert selected lines",
+    "tr": "Seçili satırları _geri al"
+  },
+  "diff|Seçili satırları _stage'le": {
+    "en": "_Stage selected lines",
+    "tr": "Seçili satırları _stage'le"
+  },
+  "diff|Seçili satırları sıfırla…": {
+    "en": "Reset selected lines…",
+    "tr": "Seçili satırları sıfırla…"
+  },
+  "diff|Yan yana": {
+    "en": "Side by side",
+    "tr": "Yan yana"
+  },
+  "diff|Yeni sürümü kopyala": {
+    "en": "Copy new version",
+    "tr": "Yeni sürümü kopyala"
+  },
+  "diff|_Kopyala": {
+    "en": "_Copy",
+    "tr": "_Kopyala"
+  },
+  "diff|_Yama olarak kopyala": {
+    "en": "Copy as _patch",
+    "tr": "_Yama olarak kopyala"
+  },
+  "diff|ikili": {
+    "en": "binary",
+    "tr": "ikili"
+  },
+  "diff|çok büyük": {
+    "en": "too large",
+    "tr": "çok büyük"
+  },
+  "git_error_details|Ayrıntılar": {
+    "en": "Details",
+    "tr": "Ayrıntılar"
+  },
+  "git_output|Kapat": {
+    "en": "Close",
+    "tr": "Kapat"
+  },
+  "git_output|Kaydedilen mesaj": {
+    "en": "Saved message",
+    "tr": "Kaydedilen mesaj"
+  },
+  "main|.git_ignore düzenle": {
+    "en": "Edit .git_ignore",
+    "tr": ".git_ignore düzenle"
+  },
+  "main|Alt modülleri yö_net…": {
+    "en": "Ma_nage submodules…",
+    "tr": "Alt modülleri yö_net…"
+  },
+  "main|Aya_rlar…": {
+    "en": "Setti_ngs…",
+    "tr": "Aya_rlar…"
+  },
+  "main|Ayrık HEAD: bir dalın üzerinde değilsiniz. Buradan atacağınız commit'ler hiçbir dalda görünmez.": {
+    "en": "Detached HEAD: you are not on a branch. Commits you make here will not appear on any branch.",
+    "tr": "Ayrık HEAD: bir dalın üzerinde değilsiniz. Buradan atacağınız commit'ler hiçbir dalda görünmez."
+  },
+  "main|B_isect…": {
+    "en": "B_isect…",
+    "tr": "B_isect…"
+  },
+  "main|Bu commit'e _sıfırla…": {
+    "en": "Re_set to this commit…",
+    "tr": "Bu commit'e _sıfırla…"
+  },
+  "main|Bu depoda henüz commit yok.": {
+    "en": "No commits in this repository yet.",
+    "tr": "Bu depoda henüz commit yok."
+  },
+  "main|Buradan dal oluştur…": {
+    "en": "Create branch from here…",
+    "tr": "Buradan dal oluştur…"
+  },
+  "main|Cherr_y pick…": {
+    "en": "Cherr_y-pick…",
+    "tr": "Cherr_y pick…"
+  },
+  "main|Commit'i ge_ri al (revert)…": {
+    "en": "Re_vert commit…",
+    "tr": "Commit'i ge_ri al (revert)…"
+  },
+  "main|Da_l sil…": {
+    "en": "De_lete branch…",
+    "tr": "Da_l sil…"
+  },
+  "main|Dala geç (chec_kout)…": {
+    "en": "Chec_k out branch…",
+    "tr": "Dala geç (chec_kout)…"
+  },
+  "main|Dalları _birleştir…": {
+    "en": "_Merge branches…",
+    "tr": "Dalları _birleştir…"
+  },
+  "main|Depo aya_rları…": {
+    "en": "Repository setti_ngs…",
+    "tr": "Depo aya_rları…"
+  },
+  "main|Depo k_lonla…": {
+    "en": "C_lone repository…",
+    "tr": "Depo k_lonla…"
+  },
+  "main|Detay": {
+    "en": "Details",
+    "tr": "Detay"
+  },
+  "main|Değişiklikler": {
+    "en": "Changes",
+    "tr": "Değişiklikler"
+  },
+  "main|Değişiklikleri sıfı_rla…": {
+    "en": "Reset _changes…",
+    "tr": "Değişiklikleri sıfı_rla…"
+  },
+  "main|Dosya _gezgini": {
+    "en": "File _explorer",
+    "tr": "Dosya _gezgini"
+  },
+  "main|Etiket oluş_tur…": {
+    "en": "Crea_te tag…",
+    "tr": "Etiket oluş_tur…"
+  },
+  "main|Etiket si_l…": {
+    "en": "De_lete tag…",
+    "tr": "Etiket si_l…"
+  },
+  "main|Git komut _günlüğü…": {
+    "en": "Git command _log…",
+    "tr": "Git komut _günlüğü…"
+  },
+  "main|Pull_/Fetch…": {
+    "en": "Pull_/Fetch…",
+    "tr": "Pull_/Fetch…"
+  },
+  "main|R_ebase…": {
+    "en": "R_ebase…",
+    "tr": "R_ebase…"
+  },
+  "main|Reflo_g'u göster…": {
+    "en": "Show reflo_g…",
+    "tr": "Reflo_g'u göster…"
+  },
+  "main|Revizyona geç…": {
+    "en": "Check out revision…",
+    "tr": "Revizyona geç…"
+  },
+  "main|Son _depolar": {
+    "en": "_Recent repositories",
+    "tr": "Son _depolar"
+  },
+  "main|Son commit'i _geri al…": {
+    "en": "_Undo last commit…",
+    "tr": "Son commit'i _geri al…"
+  },
+  "main|Stash'leri yö_net…": {
+    "en": "Ma_nage stashes…",
+    "tr": "Stash'leri yö_net…"
+  },
+  "main|Uzak _depolar…": {
+    "en": "_Remotes…",
+    "tr": "Uzak _depolar…"
+  },
+  "main|Yeni depo oluştur…": {
+    "en": "Create new repository…",
+    "tr": "Yeni depo oluştur…"
+  },
+  "main|_Araçlar": {
+    "en": "_Tools",
+    "tr": "_Araçlar"
+  },
+  "main|_Aç…": {
+    "en": "_Open…",
+    "tr": "_Aç…"
+  },
+  "main|_Başlangıç": {
+    "en": "_Start",
+    "tr": "_Başlangıç"
+  },
+  "main|_Commit…": {
+    "en": "_Commit…",
+    "tr": "_Commit…"
+  },
+  "main|_Dal oluştur…": {
+    "en": "Create _branch…",
+    "tr": "_Dal oluştur…"
+  },
+  "main|_Depo": {
+    "en": "_Repository",
+    "tr": "_Depo"
+  },
+  "main|_Hakkında": {
+    "en": "_About",
+    "tr": "_Hakkında"
+  },
+  "main|_Kapat (panoya dön)": {
+    "en": "_Close (back to dashboard)",
+    "tr": "_Kapat (panoya dön)"
+  },
+  "main|_Komutlar": {
+    "en": "_Commands",
+    "tr": "_Komutlar"
+  },
+  "main|_Pano": {
+    "en": "_Dashboard",
+    "tr": "_Pano"
+  },
+  "main|_Push…": {
+    "en": "_Push…",
+    "tr": "_Push…"
+  },
+  "main|_Yardım": {
+    "en": "_Help",
+    "tr": "_Yardım"
+  },
+  "main|_Yenile": {
+    "en": "_Refresh",
+    "tr": "_Yenile"
+  },
+  "main|gitext-core": {
+    "en": "gitext-core",
+    "tr": "gitext-core"
+  },
+  "main|Ça_lışma ağaçlarını yönet…": {
+    "en": "Manage _worktrees…",
+    "tr": "Ça_lışma ağaçlarını yönet…"
+  },
+  "main|Çakışmaları çöz…": {
+    "en": "Resolve conflicts…",
+    "tr": "Çakışmaları çöz…"
+  },
+  "main|Çı_kış": {
+    "en": "E_xit",
+    "tr": "Çı_kış"
+  },
+  "main|İlk commit atıldığında geçmiş burada görünecek.": {
+    "en": "History will appear here once the first commit is made.",
+    "tr": "İlk commit atıldığında geçmiş burada görünecek."
+  },
+  "main|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "main|İşlemi iptal et": {
+    "en": "Cancel the operation",
+    "tr": "İşlemi iptal et"
+  },
+  "merge_drop|Birleştir": {
+    "en": "Merge",
+    "tr": "Birleştir"
+  },
+  "merge_drop|Birleştirmeyi onayla": {
+    "en": "Confirm merge",
+    "tr": "Birleştirmeyi onayla"
+  },
+  "merge_drop|Vazgeç": {
+    "en": "Cancel",
+    "tr": "Vazgeç"
+  },
+  "merge_drop|Çalıştırılacak komut:": {
+    "en": "Command to run:",
+    "tr": "Çalıştırılacak komut:"
+  },
+  "merge|Birleştir": {
+    "en": "Merge",
+    "tr": "Birleştir"
+  },
+  "merge|Birleştirilecek dal": {
+    "en": "Branch to merge",
+    "tr": "Birleştirilecek dal"
+  },
+  "merge|Birleştirme mesajı (boşsa git'in varsayılanı):": {
+    "en": "Merge message (git's default if empty):",
+    "tr": "Birleştirme mesajı (boşsa git'in varsayılanı):"
+  },
+  "merge|Commit'leme": {
+    "en": "Do not commit",
+    "tr": "Commit'leme"
+  },
+  "merge|Commit'leri tek bir değişiklikte topla (squash)": {
+    "en": "Squash commits into a single change",
+    "tr": "Commit'leri tek bir değişiklikte topla (squash)"
+  },
+  "merge|Gelişmiş seçenekleri göster": {
+    "en": "Show advanced options",
+    "tr": "Gelişmiş seçenekleri göster"
+  },
+  "merge|Geri almak için:": {
+    "en": "To undo this:",
+    "tr": "Geri almak için:"
+  },
+  "merge|Günlük mesajlarını ekle": {
+    "en": "Add log messages",
+    "tr": "Günlük mesajlarını ekle"
+  },
+  "merge|Her zaman yeni bir birleştirme commit'i oluştur": {
+    "en": "Always create a merge commit",
+    "tr": "Her zaman yeni bir birleştirme commit'i oluştur"
+  },
+  "merge|Kapat": {
+    "en": "Close",
+    "tr": "Kapat"
+  },
+  "merge|Mevcut dala": {
+    "en": "Into current branch",
+    "tr": "Mevcut dala"
+  },
+  "merge|Mümkünse tek dal çizgisi koru (ileri sar)": {
+    "en": "Keep a single line where possible (fast-forward)",
+    "tr": "Mümkünse tek dal çizgisi koru (ileri sar)"
+  },
+  "merge|Varsayılan olmayan birleştirme stratejisi kullan": {
+    "en": "Use a non-default merge strategy",
+    "tr": "Varsayılan olmayan birleştirme stratejisi kullan"
+  },
+  "merge|Çalıştırılacak komut:": {
+    "en": "Command to run:",
+    "tr": "Çalıştırılacak komut:"
+  },
+  "merge|İlgisiz geçmişlere izin ver": {
+    "en": "Allow unrelated histories",
+    "tr": "İlgisiz geçmişlere izin ver"
+  },
+  "pull|Birleştirme seçenekleri": {
+    "en": "Merge options",
+    "tr": "Birleştirme seçenekleri"
+  },
+  "pull|Birleştirme, yalnızca uzak değişiklikleri getir": {
+    "en": "Do not merge, only fetch remote changes",
+    "tr": "Birleştirme, yalnızca uzak değişiklikleri getir"
+  },
+  "pull|Dal": {
+    "en": "Branch",
+    "tr": "Dal"
+  },
+  "pull|Etiket getirme": {
+    "en": "Do not fetch tags",
+    "tr": "Etiket getirme"
+  },
+  "pull|Etiket seçenekleri": {
+    "en": "Tag options",
+    "tr": "Etiket seçenekleri"
+  },
+  "pull|Geri almak için:": {
+    "en": "To undo this:",
+    "tr": "Geri almak için:"
+  },
+  "pull|Kapat": {
+    "en": "Close",
+    "tr": "Kapat"
+  },
+  "pull|Kaydedilmemiş değişiklikleri otomatik stash'le": {
+    "en": "Automatically stash uncommitted changes",
+    "tr": "Kaydedilmemiş değişiklikleri otomatik stash'le"
+  },
+  "pull|Mevcut dalı uzak dalın üstüne taşı (rebase)": {
+    "en": "Rebase the current branch onto the remote branch",
+    "tr": "Mevcut dalı uzak dalın üstüne taşı (rebase)"
+  },
+  "pull|Nereden çekilecek": {
+    "en": "Pull from",
+    "tr": "Nereden çekilecek"
+  },
+  "pull|Pull / Fetch": {
+    "en": "Pull / Fetch",
+    "tr": "Pull / Fetch"
+  },
+  "pull|Tüm etiketleri getir": {
+    "en": "Fetch all tags",
+    "tr": "Tüm etiketleri getir"
+  },
+  "pull|URL": {
+    "en": "URL",
+    "tr": "URL"
+  },
+  "pull|Ulaşılan commit'lerin etiketlerini getir": {
+    "en": "Fetch tags of reachable commits",
+    "tr": "Ulaşılan commit'lerin etiketlerini getir"
+  },
+  "pull|Uzak dal": {
+    "en": "Remote branch",
+    "tr": "Uzak dal"
+  },
+  "pull|Uzak dalı mevcut dala birleştir": {
+    "en": "Merge the remote branch into the current branch",
+    "tr": "Uzak dalı mevcut dala birleştir"
+  },
+  "pull|Uzak depo": {
+    "en": "Remote",
+    "tr": "Uzak depo"
+  },
+  "pull|Uzakta silinmiş dalların izlerini temizle (prune)": {
+    "en": "Prune branches deleted on the remote",
+    "tr": "Uzakta silinmiş dalların izlerini temizle (prune)"
+  },
+  "pull|Uzakta silinmiş etiketleri de temizle": {
+    "en": "Also prune tags deleted on the remote",
+    "tr": "Uzakta silinmiş etiketleri de temizle"
+  },
+  "pull|Yerel dal": {
+    "en": "Local branch",
+    "tr": "Yerel dal"
+  },
+  "pull|Yönet…": {
+    "en": "Manage…",
+    "tr": "Yönet…"
+  },
+  "pull|Çalıştır": {
+    "en": "Run",
+    "tr": "Çalıştır"
+  },
+  "pull|Çalıştırılacak komut:": {
+    "en": "Command to run:",
+    "tr": "Çalıştırılacak komut:"
+  },
+  "pull|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "push|Alt modülleri de gönder": {
+    "en": "Push submodules as well",
+    "tr": "Alt modülleri de gönder"
+  },
+  "push|Birden çok dal": {
+    "en": "Multiple branches",
+    "tr": "Birden çok dal"
+  },
+  "push|Bu ad uzakta yok — yeni bir dal oluşturulacak.": {
+    "en": "This name does not exist on the remote — a new branch will be created.",
+    "tr": "Bu ad uzakta yok — yeni bir dal oluşturulacak."
+  },
+  "push|Dal gönder": {
+    "en": "Push branch",
+    "tr": "Dal gönder"
+  },
+  "push|Etiket gönder": {
+    "en": "Push tag",
+    "tr": "Etiket gönder"
+  },
+  "push|Gönder": {
+    "en": "Push",
+    "tr": "Gönder"
+  },
+  "push|Gönderilecek dal": {
+    "en": "Branch to push",
+    "tr": "Gönderilecek dal"
+  },
+  "push|Gönderilecek etiket": {
+    "en": "Tag to push",
+    "tr": "Gönderilecek etiket"
+  },
+  "push|Gönderimden sonra pull request oluştur": {
+    "en": "Create a pull request after pushing",
+    "tr": "Gönderimden sonra pull request oluştur"
+  },
+  "push|Kapat": {
+    "en": "Close",
+    "tr": "Kapat"
+  },
+  "push|Kirayla zorla (force with lease)": {
+    "en": "Force with lease",
+    "tr": "Kirayla zorla (force with lease)"
+  },
+  "push|Nereye gönderilecek": {
+    "en": "Push to",
+    "tr": "Nereye gönderilecek"
+  },
+  "push|Pull…": {
+    "en": "Pull…",
+    "tr": "Pull…"
+  },
+  "push|Push": {
+    "en": "Push",
+    "tr": "Push"
+  },
+  "push|SSH anahtarı yükle": {
+    "en": "Load SSH key",
+    "tr": "SSH anahtarı yükle"
+  },
+  "push|Seçenekleri göster": {
+    "en": "Show options",
+    "tr": "Seçenekleri göster"
+  },
+  "push|Tüm etiketleri gönder": {
+    "en": "Push all tags",
+    "tr": "Tüm etiketleri gönder"
+  },
+  "push|URL": {
+    "en": "URL",
+    "tr": "URL"
+  },
+  "push|Uzak dal": {
+    "en": "Remote branch",
+    "tr": "Uzak dal"
+  },
+  "push|Uzak depo": {
+    "en": "Remote",
+    "tr": "Uzak depo"
+  },
+  "push|Uzaktaki bir dalı silmek, o dalın uçtaki commit'lerini başkaları için de erişilemez yapar. Gönderme ve silme aynı satırda birlikte seçilemez.": {
+    "en": "Deleting a remote branch makes its tip commits unreachable for everyone else too. Push and delete cannot be selected together on the same row.",
+    "tr": "Uzaktaki bir dalı silmek, o dalın uçtaki commit'lerini başkaları için de erişilemez yapar. Gönderme ve silme aynı satırda birlikte seçilemez."
+  },
+  "push|Uzaktakini sil": {
+    "en": "Delete on remote",
+    "tr": "Uzaktakini sil"
+  },
+  "push|Yerel dal": {
+    "en": "Local branch",
+    "tr": "Yerel dal"
+  },
+  "push|Yönet…": {
+    "en": "Manage…",
+    "tr": "Yönet…"
+  },
+  "push|Zorla gönder": {
+    "en": "Force push",
+    "tr": "Zorla gönder"
+  },
+  "push|hedef": {
+    "en": "target",
+    "tr": "hedef"
+  },
+  "push|Çalıştırılacak komut:": {
+    "en": "Command to run:",
+    "tr": "Çalıştırılacak komut:"
+  },
+  "push|İleri/geri": {
+    "en": "Ahead/behind",
+    "tr": "İleri/geri"
+  },
+  "push|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "push|İzleme referansını ayarla (upstream)": {
+    "en": "Set upstream tracking reference",
+    "tr": "İzleme referansını ayarla (upstream)"
+  },
+  "rebase|Autostash": {
+    "en": "Autostash",
+    "tr": "Autostash"
+  },
+  "rebase|Close": {
+    "en": "Close",
+    "tr": "Close"
+  },
+  "rebase|Interactive": {
+    "en": "Interactive",
+    "tr": "Interactive"
+  },
+  "rebase|Move down": {
+    "en": "Move down",
+    "tr": "Move down"
+  },
+  "rebase|Move up": {
+    "en": "Move up",
+    "tr": "Move up"
+  },
+  "rebase|Rebase": {
+    "en": "Rebase",
+    "tr": "Rebase"
+  },
+  "rebase|Rebase onto": {
+    "en": "Rebase onto",
+    "tr": "Rebase onto"
+  },
+  "rebase|Steps run top to bottom. Drag to reorder.": {
+    "en": "Steps run top to bottom. Drag to reorder.",
+    "tr": "Steps run top to bottom. Drag to reorder."
+  },
+  "ref_tree|Adı _kopyala": {
+    "en": "_Copy name",
+    "tr": "Adı _kopyala"
+  },
+  "ref_tree|Bu dala geç (chec_kout)": {
+    "en": "Chec_k out this branch",
+    "tr": "Bu dala geç (chec_kout)"
+  },
+  "ref_tree|Burada yeni _dal oluştur…": {
+    "en": "Create new _branch here…",
+    "tr": "Burada yeni _dal oluştur…"
+  },
+  "ref_tree|Eşleşen dal yok.": {
+    "en": "No matching branch.",
+    "tr": "Eşleşen dal yok."
+  },
+  "ref_tree|Mevcut dala _birleştir…": {
+    "en": "_Merge into current branch…",
+    "tr": "Mevcut dala _birleştir…"
+  },
+  "ref_tree|Mevcut dalı buna _rebase et": {
+    "en": "_Rebase current branch onto this",
+    "tr": "Mevcut dalı buna _rebase et"
+  },
+  "ref_tree|Si_l…": {
+    "en": "De_lete…",
+    "tr": "Si_l…"
+  },
+  "ref_tree|Upstream ayarla…": {
+    "en": "Set upstream…",
+    "tr": "Upstream ayarla…"
+  },
+  "ref_tree|Yeniden adlandır…": {
+    "en": "Rename…",
+    "tr": "Yeniden adlandır…"
+  },
+  "ref_tree|_Push…": {
+    "en": "_Push…",
+    "tr": "_Push…"
+  },
+  "reflog|Close": {
+    "en": "Close",
+    "tr": "Close"
+  },
+  "reflog|Only lost commits": {
+    "en": "Only lost commits",
+    "tr": "Only lost commits"
+  },
+  "reflog|Reflog": {
+    "en": "Reflog",
+    "tr": "Reflog"
+  },
+  "reflog|Reset to this commit": {
+    "en": "Reset to this commit",
+    "tr": "Reset to this commit"
+  },
+  "reflog|lost": {
+    "en": "lost",
+    "tr": "lost"
+  },
+  "remotes|Ad": {
+    "en": "Name",
+    "tr": "Ad"
+  },
+  "remotes|Dal bazlı varsayılan pull ayarları henüz uygulanmadı (P06-T07).": {
+    "en": "Per-branch default pull settings are not implemented yet (P06-T07).",
+    "tr": "Dal bazlı varsayılan pull ayarları henüz uygulanmadı (P06-T07)."
+  },
+  "remotes|Değişiklikleri kaydet": {
+    "en": "Save changes",
+    "tr": "Değişiklikleri kaydet"
+  },
+  "remotes|Kapat": {
+    "en": "Close",
+    "tr": "Kapat"
+  },
+  "remotes|Push URL": {
+    "en": "Push URL",
+    "tr": "Push URL"
+  },
+  "remotes|Push için ayrı URL": {
+    "en": "Separate URL for push",
+    "tr": "Push için ayrı URL"
+  },
+  "remotes|Seçili uzak depoyu kaldır": {
+    "en": "Remove the selected remote",
+    "tr": "Seçili uzak depoyu kaldır"
+  },
+  "remotes|Sil": {
+    "en": "Delete",
+    "tr": "Sil"
+  },
+  "remotes|URL": {
+    "en": "URL",
+    "tr": "URL"
+  },
+  "remotes|Uzak depolar": {
+    "en": "Remotes",
+    "tr": "Uzak depolar"
+  },
+  "remotes|Varsayılan pull davranışı": {
+    "en": "Default pull behaviour",
+    "tr": "Varsayılan pull davranışı"
+  },
+  "remotes|Yeni": {
+    "en": "New",
+    "tr": "Yeni"
+  },
+  "remotes|Yeni uzak depo ekle": {
+    "en": "Add a new remote",
+    "tr": "Yeni uzak depo ekle"
+  },
+  "remove_remote|Bu komutlar yapılandırmayı geri kurar; commit'ler ise ancak yeniden fetch ile döner — yani uzak depoya erişiminiz olmalı.": {
+    "en": "These commands restore the configuration; commits come back only with another fetch — so you need access to the remote.",
+    "tr": "Bu komutlar yapılandırmayı geri kurar; commit'ler ise ancak yeniden fetch ile döner — yani uzak depoya erişiminiz olmalı."
+  },
+  "remove_remote|Geri getirmek için:": {
+    "en": "To restore it:",
+    "tr": "Geri getirmek için:"
+  },
+  "remove_remote|Kaldır": {
+    "en": "Remove",
+    "tr": "Kaldır"
+  },
+  "remove_remote|Kaldırmayı onaylıyorum": {
+    "en": "I confirm the removal",
+    "tr": "Kaldırmayı onaylıyorum"
+  },
+  "remove_remote|Uzak depoyu kaldır": {
+    "en": "Remove remote",
+    "tr": "Uzak depoyu kaldır"
+  },
+  "remove_remote|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "rename_branch|Dalı yeniden adlandır": {
+    "en": "Rename branch",
+    "tr": "Dalı yeniden adlandır"
+  },
+  "rename_branch|Mevcut ad": {
+    "en": "Current name",
+    "tr": "Mevcut ad"
+  },
+  "rename_branch|Yeni ad": {
+    "en": "New name",
+    "tr": "Yeni ad"
+  },
+  "rename_branch|Yeniden adlandır": {
+    "en": "Rename",
+    "tr": "Yeniden adlandır"
+  },
+  "rename_branch|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "reset_changes|Bu işlem commit edilmemiş tüm çalışmayı siler.": {
+    "en": "This deletes all uncommitted work.",
+    "tr": "Bu işlem commit edilmemiş tüm çalışmayı siler."
+  },
+  "reset_changes|Bu oturumda bir daha sorma": {
+    "en": "Do not ask again this session",
+    "tr": "Bu oturumda bir daha sorma"
+  },
+  "reset_changes|Değişiklikleri sıfırla": {
+    "en": "Reset changes",
+    "tr": "Değişiklikleri sıfırla"
+  },
+  "reset_changes|Değişiklikleri sıfırlamak istediğinize emin misiniz?": {
+    "en": "Are you sure you want to reset the changes?",
+    "tr": "Değişiklikleri sıfırlamak istediğinize emin misiniz?"
+  },
+  "reset_changes|Silinen içerik yedeklenir; işlemden sonra geri alabilirsiniz.": {
+    "en": "Deleted content is backed up; you can restore it afterwards.",
+    "tr": "Silinen içerik yedeklenir; işlemden sonra geri alabilirsiniz."
+  },
+  "reset_changes|Sıfırla": {
+    "en": "Reset",
+    "tr": "Sıfırla"
+  },
+  "reset_changes|Yeni dosyaları ve/veya dizinleri de sil": {
+    "en": "Also delete new files and/or directories",
+    "tr": "Yeni dosyaları ve/veya dizinleri de sil"
+  },
+  "reset_changes|İptal": {
+    "en": "Cancel",
+    "tr": "İptal"
+  },
+  "reset|Close": {
+    "en": "Close",
+    "tr": "Close"
+  },
+  "reset|Hard — discard all changes": {
+    "en": "Hard — discard all changes",
+    "tr": "Hard — discard all changes"
+  },
+  "reset|I understand that uncommitted changes will be lost permanently": {
+    "en": "I understand that uncommitted changes will be lost permanently",
+    "tr": "I understand that uncommitted changes will be lost permanently"
+  },
+  "reset|Mixed — keep changes, unstage them": {
+    "en": "Mixed — keep changes, unstage them",
+    "tr": "Mixed — keep changes, unstage them"
+  },
+  "reset|Reset": {
+    "en": "Reset",
+    "tr": "Reset"
+  },
+  "reset|Reset current branch": {
+    "en": "Reset current branch",
+    "tr": "Reset current branch"
+  },
+  "reset|Soft — keep changes staged": {
+    "en": "Soft — keep changes staged",
+    "tr": "Soft — keep changes staged"
+  },
+  "sequencer|Close": {
+    "en": "Close",
+    "tr": "Close"
+  },
+  "sequencer|Record the source commit in the message (-x)": {
+    "en": "Record the source commit in the message (-x)",
+    "tr": "Record the source commit in the message (-x)"
+  },
+  "sequencer|Run": {
+    "en": "Run",
+    "tr": "Run"
+  },
+  "sequencer|Stage the changes without committing": {
+    "en": "Stage the changes without committing",
+    "tr": "Stage the changes without committing"
+  },
+  "sequencer|This is a merge commit. Which parent is the mainline?": {
+    "en": "This is a merge commit. Which parent is the mainline?",
+    "tr": "This is a merge commit. Which parent is the mainline?"
+  },
+  "settings|\"ColorBlindSafe\" kırmızı/yeşil yerine mavi/turuncu ayrımı kullanır; grafik şeritleri de değişir.": {
+    "en": "\"ColorBlindSafe\" uses a blue/orange distinction instead of red/green; the graph lanes change too.",
+    "tr": "\"ColorBlindSafe\" kırmızı/yeşil yerine mavi/turuncu ayrımı kullanır; grafik şeritleri de değişir."
+  },
+  "settings|Arayüz boyutu": {
+    "en": "Interface size",
+    "tr": "Arayüz boyutu"
+  },
+  "settings|Ayarlar": {
+    "en": "Settings",
+    "tr": "Ayarlar"
+  },
+  "settings|Bir alanı boşaltmak o ayarı siler (boş değere ayarlamaz).": {
+    "en": "Emptying a field removes that setting (it does not set it to an empty value).",
+    "tr": "Bir alanı boşaltmak o ayarı siler (boş değere ayarlamaz)."
+  },
+  "settings|Bu değerler git'in kendi yapılandırma dosyalarına yazılır.": {
+    "en": "These values are written to git's own configuration files.",
+    "tr": "Bu değerler git'in kendi yapılandırma dosyalarına yazılır."
+  },
+  "settings|Değişiklik hemen uygulanır; uygulamayı yeniden başlatmaya gerek yok.": {
+    "en": "The change applies immediately; no restart needed.",
+    "tr": "Değişiklik hemen uygulanır; uygulamayı yeniden başlatmaya gerek yok."
+  },
+  "settings|Dil": {
+    "en": "Language",
+    "tr": "Dil"
+  },
+  "settings|Git": {
+    "en": "Git",
+    "tr": "Git"
+  },
+  "settings|Git ayarlarını kaydet": {
+    "en": "Save git settings",
+    "tr": "Git ayarlarını kaydet"
+  },
+  "settings|Global (bütün depolar)": {
+    "en": "Global (all repositories)",
+    "tr": "Global (bütün depolar)"
+  },
+  "settings|Görünüm": {
+    "en": "View",
+    "tr": "Görünüm"
+  },
+  "settings|Kod boyutu": {
+    "en": "Code size",
+    "tr": "Kod boyutu"
+  },
+  "settings|Kod yazı tipi": {
+    "en": "Code font",
+    "tr": "Kod yazı tipi"
+  },
+  "settings|Kısayollar": {
+    "en": "Shortcuts",
+    "tr": "Kısayollar"
+  },
+  "settings|Renk paleti": {
+    "en": "Colour palette",
+    "tr": "Renk paleti"
+  },
+  "settings|Tema": {
+    "en": "Theme",
+    "tr": "Tema"
+  },
+  "settings|Varsayılan açık temadır. \"System\" işletim sisteminin tercihini izler.": {
+    "en": "The default is the light theme. \"System\" follows the operating system preference.",
+    "tr": "Varsayılan açık temadır. \"System\" işletim sisteminin tercihini izler."
+  },
+  "settings|Yazı tipi": {
+    "en": "Font",
+    "tr": "Yazı tipi"
+  },
+  "settings|Yerel (yalnızca açık depo)": {
+    "en": "Local (open repository only)",
+    "tr": "Yerel (yalnızca açık depo)"
+  },
+  "settings|core.editor": {
+    "en": "core.editor",
+    "tr": "core.editor"
+  },
+  "settings|user.email": {
+    "en": "user.email",
+    "tr": "user.email"
+  },
+  "settings|user.name": {
+    "en": "user.name",
+    "tr": "user.name"
+  },
+  "shortcut_reference|Klavye kısayolları": {
+    "en": "Keyboard shortcuts",
+    "tr": "Klavye kısayolları"
+  },
+  "shortcut_settings|Kaldır": {
+    "en": "Remove",
+    "tr": "Kaldır"
+  },
+  "shortcut_settings|Kısayol ata…": {
+    "en": "Assign shortcut…",
+    "tr": "Kısayol ata…"
+  },
+  "shortcut_settings|Tümünü varsayılana döndür": {
+    "en": "Restore all defaults",
+    "tr": "Tümünü varsayılana döndür"
+  },
+  "shortcut_settings|Varsayılana dön": {
+    "en": "Restore default",
+    "tr": "Varsayılana dön"
+  },
+  "shortcut_settings|Yeni kısayola basın… (vazgeçmek için Escape)": {
+    "en": "Press the new shortcut… (Escape to cancel)",
+    "tr": "Yeni kısayola basın… (vazgeçmek için Escape)"
+  },
+  "stash|Apply": {
+    "en": "Apply",
+    "tr": "Apply"
+  },
+  "stash|Branch from stash": {
+    "en": "Branch from stash",
+    "tr": "Branch from stash"
+  },
+  "stash|Close": {
+    "en": "Close",
+    "tr": "Close"
+  },
+  "stash|Drop": {
+    "en": "Drop",
+    "tr": "Drop"
+  },
+  "stash|Include untracked": {
+    "en": "Include untracked",
+    "tr": "Include untracked"
+  },
+  "stash|Keep index": {
+    "en": "Keep index",
+    "tr": "Keep index"
+  },
+  "stash|Pop": {
+    "en": "Pop",
+    "tr": "Pop"
+  },
+  "stash|Stash changes": {
+    "en": "Stash changes",
+    "tr": "Stash changes"
+  },
+  "stash|Stashes": {
+    "en": "Stashes",
+    "tr": "Stashes"
+  },
+  "welcome|Başlangıç": {
+    "en": "Start",
+    "tr": "Başlangıç"
+  },
+  "welcome|Depo aç": {
+    "en": "Open repository",
+    "tr": "Depo aç"
+  },
+  "welcome|Depo klonla": {
+    "en": "Clone repository",
+    "tr": "Depo klonla"
+  },
+  "welcome|Faz 06'da gelecek": {
+    "en": "Coming in phase 06",
+    "tr": "Faz 06'da gelecek"
+  },
+  "welcome|Geliştir": {
+    "en": "Develop",
+    "tr": "Geliştir"
+  },
+  "welcome|Git Extensions Core": {
+    "en": "Git Extensions Core",
+    "tr": "Git Extensions Core"
+  },
+  "welcome|Henüz depo açılmadı. Soldaki “Depo aç” ile başlayın.": {
+    "en": "No repository open yet. Start with “Open repository” on the left.",
+    "tr": "Henüz depo açılmadı. Soldaki “Depo aç” ile başlayın."
+  },
+  "welcome|Katkı": {
+    "en": "Contribute",
+    "tr": "Katkı"
+  },
+  "welcome|Son açılan depolar": {
+    "en": "Recently opened repositories",
+    "tr": "Son açılan depolar"
+  },
+  "welcome|Sorun bildir": {
+    "en": "Report an issue",
+    "tr": "Sorun bildir"
+  },
+  "welcome|Yeni depo oluştur": {
+    "en": "Create new repository",
+    "tr": "Yeni depo oluştur"
+  },
+  "welcome|gitext-core": {
+    "en": "gitext-core",
+    "tr": "gitext-core"
+  },
+  "welcome|…veya bir klasörü pencereye sürükleyin": {
+    "en": "…or drag a folder onto the window",
+    "tr": "…veya bir klasörü pencereye sürükleyin"
+  },
+  "working_tree|Commit": {
+    "en": "Commit",
+    "tr": "Commit"
+  },
+  "working_tree|Commit & push": {
+    "en": "Commit & push",
+    "tr": "Commit & push"
+  },
+  "working_tree|Ctrl+Enter": {
+    "en": "Ctrl+Enter",
+    "tr": "Ctrl+Enter"
+  },
+  "working_tree|Dal oluştur": {
+    "en": "Create branch",
+    "tr": "Dal oluştur"
+  },
+  "working_tree|Geri al": {
+    "en": "Revert",
+    "tr": "Geri al"
+  },
+  "working_tree|Hook'ları atla (--no-verify)": {
+    "en": "Skip hooks (--no-verify)",
+    "tr": "Hook'ları atla (--no-verify)"
+  },
+  "working_tree|Mesaj ▾": {
+    "en": "Message ▾",
+    "tr": "Mesaj ▾"
+  },
+  "working_tree|Seçenekler ▾": {
+    "en": "Options ▾",
+    "tr": "Seçenekler ▾"
+  },
+  "working_tree|Seçili dosyayı geri al": {
+    "en": "Revert the selected file",
+    "tr": "Seçili dosyayı geri al"
+  },
+  "working_tree|Seçili dosyayı stage'le": {
+    "en": "Stage the selected file",
+    "tr": "Seçili dosyayı stage'le"
+  },
+  "working_tree|Soft reset": {
+    "en": "Soft reset",
+    "tr": "Soft reset"
+  },
+  "working_tree|Son commit'i düzelt (amend)": {
+    "en": "Amend the last commit",
+    "tr": "Son commit'i düzelt (amend)"
+  },
+  "working_tree|Stage'lenmemişleri sıfırla…": {
+    "en": "Reset unstaged changes…",
+    "tr": "Stage'lenmemişleri sıfırla…"
+  },
+  "working_tree|Stage'lenmişi stash'le": {
+    "en": "Stash staged changes",
+    "tr": "Stage'lenmişi stash'le"
+  },
+  "working_tree|Tüm değişiklikleri sıfırla…": {
+    "en": "Reset all changes…",
+    "tr": "Tüm değişiklikleri sıfırla…"
+  },
+  "working_tree|Tümünü geri al": {
+    "en": "Revert all",
+    "tr": "Tümünü geri al"
+  },
+  "working_tree|Tümünü stage'le": {
+    "en": "Stage all",
+    "tr": "Tümünü stage'le"
+  },
+  "working_tree|Yalnızca benim mesajlarım": {
+    "en": "Only my messages",
+    "tr": "Yalnızca benim mesajlarım"
+  },
+  "working_tree|Yazarı sıfırla": {
+    "en": "Reset author",
+    "tr": "Yazarı sıfırla"
+  },
+  "working_tree|Üst projede stage'le": {
+    "en": "Stage in parent project",
+    "tr": "Üst projede stage'le"
+  },
+  "working_tree|Şablonlar ▾": {
+    "en": "Templates ▾",
+    "tr": "Şablonlar ▾"
+  },
+  "working_tree|⬆ Geri al": {
+    "en": "⬆ Unstage",
+    "tr": "⬆ Geri al"
+  },
+  "working_tree|⬇ Stage": {
+    "en": "⬇ Stage",
+    "tr": "⬇ Stage"
+  }
+}

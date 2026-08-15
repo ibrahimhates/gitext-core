@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
@@ -109,7 +110,7 @@
 
                 <Button Grid.Column="1"
                         Name="UndoResetButton"
-                        Content="Geri al"
+                        Content="{loc:Translate working_tree.revert}"
                         FontSize="12"
                         Margin="8,0,0,0"
                         IsVisible="{Binding CanUndoReset}"
@@ -160,7 +161,7 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
                     <Button Name="UnstageAllButton"
                             Content="⏫"
-                            ToolTip.Tip="Tümünü geri al"
+                            ToolTip.Tip="{loc:Translate working_tree.revert_all}"
                             FontSize="11"
                             Padding="8,3"
                             Click="OnUnstageAllClick" />
@@ -170,8 +171,8 @@
                             Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
 
                     <Button Name="UnstageButton"
-                            Content="⬆ Geri al"
-                            ToolTip.Tip="Seçili dosyayı geri al"
+                            Content="{loc:Translate working_tree.unstage}"
+                            ToolTip.Tip="{loc:Translate working_tree.revert_the_selected_file}"
                             FontSize="11"
                             Padding="8,3"
                             Click="OnUnstageClick" />
@@ -180,8 +181,8 @@
                 <!-- Sağ grup: unstaged listesinden stage'leme -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
                     <Button Name="StageButton"
-                            Content="⬇ Stage"
-                            ToolTip.Tip="Seçili dosyayı stage'le"
+                            Content="{loc:Translate working_tree.stage}"
+                            ToolTip.Tip="{loc:Translate working_tree.stage_the_selected_file}"
                             FontSize="11"
                             Padding="8,3"
                             Click="OnStageClick" />
@@ -192,7 +193,7 @@
 
                     <Button Name="StageAllButton"
                             Content="⏬"
-                            ToolTip.Tip="Tümünü stage'le"
+                            ToolTip.Tip="{loc:Translate working_tree.stage_all}"
                             FontSize="11"
                             Padding="8,3"
                             Click="OnStageAllClick" />
@@ -270,43 +271,43 @@
                             MinWidth="150">
 
                     <Button Name="CommitButton"
-                            Content="Commit"
+                            Content="{loc:Translate working_tree.commit}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             IsEnabled="{Binding CanCommit}"
-                            ToolTip.Tip="Ctrl+Enter"
+                            ToolTip.Tip="{loc:Translate working_tree.ctrl_enter}"
                             Click="OnCommitClick" />
 
                     <Button Name="CommitAndPushButton"
-                            Content="Commit &amp; push"
+                            Content="{loc:Translate working_tree.commit_push}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             IsEnabled="False" />
 
                     <CheckBox Name="StageInSuperprojectBox"
-                              Content="Üst projede stage'le"
+                              Content="{loc:Translate working_tree.stage_in_parent_project}"
                               FontSize="11"
                               IsEnabled="False" />
 
                     <CheckBox Name="AmendBox"
-                              Content="Son commit'i düzelt (amend)"
+                              Content="{loc:Translate working_tree.amend_the_last_commit}"
                               FontSize="11"
                               IsChecked="{Binding Amend}" />
 
                     <StackPanel Margin="12,0,0,0" Spacing="2" IsVisible="{Binding Amend}">
-                        <CheckBox Name="ResetAuthorBox" Content="Yazarı sıfırla" FontSize="11" IsEnabled="False" />
-                        <CheckBox Name="ResetSoftBox" Content="Soft reset" FontSize="11" IsEnabled="False" />
+                        <CheckBox Name="ResetAuthorBox" Content="{loc:Translate working_tree.reset_author}" FontSize="11" IsEnabled="False" />
+                        <CheckBox Name="ResetSoftBox" Content="{loc:Translate working_tree.soft_reset}" FontSize="11" IsEnabled="False" />
                     </StackPanel>
 
-                    <Button Name="StashStagedButton" Content="Stage'lenmişi stash'le"
+                    <Button Name="StashStagedButton" Content="{loc:Translate working_tree.stash_staged_changes}"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                             FontSize="11" IsEnabled="False" />
 
-                    <Button Name="ResetAllButton" Content="Tüm değişiklikleri sıfırla…"
+                    <Button Name="ResetAllButton" Content="{loc:Translate working_tree.reset_all_changes}"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                             FontSize="11" Click="OnResetAllClick" />
 
-                    <Button Name="ResetUnstagedButton" Content="Stage'lenmemişleri sıfırla…"
+                    <Button Name="ResetUnstagedButton" Content="{loc:Translate working_tree.reset_unstaged_changes}"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                             FontSize="11" Click="OnResetUnstagedClick" />
                 </StackPanel>
@@ -325,10 +326,10 @@
                         `DropDownOpening`): her depo açılışında fazladan bir `git log`
                         çalıştırmak, kullanıcının hiç açmayacağı bir menünün bedeli olurdu.
                     -->
-                    <Button Name="MessageHistoryButton" Content="Mesaj ▾" FontSize="11" Padding="8,2">
+                    <Button Name="MessageHistoryButton" Content="{loc:Translate working_tree.message}" FontSize="11" Padding="8,2">
                         <Button.Flyout>
                             <MenuFlyout Opening="OnMessageHistoryOpening">
-                                <MenuItem Header="Yalnızca benim mesajlarım"
+                                <MenuItem Header="{loc:Translate working_tree.only_my_messages}"
                                           ToggleType="CheckBox"
                                           IsChecked="{Binding Message.OnlyMyMessages}" />
                                 <Separator />
@@ -336,7 +337,7 @@
                         </Button.Flyout>
                     </Button>
 
-                    <Button Name="CommitOptionsButton" Content="Seçenekler ▾" FontSize="11" Padding="8,2">
+                    <Button Name="CommitOptionsButton" Content="{loc:Translate working_tree.options}" FontSize="11" Padding="8,2">
                         <Button.Flyout>
                             <MenuFlyout>
                                 <!--
@@ -347,14 +348,14 @@
                                     sabrını sınardı.
                                 -->
                                 <MenuItem Name="SkipHooksItem"
-                                          Header="Hook'ları atla (--no-verify)"
+                                          Header="{loc:Translate working_tree.skip_hooks_no_verify}"
                                           ToggleType="CheckBox"
                                           IsChecked="{Binding SkipHooks, Mode=TwoWay}" />
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
 
-                    <Button Name="CommitTemplatesButton" Content="Şablonlar ▾" FontSize="11" Padding="8,2">
+                    <Button Name="CommitTemplatesButton" Content="{loc:Translate working_tree.templates}" FontSize="11" Padding="8,2">
                         <Button.Flyout>
                             <MenuFlyout>
                                 <!--
@@ -369,7 +370,7 @@
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
-                    <Button Name="CreateBranchButton" Content="Dal oluştur" FontSize="11" Padding="8,2" IsEnabled="False" />
+                    <Button Name="CreateBranchButton" Content="{loc:Translate working_tree.create_branch}" FontSize="11" Padding="8,2" IsEnabled="False" />
 
                     <TextBlock Name="SubjectCounter"
                                Text="{Binding Message.SubjectCounter}"

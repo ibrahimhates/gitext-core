@@ -1,16 +1,17 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         x:Class="GitExt.UI.Views.ReflogWindow"
         x:DataType="vm:ReflogViewModel"
-        Title="Reflog" Width="900" Height="560"
+        Title="{loc:Translate reflog.reflog}" Width="900" Height="560"
         WindowStartupLocation="CenterOwner">
 
   <Grid RowDefinitions="Auto,*,Auto" Margin="12">
 
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
       <CheckBox Name="OnlyUnreachableBox"
-                Content="Only lost commits"
+                Content="{loc:Translate reflog.only_lost_commits}"
                 IsChecked="{Binding OnlyUnreachable}" />
       <TextBlock Name="UnreachableCountLabel"
                  VerticalAlignment="Center" Opacity="0.7"
@@ -29,7 +30,7 @@
               <!-- Kayıp commit'ler öne çıkarılıyor: tarayıcının asıl işi bunları bulmak. -->
               <Border Background="{DynamicResource GitExtStashBadgeBackgroundBrush}" CornerRadius="3" Padding="4,0"
                       IsVisible="{Binding IsUnreachable}">
-                <TextBlock Text="lost" Foreground="White" FontSize="10" />
+                <TextBlock Text="{loc:Translate reflog.lost}" Foreground="White" FontSize="10" />
               </Border>
             </StackPanel>
             <TextBlock Grid.Column="3" Text="{Binding Timestamp}" FontSize="11" Opacity="0.6" />
@@ -47,8 +48,8 @@
       <TextBlock Name="ErrorLabel" Text="{Binding Error}" Foreground="{DynamicResource GitExtErrorBrush}" TextWrapping="Wrap"
                  IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <Button Name="ReturnButton" Content="Reset to this commit" Command="{Binding ReturnCommand}" />
-        <Button Name="CloseButton" Content="Close" Click="OnClose" />
+        <Button Name="ReturnButton" Content="{loc:Translate reflog.reset_to_this_commit}" Command="{Binding ReturnCommand}" />
+        <Button Name="CloseButton" Content="{loc:Translate reflog.close}" Click="OnClose" />
       </StackPanel>
     </StackPanel>
   </Grid>

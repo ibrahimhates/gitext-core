@@ -1,21 +1,22 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:vm="using:GitExt.UI.ViewModels"
         xmlns:views="using:GitExt.UI.Views"
         x:Class="GitExt.UI.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Title="Ayarlar"
+        Title="{loc:Translate settings.settings}"
         Width="720" Height="620"
         WindowStartupLocation="CenterOwner">
 
     <TabControl Name="Sections" Margin="6">
 
         <!-- ============================================================ Görünüm -->
-        <TabItem Header="Görünüm">
+        <TabItem Header="{loc:Translate settings.view}">
             <StackPanel Margin="12" Spacing="14">
 
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Dil" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Translate settings.language}" FontWeight="SemiBold" />
                     <!--
                         Tema/Palet listelerinden farklı olarak DisplayMemberBinding var:
                         onlar enum'ın ham ToString()'ini gösteriyor, burada kullanıcıya
@@ -27,41 +28,41 @@
                               SelectedItem="{Binding Language}"
                               DisplayMemberBinding="{Binding Name}"
                               MinWidth="220" />
-                    <TextBlock Text="Değişiklik hemen uygulanır; uygulamayı yeniden başlatmaya gerek yok."
+                    <TextBlock Text="{loc:Translate settings.the_change_applies_immediately_no_restart_ne}"
                                Opacity="0.65"
                                TextWrapping="Wrap"
                                FontSize="{DynamicResource GitExtSmallFontSize}" />
                 </StackPanel>
 
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Tema" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Translate settings.theme}" FontWeight="SemiBold" />
                     <ComboBox Name="ThemeBox"
                               ItemsSource="{Binding Themes}"
                               SelectedItem="{Binding Theme}"
                               MinWidth="220" />
-                    <TextBlock Text="Varsayılan açık temadır. &quot;System&quot; işletim sisteminin tercihini izler."
+                    <TextBlock Text="{loc:Translate settings.the_default_is_the_light_theme_system_follow}"
                                Opacity="0.65"
                                TextWrapping="Wrap"
                                FontSize="{DynamicResource GitExtSmallFontSize}" />
                 </StackPanel>
 
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Renk paleti" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Translate settings.colour_palette}" FontWeight="SemiBold" />
                     <ComboBox Name="PaletteBox"
                               ItemsSource="{Binding Palettes}"
                               SelectedItem="{Binding Palette}"
                               MinWidth="220" />
-                    <TextBlock Text="&quot;ColorBlindSafe&quot; kırmızı/yeşil yerine mavi/turuncu ayrımı kullanır; grafik şeritleri de değişir."
+                    <TextBlock Text="{loc:Translate settings.colorblindsafe_uses_a_blue_orange_distinctio}"
                                Opacity="0.65"
                                TextWrapping="Wrap"
                                FontSize="{DynamicResource GitExtSmallFontSize}" />
                 </StackPanel>
 
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Yazı tipi" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Translate settings.font}" FontWeight="SemiBold" />
 
                     <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" >
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Arayüz boyutu"
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate settings.interface_size}"
                                    VerticalAlignment="Center" Margin="0,2" />
                         <NumericUpDown Grid.Row="0" Grid.Column="1"
                                        Name="UiFontSizeBox"
@@ -69,7 +70,7 @@
                                        Minimum="8" Maximum="32" Increment="1"
                                        MaxWidth="140" HorizontalAlignment="Left" Margin="0,2" />
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Kod boyutu"
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Translate settings.code_size}"
                                    VerticalAlignment="Center" Margin="0,2" />
                         <NumericUpDown Grid.Row="1" Grid.Column="1"
                                        Name="MonoFontSizeBox"
@@ -77,7 +78,7 @@
                                        Minimum="8" Maximum="32" Increment="1"
                                        MaxWidth="140" HorizontalAlignment="Left" Margin="0,2" />
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Kod yazı tipi"
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Translate settings.code_font}"
                                    VerticalAlignment="Center" Margin="0,2" />
                         <TextBox Grid.Row="2" Grid.Column="1"
                                  Name="MonoFontBox"
@@ -90,35 +91,35 @@
         </TabItem>
 
         <!-- ========================================================== Kısayollar -->
-        <TabItem Header="Kısayollar">
+        <TabItem Header="{loc:Translate settings.shortcuts}">
             <views:ShortcutSettingsView Name="ShortcutSection" DataContext="{Binding Shortcuts}" />
         </TabItem>
 
         <!-- ================================================================= Git -->
-        <TabItem Header="Git">
+        <TabItem Header="{loc:Translate settings.git}">
             <ScrollViewer>
                 <StackPanel Margin="12" Spacing="14">
 
-                    <TextBlock Text="Bu değerler git'in kendi yapılandırma dosyalarına yazılır."
+                    <TextBlock Text="{loc:Translate settings.these_values_are_written_to_git_s_own_config}"
                                Opacity="0.7"
                                TextWrapping="Wrap"
                                FontSize="{DynamicResource GitExtSmallFontSize}" />
 
                     <StackPanel Spacing="6">
-                        <TextBlock Text="Global (bütün depolar)" FontWeight="SemiBold" />
+                        <TextBlock Text="{loc:Translate settings.global_all_repositories}" FontWeight="SemiBold" />
 
                         <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="user.name"
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate settings.user_name}"
                                        VerticalAlignment="Center" Margin="0,3" />
                             <TextBox Grid.Row="0" Grid.Column="1" Name="GlobalNameBox"
                                      Text="{Binding GlobalUserName}" Margin="0,3" />
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="user.email"
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Translate settings.user_email}"
                                        VerticalAlignment="Center" Margin="0,3" />
                             <TextBox Grid.Row="1" Grid.Column="1" Name="GlobalEmailBox"
                                      Text="{Binding GlobalUserEmail}" Margin="0,3" />
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="core.editor"
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Translate settings.core_editor}"
                                        VerticalAlignment="Center" Margin="0,3" />
                             <TextBox Grid.Row="2" Grid.Column="1" Name="GlobalEditorBox"
                                      Text="{Binding GlobalEditor}" Margin="0,3" />
@@ -131,28 +132,28 @@
                         bırakmak, kullanıcıya kaydedilmeyecek bir kutu sunmak olurdu.
                     -->
                     <StackPanel Spacing="6" IsEnabled="{Binding CanEditLocal}">
-                        <TextBlock Text="Yerel (yalnızca açık depo)" FontWeight="SemiBold" />
+                        <TextBlock Text="{loc:Translate settings.local_open_repository_only}" FontWeight="SemiBold" />
 
                         <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="user.name"
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Translate settings.user_name}"
                                        VerticalAlignment="Center" Margin="0,3" />
                             <TextBox Grid.Row="0" Grid.Column="1" Name="LocalNameBox"
                                      Text="{Binding LocalUserName}" Margin="0,3" />
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="user.email"
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Translate settings.user_email}"
                                        VerticalAlignment="Center" Margin="0,3" />
                             <TextBox Grid.Row="1" Grid.Column="1" Name="LocalEmailBox"
                                      Text="{Binding LocalUserEmail}" Margin="0,3" />
                         </Grid>
                     </StackPanel>
 
-                    <TextBlock Text="Bir alanı boşaltmak o ayarı siler (boş değere ayarlamaz)."
+                    <TextBlock Text="{loc:Translate settings.emptying_a_field_removes_that_setting_it_doe}"
                                Opacity="0.65"
                                TextWrapping="Wrap"
                                FontSize="{DynamicResource GitExtSmallFontSize}" />
 
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Name="SaveGitButton" Content="Git ayarlarını kaydet"
+                        <Button Name="SaveGitButton" Content="{loc:Translate settings.save_git_settings}"
                                 Command="{Binding SaveGitCommand}" />
                     </StackPanel>
 

@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         x:Class="GitExt.UI.Views.CheckoutBranchDialog"
-        Title="Dala geç"
+        Title="{loc:Translate checkout_branch.switch_branch}"
         Width="540"
         SizeToContent="Height"
         MinHeight="200"
@@ -19,7 +20,7 @@
     <StackPanel Margin="16" Spacing="10">
 
         <StackPanel Spacing="4">
-            <TextBlock Name="TargetLabel" Text="Geçilecek dal" />
+            <TextBlock Name="TargetLabel" Text="{loc:Translate checkout_branch.branch_to_switch_to}" />
             <TextBox Name="TargetText" IsReadOnly="True" IsTabStop="False" />
         </StackPanel>
 
@@ -28,19 +29,19 @@
                    TextWrapping="Wrap"
                    IsVisible="False"
                    Opacity="0.85"
-                   Text="Bu bir dal değil, doğrudan bir commit. Geçtikten sonra HEAD ayrık (detached) olur: burada atacağınız commit'ler hiçbir dalda görünmez." />
+                   Text="{loc:Translate checkout_branch.this_is_not_a_branch_but_a_commit_after_chec}" />
 
         <StackPanel Name="LocalChangesGroup" Spacing="4" IsVisible="False">
-            <TextBlock Text="Yerel değişiklikler" FontWeight="SemiBold" />
+            <TextBlock Text="{loc:Translate checkout_branch.local_changes}" FontWeight="SemiBold" />
 
             <RadioButton Name="KeepOption" GroupName="LocalChanges" IsChecked="True"
-                         Content="Dokunma" />
+                         Content="{loc:Translate checkout_branch.leave_alone}" />
             <RadioButton Name="MergeOption" GroupName="LocalChanges"
-                         Content="Birleştir (merge)" />
+                         Content="{loc:Translate checkout_branch.merge}" />
             <RadioButton Name="StashOption" GroupName="LocalChanges"
-                         Content="Stash'le (takip edilmeyen dosyalar dahil)" />
+                         Content="{loc:Translate checkout_branch.stash_including_untracked_files}" />
             <RadioButton Name="DiscardOption" GroupName="LocalChanges"
-                         Content="Sıfırla — yerel değişiklikleri at" />
+                         Content="{loc:Translate checkout_branch.reset_discard_local_changes}" />
 
             <TextBlock Name="ActionHint"
                        FontSize="11"
@@ -52,8 +53,8 @@
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="8">
-            <Button Name="CancelButton" Content="İptal" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
-            <Button Name="CheckoutButton" Content="Geç" MinWidth="90" IsDefault="True" Click="OnCheckoutClick" />
+            <Button Name="CancelButton" Content="{loc:Translate checkout_branch.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="CheckoutButton" Content="{loc:Translate checkout_branch.switch}" MinWidth="90" IsDefault="True" Click="OnCheckoutClick" />
         </StackPanel>
     </StackPanel>
 </Window>

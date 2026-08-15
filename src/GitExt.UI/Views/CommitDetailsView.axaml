@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
@@ -64,14 +65,14 @@
 
             <!-- Tam SHA seçilebilir olmalı: kullanıcı kopyalayıp başka yerde kullanır. -->
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <TextBlock Classes="label" Text="SHA" />
+                <TextBlock Classes="label" Text="{loc:Translate commit_details.sha}" />
                 <SelectableTextBlock Text="{Binding FullId}"
                                      FontFamily="{DynamicResource ContentControlThemeFontFamily}"
                                      FontSize="12" />
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <TextBlock Classes="label" Text="Yazar" />
+                <TextBlock Classes="label" Text="{loc:Translate commit_details.author}" />
                 <StackPanel Spacing="1">
                     <SelectableTextBlock Text="{Binding AuthorText}" FontSize="12" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -90,7 +91,7 @@
             -->
             <StackPanel Orientation="Horizontal" Spacing="6"
                         IsVisible="{Binding CommitterDiffersFromAuthor}">
-                <TextBlock Classes="label" Text="Kaydeden" />
+                <TextBlock Classes="label" Text="{loc:Translate commit_details.committer}" />
                 <StackPanel Spacing="1">
                     <SelectableTextBlock Text="{Binding CommitterText}" FontSize="12" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -103,7 +104,7 @@
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasParents}">
-                <TextBlock Classes="label" Text="Ebeveyn" />
+                <TextBlock Classes="label" Text="{loc:Translate commit_details.parent}" />
                 <ItemsControl ItemsSource="{Binding Parents}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -129,7 +130,7 @@
 
             <StackPanel Orientation="Horizontal" Spacing="6"
                         IsVisible="{Binding SignatureText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                <TextBlock Classes="label" Text="İmza" />
+                <TextBlock Classes="label" Text="{loc:Translate commit_details.signature}" />
                 <StackPanel Spacing="1">
                     <TextBlock Text="{Binding SignatureText}"
                                FontSize="12"

@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:GitExt.UI.ViewModels"
@@ -8,7 +9,7 @@
         d:DesignWidth="918" d:DesignHeight="622"
         x:Class="GitExt.UI.Views.WorkingTreeWindow"
         x:DataType="vm:WorkingTreeViewModel"
-        Title="Commit"
+        Title="{loc:Translate working_tree.commit}"
         Width="918" Height="622"
         MinWidth="640" MinHeight="420"
         WindowStartupLocation="CenterOwner">
