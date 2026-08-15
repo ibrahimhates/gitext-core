@@ -102,8 +102,8 @@ public static class GitLock
         if (!userConfirmed)
         {
             throw new InvalidOperationException(
-                "Kilit dosyası yalnızca kullanıcının açık onayıyla silinebilir. "
-                + "Başka bir git süreci çalışıyor olabilir.");
+                "The lock file can only be deleted with the user's explicit consent. "
+                + "Another git process may be running.");
         }
 
         File.Delete(lockInfo.Path);

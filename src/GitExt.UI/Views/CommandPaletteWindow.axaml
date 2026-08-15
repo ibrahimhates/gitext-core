@@ -14,7 +14,7 @@
 
         <TextBox Grid.Row="0"
                  Name="QueryBox"
-                 PlaceholderText="Komut ara…"
+                 PlaceholderText="Search commands…"
                  Text="{Binding Query}"
                  FontSize="{DynamicResource GitExtLargeFontSize}"
                  Margin="0,0,0,8" />

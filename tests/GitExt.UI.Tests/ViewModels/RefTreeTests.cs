@@ -49,7 +49,7 @@ public class RefTreeTests
     {
         RefTreeViewModel model = Create();
 
-        model.Roots.Select(node => node.Name).ShouldBe(["Dallar", "Remotes", "Etiketler"]);
+        model.Roots.Select(node => node.Name).ShouldBe(["Branches", "Remotes", "Tags"]);
     }
 
     [AvaloniaFact]
@@ -57,7 +57,7 @@ public class RefTreeTests
     {
         // `feature/login` ve `feature/logout` düz listede iki satır olurdu; GitExtensions'ın
         // ağacı da bunları tek bir "feature" düğümü altında topluyor (§ 9).
-        RefNodeViewModel branches = Root(Create(), "Dallar");
+        RefNodeViewModel branches = Root(Create(), "Branches");
 
         RefNodeViewModel folder = branches.Children.Single(node => node.Kind == RefNodeKind.Folder);
 
@@ -93,7 +93,7 @@ public class RefTreeTests
     [AvaloniaFact]
     public void Mevcut_dal_isaretli_ve_ahead_behind_yazili()
     {
-        RefNodeViewModel branches = Root(Create(), "Dallar");
+        RefNodeViewModel branches = Root(Create(), "Branches");
 
         RefNodeViewModel main = branches.Children.Single(node => node.Name == "main");
 
@@ -105,7 +105,7 @@ public class RefTreeTests
     [AvaloniaFact]
     public void Upstream_i_olmayan_dalda_rozet_YOK()
     {
-        RefNodeViewModel branches = Root(Create(), "Dallar");
+        RefNodeViewModel branches = Root(Create(), "Branches");
         RefNodeViewModel folder = branches.Children.Single(node => node.Kind == RefNodeKind.Folder);
 
         folder.Children[0].HasAheadBehind.ShouldBeFalse();
@@ -126,7 +126,7 @@ public class RefTreeTests
             },
         ]));
 
-        Root(model, "Dallar").Children.Single().AheadBehind.ShouldBe("upstream yok");
+        Root(model, "Branches").Children.Single().AheadBehind.ShouldBe("upstream yok");
     }
 
     [AvaloniaFact]
@@ -136,9 +136,9 @@ public class RefTreeTests
 
         model.Filter = "logout";
 
-        model.Roots.Select(node => node.Name).ShouldBe(["Dallar"], "boş bölüm gösterilmemeli");
+        model.Roots.Select(node => node.Name).ShouldBe(["Branches"], "boş bölüm gösterilmemeli");
 
-        RefNodeViewModel folder = Root(model, "Dallar").Children.Single();
+        RefNodeViewModel folder = Root(model, "Branches").Children.Single();
         folder.Children.Single().Name.ShouldBe("logout");
     }
 
@@ -180,12 +180,12 @@ public class RefTreeTests
         // Ağacı gezerken kazara dal değiştirmek olmamalı.
         RefTreeViewModel model = Create();
 
-        Root(model, "Dallar").IsCheckoutable.ShouldBeFalse();
-        Root(model, "Dallar").Children.Single(node => node.Kind == RefNodeKind.Folder)
+        Root(model, "Branches").IsCheckoutable.ShouldBeFalse();
+        Root(model, "Branches").Children.Single(node => node.Kind == RefNodeKind.Folder)
             .IsCheckoutable.ShouldBeFalse();
-        Root(model, "Etiketler").Children.Single().IsCheckoutable.ShouldBeFalse("etiket dal değil");
+        Root(model, "Tags").Children.Single().IsCheckoutable.ShouldBeFalse("etiket dal değil");
 
-        Root(model, "Dallar").Children.Single(node => node.Name == "main")
+        Root(model, "Branches").Children.Single(node => node.Name == "main")
             .IsCheckoutable.ShouldBeTrue();
     }
 

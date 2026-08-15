@@ -146,7 +146,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         }
         catch (GitException ex)
         {
-            GitError = ex.Message;
+            GitError = Loc.GitError(ex);
         }
 
         async Task<string> Read(string directory, string key, GitConfigScope scope) =>
@@ -246,7 +246,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         catch (GitException ex)
         {
             // Ham stderr birincil mesaj değil ama erişilebilir kalmalı (P02-T12).
-            GitError = ex.Message;
+            GitError = Loc.GitError(ex);
         }
     }
 }

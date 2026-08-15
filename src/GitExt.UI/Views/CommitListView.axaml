@@ -35,7 +35,7 @@
                 <TextBox Grid.Column="0"
                          Name="ShaSearchBox"
                          Text="{Binding SearchText}"
-                         PlaceholderText="SHA ile atla (Ctrl+F)"
+                         PlaceholderText="Jump to SHA (Ctrl+F)"
                          FontSize="12" />
 
                 <TextBlock Grid.Column="1"

@@ -268,8 +268,8 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         RequireConfirmation(
             userConfirmed,
-            "Değişiklikleri geri almak kaydedilmemiş içeriği siler ve bunun reflog üzerinden "
-            + "bir geri dönüşü yoktur; işlem yalnızca kullanıcının açık onayıyla yapılabilir.");
+            "Reverting the changes deletes uncommitted content, and there is no way back through "
+            + "the reflog; the operation can only be performed with the user's explicit consent.");
 
         if (paths.Count == 0)
         {
@@ -312,8 +312,8 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         RequireConfirmation(
             userConfirmed,
-            "Takip edilmeyen dosyaları silmek geri alınamaz; bu dosyaların hiçbir kopyası "
-            + "git'te yok. İşlem yalnızca kullanıcının açık onayıyla yapılabilir.");
+            "Deleting untracked files cannot be undone; there is no copy of these files "
+            + "does not exist in git. The operation can only be performed with the user's explicit consent.");
 
         if (paths.Count == 0)
         {
@@ -356,8 +356,8 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         RequireConfirmation(
             userConfirmed,
-            "Çalışma ağacını temizlemek takip edilmeyen tüm dosyaları siler ve geri alınamaz; "
-            + "işlem yalnızca kullanıcının açık onayıyla yapılabilir.");
+            "Cleaning the working tree deletes every untracked file and cannot be undone; "
+            + "the operation can only be performed with the user's explicit consent.");
 
         List<string> arguments = ["clean", "--force"];
 
@@ -441,8 +441,8 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         RequireConfirmation(
             userConfirmed,
-            "Seçili satırlardaki değişiklikleri geri almak çalışma ağacındaki içeriği siler. "
-            + "İşlem yalnızca kullanıcının açık onayıyla yapılabilir.");
+            "Reverting the changes on the selected lines deletes content in the working tree. "
+            + "The operation can only be performed with the user's explicit consent.");
 
         // Ters uygulanacağı için yama "stage" yönünde üretiliyor: yamayı üretmek ile
         // uygulamak ayrı kararlar (P05-T04).
@@ -642,7 +642,7 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
                 // Hiza bozulduysa yanlış içeriği "yedek" diye sunmaktansa hiç sunmamak yeğdir.
                 throw new GitException(
                     GitFailureKind.Unknown,
-                    "Yedeklenen içerik sayısı yol sayısıyla uyuşmadı.",
+                    "The number of backed-up contents did not match the number of paths.",
                     "git hash-object -w",
                     result.ExitCode,
                     result.StandardError);

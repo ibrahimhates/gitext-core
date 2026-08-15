@@ -172,8 +172,8 @@ public sealed class CommitLogReader : ICommitLogReader
         if (filled > 0)
         {
             throw new InvalidOperationException(
-                $"git log çıktısı yarım bir kayıtla bitti ({filled}/{FieldCount} alan). "
-                + "Format dizesi ile alan sayısı uyuşmuyor olabilir.");
+                $"The git log output ended with an incomplete record ({filled}/{FieldCount} fields). "
+                + "The format string and the field count may not match.");
         }
     }
 

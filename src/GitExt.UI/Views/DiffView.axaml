@@ -142,7 +142,7 @@
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="6,4">
             <TextBox Grid.Column="0"
                      Text="{Binding Filter}"
-                     PlaceholderText="Dosya filtrele"
+                     PlaceholderText="Filter files"
                      FontSize="12" />
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="6,0,0,0">
@@ -213,7 +213,7 @@
                 -->
                 <TextBox Name="LineSearch"
                          Text="{Binding LineSearchText}"
-                         PlaceholderText="Diff içinde ara (Ctrl+F)"
+                         PlaceholderText="Search in the diff (Ctrl+F)"
                          Width="200"
                          FontSize="12"
                          ToolTip.Tip="{loc:Translate diff.enter_f3_for_next_shift_enter_shift_f3_for_p}" />

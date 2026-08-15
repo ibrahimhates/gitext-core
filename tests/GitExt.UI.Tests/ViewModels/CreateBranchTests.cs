@@ -142,7 +142,7 @@ public class CreateBranchTests
         await model.OpenRepositoryAsync("/tmp/depo");
         await model.CreateBranchCommand.ExecuteAsync(null);
 
-        model.BranchNotice.ShouldBe("Bu adda bir dal zaten var.");
+        model.BranchNotice.ShouldBe("A branch with that name already exists.");
 
         // Ham stderr birincil mesaj DEĞİL (GitFailureKind'ın varlık sebebi).
         model.BranchNotice!.ShouldNotContain("fatal:");

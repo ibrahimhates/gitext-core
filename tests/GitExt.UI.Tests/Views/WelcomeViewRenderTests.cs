@@ -26,7 +26,7 @@ public class WelcomeViewRenderTests
             new CommitListViewModel(
                 new FakeRepositoryLocator(new GitException(
                     GitFailureKind.NotARepository,
-                    "Bu klasör bir Git deposu değil.",
+                    "This folder is not a Git repository.",
                     "git rev-parse", 128, "fatal: not a git repository")),
                 new FakeCommitLogReader(),
                 new FakeRefReader(),
@@ -91,7 +91,7 @@ public class WelcomeViewRenderTests
         bool errorShown = window.GetVisualDescendants()
             .OfType<TextBlock>()
             .Any(t => t.IsEffectivelyVisible
-                && t.Text?.Contains("not a git repository", StringComparison.Ordinal) == true);
+                && t.Text?.Contains("This folder is not a git repository", StringComparison.Ordinal) == true);
 
         errorShown.ShouldBeTrue();
 

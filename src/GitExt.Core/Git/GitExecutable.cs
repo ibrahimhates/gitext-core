@@ -66,8 +66,8 @@ public sealed class GitExecutable
         }
 
         throw new GitNotFoundException(
-            "Çalıştırılabilir bir 'git' bulunamadı. Git kurulu ve PATH üzerinde olmalı. "
-            + $"Denenen yollar: {string.Join(", ", attempted)}");
+            "No runnable 'git' was found. Git must be installed and on your PATH. "
+            + $"Paths tried: {string.Join(", ", attempted)}");
     }
 
     /// <summary>

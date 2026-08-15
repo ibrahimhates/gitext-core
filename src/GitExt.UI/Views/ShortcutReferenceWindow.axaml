@@ -12,7 +12,7 @@
 
         <TextBox Grid.Row="0"
                  Name="FilterBox"
-                 PlaceholderText="Kısayol veya komut ara…"
+                 PlaceholderText="Search shortcuts or commands…"
                  Text="{Binding Filter}"
                  Margin="0,0,0,8" />
 

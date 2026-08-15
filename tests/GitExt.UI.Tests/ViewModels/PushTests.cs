@@ -136,7 +136,7 @@ public class PushTests
 
         model.CommandPreview.ShouldNotContain("--force ");
         model.CommandPreview.ShouldNotEndWith("--force");
-        PushViewModel.ForceDisabledReason.ShouldContain("Kirayla zorla");
+        PushViewModel.ForceDisabledReason.ShouldContain("Force with lease");
     }
 
     // ---------------------------------------------------------------- sekmeler

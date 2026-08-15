@@ -288,7 +288,7 @@ public sealed class CommitWriter : ICommitWriter
         {
             throw new GitException(
                 GitFailureKind.Unknown,
-                "Commit oluşturuldu ama kimliği okunamadı.",
+                "The commit was created but its id could not be read.",
                 "git log -1 --format=%H%x00%B",
                 result.ExitCode,
                 result.StandardError);

@@ -55,7 +55,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
             if (!result.IsSuccess)
             {
                 _logger.LogDebug(
-                    "git çıkış kodu {ExitCode}: {Command}",
+                    "git exit code {ExitCode}: {Command}",
                     result.ExitCode,
                     command.ToDisplayString());
             }
@@ -66,11 +66,11 @@ public sealed class GitProcessRunner : IGitProcessRunner
                                                  && !cancellationToken.IsCancellationRequested)
         {
             TimeSpan elapsed = Stopwatch.GetElapsedTime(startedAt);
-            _commandLog.RecordFailure(command, elapsed, $"zaman aşımı ({command.Timeout})");
+            _commandLog.RecordFailure(command, elapsed, $"timeout ({command.Timeout})");
 
             throw new GitException(
                 GitFailureKind.Timeout,
-                $"Komut {command.Timeout.TotalSeconds:F0} saniye içinde tamamlanmadı ve durduruldu.",
+                $"The command did not finish within {command.Timeout.TotalSeconds:F0} seconds and was stopped.",
                 command.ToDisplayString(),
                 exitCode: -1,
                 standardError: string.Empty);
@@ -98,7 +98,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
         if (!process.Start())
         {
-            throw new GitNotFoundException($"git süreci başlatılamadı: {_executablePath}");
+            throw new GitNotFoundException($"The git process could not be started: {_executablePath}");
         }
 
         // stderr paralel olarak boşaltılmalı; aksi halde boru dolduğunda süreç bloke olur
@@ -262,7 +262,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
         if (!process.Start())
         {
-            throw new GitNotFoundException($"git süreci başlatılamadı: {_executablePath}");
+            throw new GitNotFoundException($"The git process could not be started: {_executablePath}");
         }
 
         try
@@ -454,7 +454,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
         {
             // Süreç bu arada kendiliğinden bitmiş olabilir.
-            _logger.LogTrace(ex, "git süreci öldürülemedi; muhtemelen zaten sonlanmıştı.");
+            _logger.LogTrace(ex, "The git process could not be killed; it had probably already exited.");
         }
     }
 }

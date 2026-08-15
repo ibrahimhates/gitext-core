@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -542,7 +543,7 @@ public sealed class PullViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            Notice = error.Message;
+            Notice = Loc.GitError(error);
         }
         finally
         {
@@ -565,7 +566,7 @@ public sealed class PullViewModel : ViewModelBase
     {
         if (_diagnostics is null || _authentication is null)
         {
-            Notice = error.Message;
+            Notice = Loc.GitError(error);
             return;
         }
 
@@ -589,7 +590,7 @@ public sealed class PullViewModel : ViewModelBase
         }
         catch (GitException retry)
         {
-            Warning = retry.Message;
+            Warning = Loc.GitError(retry);
         }
     }
 

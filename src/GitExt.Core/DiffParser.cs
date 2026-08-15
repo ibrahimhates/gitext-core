@@ -227,8 +227,8 @@ public static class DiffParser
             if (target < 0)
             {
                 throw new DiffParseException(
-                    $"Yama bloğu hiçbir ham kayda eşlenemedi ({records.Count} kayıt, "
-                    + $"{blocks.Count} blok). Hunk'ları yanlış dosyaya bağlamaktansa durmak gerekir.");
+                    $"A patch block could not be matched to any raw record ({records.Count} records, "
+                    + $"{blocks.Count} blocks). Stopping is better than attaching hunks to the wrong file.");
             }
 
             matched[target] = block;
@@ -269,7 +269,7 @@ public static class DiffParser
             if (fields.Length < RawFieldCount)
             {
                 // Beklenmeyen biçim: sessizce yanlış veri üretmektense dur.
-                throw new DiffParseException($"Ham kayıt ayrıştırılamadı: '{meta}'");
+                throw new DiffParseException($"Could not parse the raw record: '{meta}'");
             }
 
             string status = fields[4];
@@ -283,7 +283,7 @@ public static class DiffParser
             {
                 if (!TryReadToken(output, ref position, out paths[i]))
                 {
-                    throw new DiffParseException("Ham kayıt yolları yarım kaldı.");
+                    throw new DiffParseException("The raw record paths are incomplete.");
                 }
             }
 

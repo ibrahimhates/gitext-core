@@ -38,7 +38,7 @@ public class GitOutputViewModelTests
 
         view.ExitCode.ShouldBe(1);
         view.HasExitCode.ShouldBeTrue();
-        view.ExitCodeText.ShouldBe("Çıkış kodu: 1");
+        view.ExitCodeText.ShouldBe("Exit code: 1");
         view.CommandLine.ShouldBe("git commit -F -");
         view.Output.ShouldContain("pre-commit: 3 dosyada bicim hatasi");
         view.Output.ShouldContain("src/a.cs:12");

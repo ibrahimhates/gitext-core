@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -787,7 +788,10 @@ public sealed partial class DiffViewModel : ViewModelBase
         catch (Exception ex) when (ex is GitException or DiffParseException)
         {
             Clear();
-            ErrorMessage = ex.Message;
+
+            // GitException'da mesaj Kind'a göre çevriliyor (P11-T06); ayrıştırma hatası
+            // sınıflandırılmıyor, kendi mesajı gösteriliyor.
+            ErrorMessage = ex is GitException classified ? Loc.GitError(classified) : ex.Message;
         }
         finally
         {
@@ -1439,7 +1443,7 @@ public sealed partial class DiffViewModel : ViewModelBase
         }
         catch (GitException ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Loc.GitError(ex);
         }
     }
 
@@ -1462,7 +1466,7 @@ public sealed partial class DiffViewModel : ViewModelBase
         {
             // `git apply` sayı/bağlam hatalarını REDDEDİYOR (P05-T04'te ölçüldü); mesaj
             // kullanıcıya ulaşmalı, yoksa "tıkladım ama bir şey olmadı" durumu oluşur.
-            ErrorMessage = ex.Message;
+            ErrorMessage = Loc.GitError(ex);
         }
     }
 

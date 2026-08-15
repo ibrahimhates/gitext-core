@@ -146,8 +146,8 @@ public sealed class GitNotFoundException(string message, Exception? innerExcepti
 /// </summary>
 public sealed class GitVersionTooOldException(GitVersion found, string executablePath)
     : Exception(
-        $"Bulunan git sürümü {found} çok eski. En az {GitVersion.Minimum} gerekiyor "
-        + $"(çalıştırılabilir: {executablePath}).")
+        $"The git version found, {found}, is too old. At least {GitVersion.Minimum} is required "
+        + $"(executable: {executablePath}).")
 {
     public GitVersion FoundVersion { get; } = found;
 

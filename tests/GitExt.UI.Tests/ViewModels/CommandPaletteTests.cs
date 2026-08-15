@@ -43,9 +43,9 @@ public class CommandPaletteTests
     /// hızlı olmasının tek yolu birkaç harf yazmak.
     /// </remarks>
     [Theory]
-    [InlineData("dlo", CommandIds.BranchCreate)]
+    [InlineData("crbr", CommandIds.BranchCreate)]
     [InlineData("rebase", CommandIds.HistoryRebase)]
-    [InlineData("komut paleti", CommandIds.ToolsCommandPalette)]
+    [InlineData("command palette", CommandIds.ToolsCommandPalette)]
     public void Bulanik_arama_komutu_buluyor(string query, string expected)
     {
         (CommandPaletteViewModel palette, _) = Create();

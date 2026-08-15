@@ -28,7 +28,7 @@
                        Margin="10,0"
                        FontSize="11"
                        Opacity="0.8"
-                       Text="{Binding FailureCount, StringFormat='{}{0} başarısız komut'}" />
+                       Text="{Binding FailureCount, StringFormat='{}{0} failed commands'}" />
             <Button Name="ClearButton"
                     Grid.Column="2"
                     Content="{loc:Translate command_log.clear}"

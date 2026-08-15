@@ -224,25 +224,25 @@ public sealed class AuthenticationDiagnostics : IAuthenticationDiagnostics
             RemoteTransport.Ssh => agent switch
             {
                 SshAgentState.NotRunning =>
-                    "Uzak depo SSH kullanıyor ama bu oturumda çalışan bir SSH agent yok, "
-                    + "yani sunucuya sunulacak bir anahtar bulunamadı.",
+                    "The remote uses SSH but there is no SSH agent running in this session, "
+                    + "so no key could be offered to the server.",
                 SshAgentState.Empty =>
-                    "SSH agent çalışıyor ama içinde hiç anahtar yok.",
+                    "The SSH agent is running but holds no keys.",
                 SshAgentState.HasKeys =>
-                    "SSH agent'ta anahtar var ama sunucu kabul etmedi — anahtar bu depo "
-                    + "için yetkili değil.",
+                    "The SSH agent holds keys but the server did not accept them — the key is "
+                    + "probably not authorised for this repository.",
                 _ =>
-                    "Uzak depo SSH kullanıyor ve sunucu anahtarı kabul etmedi.",
+                    "The remote uses SSH and the server did not accept the key.",
             },
             RemoteTransport.Https when helper =>
-                "Kayıtlı kimlik bilgisi kabul edilmedi. Token'ın süresi dolmuş ya da yetkisi "
+                "The stored credential was rejected. The token may have expired or may not be authorised "
                 + "yetmiyor olabilir.",
             RemoteTransport.Https =>
-                "Uzak depo kimlik doğrulama istiyor ve kayıtlı bir kimlik bilgisi yok.",
+                "The remote requires authentication and there is no stored credential.",
             RemoteTransport.Local =>
-                "Yerel bir yola erişilemedi; kimlik doğrulamayla ilgisi yok.",
+                "A local path was unreachable; this is unrelated to authentication.",
             _ =>
-                "Kimlik doğrulama başarısız oldu.",
+                "Authentication failed.",
         };
 
     private static IReadOnlyList<string> Suggest(

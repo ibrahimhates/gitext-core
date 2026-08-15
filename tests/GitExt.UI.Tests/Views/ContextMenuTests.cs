@@ -147,7 +147,7 @@ public class ContextMenuTests
         RefTreeViewModel model = (RefTreeViewModel)view.DataContext!;
 
         model.Selected = model.Roots
-            .Single(node => node.Name == "Dallar")
+            .Single(node => node.Name == "Branches")
             .Children
             .Single(node => node.Kind == RefNodeKind.Folder);
 

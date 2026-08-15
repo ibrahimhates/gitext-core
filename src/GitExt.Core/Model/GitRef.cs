@@ -191,7 +191,7 @@ public sealed record HeadState
     public CommitId Commit { get; init; }
 
     public override string ToString() =>
-        IsUnborn ? "(doğmamış)" : IsDetached ? $"(detached) {Commit.ToShortString()}" : BranchName!;
+        IsUnborn ? "(unborn)" : IsDetached ? $"(detached) {Commit.ToShortString()}" : BranchName!;
 }
 
 /// <summary>

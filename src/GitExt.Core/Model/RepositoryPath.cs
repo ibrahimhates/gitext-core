@@ -72,7 +72,7 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
         if (!TryParse(value, out RepositoryPath path))
         {
             throw new ArgumentException(
-                $"'{value}' geçerli bir depo-göreli yol değil.", nameof(value));
+                $"'{value}' is not a valid repository-relative path.", nameof(value));
         }
 
         return path;

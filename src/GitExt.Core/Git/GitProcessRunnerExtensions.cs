@@ -214,35 +214,35 @@ internal static class GitFailureClassifier
     /// </summary>
     internal static string Describe(GitFailureKind kind) => kind switch
     {
-        GitFailureKind.NotARepository => "Bu klasör bir Git deposu değil.",
+        GitFailureKind.NotARepository => "This folder is not a Git repository.",
         GitFailureKind.AuthenticationRequired =>
-            "Uzak depo kimlik doğrulama istedi. SSH anahtarınızı, kimlik yardımcınızı (credential helper) "
-            + "veya erişim belirtecinizi kontrol edin.",
-        GitFailureKind.NetworkFailure => "Uzak depoya ulaşılamadı. Ağ bağlantınızı kontrol edin.",
+            "The remote asked for authentication. Check your SSH key, your credential helper "
+            + "or your access token.",
+        GitFailureKind.NetworkFailure => "The remote could not be reached. Check your network connection.",
         GitFailureKind.IndexLocked =>
-            "Depo kilitli. Başka bir Git süreci çalışıyor olabilir; birkaç saniye sonra "
-            + "tekrar deneyin. Kilit uzun süredir duruyorsa çökmüş bir süreçten kalmış "
+            "The repository is locked. Another Git process may be running; try again in a few "
+            + "seconds. If the lock has been there for a long time it may be left over from a crashed process "
             + "olabilir.",
-        GitFailureKind.Conflict => "İşlem çakışma (conflict) nedeniyle durdu.",
-        GitFailureKind.UnknownRevision => "Belirtilen revizyon veya dal bulunamadı.",
+        GitFailureKind.Conflict => "The operation stopped because of a conflict.",
+        GitFailureKind.UnknownRevision => "No such revision or branch.",
         GitFailureKind.DirtyWorkingTree =>
-            "Çalışma dizininde kaydedilmemiş değişiklikler var; işlem devam edemedi.",
-        GitFailureKind.Timeout => "Komut zaman aşımına uğradı.",
+            "There are uncommitted changes in the working directory; the operation could not continue.",
+        GitFailureKind.Timeout => "The command timed out.",
         GitFailureKind.BranchAlreadyExists => "Bu adda bir dal zaten var.",
         GitFailureKind.RefNameConflict =>
-            "Bu ad mevcut bir dalla çakışıyor. Git dalları dosya gibi saklar: "
-            + "\"feature\" dalı varken \"feature/x\" oluşturulamaz (ve tersi).",
+            "This name conflicts with an existing branch. Git stores branches like files: "
+            + "with a \"feature\" branch present you cannot create \"feature/x\" (and vice versa).",
         GitFailureKind.RemoteAlreadyExists => "Bu adda bir uzak depo zaten var.",
-        GitFailureKind.RemoteNotFound => "Böyle bir uzak depo yok.",
+        GitFailureKind.RemoteNotFound => "No such remote.",
         GitFailureKind.RemoteUnreachable =>
-            "Uzak depoya ulaşılamadı. Adresi, ağ bağlantınızı ve erişim yetkinizi kontrol edin.",
+            "The remote could not be reached. Check the address, your network connection and your access rights.",
         GitFailureKind.RemoteNameConflict =>
-            "Bu ad mevcut bir uzak depoyla iç içe geçiyor: \"ic\" varken \"ic/main\" "
-            + "eklenemez (ve tersi). Farklı bir ad seçin.",
+            "This name nests with an existing remote: with \"ic\" present, \"ic/main\" "
+            + "cannot be added (and vice versa). Choose a different name.",
         GitFailureKind.UnbornHead =>
-            "Depoda henüz commit yok, dal oluşturulacak bir başlangıç noktası bulunamıyor. "
-            + "Önce ilk commit'i atın.",
-        _ => "Git komutu başarısız oldu.",
+            "There are no commits in the repository yet, so there is no starting point for a branch. "
+            + "Make the first commit first.",
+        _ => "The git command failed.",
     };
 
     private static bool ContainsAny(ReadOnlySpan<char> text, params string[] needles)

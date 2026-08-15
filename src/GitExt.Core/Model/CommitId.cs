@@ -56,8 +56,8 @@ public readonly record struct CommitId : IComparable<CommitId>
         if (!TryParse(value, out CommitId id))
         {
             throw new FormatException(
-                $"'{value}' geçerli bir Git nesne kimliği değil. "
-                + $"En az {MinimumLength}, en fazla {Sha256Length} onaltılık karakter bekleniyor.");
+                $"'{value}' is not a valid Git object id. "
+                + $"Between {MinimumLength} and {Sha256Length} hexadecimal characters are expected.");
         }
 
         return id;

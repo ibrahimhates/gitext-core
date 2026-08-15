@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
 using GitExt.Core.Git;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -273,7 +274,7 @@ public sealed class MergeViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            Warning = error.Message;
+            Warning = Loc.GitError(error);
         }
     }
 
@@ -333,7 +334,7 @@ public sealed class MergeViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            Warning = error.Message;
+            Warning = Loc.GitError(error);
         }
         finally
         {

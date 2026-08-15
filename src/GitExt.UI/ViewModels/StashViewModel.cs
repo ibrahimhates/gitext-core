@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
 using GitExt.Core.Git;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -273,7 +274,7 @@ public sealed class StashViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            Error = error.Message;
+            Error = Loc.GitError(error);
         }
         finally
         {

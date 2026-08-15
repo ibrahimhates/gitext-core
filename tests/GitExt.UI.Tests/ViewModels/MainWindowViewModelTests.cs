@@ -48,7 +48,7 @@ public class MainWindowViewModelTests
         MainWindowViewModel viewModel = Create(
             locateFailure: new GitException(
                 GitFailureKind.NotARepository,
-                "Bu klasör bir Git deposu değil.",
+                "This folder is not a Git repository.",
                 "git rev-parse",
                 128,
                 string.Empty));

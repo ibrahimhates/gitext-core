@@ -151,7 +151,7 @@ public sealed record BranchDeleteResult
 public sealed class BranchNotMergedException : Exception
 {
     public BranchNotMergedException(string name, string lastCommitId)
-        : base($"'{name}' dalı birleştirilmemiş commit'ler içeriyor.")
+        : base($"Branch '{name}' contains commits that are not merged anywhere.")
     {
         Name = name;
         LastCommitId = lastCommitId;
@@ -292,7 +292,7 @@ public sealed class BranchWriter : IBranchWriter
         if (BranchName.Validate(options.Name) is { } problem)
         {
             throw new ArgumentException(
-                $"'{options.Name}' geçerli bir dal adı değil ({problem}).", nameof(options));
+                $"'{options.Name}' is not a valid branch name ({problem}).", nameof(options));
         }
 
         // Doğmamış HEAD'i önce eliyoruz: git'in mesajı ("not a valid object name: 'main'")
@@ -334,7 +334,7 @@ public sealed class BranchWriter : IBranchWriter
         if (BranchName.Validate(newName) is { } problem)
         {
             throw new ArgumentException(
-                $"'{newName}' geçerli bir dal adı değil ({problem}).", nameof(newName));
+                $"'{newName}' is not a valid branch name ({problem}).", nameof(newName));
         }
 
         // ⚠️ `-m`, ASLA `-M`: ölçümde `-M` var olan hedef dalı sessizce yok etti.
@@ -416,14 +416,14 @@ public sealed class BranchWriter : IBranchWriter
             if (!options.UserConfirmed)
             {
                 throw new InvalidOperationException(
-                    "Yerel değişiklikleri atarak dal değiştirmek geri alınamaz içerik siler; "
-                    + "işlem yalnızca kullanıcının açık onayıyla yapılabilir.");
+                    "Switching branches while discarding local changes deletes content irreversibly; "
+                    + "the operation can only be performed with the user's explicit consent.");
             }
 
             if (_backup is null)
             {
                 throw new InvalidOperationException(
-                    "Yedekleyici olmadan yerel değişiklikler atılamaz.");
+                    "Local changes cannot be discarded without a backup writer.");
             }
 
             // 🔴 Stage'lenmemiş içeriğin nesne veritabanında HİÇBİR izi kalmıyor (ölçüldü);
@@ -550,7 +550,7 @@ public sealed class BranchWriter : IBranchWriter
                 Arguments =
                 [
                     "stash", "push", "--include-untracked", "--quiet",
-                    "--message", $"gitext: '{target}' dalına geçiş",
+                    "--message", $"gitext: switch to branch '{target}'",
                 ],
                 IsReadOnly = false,
             },

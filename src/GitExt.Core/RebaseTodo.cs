@@ -141,12 +141,12 @@ public static class RebaseTodo
 
         if (kept.Count == 0)
         {
-            return "Tüm commit'ler çıkarılmış — geriye uygulanacak bir şey kalmıyor.";
+            return "Every commit was removed — nothing is left to apply.";
         }
 
         if (kept[0].Action is RebaseAction.Squash or RebaseAction.Fixup)
         {
-            return "İlk commit bir öncekine kaynatılamaz; kaynatılacak önceki commit yok.";
+            return "The first commit cannot be squashed into a previous one; there is no previous commit.";
         }
 
         return null;

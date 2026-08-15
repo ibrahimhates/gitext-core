@@ -176,7 +176,7 @@ public sealed class RefTreeViewModel : ViewModelBase
             return;
         }
 
-        RefNodeViewModel branches = new() { Name = "Dallar", Kind = RefNodeKind.Section };
+        RefNodeViewModel branches = new() { Name = "Branches", Kind = RefNodeKind.Section };
 
         foreach (BranchInfo branch in refs.LocalBranches)
         {
@@ -198,7 +198,7 @@ public sealed class RefTreeViewModel : ViewModelBase
                 });
         }
 
-        RefNodeViewModel remotes = new() { Name = "Uzak depolar", Kind = RefNodeKind.Section };
+        RefNodeViewModel remotes = new() { Name = "Remotes", Kind = RefNodeKind.Section };
 
         foreach (BranchInfo branch in refs.RemoteBranches)
         {
@@ -232,7 +232,7 @@ public sealed class RefTreeViewModel : ViewModelBase
                 });
         }
 
-        RefNodeViewModel tags = new() { Name = "Etiketler", Kind = RefNodeKind.Section };
+        RefNodeViewModel tags = new() { Name = "Tags", Kind = RefNodeKind.Section };
 
         foreach (TagInfo tag in refs.Tags)
         {

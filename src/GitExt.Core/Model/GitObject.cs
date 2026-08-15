@@ -104,7 +104,7 @@ public sealed record BlobContent
         if (IsBinary)
         {
             throw new InvalidOperationException(
-                "İkili içerik metin olarak okunamaz. Önce IsBinary kontrol edilmeli.");
+                "Binary content cannot be read as text. Check IsBinary first.");
         }
 
         return System.Text.Encoding.UTF8.GetString(Content);

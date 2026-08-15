@@ -9,6 +9,7 @@ using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.UI.Storage;
 using GitExt.UI.Settings;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -479,7 +480,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
         }
         catch (InvalidOperationException error)
         {
@@ -764,7 +765,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
         }
 
         await RefreshAsync().ConfigureAwait(true);
@@ -1040,7 +1041,7 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (GitException error)
         {
             // Ham stderr birincil mesaj olarak gösterilmiyor (GitFailureKind'ın gerekçesi).
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
             return;
         }
 
@@ -1123,7 +1124,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
             return;
         }
         catch (InvalidOperationException error)
@@ -1176,7 +1177,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
             return;
         }
         catch (ArgumentException error)
@@ -1259,13 +1260,13 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             catch (GitException error)
             {
-                BranchNotice = error.Message;
+                BranchNotice = Loc.GitError(error);
                 return;
             }
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
             return;
         }
 
@@ -1308,7 +1309,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
             return;
         }
 
@@ -1357,7 +1358,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
             return;
         }
 
@@ -1400,7 +1401,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
             return;
         }
 
@@ -1448,7 +1449,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
             return;
         }
 
@@ -1497,7 +1498,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            BranchNotice = error.Message;
+            BranchNotice = Loc.GitError(error);
         }
 
         await RefreshAsync().ConfigureAwait(true);

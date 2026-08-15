@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -403,7 +404,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         }
         catch (GitException ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Loc.GitError(ex);
             ErrorDetails = GitOutputViewModel.ForFailure(ex);
             IsBusy = false;
             return;
@@ -613,7 +614,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         }
         catch (GitException ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Loc.GitError(ex);
             ErrorDetails = GitOutputViewModel.ForFailure(ex);
         }
         finally
@@ -754,7 +755,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         }
         catch (GitException ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Loc.GitError(ex);
             ErrorDetails = GitOutputViewModel.ForFailure(ex);
         }
         finally
@@ -917,7 +918,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         }
         catch (GitException ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Loc.GitError(ex);
             ErrorDetails = GitOutputViewModel.ForFailure(ex);
             IsBusy = false;
             return;

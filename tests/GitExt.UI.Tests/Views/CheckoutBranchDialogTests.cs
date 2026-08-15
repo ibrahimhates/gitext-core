@@ -103,10 +103,10 @@ public class CheckoutBranchDialogTests
 
         string hint = dialog.GetControl<TextBlock>("ActionHint").Text!;
 
-        hint.ShouldContain("ATILIR");
+        hint.ShouldContain("DISCARDED");
 
         // Yedeklendiği de söylenmeli: yıkıcı ama geri dönüşü var (P05-T15 kuralı).
-        hint.ShouldContain("yedek", Case.Insensitive);
+        hint.ShouldContain("backed up", Case.Insensitive);
     }
 
     [AvaloniaFact]

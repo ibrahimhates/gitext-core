@@ -5,6 +5,7 @@ using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.Graph;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -363,7 +364,12 @@ public sealed partial class CommitListViewModel : ViewModelBase
         catch (Exception ex) when (ex is GitException or GitNotFoundException
                                        or GitVersionTooOldException or DirectoryNotFoundException)
         {
-            ErrorMessage = ex.Message;
+            // GitException'da mesaj Kind'a göre çevriliyor (P11-T06); diğer istisnalarda
+            // (git bulunamadı, sürüm eski, dizin yok) sınıflandırma yok, kendi mesajı
+            // zaten kullanıcıya yönelik.
+            ErrorMessage = ex is GitException classified
+                ? Loc.GitError(classified)
+                : ex.Message;
 
             // Özet tek başına yetmez: git'in asıl çıktısı (ve varsa hook'un söyledikleri)
             // ancak burada görünür hale geliyor.

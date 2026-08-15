@@ -107,8 +107,8 @@ public class ResetChangesDialogTests
         ResetChangesDialog staged = Create(Request(includesStaged: true));
         ResetChangesDialog unstagedOnly = Create(Request(includesStaged: false));
 
-        staged.GetControl<TextBlock>("MessageText").Text!.ShouldContain("stage'lenmiş");
-        unstagedOnly.GetControl<TextBlock>("MessageText").Text!.ShouldContain("stage'lenmemiş");
+        staged.GetControl<TextBlock>("MessageText").Text!.ShouldContain("including staged");
+        unstagedOnly.GetControl<TextBlock>("MessageText").Text!.ShouldContain("Unstaged changes");
     }
 
     [AvaloniaFact]

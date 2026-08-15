@@ -227,7 +227,7 @@ public class RemotesTests
 
         await model.SaveCommand.ExecuteAsync(null);
 
-        model.Notice.ShouldBe("Bu adda bir uzak depo zaten var.");
+        model.Notice.ShouldBe("A remote with that name already exists.");
     }
 
     /// <summary>

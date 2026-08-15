@@ -1,275 +1,275 @@
 {
   "'{name}' dalı birleştirilmemiş commit'ler içeriyor.": {
-    "en": ""
+    "en": "Branch '{name}' contains commits that are not merged anywhere."
   },
   "'{name}' geçerli bir uzak depo adı değil ({RemoteName.Describe(problem)})": {
-    "en": ""
+    "en": "'{name}' is not a valid remote name ({RemoteName.Describe(problem)})"
   },
   "'{name}' uzak deposunda {existing.Count} adet URL tanımlı; ": {
-    "en": ""
+    "en": "Remote '{name}' has {existing.Count} URLs configured; "
   },
   "'{newName}' geçerli bir dal adı değil ({problem}).": {
-    "en": ""
+    "en": "'{newName}' is not a valid branch name ({problem})."
   },
   "'{options.Name}' geçerli bir dal adı değil ({problem}).": {
-    "en": ""
+    "en": "'{options.Name}' is not a valid branch name ({problem})."
   },
   "'{value}' geçerli bir Git nesne kimliği değil. ": {
-    "en": ""
+    "en": "'{value}' is not a valid Git object id. "
   },
   "'{value}' geçerli bir depo-göreli yol değil.": {
-    "en": ""
+    "en": "'{value}' is not a valid repository-relative path."
   },
   "(doğmamış)": {
-    "en": ""
+    "en": "(unborn)"
   },
   "(flatpak-spawn --host başarısız). gitext-core, hook'larınızın ve kimlik ": {
-    "en": ""
+    "en": "(flatpak-spawn --host failed). gitext-core has to use your git so that your hooks and "
   },
   "(çalıştırılabilir: {executablePath}).": {
-    "en": ""
+    "en": "(executable: {executablePath})."
   },
   "Ad \\\"-\\\" ile başlayamaz; git komutlarında seçenek sanılır.": {
-    "en": ""
+    "en": "A name cannot start with \\\"-\\\"; git commands would read it as an option."
   },
   "Ad \\\"..\\\" içeremez.": {
-    "en": ""
+    "en": "A name cannot contain \\\"..\\\"."
   },
   "Ad \\\"/\\\" ile başlayıp bitemez, \\\"//\\\" içeremez.": {
-    "en": ""
+    "en": "A name cannot start or end with \\\"/\\\", or contain \\\"//\\\"."
   },
   "Ad \\\"refs/\\\" ile başlayamaz. Git bunu reddetmiyor ama iç içe bir ad ": {
-    "en": ""
+    "en": "A name cannot start with \\\"refs/\\\". Git does not reject it but it creates a nested name "
   },
   "Ad boş olamaz.": {
-    "en": ""
+    "en": "A name cannot be empty."
   },
   "Ad boşluk ve şu karakterleri içeremez: ~ ^ : ? * [ \\\\": {
-    "en": ""
+    "en": "A name cannot contain spaces or these characters: ~ ^ : ? * [ \\\\"
   },
   "Ad geçersiz.": {
-    "en": ""
+    "en": "The name is invalid."
   },
   "Başka bir git süreci çalışıyor olabilir.": {
-    "en": ""
+    "en": "Another git process may be running."
   },
   "Belirtilen revizyon veya dal bulunamadı.": {
-    "en": ""
+    "en": "No such revision or branch."
   },
   "Bu ad mevcut bir dalla çakışıyor. Git dalları dosya gibi saklar: ": {
-    "en": ""
+    "en": "This name conflicts with an existing branch. Git stores branches like files: "
   },
   "Bu ad mevcut bir uzak depoyla iç içe geçiyor: \\\"ic\\\" varken \\\"ic/main\\\" ": {
-    "en": ""
+    "en": "This name nests with an existing remote: with \\\"ic\\\" present, \\\"ic/main\\\" "
   },
   "Bu klasör bir Git deposu değil.": {
-    "en": ""
+    "en": "This folder is not a Git repository."
   },
   "Bulunan git sürümü {found} çok eski. En az {GitVersion.Minimum} gerekiyor ": {
-    "en": ""
+    "en": "The git version found, {found}, is too old. At least {GitVersion.Minimum} is required "
   },
   "Bölümler \\\".\\\" ile başlayamaz ve \\\".lock\\\" ile bitemez.": {
-    "en": ""
+    "en": "Components cannot start with \\\".\\\" or end with \\\".lock\\\"."
   },
   "Böyle bir uzak depo yok.": {
-    "en": ""
+    "en": "No such remote."
   },
   "Commit kimliği boş olamaz.": {
-    "en": ""
+    "en": "A commit id cannot be empty."
   },
   "Commit oluşturuldu ama kimliği okunamadı.": {
-    "en": ""
+    "en": "The commit was created but its id could not be read."
   },
   "Depo kilitli. Başka bir Git süreci çalışıyor olabilir; birkaç saniye sonra ": {
-    "en": ""
+    "en": "The repository is locked. Another Git process may be running; try again in a few "
   },
   "Depoda henüz commit yok, dal oluşturulacak bir başlangıç noktası bulunamıyor. ": {
-    "en": ""
+    "en": "There are no commits in the repository yet, so there is no starting point for a branch. "
   },
   "Değişiklikleri geri almak kaydedilmemiş içeriği siler ve bunun reflog üzerinden ": {
-    "en": ""
+    "en": "Reverting the changes deletes uncommitted content, and there is no way back through "
   },
   "Dizin bulunamadı: {directory}": {
-    "en": ""
+    "en": "Directory not found: {directory}"
   },
   "En az {MinimumLength}, en fazla {Sha256Length} onaltılık karakter bekleniyor.": {
-    "en": ""
+    "en": "Between {MinimumLength} and {Sha256Length} hexadecimal characters are expected."
   },
   "Flatpak sandbox'ı içinde çalışılıyor ama host'taki 'git'e erişilemiyor ": {
-    "en": ""
+    "en": "Running inside a Flatpak sandbox but the host 'git' is unreachable "
   },
   "Format dizesi ile alan sayısı uyuşmuyor olabilir.": {
-    "en": ""
+    "en": "The format string and the field count may not match."
   },
   "Git komutu başarısız oldu.": {
-    "en": ""
+    "en": "The git command failed."
   },
   "Ham kayıt ayrıştırılamadı: '{meta}'": {
-    "en": ""
+    "en": "Could not parse the raw record: '{meta}'"
   },
   "Ham kayıt yolları yarım kaldı.": {
-    "en": ""
+    "en": "The raw record paths are incomplete."
   },
   "Kayıtlı kimlik bilgisi kabul edilmedi. Token'ın süresi dolmuş ya da yetkisi ": {
-    "en": ""
+    "en": "The stored credential was rejected. The token may have expired or may not be authorised "
   },
   "Kilit dosyası yalnızca kullanıcının açık onayıyla silinebilir. ": {
-    "en": ""
+    "en": "The lock file can only be deleted with the user's explicit consent. "
   },
   "Kimlik doğrulama başarısız oldu.": {
-    "en": ""
+    "en": "Authentication failed."
   },
   "Komut zaman aşımına uğradı.": {
-    "en": ""
+    "en": "The command timed out."
   },
   "Komut {command.Timeout.TotalSeconds:F0} saniye içinde tamamlanmadı ve durduruldu.": {
-    "en": ""
+    "en": "The command did not finish within {command.Timeout.TotalSeconds:F0} seconds and was stopped."
   },
   "SSH agent çalışıyor ama içinde hiç anahtar yok.": {
-    "en": ""
+    "en": "The SSH agent is running but holds no keys."
   },
   "Sandbox içindeki bir git'e geçilmiyor: ölçüldü, hook'u olan depolarda commit ": {
-    "en": ""
+    "en": "We do not fall back to a git inside the sandbox: it was measured that in repositories with hooks the commit "
   },
   "Seçili satırlardaki değişiklikleri geri almak çalışma ağacındaki içeriği siler. ": {
-    "en": ""
+    "en": "Reverting the changes on the selected lines deletes content in the working tree. "
   },
   "Sürdürülebilecek bir işlem yok; önce bir merge/rebase/cherry-pick başlamalı.": {
-    "en": ""
+    "en": "There is no operation to continue; a merge/rebase/cherry-pick has to start first."
   },
   "Takip edilmeyen dosyaları silmek geri alınamaz; bu dosyaların hiçbir kopyası ": {
-    "en": ""
+    "en": "Deleting untracked files cannot be undone; there is no copy of these files "
   },
   "Tüm commit'ler çıkarılmış — geriye uygulanacak bir şey kalmıyor.": {
-    "en": ""
+    "en": "Every commit was removed — nothing is left to apply."
   },
   "Uzak depo SSH kullanıyor ama bu oturumda çalışan bir SSH agent yok, ": {
-    "en": ""
+    "en": "The remote uses SSH but there is no SSH agent running in this session, "
   },
   "Uzak depo SSH kullanıyor ve sunucu anahtarı kabul etmedi.": {
-    "en": ""
+    "en": "The remote uses SSH and the server did not accept the key."
   },
   "Uzak depo kimlik doğrulama istedi. SSH anahtarınızı, kimlik yardımcınızı (credential helper) ": {
-    "en": ""
+    "en": "The remote asked for authentication. Check your SSH key, your credential helper "
   },
   "Uzak depo kimlik doğrulama istiyor ve kayıtlı bir kimlik bilgisi yok.": {
-    "en": ""
+    "en": "The remote requires authentication and there is no stored credential."
   },
   "Uzak depoya ulaşılamadı.": {
-    "en": ""
+    "en": "The remote could not be reached."
   },
   "Uzak depoya ulaşılamadı. Adresi, ağ bağlantınızı ve erişim yetkinizi kontrol edin.": {
-    "en": ""
+    "en": "The remote could not be reached. Check the address, your network connection and your access rights."
   },
   "Uzak depoya ulaşılamadı. Ağ bağlantınızı kontrol edin.": {
-    "en": ""
+    "en": "The remote could not be reached. Check your network connection."
   },
   "Yama bloğu hiçbir ham kayda eşlenemedi ({records.Count} kayıt, ": {
-    "en": ""
+    "en": "A patch block could not be matched to any raw record ({records.Count} records, "
   },
   "Yedeklenen içerik sayısı yol sayısıyla uyuşmadı.": {
-    "en": ""
+    "en": "The number of backed-up contents did not match the number of paths."
   },
   "Yedekleyici olmadan yerel değişiklikler atılamaz.": {
-    "en": ""
+    "en": "Local changes cannot be discarded without a backup writer."
   },
   "Yerel bir yola erişilemedi; kimlik doğrulamayla ilgisi yok.": {
-    "en": ""
+    "en": "A local path was unreachable; this is unrelated to authentication."
   },
   "Yerel değişiklikleri atarak dal değiştirmek geri alınamaz içerik siler; ": {
-    "en": ""
+    "en": "Switching branches while discarding local changes deletes content irreversibly; "
   },
   "\\\"feature\\\" dalı varken \\\"feature/x\\\" oluşturulamaz (ve tersi).": {
-    "en": ""
+    "en": "with a \\\"feature\\\" branch present you cannot create \\\"feature/x\\\" (and vice versa)."
   },
   "bilgisi yardımcılarınızın çalışması için sizin git'inizi kullanmak zorundadır ": {
-    "en": ""
+    "en": "credential helpers keep working "
   },
   "bir geri dönüşü yoktur; işlem yalnızca kullanıcının açık onayıyla yapılabilir.": {
-    "en": ""
+    "en": "the reflog; the operation can only be performed with the user's explicit consent."
   },
   "eklenemez (ve tersi). Farklı bir ad seçin.": {
-    "en": ""
+    "en": "cannot be added (and vice versa). Choose a different name."
   },
   "git log çıktısı yarım bir kayıtla bitti ({filled}/{FieldCount} alan). ": {
-    "en": ""
+    "en": "The git log output ended with an incomplete record ({filled}/{FieldCount} fields). "
   },
   "git rev-parse beklenen alanları döndürmedi.": {
-    "en": ""
+    "en": "git rev-parse did not return the expected fields."
   },
   "git rev-parse çalışma ağacının kökünü döndürmedi.": {
-    "en": ""
+    "en": "git rev-parse did not return the root of the working tree."
   },
   "git süreci başlatılamadı: {_executablePath}": {
-    "en": ""
+    "en": "The git process could not be started: {_executablePath}"
   },
   "git süreci öldürülemedi; muhtemelen zaten sonlanmıştı.": {
-    "en": ""
+    "en": "The git process could not be killed; it had probably already exited."
   },
   "git çıkış kodu {ExitCode}: {Command}": {
-    "en": ""
+    "en": "git exit code {ExitCode}: {Command}"
   },
   "git'te yok. İşlem yalnızca kullanıcının açık onayıyla yapılabilir.": {
-    "en": ""
+    "en": "does not exist in git. The operation can only be performed with the user's explicit consent."
   },
   "gitext: '{target}' dalına geçiş": {
-    "en": ""
+    "en": "gitext: switch to branch '{target}'"
   },
   "gpg.ssh.allowedSignersFile yapılandırılmamış; SSH imzaları doğrulanamıyor.": {
-    "en": ""
+    "en": "gpg.ssh.allowedSignersFile is not configured; SSH signatures cannot be verified."
   },
   "hangisinin değiştirileceği seçilmeden tek adımda güncellenemez.": {
-    "en": ""
+    "en": "it cannot be updated in a single step without choosing which one to change."
   },
   "için yetkili değil.": {
-    "en": ""
+    "en": "for this operation."
   },
   "işlem yalnızca kullanıcının açık onayıyla yapılabilir.": {
-    "en": ""
+    "en": "the operation can only be performed with the user's explicit consent."
   },
   "oluşturuyor (\\\"refs/remotes/refs/remotes/…\\\"); istediğiniz bu değildir.": {
-    "en": ""
+    "en": "(\\\"refs/remotes/refs/remotes/…\\\"); that is not what you want."
   },
   "sessizce atılmıyor ve çıkış kodu yine de 0 dönüyor.": {
-    "en": ""
+    "en": "is silently not made while the exit code is still 0."
   },
   "tekrar deneyin. Kilit uzun süredir duruyorsa çökmüş bir süreçten kalmış ": {
-    "en": ""
+    "en": "seconds. If the lock has been there for a long time it may be left over from a crashed process "
   },
   "veya erişim belirtecinizi kontrol edin.": {
-    "en": ""
+    "en": "or your access token."
   },
   "yani sunucuya sunulacak bir anahtar bulunamadı.": {
-    "en": ""
+    "en": "so no key could be offered to the server."
   },
   "zaman aşımı ({command.Timeout})": {
-    "en": ""
+    "en": "timeout ({command.Timeout})"
   },
   "{blocks.Count} blok). Hunk'ları yanlış dosyaya bağlamaktansa durmak gerekir.": {
-    "en": ""
+    "en": "{blocks.Count} blocks). Stopping is better than attaching hunks to the wrong file."
   },
   "Çalışma ağacını temizlemek takip edilmeyen tüm dosyaları siler ve geri alınamaz; ": {
-    "en": ""
+    "en": "Cleaning the working tree deletes every untracked file and cannot be undone; "
   },
   "Çalışma dizininde kaydedilmemiş değişiklikler var; işlem devam edemedi.": {
-    "en": ""
+    "en": "There are uncommitted changes in the working directory; the operation could not continue."
   },
   "Çalıştırılabilir bir 'git' bulunamadı. Git kurulu ve PATH üzerinde olmalı. ": {
-    "en": ""
+    "en": "No runnable 'git' was found. Git must be installed and on your PATH. "
   },
   "Önce ilk commit'i atın.": {
-    "en": ""
+    "en": "Make the first commit first."
   },
   "İkili içerik metin olarak okunamaz. Önce IsBinary kontrol edilmeli.": {
-    "en": ""
+    "en": "Binary content cannot be read as text. Check IsBinary first."
   },
   "İlk commit bir öncekine kaynatılamaz; kaynatılacak önceki commit yok.": {
-    "en": ""
+    "en": "The first commit cannot be squashed into a previous one; there is no previous commit."
   },
   "İşlem yalnızca kullanıcının açık onayıyla yapılabilir.": {
-    "en": ""
+    "en": "The operation can only be performed with the user's explicit consent."
   },
   "İşlem çakışma (conflict) nedeniyle durdu.": {
-    "en": ""
+    "en": "The operation stopped because of a conflict."
   }
 }

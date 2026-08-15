@@ -144,7 +144,7 @@ public class MergeDropTests
         await model.OpenRepositoryAsync("/depo");
         await model.MergeDroppedAsync("ozellik", "main");
 
-        model.BranchNotice!.ShouldContain("commit YAPILMADI");
+        model.BranchNotice!.ShouldContain("NOT committed");
     }
 
     private sealed class FakeMergeDropConfirmer : IMergeDropConfirmer

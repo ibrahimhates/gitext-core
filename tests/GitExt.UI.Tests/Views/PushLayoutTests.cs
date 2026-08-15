@@ -127,7 +127,7 @@ public class PushLayoutTests
 
         window.GetControl<CheckBox>("ForcePushBox").IsEnabled.ShouldBeFalse();
         (window.GetControl<TextBlock>("ForceDisabledText").Text ?? string.Empty)
-            .ShouldContain("Kirayla zorla");
+            .ShouldContain("Force with lease");
 
         window.GetControl<CheckBox>("ForceWithLeaseBox").IsEnabled.ShouldBeTrue();
 

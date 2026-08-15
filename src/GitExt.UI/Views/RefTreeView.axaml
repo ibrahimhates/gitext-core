@@ -14,7 +14,7 @@
         <TextBox Name="FilterBox"
                  Grid.Row="0"
                  Margin="4"
-                 PlaceholderText="Ara…"
+                 PlaceholderText="Search…"
                  Text="{Binding Filter}" />
 
         <TreeView Name="RefTree"

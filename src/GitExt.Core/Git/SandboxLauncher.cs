@@ -162,10 +162,10 @@ public static class SandboxLauncher
     }
 
     private const string SandboxFailureMessage =
-        "Flatpak sandbox'ı içinde çalışılıyor ama host'taki 'git'e erişilemiyor "
-        + "(flatpak-spawn --host başarısız). gitext-core, hook'larınızın ve kimlik "
-        + "bilgisi yardımcılarınızın çalışması için sizin git'inizi kullanmak zorundadır "
-        + "(ADR-0002, ADR-0009). Gerekli izin: --talk-name=org.freedesktop.Flatpak. "
-        + "Sandbox içindeki bir git'e geçilmiyor: ölçüldü, hook'u olan depolarda commit "
-        + "sessizce atılmıyor ve çıkış kodu yine de 0 dönüyor.";
+        "Running inside a Flatpak sandbox but the host 'git' is unreachable "
+        + "(flatpak-spawn --host failed). gitext-core has to use your git so that your hooks and "
+        + "credential helpers keep working "
+        + "(ADR-0002, ADR-0009). Required permission: --talk-name=org.freedesktop.Flatpak. "
+        + "We do not fall back to a git inside the sandbox: it was measured that in repositories with hooks the commit "
+        + "is silently not made while the exit code is still 0.";
 }

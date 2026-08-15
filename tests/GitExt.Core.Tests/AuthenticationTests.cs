@@ -120,7 +120,7 @@ public class AuthenticationTests
         AuthenticationDiagnosis result =
             await diagnostics.DiagnoseAsync(repository.Path, "origin", Ct);
 
-        result.Explanation.ShouldContain("yetkili değil");
+        result.Explanation.ShouldContain("not authorised");
     }
 
     [Fact]

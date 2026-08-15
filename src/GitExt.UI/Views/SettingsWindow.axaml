@@ -83,7 +83,7 @@
                         <TextBox Grid.Row="2" Grid.Column="1"
                                  Name="MonoFontBox"
                                  Text="{Binding MonospaceFontFamily}"
-                                 PlaceholderText="Boş bırakılırsa platform varsayılanı"
+                                 PlaceholderText="Platform default if left empty"
                                  Margin="0,2" />
                     </Grid>
                 </StackPanel>

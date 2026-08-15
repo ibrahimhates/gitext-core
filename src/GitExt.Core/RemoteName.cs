@@ -145,19 +145,19 @@ public static class RemoteName
     /// </summary>
     public static string Describe(RemoteNameProblem problem) => problem switch
     {
-        RemoteNameProblem.Empty => "Ad boş olamaz.",
+        RemoteNameProblem.Empty => "A name cannot be empty.",
         RemoteNameProblem.NestedRefsPrefix =>
-            "Ad \"refs/\" ile başlayamaz. Git bunu reddetmiyor ama iç içe bir ad "
-            + "oluşturuyor (\"refs/remotes/refs/remotes/…\"); istediğiniz bu değildir.",
+            "A name cannot start with \"refs/\". Git does not reject it but it creates a nested name "
+            + "(\"refs/remotes/refs/remotes/…\"); that is not what you want.",
         RemoteNameProblem.LeadingDash =>
-            "Ad \"-\" ile başlayamaz; git komutlarında seçenek sanılır.",
+            "A name cannot start with \"-\"; git commands would read it as an option.",
         RemoteNameProblem.ForbiddenCharacter =>
-            "Ad boşluk ve şu karakterleri içeremez: ~ ^ : ? * [ \\",
+            "A name cannot contain spaces or these characters: ~ ^ : ? * [ \\",
         RemoteNameProblem.InvalidSegment =>
-            "Bölümler \".\" ile başlayamaz ve \".lock\" ile bitemez.",
-        RemoteNameProblem.EmptySegment => "Ad \"/\" ile başlayıp bitemez, \"//\" içeremez.",
-        RemoteNameProblem.InvalidDot => "Ad \"..\" içeremez.",
-        _ => "Ad geçersiz.",
+            "Components cannot start with \".\" or end with \".lock\".",
+        RemoteNameProblem.EmptySegment => "A name cannot start or end with \"/\", or contain \"//\".",
+        RemoteNameProblem.InvalidDot => "A name cannot contain \"..\".",
+        _ => "The name is invalid.",
     };
 
     private static bool IsForbidden(char c) =>

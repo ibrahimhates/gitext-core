@@ -269,7 +269,7 @@ public sealed class DiffReader : IDiffReader
 
         if (commit.IsEmpty)
         {
-            throw new ArgumentException("Commit kimliği boş olamaz.", nameof(commit));
+            throw new ArgumentException("A commit id cannot be empty.", nameof(commit));
         }
 
         options ??= DiffOptions.Default;

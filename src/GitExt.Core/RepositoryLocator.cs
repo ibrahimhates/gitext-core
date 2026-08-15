@@ -48,7 +48,7 @@ public sealed class RepositoryLocator : IRepositoryLocator
 
         if (!Directory.Exists(directory))
         {
-            throw new DirectoryNotFoundException($"Dizin bulunamadı: {directory}");
+            throw new DirectoryNotFoundException($"Directory not found: {directory}");
         }
 
         // Tek çağrıda alınabilecek her şey. --show-toplevel BURADA OLAMAZ:
@@ -69,7 +69,7 @@ public sealed class RepositoryLocator : IRepositoryLocator
         {
             throw new GitException(
                 GitFailureKind.Unknown,
-                "git rev-parse beklenen alanları döndürmedi.",
+                "git rev-parse did not return the expected fields.",
                 result.Command.ToDisplayString(),
                 result.ExitCode,
                 result.StandardError);
@@ -133,7 +133,7 @@ public sealed class RepositoryLocator : IRepositoryLocator
         {
             throw new GitException(
                 GitFailureKind.Unknown,
-                "git rev-parse çalışma ağacının kökünü döndürmedi.",
+                "git rev-parse did not return the root of the working tree.",
                 "git rev-parse --show-toplevel --show-superproject-working-tree",
                 exitCode: 0,
                 standardError: string.Empty);

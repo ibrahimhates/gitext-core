@@ -325,8 +325,8 @@ public sealed class RemoteWriter : IRemoteWriter
             if (existing.Count > 1)
             {
                 throw new InvalidOperationException(
-                    $"'{name}' uzak deposunda {existing.Count} adet URL tanımlı; "
-                    + "hangisinin değiştirileceği seçilmeden tek adımda güncellenemez.");
+                    $"Remote '{name}' has {existing.Count} URLs configured; "
+                    + "it cannot be updated in a single step without choosing which one to change.");
             }
         }
 
@@ -387,7 +387,7 @@ public sealed class RemoteWriter : IRemoteWriter
         if (RemoteName.Validate(name) is { } problem)
         {
             throw new ArgumentException(
-                $"'{name}' geçerli bir uzak depo adı değil ({RemoteName.Describe(problem)})",
+                $"'{name}' is not a valid remote name ({RemoteName.Describe(problem)})",
                 parameterName);
         }
     }

@@ -123,7 +123,7 @@ public sealed class CommitSignatureReader : ICommitSignatureReader
 
         if (standardError.Contains("allowedSignersFile", StringComparison.OrdinalIgnoreCase))
         {
-            return "gpg.ssh.allowedSignersFile yapılandırılmamış; SSH imzaları doğrulanamıyor.";
+            return "gpg.ssh.allowedSignersFile is not configured; SSH signatures cannot be verified.";
         }
 
         if (standardError.Contains("gpg", StringComparison.OrdinalIgnoreCase)

@@ -275,6 +275,6 @@ public sealed class ConflictResolver : IConflictResolver
 
         return ContinueVerb(operation)
             ?? throw new InvalidOperationException(
-                "Sürdürülebilecek bir işlem yok; önce bir merge/rebase/cherry-pick başlamalı.");
+                "There is no operation to continue; a merge/rebase/cherry-pick has to start first.");
     }
 }

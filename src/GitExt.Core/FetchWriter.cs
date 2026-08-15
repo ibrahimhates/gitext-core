@@ -443,7 +443,7 @@ public sealed class FetchWriter : IFetchWriter
 
             failures.Add(new FetchFailure(
                 name,
-                detail.Length > 0 ? detail : "Uzak depoya ulaşılamadı."));
+                detail.Length > 0 ? detail : "The remote could not be reached."));
 
             detail = string.Empty;
         }

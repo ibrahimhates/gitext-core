@@ -130,7 +130,7 @@ public class MergeTests
         await model.RunCommand.ExecuteAsync(null);
 
         model.HasWarning.ShouldBeTrue();
-        model.Warning!.ShouldContain("commit YAPILMADI");
+        model.Warning!.ShouldContain("Nothing was COMMITTED");
         model.HasRecoveryCommand.ShouldBeFalse("geri alınacak bir commit yok");
     }
 
@@ -289,7 +289,7 @@ public class MergeTests
         await model.AbortMergeCommand.ExecuteAsync(null);
 
         merge.Aborted.ShouldBe(1);
-        model.BranchNotice!.ShouldContain("iptal edildi");
+        model.BranchNotice!.ShouldContain("aborted");
     }
 
     // ---------------------------------------------------------- yerleşim

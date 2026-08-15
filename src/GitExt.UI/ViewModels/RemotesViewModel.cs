@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -339,7 +340,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            Notice = error.Message;
+            Notice = Loc.GitError(error);
         }
         catch (ArgumentException error)
         {
@@ -455,7 +456,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            Notice = error.Message;
+            Notice = Loc.GitError(error);
         }
         finally
         {
