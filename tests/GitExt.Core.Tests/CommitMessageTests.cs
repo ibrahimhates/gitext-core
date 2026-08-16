@@ -397,6 +397,14 @@ public class CommitMessageTests
 
         harness.Repository.Git("config", "--local", "i18n.commitEncoding", "ISO-8859-9");
 
+        // 🔴 REQUIRED — the fixture below builds its bytes with Encoding.GetEncoding, and .NET does
+        // not know "ISO-8859-9" until CodePagesEncodingProvider is registered. Production code
+        // registers it through TextEncodings' static constructor, but this line runs BEFORE any
+        // production code is touched. Without this call the test passed only when some earlier test
+        // in the same assembly happened to trigger that constructor first: run alone, it threw
+        // ArgumentException — an order-dependent test that was green by luck.
+        TextEncodings.EnsureRegistered();
+
         string gitDirectory = Path.Combine(harness.Path, ".git");
         File.WriteAllBytes(
             Path.Combine(gitDirectory, "MERGE_MSG"),
