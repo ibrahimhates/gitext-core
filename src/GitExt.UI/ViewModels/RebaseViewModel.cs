@@ -7,7 +7,7 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Interactive rebase todo listesindeki bir satır (P07-T10).
+/// A row in the interactive rebase todo list (P07-T10).
 /// </summary>
 public sealed class RebaseStepViewModel : ViewModelBase
 {
@@ -33,10 +33,10 @@ public sealed class RebaseStepViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Bu commit çıkarılacak mı? (Listede üstü çizili gösteriliyor.)</summary>
+    /// <summary>Will this commit be dropped? (Shown struck through in the list.)</summary>
     public bool IsDropped => Action == RebaseAction.Drop;
 
-    /// <summary><c>reword</c> seçildiyse yeni mesaj isteniyor.</summary>
+    /// <summary>A new message is asked for when <c>reword</c> is selected.</summary>
     public bool NeedsMessage => Action == RebaseAction.Reword;
 
     public string NewMessage
@@ -45,7 +45,7 @@ public sealed class RebaseStepViewModel : ViewModelBase
         set => SetProperty(ref _newMessage, value);
     }
 
-    /// <summary>Seçilebilecek eylemler — açılır listeyi dolduruyor.</summary>
+    /// <summary>The actions that can be picked — they populate the dropdown.</summary>
     public static IReadOnlyList<RebaseAction> Actions { get; } =
     [
         RebaseAction.Pick,
@@ -64,17 +64,17 @@ public sealed class RebaseStepViewModel : ViewModelBase
 }
 
 /// <summary>
-/// Rebase ekranı (P07-T09, P07-T10).
+/// The rebase screen (P07-T09, P07-T10).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Yerleşim GitExtensions <c>FormRebase</c>'ten (§ 9): üstte hedef seçimi, ortada
-/// interactive todo listesi, altta eylemler.
+/// The layout comes from GitExtensions <c>FormRebase</c> (§ 9): the target selection at the top, the
+/// interactive todo list in the middle, the actions at the bottom.
 /// </para>
 /// <para>
-/// Todo listesi <b>sürükle-bırak</b> ile sıralanabiliyor; sıra
-/// <see cref="MoveUpCommand"/>/<see cref="MoveDownCommand"/> ile klavyeden de
-/// değiştirilebilir — sürükle-bırak tek yol olsaydı klavyeyle kullanılamazdı.
+/// The todo list can be reordered by <b>drag and drop</b>; the order can also be changed from the
+/// keyboard with <see cref="MoveUpCommand"/>/<see cref="MoveDownCommand"/> — were drag and drop the
+/// only route, it could not be used from the keyboard.
 /// </para>
 /// </remarks>
 public sealed class RebaseViewModel : ViewModelBase
@@ -106,7 +106,7 @@ public sealed class RebaseViewModel : ViewModelBase
 
     public ObservableCollection<RebaseStepViewModel> Steps { get; } = [];
 
-    /// <summary>Üzerine yeniden oynatılacak dal.</summary>
+    /// <summary>The branch to replay onto.</summary>
     public string Upstream
     {
         get => _upstream;
@@ -134,7 +134,7 @@ public sealed class RebaseViewModel : ViewModelBase
         }
     }
 
-    /// <summary><c>--autostash</c>: kirli ağacı kenara koy.</summary>
+    /// <summary><c>--autostash</c>: set a dirty tree aside.</summary>
     public bool AutoStash
     {
         get => _autoStash;
@@ -161,18 +161,18 @@ public sealed class RebaseViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Todo listesi git tarafından kabul edilir mi?
+    /// Will git accept the todo list?
     /// </summary>
     /// <remarks>
-    /// 🔴 ÖLÇÜLDÜ: boş todo <c>error: nothing to do</c> ile rc=1 veriyor ve rebase hiç
-    /// başlamıyor; ilk adım <c>squash</c> olamıyor. Kullanıcıya <b>önceden</b> söylemek,
-    /// "hiçbir şey olmadı" şaşkınlığından iyi.
+    /// 🔴 MEASURED: an empty todo gives <c>error: nothing to do</c> with rc=1 and the rebase never
+    /// starts; the first step cannot be a <c>squash</c>. Telling the user <b>beforehand</b> beats the
+    /// puzzlement of "nothing happened".
     /// </remarks>
     public string? ValidationError => IsInteractive
         ? RebaseTodo.Validate([.. Steps.Select(step => step.ToStep())])
         : null;
 
-    /// <summary>Çalıştırılacak komut ("komutu göster" ilkesi).</summary>
+    /// <summary>The command that will run (the "show the command" principle).</summary>
     public string CommandLine => RebaseWriter.Describe(BuildOptions());
 
     public string? Error
@@ -209,7 +209,7 @@ public sealed class RebaseViewModel : ViewModelBase
 
     public IRelayCommand MoveDownCommand { get; }
 
-    /// <summary>Taşınacak commit'leri okuyup listeyi doldurur.</summary>
+    /// <summary>Reads the commits to be moved and populates the list.</summary>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         Steps.Clear();
@@ -232,7 +232,7 @@ public sealed class RebaseViewModel : ViewModelBase
         RunCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Sürükle-bırak ya da klavye ile bir adımı taşır.</summary>
+    /// <summary>Moves a step by drag and drop or from the keyboard.</summary>
     public void Move(int fromIndex, int toIndex)
     {
         if (fromIndex < 0 || fromIndex >= Steps.Count
@@ -307,7 +307,7 @@ public sealed class RebaseViewModel : ViewModelBase
                     $"Stopped at step {result.CurrentStep} of {result.TotalSteps}: "
                     + $"{result.ConflictedPaths.Count} file(s) conflicted.",
 
-                // Çakışma yok ama yine de durduk — `edit` adımı.
+                // No conflict, yet we stopped all the same — an `edit` step.
                 RebaseOutcome.StoppedForEdit =>
                     $"Stopped at step {result.CurrentStep} of {result.TotalSteps} so you can "
                     + "amend this commit. Continue when you are done.",
@@ -325,8 +325,7 @@ public sealed class RebaseViewModel : ViewModelBase
         }
         catch (ArgumentException error)
         {
-            // Todo doğrulaması yazıcı tarafında da yapılıyor; buraya düşerse ekranda
-            // gösteriliyor.
+            // The todo validation runs on the writer side too; if it lands here it is shown on screen.
             Error = error.Message;
         }
         finally
@@ -336,7 +335,7 @@ public sealed class RebaseViewModel : ViewModelBase
     }
 }
 
-/// <summary>Rebase ekranını gösteren taraf (P07-T09, P07-T10).</summary>
+/// <summary>The side that shows the rebase screen (P07-T09, P07-T10).</summary>
 public interface IRebasePrompt
 {
     Task ShowAsync(RebaseViewModel model);

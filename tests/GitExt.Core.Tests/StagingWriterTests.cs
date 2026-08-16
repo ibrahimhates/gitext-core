@@ -5,18 +5,18 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P05-T03 — Dosya seviyesinde stage / unstage.
+/// P05-T03 — File-level stage / unstage.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Uygulamanın <b>ilk yazma işlemleri</b>. Testler komutun metnini değil <b>etkisini</b>
-/// doğruluyor: her senaryo gerçek bir depoda çalıştırılıp sonuç <c>git status</c> ile
-/// okunuyor.
+/// The application's <b>first write operations</b>. The tests verify the command's <b>effect</b>, not
+/// its text: every scenario is run against a real repository and the result read back with
+/// <c>git status</c>.
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLDÜ:</b> unstage tek komutla yapılamıyor — HEAD yokken <c>restore --staged</c>
-/// <c>fatal: could not resolve 'HEAD'</c> ile çöküyor, HEAD varken <c>rm --cached</c> ise
-/// dosyayı <i>silinmiş</i> olarak stage'liyor.
+/// <b>MEASURED:</b> unstaging cannot be done with a single command — with no HEAD,
+/// <c>restore --staged</c> fails with <c>fatal: could not resolve 'HEAD'</c>, while with a HEAD
+/// present <c>rm --cached</c> stages the file as <i>deleted</i>.
 /// </para>
 /// </remarks>
 public class StagingWriterTests
@@ -35,7 +35,7 @@ public class StagingWriterTests
     private static RepositoryPath[] Paths(params string[] values) =>
         [.. values.Select(RepositoryPath.Parse)];
 
-    /// <summary>Bir yolun <c>git status --porcelain=v2</c> içindeki XY durum kodu.</summary>
+    /// <summary>A path's XY status code in <c>git status --porcelain=v2</c>.</summary>
     private static string Status(TestRepository repository, string path)
     {
         foreach (string line in repository.Git("status", "--porcelain=v2").Split('\n'))
@@ -64,7 +64,7 @@ public class StagingWriterTests
 
         await writer.StageAsync(repository.Path, Paths("yeni.txt"), Ct);
 
-        // "A." = index'e eklendi, çalışma ağacında değişiklik yok.
+        // "A." = added to the index, no change in the working tree.
         Status(repository, "yeni.txt").ShouldBe("A.");
     }
 
@@ -80,7 +80,7 @@ public class StagingWriterTests
 
         await writer.UnstageAsync(repository.Path, Paths("yeni.txt"), Ct);
 
-        // Dosya takipsize döner ama DİSKTE KALIR.
+        // The file becomes untracked but STAYS ON DISK.
         Status(repository, "yeni.txt").ShouldBe("??");
         File.Exists(Path.Combine(repository.Path, "yeni.txt")).ShouldBeTrue();
     }
@@ -102,17 +102,17 @@ public class StagingWriterTests
 
         await writer.UnstageAsync(repository.Path, Paths("dosya.txt"), Ct);
 
-        // ⚠️ Burada `rm --cached` kullanılsaydı sonuç "D." olurdu: kullanıcı unstage
-        // isterken dosyayı SİLİNMİŞ olarak stage'lenmiş görürdü.
+        // ⚠️ Had `rm --cached` been used here the result would be "D.": the user asking to unstage would
+        // see the file staged as DELETED.
         Status(repository, "dosya.txt").ShouldBe(".M");
     }
 
     [Fact]
     public async Task HEAD_YOKKEN_unstage_calisir()
     {
-        // ÖLÇÜLDÜ: bu durumda `git restore --staged` çöküyor
-        // (fatal: could not resolve 'HEAD'). İlk commit öncesi stage'lenen dosyayı geri
-        // almak yaygın bir işlem; çökmemeli.
+        // MEASURED: `git restore --staged` fails in this case
+        // (fatal: could not resolve 'HEAD'). Taking back a file staged before the first commit is a
+        // common operation; it must not crash.
         using TestRepository repository = TestRepository.CreateEmpty();
         (StagingWriter writer, GitWriteQueue queue) = await CreateAsync();
         using GitWriteQueue _ = queue;
@@ -130,7 +130,7 @@ public class StagingWriterTests
     [Fact]
     public async Task Silinen_dosya_da_stage_lenir()
     {
-        // `git add` tek başına silmeleri almaz; `-A` gerekiyor (ölçüldü).
+        // `git add` on its own does not pick up deletions; `-A` is needed (measured).
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         (StagingWriter writer, GitWriteQueue queue) = await CreateAsync();
         using GitWriteQueue _ = queue;
@@ -149,7 +149,7 @@ public class StagingWriterTests
     [Fact]
     public async Task Tire_ile_baslayan_ve_bosluklu_yollar_calisir()
     {
-        // Yollar `--` ayracından SONRA veriliyor; aksi hâlde git bunları seçenek sanardı.
+        // The paths are given AFTER the `--` separator; otherwise git would take them for options.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         (StagingWriter writer, GitWriteQueue queue) = await CreateAsync();
         using GitWriteQueue _ = queue;
@@ -160,14 +160,14 @@ public class StagingWriterTests
         await writer.StageAsync(repository.Path, Paths("-tireli.txt", "bosluklu ad.txt"), Ct);
 
         Status(repository, "-tireli.txt").ShouldBe("A.");
-        // `--porcelain=v2` boşluklu adı tırnaklamıyor (ölçüldü); yol olduğu gibi geçiyor.
+        // `--porcelain=v2` does not quote a name containing spaces (measured); the path passes through as is.
         Status(repository, "bosluklu ad.txt").ShouldBe("A.");
     }
 
     [Fact]
     public async Task Bos_liste_HICBIR_SEY_yapmaz()
     {
-        // ⚠️ Yol verilmeden `git add -A --` çalıştırmak TÜM depoyu stage'lerdi.
+        // ⚠️ Running `git add -A --` with no path would stage the WHOLE repository.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         (StagingWriter writer, GitWriteQueue queue) = await CreateAsync();
         using GitWriteQueue _ = queue;
@@ -182,8 +182,8 @@ public class StagingWriterTests
     [Fact]
     public async Task Untrack_dosyayi_diskte_birakir()
     {
-        // Bu işlem BİLİNÇLİ olarak unstage'den ayrı: takip edilen bir dosyada sonuç
-        // "silinmiş olarak stage'lendi" olur ve kullanıcı bunu isteyerek yapar.
+        // This operation is DELIBERATELY separate from unstage: on a tracked file the result is "staged
+        // as deleted", and the user does that on purpose.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         (StagingWriter writer, GitWriteQueue queue) = await CreateAsync();
         using GitWriteQueue _ = queue;
@@ -221,8 +221,8 @@ public class StagingWriterTests
     [Fact]
     public async Task Eszamanli_stage_cagrilari_cakismaz()
     {
-        // Yazma yolu kuyruktan geçiyor (P05-T01): doğrudan `git add` çalıştırılsaydı
-        // bu senaryoda çakışma olurdu.
+        // The write path goes through the queue (P05-T01): had `git add` been run directly, this
+        // scenario would have collided.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         (StagingWriter writer, GitWriteQueue queue) = await CreateAsync();
         using GitWriteQueue _ = queue;

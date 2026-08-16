@@ -547,33 +547,33 @@ public sealed class WorkTreeReader : IWorkTreeReader
 
 // ======================================================= P07-T21 arama
 
-/// <summary>Commit araması ölçütü (P07-T21).</summary>
+/// <summary>The criteria of a commit search (P07-T21).</summary>
 public sealed record CommitSearchQuery
 {
-    /// <summary><c>--grep</c>: commit mesajında ara.</summary>
+    /// <summary><c>--grep</c>: search in the commit message.</summary>
     public string? Message { get; init; }
 
     /// <summary><c>--author</c>.</summary>
     public string? Author { get; init; }
 
     /// <summary>
-    /// <c>-S</c> (pickaxe): bu metnin <b>geçtiği sayısı</b> değişen commit'ler.
+    /// <c>-S</c> (pickaxe): the commits where <b>the number of occurrences</b> of this text changed.
     /// </summary>
     /// <remarks>
-    /// <c>-S</c> ile <c>-G</c> farkı ince ama önemli: <c>-S</c> "bu dizgenin kaç kez
-    /// geçtiği değişti mi" diye bakıyor (yani eklendi ya da silindi), <c>-G</c> ise
-    /// "diff'in kendisi bu düzenli ifadeyle eşleşiyor mu". Bir satırın taşınması
-    /// <c>-S</c>'te görünmez, <c>-G</c>'de görünür.
+    /// The difference between <c>-S</c> and <c>-G</c> is subtle but important: <c>-S</c> asks "did the
+    /// number of occurrences of this string change" (that is, was it added or removed), while <c>-G</c>
+    /// asks "does the diff itself match this regular expression". A line being moved does not show up
+    /// under <c>-S</c> but does under <c>-G</c>.
     /// </remarks>
     public string? ContentAdded { get; init; }
 
-    /// <summary><c>-G</c>: diff metnine düzenli ifade uygula.</summary>
+    /// <summary><c>-G</c>: apply a regular expression to the diff text.</summary>
     public string? ContentPattern { get; init; }
 
-    /// <summary>Aramayı bu yollarla sınırla.</summary>
+    /// <summary>Limit the search to these paths.</summary>
     public IReadOnlyList<RepositoryPath> Paths { get; init; } = [];
 
-    /// <summary>Büyük/küçük harf duyarsız ara.</summary>
+    /// <summary>Search case-insensitively.</summary>
     public bool IgnoreCase { get; init; } = true;
 
     public bool IsEmpty =>
@@ -583,7 +583,7 @@ public sealed record CommitSearchQuery
         && string.IsNullOrWhiteSpace(ContentPattern);
 }
 
-/// <summary>Dosya içeriğinde bulunan bir eşleşme (P07-T21).</summary>
+/// <summary>A match found in file content (P07-T21).</summary>
 public sealed record ContentMatch
 {
     public required string Path { get; init; }
@@ -603,7 +603,7 @@ public interface ISearchReader
         int limit = 500,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Çalışma ağacındaki dosya içeriklerinde arar (<c>git grep</c>).</summary>
+    /// <summary>Searches the file contents in the working tree (<c>git grep</c>).</summary>
     Task<IReadOnlyList<ContentMatch>> SearchContentAsync(
         string workingDirectory,
         string pattern,
@@ -611,7 +611,7 @@ public interface ISearchReader
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>Commit ve içerik araması (P07-T21).</summary>
+/// <summary>Commit and content search (P07-T21).</summary>
 public sealed class SearchReader : ISearchReader
 {
     private readonly IGitProcessRunner _runner;
@@ -633,7 +633,7 @@ public sealed class SearchReader : ISearchReader
 
         if (query.IsEmpty)
         {
-            // Boş sorgu tüm geçmişi döndürürdü; "arama yapılmadı" demek daha dürüst.
+            // An empty query would return the whole history; saying "no search was made" is more honest.
             return [];
         }
 
@@ -685,9 +685,9 @@ public sealed class SearchReader : ISearchReader
     }
 
     /// <remarks>
-    /// <c>-z</c> ile alanlar NUL ayrılıyor: yol boşluk ve iki nokta içerebilir, satır
-    /// içeriği de öyle. <c>-z</c> olmadan <c>yol:satır:içerik</c> ayrıştırması, iki nokta
-    /// içeren bir yolda sessizce kayardı.
+    /// With <c>-z</c> the fields are NUL-separated: a path can contain spaces and colons, and so can the
+    /// line content. Without <c>-z</c>, parsing <c>path:line:content</c> would silently shift on a path
+    /// containing a colon.
     /// </remarks>
     public async Task<IReadOnlyList<ContentMatch>> SearchContentAsync(
         string workingDirectory,
@@ -713,7 +713,7 @@ public sealed class SearchReader : ISearchReader
                 WorkingDirectory = workingDirectory,
                 Arguments = arguments,
 
-                // Eşleşme yoksa `git grep` çıkış kodu 1 veriyor; bu bir hata değil.
+                // With no match, `git grep` gives exit code 1; that is not an error.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);
@@ -721,14 +721,14 @@ public sealed class SearchReader : ISearchReader
         return Parse(result.GetStandardOutputLossless());
     }
 
-    /// <summary><c>git grep -z --line-number</c> çıktısını ayrıştırır.</summary>
+    /// <summary>Parses the <c>git grep -z --line-number</c> output.</summary>
     internal static IReadOnlyList<ContentMatch> Parse(string output)
     {
         List<ContentMatch> matches = [];
 
         foreach (string line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
-            // `<yol>\0<satır no>\0<içerik>` — içerikte NUL olamaz.
+            // `<path>\0<line number>\0<content>` — the content cannot contain a NUL.
             string[] fields = line.Split('\0', 3);
 
             if (fields.Length < 3

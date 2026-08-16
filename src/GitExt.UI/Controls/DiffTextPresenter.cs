@@ -7,26 +7,26 @@ using GitExt.Core.Model;
 namespace GitExt.UI.Controls;
 
 /// <summary>
-/// Bir diff satırının parçalarını tek bir <see cref="TextBlock"/> içine çizer (P04-T13).
+/// Draws a diff line's segments inside a single <see cref="TextBlock"/> (P04-T13).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ — bu sınıfın var olma sebebi:</b> parçalar önce yatay bir <c>StackPanel</c>
-/// içinde ayrı <c>TextBlock</c>'lar olarak çiziliyordu. O düzende <b>satır kaydırma hiç
-/// çalışmıyor</b>: yatay panel çocuklarını sonsuz genişlikte ölçüyor, metin hiç sarılmıyor
-/// (ölçüm: sarmalı uzun satır 17 px, yani tek satır). Aynı satır tek bir <c>TextBlock</c>'a
-/// <c>Run</c> olarak konduğunda 170 px, yani <b>on satıra sarılıyor</b> — ve
-/// <c>Run.Background</c> destekleniyor, dolayısıyla satır içi vurgulama korunuyor.
+/// <b>MEASURED — why this class exists:</b> the segments used to be drawn as separate
+/// <c>TextBlock</c>s inside a horizontal <c>StackPanel</c>. In that arrangement <b>word wrap does not
+/// work at all</b>: a horizontal panel measures its children at infinite width and the text never
+/// wraps (measured: a long line with wrapping on came to 17 px, that is, a single line). Put into a
+/// single <c>TextBlock</c> as <c>Run</c>s, the same line comes to 170 px, meaning it <b>wraps over ten
+/// lines</b> — and <c>Run.Background</c> is supported, so the intra-line highlighting is preserved.
 /// </para>
 /// <para>
-/// Yan etkisi olumlu: satır başına kontrol sayısı düşüyor (parça başına
-/// <c>Border</c>+<c>TextBlock</c> yerine tek <c>TextBlock</c>).
+/// The side effect is a positive one: the control count per row drops (a single <c>TextBlock</c>
+/// instead of a <c>Border</c>+<c>TextBlock</c> per segment).
 /// </para>
 /// <para>
-/// Renkler <b>tema kaynak sözlüğünden</b> geliyor (P08-T07): <c>GitExtDiffAddedWordBrush</c>
-/// ve <c>GitExtDiffRemovedWordBrush</c>. Sabit yazılsalardı koyu temada okunmazlardı —
-/// satır arka planları temayla değişip satır içi vurgular değişmeyince, vurgu zeminden
-/// ayırt edilemez hâle gelirdi.
+/// The colours come from the <b>theme resource dictionary</b> (P08-T07):
+/// <c>GitExtDiffAddedWordBrush</c> and <c>GitExtDiffRemovedWordBrush</c>. Hard-coded they would be
+/// illegible in the dark theme — with the line backgrounds changing with the theme and the intra-line
+/// highlights not, the highlight would become indistinguishable from its background.
 /// </para>
 /// </remarks>
 public static class DiffTextPresenter
@@ -34,7 +34,7 @@ public static class DiffTextPresenter
     private const string AddedBrushKey = "GitExtDiffAddedWordBrush";
     private const string RemovedBrushKey = "GitExtDiffRemovedWordBrush";
 
-    /// <summary>Çizilecek parçalar.</summary>
+    /// <summary>The segments to draw.</summary>
     public static readonly AttachedProperty<IReadOnlyList<DiffSegment>?> SegmentsProperty =
         AvaloniaProperty.RegisterAttached<TextBlock, IReadOnlyList<DiffSegment>?>(
             "Segments",
@@ -69,8 +69,8 @@ public static class DiffTextPresenter
             return;
         }
 
-        // Tek parçalı satır yaygın durum (satır içi fark yoksa): `Run` üretmeden doğrudan
-        // metin veriliyor.
+        // A single-segment line is the common case (when there is no intra-line difference): the text is
+        // given directly without producing a `Run`.
         if (segments.Count == 1 && segments[0].Kind == DiffLineKind.Context)
         {
             target.Text = segments[0].Text;
@@ -92,13 +92,13 @@ public static class DiffTextPresenter
     }
 
     /// <summary>
-    /// Fırçayı kontrolün <b>yürürlükteki temasına</b> göre çözer.
+    /// Resolves the brush against the control's <b>theme in force</b>.
     /// </summary>
     /// <remarks>
-    /// <c>ActualThemeVariant</c> ile sorulmak zorunda: P08-T00/M07b'de ölçüldü, uygulama
-    /// "sistemi takip et" modundayken bile bu değer <b>somut</b> bir varyanta çözülüyor,
-    /// dolayısıyla doğru sözlüğe bakılıyor. Anahtar bulunamazsa <see langword="null"/> —
-    /// vurgusuz ama okunur bir satır, yanlış renkli bir satırdan iyidir.
+    /// It has to be asked for with <c>ActualThemeVariant</c>: measured in P08-T00/M07b, this value
+    /// resolves to a <b>concrete</b> variant even while the application is in "follow the system" mode,
+    /// so the right dictionary is consulted. When the key cannot be found, <see langword="null"/> — an
+    /// unhighlighted but readable line beats a line in the wrong colour.
     /// </remarks>
     private static IBrush? Resolve(TextBlock target, string key) =>
         target.TryFindResource(key, target.ActualThemeVariant, out object? value)

@@ -9,23 +9,23 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// Ana menünün etkinliği gerçekten güncelleniyor mu?
+/// Is the main menu's enabled state really being updated?
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Bu dosyanın varlık sebebi gerçek bir hata.</b> <c>HasRepository</c> hesaplanan bir
-/// özellikti ve <c>PropertyChanged</c> yalnızca <b>kapanışta</b> gönderiliyordu; açılışta
-/// hiç. Bağlama ilk değerinde (<see langword="false"/>) donuyordu ve ana menünün
-/// <b>iki bölümü birden</b> (<i>Depo</i>, <i>Komutlar</i>) depo açıkken de soluk kalıyordu —
-/// yani commit ekranı, dal komutları ve uzak depo yönetimi menüden ulaşılamıyordu.
+/// 🔴 <b>This file exists because of a real bug.</b> <c>HasRepository</c> was a computed property and
+/// <c>PropertyChanged</c> was raised only <b>on close</b>, never on open. The binding froze at its
+/// initial value (<see langword="false"/>) and <b>two whole sections</b> of the main menu
+/// (<i>Repository</i>, <i>Commands</i>) stayed greyed out even with a repository open — meaning the
+/// commit screen, the branch commands and remote management were unreachable from the menu.
 /// </para>
 /// <para>
-/// ⚠️ <b>Mevcut ViewModel testi bunu yakalamıyordu</b> ve yakalayamazdı:
-/// <c>model.HasRepository.ShouldBeTrue()</c> geçiyor, çünkü kırık olan özelliğin
-/// <b>değeri</b> değil <b>bildirimi</b>. Faz 03'teki <c>IsVisible="{Binding …Count}"</c>
-/// tuzağıyla aynı sınıf. Bu yüzden testler burada <b>gerçek pencere</b> üzerinden
-/// <c>MenuItem.IsEnabled</c> okuyor: baktığın yer, doğruladığın şeyin yeri olmalı
-/// (P04-T09 render testi kuralı).
+/// ⚠️ <b>The existing ViewModel test did not catch this</b> and could not have:
+/// <c>model.HasRepository.ShouldBeTrue()</c> passes, because what is broken is not the property's
+/// <b>value</b> but its <b>notification</b>. The same class as the
+/// <c>IsVisible="{Binding …Count}"</c> trap in Phase 03. That is why the tests here read
+/// <c>MenuItem.IsEnabled</c> from a <b>real window</b>: where you look must be where the thing you are
+/// verifying lives (the P04-T09 render test rule).
 /// </para>
 /// </remarks>
 public class MainWindowBindingTests
@@ -106,10 +106,10 @@ public class MainWindowBindingTests
     [AvaloniaFact]
     public async Task Acilista_sessizce_acilan_depoda_da_menu_ETKIN()
     {
-        // Bildirimi tek tek çağrı yollarına koymak yerine `Commits.Repository` aboneliğine
-        // koymanın sebebi bu yol: uygulama, yol verilmediğinde çalışma dizinini sessizce
-        // deniyor (P03-T16) ve `OpenRepositoryAsync`'e yamanmış bir bildirim burada
-        // çalışmazdı.
+        // The reason for putting the notification on the `Commits.Repository` subscription rather than
+        // on the individual call paths is this route: with no path given, the application silently tries
+        // the working directory (P03-T16), and a notification bolted onto `OpenRepositoryAsync` would
+        // not run here.
         (Window window, MainWindowViewModel model) = await ShowAsync();
 
         await model.StartAsync(explicitPath: "/tmp/depo");
@@ -123,8 +123,8 @@ public class MainWindowBindingTests
     [AvaloniaFact]
     public async Task Depoya_bagli_komutlar_acilista_CanExecute_bildiriyor()
     {
-        // Menü alt öğeleri her açılışta yeniden kuruluyor, ama kalıcı bağlamalar
-        // (araç çubuğu, kısayol) `CanExecuteChanged` gelmedikçe sormuyor.
+        // The menu's child items are rebuilt on every open, but persistent bindings (the toolbar, the
+        // shortcut) do not ask again unless `CanExecuteChanged` arrives.
         (Window window, MainWindowViewModel model) = await ShowAsync();
 
         List<string> changed = [];

@@ -6,38 +6,38 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P03-T21 — Grafik penceresinin kaydırılması.
+/// P03-T21 — Scrolling the graph window.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Bu davranışın sebebi ölçüm.</b> P03-T18'de gerçek depolar ölçüldü: git/git ve Linux'ta
-/// şerit sayısı <b>medyanda ~120</b> ve commit düğümleri bu şeritlere yayılıyor —
-/// 16 şeritlik sabit bir sınır Linux'ta düğümlerin yalnızca %24'ünü gösterirdi. Yani "kes at"
-/// yaklaşımı işe yaramaz; sütun sabit genişlikte kalıp <b>kayan bir pencere</b> gösteriyor
-/// ve pencere seçili commit'i takip ediyor.
+/// <b>This behaviour exists because of a measurement.</b> Real repositories were measured in P03-T18:
+/// in git/git and Linux the lane count is <b>around 120 at the median</b> and the commit nodes spread
+/// across those lanes — a fixed limit of 16 lanes would show only 24% of the nodes in Linux. So a
+/// "cut it off" approach does not work; the column stays a fixed width and shows a <b>sliding
+/// window</b>, and the window follows the selected commit.
 /// </para>
 /// </remarks>
 public class GraphWindowTests
 {
     /// <summary>
-    /// <paramref name="width"/> kadar paralel dal içeren bir geçmiş üretir.
+    /// Produces a history containing <paramref name="width"/> parallel branches.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Her dalın <b>kendi ara commit'i</b> var: uçların hepsi doğrudan köke bağlansaydı
-    /// yerleşim motoru şeridi yeniden kullanır ve tek şeride düşerdi (bu davranış P03-T13'te
-    /// bilerek eklendi). Ara commit'ler, uçlar işlenirken şeritlerin <b>açık kalmasını</b>
-    /// sağlar — gerçek depolardaki geniş grafiğin küçük ölçekli hâli.
+    /// Every branch has <b>its own intermediate commit</b>: had all the tips joined the root directly,
+    /// the layout engine would reuse the lane and they would collapse into one (that behaviour was
+    /// added deliberately in P03-T13). The intermediate commits keep the lanes <b>open</b> while the
+    /// tips are processed — a small-scale version of the wide graph in real repositories.
     /// </para>
     /// <para>
-    /// Sıra topolojik: tüm uçlar → tüm ara commit'ler → kök.
+    /// The order is topological: all the tips → all the intermediate commits → the root.
     /// </para>
     /// </remarks>
     private static IReadOnlyList<CommitInfo> WideHistory(int width)
     {
         List<CommitInfo> commits = [];
 
-        // Uçlar.
+        // The tips.
         for (int i = width; i >= 1; i--)
         {
             commits.Add(FakeGitData.Commit(
@@ -46,7 +46,7 @@ public class GraphWindowTests
                 subject: $"uç {i}"));
         }
 
-        // Ara commit'ler — hepsi köke bağlı.
+        // The intermediate commits — all attached to the root.
         for (int i = width; i >= 1; i--)
         {
             commits.Add(FakeGitData.Commit(
@@ -85,7 +85,7 @@ public class GraphWindowTests
     {
         CommitListViewModel viewModel = await LoadedAsync(30);
 
-        // Pencere dışında kalan yüksek şeritli bir satır bul.
+        // Find a row with a high lane that falls outside the window.
         int index = Enumerable.Range(0, viewModel.Rows.Count)
             .First(i => viewModel.Rows[i].GraphRow.Lane >= viewModel.VisibleLanes);
 
@@ -93,8 +93,8 @@ public class GraphWindowTests
 
         viewModel.SelectedIndex = index;
 
-        // Seçili commit'in düğümü DAİMA görünmeli; aksi halde kullanıcı seçtiği satırın
-        // grafikte nerede olduğunu göremez.
+        // The selected commit's node must ALWAYS be visible; otherwise the user cannot see where the
+        // row they picked sits in the graph.
         viewModel.FirstVisibleLane.ShouldBeLessThanOrEqualTo(lane);
         (viewModel.FirstVisibleLane + viewModel.VisibleLanes).ShouldBeGreaterThan(lane);
     }
@@ -102,7 +102,8 @@ public class GraphWindowTests
     [AvaloniaFact]
     public async Task Pencere_icindeki_secim_pencereyi_oynatmaz()
     {
-        // Her seçimde ortalamak grafiği sürekli zıplatırdı; pencere yalnızca gerektiğinde kayar.
+        // Centring on every selection would make the graph jump constantly; the window only slides when
+        // it has to.
         CommitListViewModel viewModel = await LoadedAsync(30);
 
         int index = Enumerable.Range(0, viewModel.Rows.Count)
@@ -111,7 +112,7 @@ public class GraphWindowTests
         viewModel.SelectedIndex = index;
         int after = viewModel.FirstVisibleLane;
 
-        // Aynı pencere içindeki başka bir şeride geç.
+        // Move to another lane within the same window.
         int inWindow = Enumerable.Range(0, viewModel.Rows.Count)
             .First(i => viewModel.Rows[i].GraphRow.Lane >= after
                 && viewModel.Rows[i].GraphRow.Lane < after + viewModel.VisibleLanes);
@@ -159,8 +160,9 @@ public class GraphWindowTests
     [AvaloniaFact]
     public async Task Sutun_dar_depoda_daralir_genis_depoda_sinirda_durur()
     {
-        // Dar depoda 12 şeritlik sabit sütun boşuna yer kaplardı; geniş depoda sınır devreye
-        // girmeli. Değer tüm satırlarda ortak olduğu için sütunlar yine hizalı kalır.
+        // In a narrow repository a fixed 12-lane column would take up space for nothing; in a wide one
+        // the limit has to kick in. Because the value is shared across all rows, the columns still stay
+        // aligned.
         CommitListViewModel narrow = await LoadedAsync(3);
         narrow.VisibleLanes.ShouldBe(narrow.Rows.Max(r => r.GraphRow.LaneCount));
         narrow.VisibleLanes.ShouldBeLessThan(CommitListViewModel.DefaultVisibleLanes);
@@ -172,7 +174,7 @@ public class GraphWindowTests
     [AvaloniaFact]
     public async Task Dar_gecmiste_pencere_hic_kaymaz()
     {
-        // Çoğu depo dardır; orada pencere mekanizması hiç görünmemeli.
+        // Most repositories are narrow; the window mechanism must be invisible there.
         CommitListViewModel viewModel = await LoadedAsync(3);
 
         for (int i = 0; i < viewModel.Rows.Count; i++)

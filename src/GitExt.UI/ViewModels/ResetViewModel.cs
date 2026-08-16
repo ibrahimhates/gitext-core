@@ -6,17 +6,17 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Reset diyaloğu (P07-T06).
+/// The reset dialog (P07-T06).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Plan açıkça istiyor: <i>"Her modun ne yapacağını açıkça anlatan bir diyalog: hangi
-/// commit'ler kaybolacak, çalışma dizinine ne olacak."</i> Bu yüzden mod seçimi bir açılır
-/// liste değil, her biri <b>ne yaptığını anlatan</b> üç seçenek.
+/// The plan asks for it explicitly: <i>"A dialog that states clearly what each mode will do: which
+/// commits will be lost, what will happen to the working directory."</i> That is why the mode
+/// selection is not a dropdown but three options that each <b>state what they do</b>.
 /// </para>
 /// <para>
-/// Yerleşim GitExtensions <c>FormResetCurrentBranch</c>'ten (§ 9): radyo düğmeleri,
-/// altında açıklama, en altta onay.
+/// The layout comes from GitExtensions <c>FormResetCurrentBranch</c> (§ 9): radio buttons, an
+/// explanation below them, and the confirmation at the bottom.
 /// </para>
 /// </remarks>
 public sealed class ResetViewModel : ViewModelBase
@@ -44,7 +44,7 @@ public sealed class ResetViewModel : ViewModelBase
         ResetCommand = new AsyncRelayCommand(RunAsync, CanReset);
     }
 
-    /// <summary>Dönülecek commit.</summary>
+    /// <summary>The commit to return to.</summary>
     public string Target { get; }
 
     public ResetMode Mode
@@ -66,7 +66,7 @@ public sealed class ResetViewModel : ViewModelBase
         }
     }
 
-    // Radyo düğmeleri iki yönlü bağlanabilsin diye.
+    // So the radio buttons can be bound two-way.
     public bool IsSoft
     {
         get => Mode == ResetMode.Soft;
@@ -103,7 +103,7 @@ public sealed class ResetViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Seçili modun ne yapacağı — ölçülmüş davranışın düz anlatımı.</summary>
+    /// <summary>What the selected mode will do — a plain statement of the measured behaviour.</summary>
     public string ModeDescription => Mode switch
     {
         ResetMode.Soft =>
@@ -137,7 +137,7 @@ public sealed class ResetViewModel : ViewModelBase
 
     public bool IsTargetValid => Preview?.IsTargetValid != false;
 
-    /// <summary>Kaç commit düşecek ve hangileri.</summary>
+    /// <summary>How many commits will drop, and which ones.</summary>
     public string DroppedText => Preview is null || Preview.DroppedCount == 0
         ? "No commits will be dropped."
         : $"{Preview.DroppedCount} commit(s) will be dropped: "
@@ -145,21 +145,21 @@ public sealed class ResetViewModel : ViewModelBase
           + (Preview.DroppedCount > 5 ? "…" : string.Empty);
 
     /// <summary>
-    /// Bu seçim <b>geri alınamayacak</b> bir kayba yol açar mı?
+    /// Does this choice lead to an <b>irrecoverable</b> loss?
     /// </summary>
     /// <remarks>
-    /// Düşen commit'ler reflog'da duruyor; asıl geri alınamayan şey <c>--hard</c>'ın
-    /// sildiği commit'lenmemiş değişiklikler.
+    /// The dropped commits are still in the reflog; what really cannot be recovered are the uncommitted
+    /// changes <c>--hard</c> deletes.
     /// </remarks>
     public bool LosesWork => Preview?.LosesUncommittedWork(Mode) == true;
 
     /// <summary>
-    /// Ek onay kutusu gösterilsin mi?
+    /// Should the extra confirmation checkbox be shown?
     /// </summary>
     /// <remarks>
-    /// P05-T15'in dersi: kurtarma komutu ekranda olduğunda onay kutusu yeterli, ayrı bir
-    /// uyarı penceresi gerekmiyor. Ama <c>--hard</c> kirli bir ağaçta geri alınamayan bir
-    /// kayıp üretiyor — kutu tam orada.
+    /// The lesson of P05-T15: when the recovery command is on screen a checkbox is enough and no
+    /// separate warning window is needed. But <c>--hard</c> on a dirty tree produces an irrecoverable
+    /// loss — the checkbox belongs exactly there.
     /// </remarks>
     public bool RequiresConfirmation => LosesWork;
 
@@ -175,7 +175,7 @@ public sealed class ResetViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Çalıştırılacak komut ("komutu göster" ilkesi).</summary>
+    /// <summary>The command that will run (the "show the command" principle).</summary>
     public string CommandLine =>
         ResetWriter.Describe(new ResetOptions { Target = Target, Mode = Mode });
 
@@ -185,7 +185,7 @@ public sealed class ResetViewModel : ViewModelBase
         private set => SetProperty(ref _error, value);
     }
 
-    /// <summary>İşlem sonrası "geri almak için…" bilgisi.</summary>
+    /// <summary>The "to undo this…" information shown after the operation.</summary>
     public string? Result
     {
         get => _result;
@@ -204,7 +204,7 @@ public sealed class ResetViewModel : ViewModelBase
         }
     }
 
-    /// <summary>İşlem tamamlandı mı? (Pencere bunu kapanmak için kullanıyor.)</summary>
+    /// <summary>Has the operation finished? (The window uses this to close.)</summary>
     public bool IsCompleted { get; private set; }
 
     public IAsyncRelayCommand ResetCommand { get; }
@@ -228,7 +228,7 @@ public sealed class ResetViewModel : ViewModelBase
                 .ResetAsync(_workingDirectory, new ResetOptions { Target = Target, Mode = Mode })
                 .ConfigureAwait(true);
 
-            // Faz kuralı: geri alma bilgisi HER ZAMAN sunulur.
+            // The phase rule: the undo information is ALWAYS offered.
             Result = point.IsFullyRecoverable
                 ? $"To undo: {point.RecoveryCommand}"
                 : $"To undo: {point.RecoveryCommand} — note that uncommitted changes were "
@@ -247,7 +247,7 @@ public sealed class ResetViewModel : ViewModelBase
     }
 }
 
-/// <summary>Reset diyaloğunu gösteren taraf (P07-T06).</summary>
+/// <summary>The side that shows the reset dialog (P07-T06).</summary>
 public interface IResetPrompt
 {
     Task ShowAsync(ResetViewModel model);

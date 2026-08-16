@@ -4,14 +4,14 @@ using GitExt.Core.Git;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// Flatpak sandbox'ında git'in host üzerinde çalıştırılmasını doğrular
+/// Verifies that git is run on the host from inside a Flatpak sandbox
 /// (P10-T10, ADR-0009).
 /// </summary>
 /// <remarks>
-/// Bu testlerin kapattığı boşluk, sarmalamanın <b>sessizce eksik</b> olmasıdır.
-/// Kayıp bir çalışma dizini komutu yanlış depoya karşı çalıştırır; kayıp bir ortam
-/// değişkeni git'i kullanıcının yapılandırması olmadan çalıştırır. İkisi de hata
-/// vermez, yalnızca yanlış sonuç üretir.
+/// The gap these tests close is the wrapping being <b>silently incomplete</b>.
+/// A missing working directory runs the command against the wrong repository; a missing environment
+/// variable runs git without the user's configuration. Neither gives an error, they just produce the
+/// wrong result.
 /// </remarks>
 public class SandboxLauncherTests
 {
@@ -55,9 +55,9 @@ public class SandboxLauncherTests
     [Fact]
     public void Calisma_dizini_argüman_olarak_aktariliyor()
     {
-        // flatpak-spawn çağıran sürecin çalışma dizinini host tarafına TAŞIMIYOR.
-        // Aktarılmazsa git host kullanıcısının ev dizininde çalışır — yani yanlış
-        // depoya karşı. Hata vermez, sadece yanlış sonuç verir.
+        // flatpak-spawn DOES NOT CARRY the calling process's working directory to the host side.
+        // Unless it is passed, git runs in the host user's home directory — that is, against the wrong
+        // repository. It gives no error, it just gives the wrong answer.
         ProcessStartInfo info = GitCommit("/home/user/projects/gitext-core");
 
         SandboxLauncher.RewriteForHost(info, sandboxed: true);
@@ -68,9 +68,9 @@ public class SandboxLauncherTests
     [Fact]
     public void Ortam_degiskenleri_aktariliyor()
     {
-        // --host ile başlatılan süreç sandbox'ın ortamını DEVRALMIYOR. GitEnvironment'ın
-        // kurduğu her şey (LC_ALL, GIT_* geçersiz kılmaları, askpass) aktarılmazsa
-        // host'taki git bambaşka bir yapılandırmayla çalışır.
+        // A process started with --host DOES NOT INHERIT the sandbox's environment. Unless everything
+        // GitEnvironment sets up (LC_ALL, the GIT_* overrides, askpass) is passed on, the git on the
+        // host runs with an entirely different configuration.
         ProcessStartInfo info = GitCommit();
         info.Environment["LC_ALL"] = "C";
         info.Environment["GIT_TERMINAL_PROMPT"] = "0";
@@ -88,7 +88,7 @@ public class SandboxLauncherTests
 
         SandboxLauncher.RewriteForHost(info, sandboxed: true);
 
-        // Komut adı ve argümanları, bayrakların ARDINDAN ve kendi sıralarında gelmeli.
+        // The command name and its arguments must come AFTER the flags and in their own order.
         int gitIndex = info.ArgumentList.IndexOf("git");
         gitIndex.ShouldBeGreaterThan(0);
 
@@ -98,9 +98,8 @@ public class SandboxLauncherTests
     [Fact]
     public void Bosluk_iceren_arguman_tek_parca_kaliyor()
     {
-        // Argümanlar ArgumentList üzerinden geçiyor, birleştirilmiş bir komut satırı
-        // olarak değil. Birleştirilseydi boşluk içeren commit mesajları bölünür ve
-        // git bunları ayrı argümanlar sanardı.
+        // The arguments go through ArgumentList, not as a joined command line. Joined, commit messages
+        // containing spaces would be split and git would take them for separate arguments.
         ProcessStartInfo info = GitCommit();
 
         SandboxLauncher.RewriteForHost(info, sandboxed: true);
@@ -111,9 +110,9 @@ public class SandboxLauncherTests
     [Fact]
     public void Sarmalama_iki_kez_uygulanmiyor()
     {
-        // İkinci kez sarmalamak "flatpak-spawn --host flatpak-spawn --host git" üretirdi:
-        // çalışmaz ve hatası da anlaşılmaz olur. Sarmalayıcıların ikinci kez uygulanması
-        // klasik bir kazadır, bu yüzden idempotent.
+        // Wrapping a second time would produce "flatpak-spawn --host flatpak-spawn --host git":
+        // it does not work and its error is incomprehensible. Wrappers being applied twice is a classic
+        // accident, so this is idempotent.
         ProcessStartInfo info = GitCommit();
 
         SandboxLauncher.RewriteForHost(info, sandboxed: true);
@@ -129,16 +128,16 @@ public class SandboxLauncherTests
     [Fact]
     public void Bu_makinede_sandbox_algilanmiyor()
     {
-        // Testler bir Flatpak sandbox'ında koşmuyor; algılama yanlış pozitif verirse
-        // her git çağrısı var olmayan flatpak-spawn'a yönlenirdi.
+        // The tests do not run inside a Flatpak sandbox; were the detection to give a false positive,
+        // every git call would be routed to a flatpak-spawn that does not exist.
         SandboxLauncher.IsSandboxed.ShouldBeFalse();
     }
 
     [Fact]
     public void Sandbox_disinda_host_dogrulamasi_sorunsuz_geciyor()
     {
-        // Sandbox dışında bu çağrı hiçbir şey yapmamalı — aksi halde flatpak-spawn'ı
-        // olmayan her sistemde uygulama açılmazdı.
+        // Outside a sandbox this call must do nothing — otherwise the application would fail to start
+        // on every system without flatpak-spawn.
         Should.NotThrow(SandboxLauncher.EnsureHostAccessible);
     }
 }

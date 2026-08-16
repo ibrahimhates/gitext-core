@@ -6,7 +6,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P08-T04 — komut paleti ve P08-T06 — kısayol referansı.
+/// P08-T04 — the command palette, and P08-T06 — the shortcut reference.
 /// </summary>
 public class CommandPaletteTests
 {
@@ -36,11 +36,11 @@ public class CommandPaletteTests
     }
 
     /// <summary>
-    /// Bulanık eşleşme: harflerin sırayla geçmesi yeterli.
+    /// Fuzzy matching: it is enough for the letters to appear in order.
     /// </summary>
     /// <remarks>
-    /// Tam alt dize araması, kısaltma yazan kullanıcıyı boş sonuçla karşılardı — paletin
-    /// hızlı olmasının tek yolu birkaç harf yazmak.
+    /// A full substring search would meet a user typing an abbreviation with an empty result — typing a
+    /// few letters is the only way the palette can be fast.
     /// </remarks>
     [Theory]
     [InlineData("crbr", CommandIds.BranchCreate)]
@@ -55,7 +55,7 @@ public class CommandPaletteTests
         palette.Results.Select(r => r.CommandId).ShouldContain(expected);
     }
 
-    /// <summary>Kısayolun kendisiyle de aranabiliyor: "Ctrl+B ne yapıyor?"</summary>
+    /// <summary>The shortcut itself can be searched for too: "what does Ctrl+B do?"</summary>
     [Fact]
     public void Jestle_de_aranabiliyor()
     {
@@ -93,11 +93,11 @@ public class CommandPaletteTests
     }
 
     /// <summary>
-    /// Panel komutu da palette çalışıyor — kısayolla <b>aynı</b> yoldan.
+    /// A panel command works in the palette too — by the <b>same</b> route as its shortcut.
     /// </summary>
     /// <remarks>
-    /// Ayrı yollar olsaydı bir komut palette çalışıp kısayolla çalışmayabilirdi ve
-    /// hangisinin doğru olduğu belirsiz kalırdı.
+    /// Were they separate routes, a command could work in the palette and not from its shortcut, and it
+    /// would be unclear which of the two was right.
     /// </remarks>
     [Fact]
     public void Panel_komutu_da_palette_calisiyor()
@@ -119,10 +119,11 @@ public class CommandPaletteTests
     }
 
     /// <summary>
-    /// Çalıştırılamayan komut <b>gizlenmiyor</b>, soluk gösteriliyor ve çalışmıyor.
+    /// A command that cannot run is <b>not hidden</b>, it is shown dimmed and does not run.
     /// </summary>
     /// <remarks>
-    /// Gizlemek, komutu arayıp bulamayan kullanıcıya "böyle bir şey yok" dedirtirdi.
+    /// Hiding it would leave a user who searched for it and did not find it saying "there is no such
+    /// thing".
     /// </remarks>
     [Fact]
     public void Calistirilamayan_komut_gorunuyor_ama_calismiyor()
@@ -140,16 +141,16 @@ public class CommandPaletteTests
     }
 
     /// <summary>
-    /// Çalıştırılabilir komutlar listenin başında.
+    /// Runnable commands come first in the list.
     /// </summary>
     /// <remarks>
-    /// Depo kapalıyken listenin başında çalışmayan bir komut durması, Enter'a basan
-    /// kullanıcıya hiçbir şey olmamış gibi görünürdü.
+    /// With the repository closed, a command that does not run sitting at the top of the list would look
+    /// to a user pressing Enter as though nothing had happened.
     /// </remarks>
     /// <remarks>
-    /// Palet <b>açıldığı anda</b> kuruluyor (pencere her açılışta yenisini üretiyor), o
-    /// yüzden sıralama kurulum anındaki duruma göre hesaplanıyor. Test de aynı sırayı
-    /// izliyor: önce bağlamalar, sonra palet.
+    /// The palette is built <b>the moment it opens</b> (the window produces a new one on every open), so
+    /// the ordering is computed against the state at build time. The test follows the same order: the
+    /// bindings first, then the palette.
     /// </remarks>
     [Fact]
     public void Calistirilabilir_komutlar_once_siralaniyor()
@@ -182,7 +183,7 @@ public class CommandPaletteTests
         palette.SelectedIndex.ShouldBe(0);
     }
 
-    // -------------------------------------------------------- P08-T06 referans ekranı
+    // -------------------------------------------------- P08-T06 the reference screen
 
     [Fact]
     public void Referans_baglama_gore_grupluyor()
@@ -197,7 +198,7 @@ public class CommandPaletteTests
             .ShouldContain(CommandIds.DiffStageLines);
     }
 
-    /// <summary>Kısayolu olmayan komutlar grubun sonunda.</summary>
+    /// <summary>Commands without a shortcut come at the end of the group.</summary>
     [Fact]
     public void Kisayolsuz_komutlar_sonda()
     {

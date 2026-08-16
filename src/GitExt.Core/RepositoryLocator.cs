@@ -4,20 +4,20 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Bir dosya sistemi yolundan Git deposu keşfeder (P02-T06).
+/// Discovers a Git repository from a file system path (P02-T06).
 /// </summary>
 public interface IRepositoryLocator
 {
     /// <summary>
-    /// Verilen yolu içeren depoyu bulur.
+    /// Finds the repository containing the given path.
     /// </summary>
     /// <remarks>
-    /// Yol deponun alt dizinlerinden biri olabilir; git yukarı doğru arar.
+    /// The path may be one of the repository's subdirectories; git searches upwards.
     /// </remarks>
     /// <exception cref="GitException">
-    /// Yol bir depo değilse <see cref="GitFailureKind.NotARepository"/> ile.
+    /// With <see cref="GitFailureKind.NotARepository"/> when the path is not a repository.
     /// </exception>
-    /// <exception cref="DirectoryNotFoundException">Dizin mevcut değilse.</exception>
+    /// <exception cref="DirectoryNotFoundException">When the directory does not exist.</exception>
     Task<RepositoryLocation> LocateAsync(string path, CancellationToken cancellationToken = default);
 }
 
@@ -51,9 +51,9 @@ public sealed class RepositoryLocator : IRepositoryLocator
             throw new DirectoryNotFoundException($"Directory not found: {directory}");
         }
 
-        // Tek çağrıda alınabilecek her şey. --show-toplevel BURADA OLAMAZ:
-        // bare depoda "fatal: this operation must be run in a work tree" ile 128 döner
-        // ve tüm çağrıyı kırar. Gerçek git ile doğrulandı.
+        // Everything obtainable in a single call. --show-toplevel CANNOT BE HERE:
+        // in a bare repository it returns 128 with "fatal: this operation must be run in a work tree"
+        // and breaks the whole call. Verified against real git.
         GitResult result = await _runner.RunCheckedAsync(
             GitCommand.Create(
                 directory,
@@ -77,9 +77,9 @@ public sealed class RepositoryLocator : IRepositoryLocator
 
         string gitDirectory = Path.GetFullPath(lines[0]);
 
-        // --git-common-dir normal bir depoda GÖRELİ döner (".git"), worktree'de mutlak.
-        // --path-format=absolute bunu çözerdi ama git 2.31+ gerektiriyor; minimumumuz 2.30.
-        // Bu yüzden çalışma dizinine göre kendimiz çözüyoruz.
+        // --git-common-dir returns a RELATIVE path (".git") in a normal repository, and an absolute one
+        // in a worktree. --path-format=absolute would solve it but needs git 2.31+; our minimum is 2.30.
+        // So we resolve it ourselves against the working directory.
         string commonDirectory = Path.GetFullPath(lines[1], directory);
 
         bool isBare = string.Equals(lines[2], "true", StringComparison.OrdinalIgnoreCase);
@@ -96,23 +96,23 @@ public sealed class RepositoryLocator : IRepositoryLocator
     }
 
     /// <summary>
-    /// Çalışma ağacının kökünü ve — depo bir submodule ise — üst projenin ağacını okur.
+    /// Reads the working tree's root and — when the repository is a submodule — the superproject's tree.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// İkisi <b>tek çağrıda</b> alınıyor (P09-T06). Ayrı ayrı sorulduklarında depo açılışı
-    /// iki yerine üç süreç başlatıyordu; süreç başlatma maliyeti Linux'ta birkaç ms, ama
-    /// Windows'ta kat kat yüksek ve ADR-0002'nin bilinen zayıflığı tam olarak bu.
+    /// The two are obtained in <b>a single call</b> (P09-T06). Asked separately, opening a repository
+    /// was starting three processes instead of two; process startup costs a few ms on Linux but is many
+    /// times higher on Windows, and that is exactly ADR-0002's known weakness.
     /// </para>
     /// <para>
-    /// ⚠️ Birleştirmenin çalışması <c>--show-superproject-working-tree</c>'nin submodule
-    /// olmayan bir depoda <b>hiçbir satır basmamasına</b> dayanıyor — hata değil, boş
-    /// çıktı ve 0. Dolayısıyla satır sayısı ayrımı yapıyor: bir satır varsa yalnızca kök,
-    /// iki satır varsa kök + üst proje. Gerçek git ile her iki durumda da ölçüldü.
+    /// ⚠️ The combination works because <c>--show-superproject-working-tree</c> <b>prints no line at
+    /// all</b> in a repository that is not a submodule — not an error, just empty output and 0. So the
+    /// line count makes the distinction: one line means the root alone, two lines mean the root plus
+    /// the superproject. Measured against real git in both cases.
     /// </para>
     /// <para>
-    /// <c>--show-toplevel</c> yukarıdaki ilk çağrıya eklenemiyor: bare depoda tüm çağrıyı
-    /// 128 ile kırıyor. Bu yüzden iki çağrı üçe değil ikiye iniyor, bire değil.
+    /// <c>--show-toplevel</c> cannot be added to the first call above: in a bare repository it breaks
+    /// the whole call with 128. That is why the two calls come down from three to two, not to one.
     /// </para>
     /// </remarks>
     private async Task<(string WorkTreeRoot, string? Superproject)> ReadWorkTreeAsync(

@@ -6,35 +6,34 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Themes;
 
 /// <summary>
-/// Tema tercihini uygulamaya bağlar (P08-T08).
+/// Binds the theme preference to the application (P08-T08).
 /// </summary>
 public interface IThemeService
 {
-    /// <summary>Yürürlükteki tercih.</summary>
+    /// <summary>The preference in force.</summary>
     ThemePreference Preference { get; }
 
-    /// <summary>Tercihi değiştirir, uygular ve kaydeder.</summary>
+    /// <summary>Changes the preference, applies it and saves it.</summary>
     void Apply(ThemePreference preference);
 
-    /// <summary>Kaydedilmiş tercihi okuyup uygular. Açılışta bir kez çağrılır.</summary>
+    /// <summary>Reads the saved preference and applies it. Called once at startup.</summary>
     void ApplyStored();
 }
 
 /// <summary>
-/// <see cref="Application.RequestedThemeVariant"/> üzerinden tema tercihini uygular.
+/// Applies the theme preference through <see cref="Application.RequestedThemeVariant"/>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Varsayılan AÇIK</b> — GitExtensions'ın görsel kimliği bu ve hedef kitle oradan geliyor.
-/// Sistem koyu temada olsa bile varsayılan açıktır; "sistemi takip et" bilinçli bir tercihtir
-/// (kullanıcı kararı, 2026-07-29).
+/// <b>The default is LIGHT</b> — that is GitExtensions' visual identity and the target audience comes
+/// from there. Even when the system is in dark mode the default is light; "follow the system" is a
+/// deliberate choice (the user's decision, 2026-07-29).
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLDÜ (P08-T00):</b> <c>RequestedThemeVariant</c> çalışma sırasında değiştirilebiliyor
-/// ve <c>ActualThemeVariantChanged</c> tetikleniyor (M07); <c>Default</c> verildiğinde
-/// <c>ActualThemeVariant</c> platformdan somut bir değere <b>çözülüyor</b> (M07b), yani
-/// "sistemi takip et" ayrıca bir dinleyici gerektirmiyor — Avalonia'nın kendi
-/// <c>Default</c>'u zaten sistemi izliyor.
+/// <b>MEASURED (P08-T00):</b> <c>RequestedThemeVariant</c> can be changed at runtime and
+/// <c>ActualThemeVariantChanged</c> fires (M07); given <c>Default</c>, <c>ActualThemeVariant</c>
+/// <b>resolves</b> to a concrete value from the platform (M07b), meaning "follow the system" needs no
+/// separate listener — Avalonia's own <c>Default</c> already follows the system.
 /// </para>
 /// </remarks>
 public sealed class ThemeService : IThemeService
@@ -60,24 +59,24 @@ public sealed class ThemeService : IThemeService
 
     public void ApplyStored() => ApplyToApplication(Preference);
 
-    /// <summary>Tercihin Avalonia karşılığı.</summary>
+    /// <summary>The Avalonia counterpart of the preference.</summary>
     public static ThemeVariant ToVariant(ThemePreference preference) => preference switch
     {
         ThemePreference.Dark => ThemeVariant.Dark,
 
-        // `Default` = "sistemi takip et". Avalonia bunu platformdan çözüyor; kendi
-        // dinleyicimizi yazmak aynı işi ikinci kez, daha kötü yapmak olurdu.
+        // `Default` = "follow the system". Avalonia resolves this from the platform; writing our own
+        // listener would be doing the same job a second time, worse.
         ThemePreference.System => ThemeVariant.Default,
 
         _ => ThemeVariant.Light,
     };
 
     /// <summary>
-    /// İşletim sisteminin bildirdiği tema.
+    /// The theme the operating system reports.
     /// </summary>
     /// <remarks>
-    /// Yalnızca ayarlar ekranında "sistemi takip et" seçiliyken <i>hangi</i> temanın etkin
-    /// olduğunu göstermek için. Tema uygulaması buna bakmıyor.
+    /// Only for showing <i>which</i> theme is in force while "follow the system" is selected on the
+    /// settings screen. Applying the theme does not consult this.
     /// </remarks>
     public ThemePreference DetectSystemTheme()
     {

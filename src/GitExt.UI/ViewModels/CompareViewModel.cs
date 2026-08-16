@@ -6,29 +6,29 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Neyin neyle karşılaştırıldığı (P04-T16).
+/// What is being compared with what (P04-T16).
 /// </summary>
 public enum CompareTarget
 {
-    /// <summary>İki keyfi revizyon arası.</summary>
+    /// <summary>Between two arbitrary revisions.</summary>
     Revisions,
 
-    /// <summary>Bir revizyon ile çalışma ağacı arası.</summary>
+    /// <summary>Between a revision and the working tree.</summary>
     WorkingTree,
 }
 
 /// <summary>
-/// İki revizyonu karşılaştıran <b>ayrı pencerenin</b> ViewModel'i (P04-T16).
+/// The ViewModel of the <b>separate window</b> comparing two revisions (P04-T16).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Pencere <b>modeless</b> ve aynı anda birden fazla açılabilir; her biri kendi
-/// <see cref="CompareViewModel"/>'ine sahiptir. Karar GitExtensions'a bakılarak verilmişti:
-/// orada da <c>FormDiff</c> <c>ShowDialog</c> ile değil <b><c>Show()</c></b> ile açılıyor.
+/// The window is <b>modeless</b> and more than one can be open at a time; each has its own
+/// <see cref="CompareViewModel"/>. The decision came from looking at GitExtensions: there too
+/// <c>FormDiff</c> is opened with <b><c>Show()</c></b> rather than <c>ShowDialog</c>.
 /// </para>
 /// <para>
-/// Diff'i göstermek için <see cref="DiffViewModel"/> <b>yeniden kullanılıyor</b> — o bileşen
-/// P04-T08'de bilinçli olarak ana pencereden bağımsız yazılmıştı, tam da bu yüzden.
+/// <see cref="DiffViewModel"/> is <b>reused</b> to show the diff — that component was written
+/// deliberately independent of the main window in P04-T08, for exactly this reason.
 /// </para>
 /// </remarks>
 public sealed partial class CompareViewModel : ViewModelBase
@@ -46,29 +46,29 @@ public sealed partial class CompareViewModel : ViewModelBase
 
     public DiffViewModel Diff { get; }
 
-    /// <summary>Karşılaştırmanın sol tarafı (temel).</summary>
+    /// <summary>The comparison's left side (the base).</summary>
     [ObservableProperty]
     public partial string FromRevision { get; private set; } = string.Empty;
 
-    /// <summary>Sağ taraf; çalışma ağacı karşılaştırmasında boş.</summary>
+    /// <summary>The right side; empty in a working tree comparison.</summary>
     [ObservableProperty]
     public partial string ToRevision { get; private set; } = string.Empty;
 
     [ObservableProperty]
     public partial CompareTarget Target { get; private set; }
 
-    /// <summary>Pencere başlığı.</summary>
+    /// <summary>The window title.</summary>
     [ObservableProperty]
     public partial string Title { get; private set; } = Loc.T("compare.compare");
 
-    /// <summary>İki commit'i karşılaştırır.</summary>
+    /// <summary>Compares two commits.</summary>
     public Task CompareAsync(
         CommitId from,
         CommitId to,
         CancellationToken cancellationToken = default) =>
         CompareAsync(from.Value, to.Value, cancellationToken);
 
-    /// <summary>İki revizyonu (commit, dal, etiket) karşılaştırır.</summary>
+    /// <summary>Compares two revisions (commit, branch, tag).</summary>
     public Task CompareAsync(
         string from,
         string to,
@@ -85,7 +85,7 @@ public sealed partial class CompareViewModel : ViewModelBase
         return Diff.ShowRangeAsync(WorkingDirectory, from, to, Title, cancellationToken: cancellationToken);
     }
 
-    /// <summary>Bir revizyonu <b>çalışma ağacıyla</b> karşılaştırır.</summary>
+    /// <summary>Compares a revision <b>with the working tree</b>.</summary>
     public Task CompareWithWorkingTreeAsync(
         string from,
         CancellationToken cancellationToken = default)
@@ -100,17 +100,16 @@ public sealed partial class CompareViewModel : ViewModelBase
         return Diff.ShowRangeAsync(WorkingDirectory, from, null, Title, cancellationToken: cancellationToken);
     }
 
-    /// <summary>Aynı karşılaştırmayı yeniden okur.</summary>
+    /// <summary>Re-reads the same comparison.</summary>
     /// <remarks>
-    /// Çalışma ağacı karşılaştırmasında gerekli: kullanıcı dosyayı düzenleyip pencereyi açık
-    /// bırakabilir.
+    /// Needed for a working tree comparison: the user can edit the file and leave the window open.
     /// </remarks>
     public Task RefreshAsync(CancellationToken cancellationToken = default) =>
         Target == CompareTarget.WorkingTree
             ? CompareWithWorkingTreeAsync(FromRevision, cancellationToken)
             : CompareAsync(FromRevision, ToRevision, cancellationToken);
 
-    /// <summary>SHA'ları kısaltır; dal/etiket adlarına dokunmaz.</summary>
+    /// <summary>Abbreviates SHAs; leaves branch/tag names alone.</summary>
     private static string Shorten(string revision) =>
         revision.Length == 40 && revision.All(Uri.IsHexDigit) ? revision[..8] : revision;
 }

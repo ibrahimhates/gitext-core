@@ -1,12 +1,12 @@
 namespace GitExt.Core.Model;
 
-/// <summary>Bir Git nesnesinin türü.</summary>
+/// <summary>The kind of a Git object.</summary>
 public enum GitObjectType
 {
-    /// <summary>Nesne bulunamadı.</summary>
+    /// <summary>The object was not found.</summary>
     Missing,
 
-    /// <summary>Dosya içeriği.</summary>
+    /// <summary>File content.</summary>
     Blob,
 
     /// <summary>Dizin.</summary>
@@ -19,11 +19,11 @@ public enum GitObjectType
 }
 
 /// <summary>
-/// Bir nesnenin içeriği okunmadan elde edilebilen bilgisi.
+/// The information about an object obtainable without reading its content.
 /// </summary>
 /// <remarks>
-/// <c>cat-file --batch-check</c> ile alınır — büyük bir dosyayı belleğe almadan boyutunu
-/// öğrenmek için.
+/// Obtained with <c>cat-file --batch-check</c> — for finding out a large file's size without pulling
+/// it into memory.
 /// </remarks>
 public sealed record GitObjectInfo
 {
@@ -38,31 +38,31 @@ public sealed record GitObjectInfo
 }
 
 /// <summary>
-/// Bir ağaç (dizin) girdisi.
+/// A tree (directory) entry.
 /// </summary>
 public sealed record TreeEntry
 {
     public required RepositoryPath Path { get; init; }
 
-    /// <summary>Sekizlik dosya modu, örn. <c>100644</c>.</summary>
+    /// <summary>The octal file mode, e.g. <c>100644</c>.</summary>
     public required string Mode { get; init; }
 
     public required GitObjectType Type { get; init; }
 
     public required CommitId Id { get; init; }
 
-    /// <summary>Bayt cinsinden boyut; yalnızca <c>--long</c> ile istendiyse dolu.</summary>
+    /// <summary>The size in bytes; filled in only when requested with <c>--long</c>.</summary>
     public long? Size { get; init; }
 
     public bool IsDirectory => Type == GitObjectType.Tree;
 
-    /// <summary><c>120000</c> — sembolik bağ.</summary>
+    /// <summary><c>120000</c> — a symbolic link.</summary>
     public bool IsSymlink => Mode == "120000";
 
     /// <summary><c>160000</c> — gitlink, yani submodule.</summary>
     public bool IsSubmodule => Mode == "160000";
 
-    /// <summary><c>100755</c> — çalıştırılabilir dosya.</summary>
+    /// <summary><c>100755</c> — an executable file.</summary>
     public bool IsExecutable => Mode == "100755";
 
     public string Name => Path.Name;
@@ -71,34 +71,34 @@ public sealed record TreeEntry
 }
 
 /// <summary>
-/// Bir blob'un içeriği.
+/// A blob's content.
 /// </summary>
 public sealed record BlobContent
 {
     public required CommitId Id { get; init; }
 
-    /// <summary>Nesnenin depodaki gerçek boyutu (kırpılmış olsa bile).</summary>
+    /// <summary>The object's real size in the repository (even when truncated).</summary>
     public required long Size { get; init; }
 
-    /// <summary>Ham içerik. <see cref="IsTruncated"/> ise yalnızca ilk kısım.</summary>
+    /// <summary>The raw content. When <see cref="IsTruncated"/>, only the first part.</summary>
     public required byte[] Content { get; init; }
 
     /// <summary>
-    /// İçerik ikili (binary) mi?
+    /// Is the content binary?
     /// </summary>
     /// <remarks>
-    /// <c>git</c>'in sezgisiyle aynı: ilk 8000 baytta NUL varsa ikili sayılır.
-    /// Kusursuz değil ama git'le tutarlı olmak, kendi kuralımızı uydurmaktan iyi.
+    /// The same heuristic as <c>git</c>'s: binary when there is a NUL in the first 8000 bytes.
+    /// Not perfect, but being consistent with git beats inventing our own rule.
     /// </remarks>
     public required bool IsBinary { get; init; }
 
-    /// <summary>Boyut sınırı aşıldığı için içerik kısaltıldı mı?</summary>
+    /// <summary>Was the content shortened because the size limit was exceeded?</summary>
     public bool IsTruncated { get; init; }
 
     /// <summary>
-    /// İçeriği UTF-8 metin olarak döndürür.
+    /// Returns the content as UTF-8 text.
     /// </summary>
-    /// <exception cref="InvalidOperationException">İçerik ikiliyse.</exception>
+    /// <exception cref="InvalidOperationException">When the content is binary.</exception>
     public string GetText()
     {
         if (IsBinary)

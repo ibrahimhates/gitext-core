@@ -3,34 +3,35 @@ using System.Text.Json.Nodes;
 namespace GitExt.UI.Settings;
 
 /// <summary>
-/// Bir şema sürümünden bir sonrakine taşıyan tek adım.
+/// A single step moving from one schema version to the next.
 /// </summary>
 /// <remarks>
-/// Göçler <b>tiplenmiş modelden önce</b>, ham <see cref="JsonObject"/> üzerinde çalışır.
-/// Sebebi basit: bir alan yeniden adlandırıldıysa tiplenmiş model onu zaten okuyamaz —
-/// göç, okunabildiği tek katmanda yapılmalı.
+/// Migrations run over the raw <see cref="JsonObject"/>, <b>before the typed model</b>. The reason is
+/// simple: if a field was renamed, the typed model cannot read it anyway — the migration has to happen
+/// at the one layer where it is still readable.
 /// </remarks>
 internal interface ISettingsMigration
 {
-    /// <summary>Bu göçün <b>girdi</b> sürümü; çıktısı <c>FromVersion + 1</c>'dir.</summary>
+    /// <summary>This migration's <b>input</b> version; its output is <c>FromVersion + 1</c>.</summary>
     int FromVersion { get; }
 
     void Apply(JsonObject root);
 }
 
 /// <summary>
-/// Ayar dosyasını okunduğu sürümden <see cref="AppSettings.CurrentVersion"/>'a taşır (P08-T14).
+/// Moves the settings file from the version it was read at to <see cref="AppSettings.CurrentVersion"/>
+/// (P08-T14).
 /// </summary>
 internal sealed class SettingsMigrator
 {
     /// <summary>
-    /// Kayıtlı göçler. <b>Şu an boş</b> — ilk şema sürümündeyiz.
+    /// The registered migrations. <b>Empty for now</b> — we are on the first schema version.
     /// </summary>
     /// <remarks>
-    /// Boş olması mekanizmanın çalışmadığı anlamına gelmez: mekanizma testte enjekte edilen
-    /// sahte göçlerle doğrulanıyor. İlk gerçek şema değişikliğinde buraya bir adım eklenecek;
-    /// o gün mekanizmayı da yazmak zorunda kalmak, hem göçü hem altyapıyı aynı anda
-    /// doğrulamak demek olurdu.
+    /// Being empty does not mean the mechanism does not work: it is verified with fake migrations
+    /// injected in the tests. A step will be added here at the first real schema change; having to
+    /// write the mechanism on that day would mean verifying both the migration and the infrastructure
+    /// at once.
     /// </remarks>
     private static readonly ISettingsMigration[] Registered = [];
 
@@ -49,17 +50,17 @@ internal sealed class SettingsMigrator
     }
 
     /// <summary>
-    /// Göçleri sırayla uygular ve sonuçtaki sürüm alanını günceller.
+    /// Applies the migrations in order and updates the version field in the result.
     /// </summary>
     /// <returns>
-    /// Dosya okunabiliyorsa taşınmış kök; <b>gelecekten gelen</b> (bizden yeni) bir dosyaysa
-    /// <see langword="null"/>.
+    /// The migrated root when the file can be read; <see langword="null"/> when the file comes
+    /// <b>from the future</b> (newer than us).
     /// </returns>
     /// <remarks>
     /// <para>
-    /// <b>Gelecekten gelen dosya okunmaz.</b> Bilmediğimiz bir şemayı tahminle okuyup üstüne
-    /// yazmak, kullanıcının yeni sürümde yaptığı ayarları <b>sessizce bozmak</b> olurdu.
-    /// Bu durumda varsayılanlarla çalışılır ve dosyaya <b>hiç dokunulmaz</b>.
+    /// <b>A file from the future is not read.</b> Reading a schema we do not know by guesswork and
+    /// writing over it would mean <b>silently corrupting</b> the settings the user made in the newer
+    /// version. In that case we run with the defaults and the file is <b>not touched at all</b>.
     /// </para>
     /// </remarks>
     public JsonObject? Migrate(JsonObject root)
@@ -77,8 +78,8 @@ internal sealed class SettingsMigrator
 
             if (step is null)
             {
-                // Aradaki bir adım eksik: elimizdekiyle devam etmek, olmayan bir dönüşümü
-                // yapmış gibi davranmaktır. Varsayılanlara düşülür.
+                // A step in between is missing: carrying on with what we have would mean pretending to
+                // have made a transformation that does not exist. We fall back to the defaults.
                 return null;
             }
 
@@ -92,11 +93,11 @@ internal sealed class SettingsMigrator
     }
 
     /// <summary>
-    /// Sürüm alanını okur.
+    /// Reads the version field.
     /// </summary>
     /// <remarks>
-    /// Alan yoksa veya sayı değilse <b>1</b> kabul edilir: sürüm alanı olmayan tek dosya
-    /// biçimi ilk sürümdür.
+    /// When the field is absent or not a number, <b>1</b> is assumed: the only file format without a
+    /// version field is the first version.
     /// </remarks>
     private static int ReadVersion(JsonObject root) =>
         root.TryGetPropertyValue("version", out JsonNode? node)

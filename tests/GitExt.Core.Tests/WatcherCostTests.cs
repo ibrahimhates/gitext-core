@@ -4,19 +4,18 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P09-T12 — dosya sistemi izlemenin büyük çalışma dizinlerindeki maliyeti.
+/// P09-T12 — the cost of file system watching in large working directories.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Linux'ta <c>FileSystemWatcher</c> inotify üzerine kurulu ve inotify <b>dizin
-/// başına</b> bir watch harcıyor. Sistem sınırı (<c>fs.inotify.max_user_watches</c>)
-/// aşıldığında izleyici sessizce ölmüyor, <c>Error</c> olayı veriyor — ama o olayı
-/// kaçıran bir uygulama, kullanıcının değişikliklerini görmemeye başlar ve bunu
-/// hiçbir yerde söylemez.
+/// On Linux, <c>FileSystemWatcher</c> is built on inotify, and inotify spends one watch <b>per
+/// directory</b>. When the system limit (<c>fs.inotify.max_user_watches</c>) is exceeded the watcher
+/// does not die silently, it raises an <c>Error</c> event — but an application that misses that event
+/// stops seeing the user's changes and says so nowhere.
 /// </para>
 /// <para>
-/// Buradaki testler maliyetin <b>ölçülebilir sınırlar içinde</b> kaldığını ve
-/// izleyicinin büyük ağaçlarda kurulabildiğini doğruluyor.
+/// The tests here verify that the cost stays <b>within measurable bounds</b> and that the watcher can
+/// be set up on large trees.
 /// </para>
 /// </remarks>
 public class WatcherCostTests
@@ -24,7 +23,7 @@ public class WatcherCostTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>
-    /// <paramref name="directoryCount"/> dizin içeren bir çalışma ağacı kurar.
+    /// Sets up a working tree containing <paramref name="directoryCount"/> directories.
     /// </summary>
     private static void CreateTree(TestRepository repository, int directoryCount)
     {
@@ -38,9 +37,9 @@ public class WatcherCostTests
     }
 
     /// <remarks>
-    /// 🔴 Asıl risk kurulum süresi: izleyici depo açılışında kuruluyor ve yavaşsa
-    /// doğrudan "repo açma" bütçesinden yiyor (&lt; 1 sn). 1.000 dizinlik bir ağaçta
-    /// bunun ölçülebilir kalması gerekiyor.
+    /// 🔴 The real risk is the setup time: the watcher is set up when a repository is opened, and if it
+    /// is slow it eats directly into the "open a repository" budget (&lt; 1 s). On a tree of 1,000
+    /// directories that has to stay measurable.
     /// </remarks>
     [Fact]
     public async Task Buyuk_agacta_izleyici_hizli_kuruluyor()
@@ -56,8 +55,8 @@ public class WatcherCostTests
 
         try
         {
-            // Bütçe repo açmaya 1 sn veriyor; izleyicinin bunun küçük bir dilimini
-            // aşması, açılışın geri kalanına yer bırakmaz.
+            // The budget gives 1 s to opening a repository; the watcher taking more than a small slice
+            // of that leaves no room for the rest of the startup.
             elapsed.ShouldBeLessThan(
                 TimeSpan.FromMilliseconds(500),
                 $"izleyici kurulumu {elapsed.TotalMilliseconds:0} ms sürdü");
@@ -71,9 +70,9 @@ public class WatcherCostTests
     }
 
     /// <remarks>
-    /// Kaynakların gerçekten bırakıldığını doğrular. Bırakılmazsa depolar arasında
-    /// geçen bir oturum inotify watch'larını tüketir ve bir noktadan sonra <b>hiçbir</b>
-    /// depo izlenemez hâle gelir — sistem genelinde bir sınır bu, süreç başına değil.
+    /// Verifies that the resources really are released. Without that, a session moving between
+    /// repositories exhausts the inotify watches and at some point <b>no</b> repository can be watched
+    /// — that is a system-wide limit, not a per-process one.
     /// </remarks>
     [Fact]
     public void Tekrarli_acilis_kapanis_kaynak_biriktirmiyor()
@@ -88,14 +87,14 @@ public class WatcherCostTests
             watcher.Dispose();
         }
 
-        // Buraya gelinebiliyorsa 20 tur boyunca inotify örneği tükenmedi.
-        // (Sınır aşılsaydı Start bir IOException fırlatırdı.)
+        // Getting here means the inotify instances were not exhausted over 20 rounds.
+        // (Had the limit been exceeded, Start would have thrown an IOException.)
         true.ShouldBeTrue();
     }
 
     /// <remarks>
-    /// <c>Dispose</c> sonrası gelen değişiklikler olay üretmemeli: kapatılmış bir deponun
-    /// tazelemesini tetiklemek, kullanıcının kapattığı depoya ait iş yapmak olurdu.
+    /// Changes arriving after <c>Dispose</c> must produce no events: triggering a refresh for a closed
+    /// repository would mean doing work for a repository the user has closed.
     /// </remarks>
     [Fact]
     public async Task Dispose_sonrasi_olay_gelmiyor()
@@ -111,7 +110,7 @@ public class WatcherCostTests
 
         repository.WriteFile("sonra.txt", "içerik");
 
-        // Olay gelecekse bu süre içinde gelir; birleştirme penceresi bundan kısa.
+        // If an event is coming it arrives within this window; the coalescing window is shorter.
         await Task.Delay(TimeSpan.FromMilliseconds(300), Ct).ConfigureAwait(true);
 
         Volatile.Read(ref events).ShouldBe(0, "kapatılmış izleyici hâlâ olay üretiyor");

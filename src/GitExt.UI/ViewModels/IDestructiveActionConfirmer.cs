@@ -4,60 +4,60 @@ using GitExt.Core.Model;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Sıfırlama onayı için kullanıcıya sorulan soru (P05-T15).
+/// The question put to the user for a reset confirmation (P05-T15).
 /// </summary>
 /// <remarks>
-/// Sayılar diyalogda gösteriliyor: "emin misiniz?" sorusu, neyin gideceğini söylemeden
-/// sorulduğunda kullanıcıyı düşünmeye değil tıklamaya yönlendirir.
+/// The numbers are shown in the dialog: an "are you sure?" asked without saying what will go pushes
+/// the user towards clicking rather than thinking.
 /// </remarks>
 public sealed record ResetChangesRequest
 {
-    /// <summary>Değişiklikleri atılacak izlenen dosyalar.</summary>
+    /// <summary>The tracked files whose changes will be discarded.</summary>
     public required IReadOnlyList<RepositoryPath> ModifiedPaths { get; init; }
 
     /// <summary>Silinebilecek takip edilmeyen dosyalar.</summary>
     public required IReadOnlyList<RepositoryPath> UntrackedPaths { get; init; }
 
-    /// <summary>Stage'lenmiş içerik de atılacak mı (<see cref="DiscardScope.All"/>)?</summary>
+    /// <summary>Will staged content be discarded too (<see cref="DiscardScope.All"/>)?</summary>
     public required bool IncludesStaged { get; init; }
 
     /// <summary>
-    /// Bu işlem için "bir daha sorma" sunulabilir mi?
+    /// Can "do not ask again" be offered for this operation?
     /// </summary>
     /// <remarks>
-    /// Yalnızca <b>yedeklenebilen</b> işlemlerde <see langword="true"/>. Yedeği olmayan bir
-    /// işlemde bu seçeneği sunmak, kullanıcının bir daha asla uyarılmayacağı bir veri kaybı
-    /// yolunu açmak olurdu.
+    /// <see langword="true"/> only for operations that <b>can be backed up</b>. Offering this option on
+    /// an operation with no backup would open a data-loss path the user would never be warned about
+    /// again.
     /// </remarks>
     public required bool CanSuppress { get; init; }
 }
 
-/// <summary>Kullanıcının sıfırlama onayına verdiği cevap.</summary>
+/// <summary>The user's answer to a reset confirmation.</summary>
 public sealed record ResetChangesDecision
 {
-    /// <summary>Kullanıcı iptal etti.</summary>
+    /// <summary>The user cancelled.</summary>
     public static ResetChangesDecision Cancelled { get; } = new();
 
-    /// <summary>İşlem onaylandı mı?</summary>
+    /// <summary>Was the operation confirmed?</summary>
     public bool Confirmed { get; init; }
 
     /// <summary>Takip edilmeyen dosyalar da silinsin mi?</summary>
     public bool DeleteUntracked { get; init; }
 
-    /// <summary>Bu işlem bir daha sorulmasın.</summary>
+    /// <summary>Do not ask about this operation again.</summary>
     public bool DoNotAskAgain { get; init; }
 }
 
 /// <summary>
-/// Yıkıcı işlemler için kullanıcı onayı alır (P05-T15).
+/// Obtains the user's confirmation for destructive operations (P05-T15).
 /// </summary>
 /// <remarks>
-/// Arayüz olarak ayrıldı: ViewModel testleri gerçek bir pencere açmadan "kullanıcı iptal
-/// etti" / "onayladı" senaryolarını çalıştırabilsin. Aynı desen P05-T09'daki
-/// <see cref="IPartialStagingHost"/> ile kurulmuştu.
+/// Separated out as an interface so ViewModel tests can run the "the user cancelled" / "confirmed"
+/// scenarios without opening a real window. The same pattern was set up with
+/// <see cref="IPartialStagingHost"/> in P05-T09.
 /// </remarks>
 public interface IDestructiveActionConfirmer
 {
-    /// <summary>Sıfırlama onayı ister.</summary>
+    /// <summary>Asks for a reset confirmation.</summary>
     Task<ResetChangesDecision> ConfirmResetAsync(ResetChangesRequest request);
 }

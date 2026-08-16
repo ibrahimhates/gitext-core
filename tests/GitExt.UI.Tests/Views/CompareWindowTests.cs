@@ -12,12 +12,12 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P04-T16 — Karşılaştırma penceresi.
+/// P04-T16 — The comparison window.
 /// </summary>
 /// <remarks>
-/// Buradaki asıl gereksinim <b>modeless ve çoklu</b> olması: kullanıcının itirazı, tek
-/// gömülü panelin iki değişikliği yan yana koymayı imkânsız kılmasıydı. GitExtensions'ta da
-/// <c>FormDiff</c> <c>ShowDialog</c> ile değil <c>Show()</c> ile açılıyor.
+/// The real requirement here is that it be <b>modeless and multiple</b>: the user's objection was that
+/// a single embedded panel made it impossible to put two changes side by side. In GitExtensions too,
+/// <c>FormDiff</c> is opened with <c>Show()</c> rather than <c>ShowDialog</c>.
 /// </remarks>
 public class CompareWindowTests
 {
@@ -78,8 +78,7 @@ public class CompareWindowTests
     [AvaloniaFact]
     public async Task Yenileme_ayni_karsilastirmayi_tekrar_okur()
     {
-        // Çalışma ağacı karşılaştırmasında gerekli: kullanıcı dosyayı düzenleyip pencereyi
-        // açık bırakabilir.
+        // Needed for a working tree comparison: the user can edit the file and leave the window open.
         FakeDiffReader reader = new([FakeGitData.Diff("a.cs")]);
         CompareViewModel compare = new(reader, "/tmp/depo");
 
@@ -110,7 +109,7 @@ public class CompareWindowTests
     [AvaloniaFact]
     public async Task Her_pencere_KENDI_ViewModel_ine_sahip()
     {
-        // Paylaşılan tek örnek olsaydı ikinci pencere birincinin içeriğini değiştirirdi.
+        // With a single shared instance, the second window would change the first one's content.
         CommitListViewModel list = await LoadedListAsync();
 
         CompareViewModel first = list.CreateComparison()!;
@@ -129,7 +128,7 @@ public class CompareWindowTests
     [AvaloniaFact]
     public async Task Iki_pencere_ayni_anda_acik_kalabilir()
     {
-        // Fazın bu görevinin var olma sebebi bu: MODELESS ve ÇOKLU.
+        // This is why this task exists in the phase: MODELESS and MULTIPLE.
         CommitListViewModel list = await LoadedListAsync();
 
         CompareViewModel first = list.CreateComparison()!;
@@ -148,12 +147,12 @@ public class CompareWindowTests
         firstWindow.IsVisible.ShouldBeTrue();
         secondWindow.IsVisible.ShouldBeTrue();
 
-        // ⚠️ Başlıklar burada karşılaştırılmıyor: sahte SHA'ların ("0…01", "0…02") ilk sekiz
-        // karakteri aynı, dolayısıyla kısaltılmış başlıklar da aynı çıkıyor. Ayrımın
-        // korunduğu yer revizyonların kendisi.
+        // ⚠️ The titles are not compared here: the first eight characters of the fake SHAs ("0…01",
+        // "0…02") are the same, so the abbreviated titles come out the same too. Where the distinction
+        // is preserved is in the revisions themselves.
         first.FromRevision.ShouldNotBe(second.FromRevision);
 
-        // İçerik gerçekten çizilmiş olmalı: pencere DiffView'ı barındırıyor.
+        // The content must really have been drawn: the window hosts a DiffView.
         firstWindow.GetVisualDescendants().OfType<DiffView>().ShouldHaveSingleItem();
 
         firstWindow.Close();
@@ -176,9 +175,9 @@ public class CompareWindowTests
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
-        // Yalnızca basma gönderiliyor: pencere `KeyDown` içinde kapanıyor ve headless
-        // harness'ın bırakma olayını KAPANMIŞ pencereye göndermesi
-        // `ObjectDisposedException` üretiyor. Gerçek kullanımda böyle bir yol yok.
+        // Only the press is sent: the window closes inside `KeyDown`, and the headless harness sending
+        // the release event to the CLOSED window produces an `ObjectDisposedException`. There is no
+        // such path in real use.
         window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
 
@@ -188,13 +187,13 @@ public class CompareWindowTests
     [AvaloniaFact]
     public async Task Ctrl_D_iki_secili_commiti_karsilastirir()
     {
-        // P03-T14'te açılan çoklu seçimin İLK TÜKETİCİSİ.
+        // THE FIRST CONSUMER of the multiple selection opened in P03-T14.
         CommitListViewModel list = await LoadedListAsync(10);
 
         CommitListView view = new() { DataContext = list };
 
-        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
-        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        // P08-T01: the shortcuts now come from the command registry; without binding it the view
+        // runs without shortcuts (which is exactly what these tests verify).
         view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();
@@ -216,7 +215,7 @@ public class CompareWindowTests
 
         requested.ShouldNotBeNull();
 
-        // Liste en yeniden eskiye sıralı; karşılaştırma eskiden yeniye olmalı.
+        // The list is sorted newest to oldest; the comparison has to go from old to new.
         requested.FromRevision.ShouldBe(list.Rows[3].Commit.Id.Value);
         requested.ToRevision.ShouldBe(list.Rows[0].Commit.Id.Value);
 
@@ -230,8 +229,8 @@ public class CompareWindowTests
 
         CommitListView view = new() { DataContext = list };
 
-        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
-        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        // P08-T01: the shortcuts now come from the command registry; without binding it the view
+        // runs without shortcuts (which is exactly what these tests verify).
         view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();

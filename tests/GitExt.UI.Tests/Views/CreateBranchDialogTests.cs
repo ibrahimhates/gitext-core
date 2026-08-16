@@ -7,11 +7,11 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T01 — dal oluşturma diyaloğunun içeriği ve GitExtensions yerleşimi.
+/// P06-T01 — the create branch dialog's content and its GitExtensions layout.
 /// </summary>
 /// <remarks>
-/// Diyalog <b>gerçekten kuruluyor</b>: P05-T13'te ölçüldüğü gibi, kurulmamış bir denetimin
-/// özellikleri değerlendirilmemiş varsayılanlarında kalır ve test yanlış cevap verir.
+/// The dialog is <b>really built</b>: as measured in P05-T13, the properties of a control that has not
+/// been built stay at their never-evaluated defaults and the test gives the wrong answer.
 /// </remarks>
 public class CreateBranchDialogTests
 {
@@ -34,15 +34,15 @@ public class CreateBranchDialogTests
     [AvaloniaFact]
     public void Checkout_kutusu_VARSAYILAN_isaretli()
     {
-        // GitExtensions'ta `chkCheckoutAfterCreate.Checked = true` (§ 9). Kapalı gelseydi
-        // kullanıcı "dal oluşturdum ama neden hâlâ eski daldayım" derdi.
+        // In GitExtensions `chkCheckoutAfterCreate.Checked = true` (§ 9). Arriving unticked, the user
+        // would say "I created a branch, so why am I still on the old one".
         Create().GetControl<CheckBox>("CheckoutAfterCreateBox").IsChecked.ShouldBe(true);
     }
 
     [AvaloniaFact]
     public void Bos_adla_OLUSTUR_kapali_ama_HATA_YAZMIYOR()
     {
-        // Henüz bir şey yazmamış kullanıcıya kırmızı hata göstermek onu azarlamaktır.
+        // Showing a red error to a user who has not typed anything yet is telling them off.
         CreateBranchDialog dialog = Create();
 
         dialog.GetControl<Button>("CreateButton").IsEnabled.ShouldBeFalse();
@@ -52,8 +52,8 @@ public class CreateBranchDialogTests
     [AvaloniaFact]
     public void Gecersiz_ad_NEDENIYLE_birlikte_bildiriliyor()
     {
-        // "Geçersiz ad" demek yazarken düzeltmeyi imkânsız kılar; hangi kuralın kırıldığı
-        // söylenmeli.
+        // Saying "invalid name" makes it impossible to fix while typing; which rule was broken has to be
+        // said.
         CreateBranchDialog dialog = Create();
 
         dialog.GetControl<TextBox>("BranchNameTextBox").Text = "iki kelime";
@@ -79,9 +79,9 @@ public class CreateBranchDialogTests
     [AvaloniaFact]
     public void Revizyon_sozdizimi_ACIKCA_aciklaniyor()
     {
-        // 🔴 Bu ad git'e göre GEÇERLİ (`check-ref-format --branch` 0 döndürüyor) ama
-        // yazılandan başka bir ada çevriliyor. Kullanıcı neden reddedildiğini bilmezse
-        // uygulamanın bozuk olduğunu düşünür.
+        // 🔴 This name is VALID as far as git is concerned (`check-ref-format --branch` returns 0) but it
+        // is translated to a name other than the one typed. Unless the user knows why it was rejected,
+        // they think the application is broken.
         CreateBranchDialog dialog = Create();
 
         dialog.GetControl<TextBox>("BranchNameTextBox").Text = "@{-1}";
@@ -93,8 +93,8 @@ public class CreateBranchDialogTests
     [AvaloniaFact]
     public void Kirli_agac_uyarisi_YALNIZCA_checkout_isaretliyken()
     {
-        // ÖLÇÜLDÜ: `git branch` (checkout'suz) kirli ağaçta HER ZAMAN başarılı; uyarı
-        // göstermek yanlış alarm olurdu.
+        // MEASURED: `git branch` (without a checkout) ALWAYS succeeds on a dirty tree; showing a warning
+        // would be a false alarm.
         CreateBranchDialog dialog = Create(hasLocalChanges: true);
 
         dialog.GetControl<TextBlock>("DirtyWarning").IsVisible.ShouldBeTrue();
@@ -113,15 +113,14 @@ public class CreateBranchDialogTests
     [AvaloniaFact]
     public void Baslangic_noktasi_GOSTERILIYOR()
     {
-        // "Create branch at this revision" derken hangi revizyon olduğunu söylememek,
-        // kullanıcıyı tahmine zorlar.
+        // Saying "Create branch at this revision" without saying which revision forces the user to guess.
         Create().GetControl<TextBox>("StartPointText").Text.ShouldNotBeNullOrWhiteSpace();
     }
 
     [AvaloniaFact]
     public void Orphan_grubu_YERINDE_ama_devre_disi()
     {
-        // § 9 kural 2: uygulanmamış komut kaldırılmaz, devre dışı durur.
+        // § 9 rule 2: an unimplemented command is not removed, it stays disabled.
         Create().GetControl<StackPanel>("OrphanGroup").IsEnabled.ShouldBeFalse();
     }
 
@@ -141,7 +140,7 @@ public class CreateBranchDialogTests
     [AvaloniaFact]
     public void Her_sorun_turu_KENDI_mesajini_veriyor()
     {
-        // Tüm türler tek bir "geçersiz ad" metnine düşerse arayüz kullanıcıya yardım etmez.
+        // If every kind falls back to a single "invalid name" text, the UI does not help the user.
         IReadOnlyList<string> messages =
         [
             .. Enum.GetValues<BranchNameProblem>().Select(CreateBranchDialog.Describe),

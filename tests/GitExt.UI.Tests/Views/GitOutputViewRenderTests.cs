@@ -13,18 +13,18 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P05-T07 — hook çıktısının gerçekten <b>çizildiğini</b> doğrular.
+/// P05-T07 — verifies that the hook output really is <b>drawn</b>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bu test ViewModel testlerinden ayrı duruyor çünkü bu projede aynı hata iki kez yaşandı:
-/// <c>IsVisible="{Binding …Count}"</c> öğeyi sessizce gizledi (P03-T17) ve parçasız üretilen
-/// hunk başlıkları ekranda <b>boş gri şerit</b> oldu (P04-T09). İkisinde de ViewModel
-/// doğruydu, ekran boştu.
+/// This test stands apart from the ViewModel tests because the same bug happened twice in this
+/// project: <c>IsVisible="{Binding …Count}"</c> silently hid the element (P03-T17), and hunk headers
+/// produced without segments came out as an <b>empty grey strip</b> on screen (P04-T09). In both cases
+/// the ViewModel was right and the screen was blank.
 /// </para>
 /// <para>
-/// Kural (P04-T09): bakılan bölge, doğrulanan öğenin <b>kendi dikdörtgeni</b> olmalı —
-/// aksi halde komşu bir öğenin pikselleri testi hatalı sürümde de geçirir.
+/// The rule (P04-T09): the region examined must be the verified element's <b>own rectangle</b> —
+/// otherwise a neighbouring element's pixels let the test pass on a broken version too.
 /// </para>
 /// </remarks>
 public class GitOutputViewRenderTests
@@ -45,9 +45,9 @@ public class GitOutputViewRenderTests
 
         SelectableTextBlock output = view.GetControl<SelectableTextBlock>("OutputText");
 
-        // Bölge, doğrulanan öğenin KENDİ dikdörtgeni olmalı (P04-T09'un dersi); pencere
-        // koordinatına çevriliyor. Öğe hiç çizilmiyorsa `TranslatePoint` null döner —
-        // "çıktı yok" durumunun kanıtı da bu.
+        // The region has to be the verified element's OWN rectangle (the lesson of P04-T09); it is
+        // converted to window coordinates. When the element is not drawn at all, `TranslatePoint`
+        // returns null — which is itself the proof of the "no output" case.
         bounds = output.TranslatePoint(default, window) is { } origin
             ? new Rect(origin, output.Bounds.Size)
             : null;
@@ -79,7 +79,7 @@ public class GitOutputViewRenderTests
     }
 
     /// <summary>
-    /// Verilen dikdörtgen içinde metin sayılabilecek koyu piksel sayısı.
+    /// The number of dark pixels within the given rectangle that could count as text.
     /// </summary>
     private static int DarkPixelsIn(uint[] pixels, PixelSize size, Rect region)
     {
@@ -96,7 +96,7 @@ public class GitOutputViewRenderTests
             {
                 uint pixel = pixels[(y * size.Width) + x];
 
-                // RGBA sıralı kare; little-endian uint olarak 0xAABBGGRR (P03-T10'da ölçüldü).
+                // An RGBA-ordered frame; as a little-endian uint it is 0xAABBGGRR (measured in P03-T10).
                 int r = (int)(pixel & 0xFF);
                 int g = (int)((pixel >> 8) & 0xFF);
                 int b = (int)((pixel >> 16) & 0xFF);
@@ -134,9 +134,9 @@ public class GitOutputViewRenderTests
     [AvaloniaFact]
     public void Koyu_piksel_sayisi_ciktinin_KENDISINDEN_geliyor()
     {
-        // Karşı kanıt: pikseller çerçeveden ya da komşu öğelerden gelseydi iki render aynı
-        // sayıyı verirdi. Satır sayısı arttıkça metin pikselinin artması, sayılan şeyin
-        // gerçekten çıktı metni olduğunu gösterir.
+        // The counter-evidence: had the pixels come from the frame or from neighbouring elements, the
+        // two renders would give the same count. Text pixels increasing with the line count shows that
+        // what is being counted really is the output text.
         uint[] few = Render(Failure("tek satir"), out PixelSize size, out Rect? bounds);
         int fewCount = DarkPixelsIn(few, size, bounds.ShouldNotBeNull());
 
@@ -150,7 +150,7 @@ public class GitOutputViewRenderTests
     [AvaloniaFact]
     public void Cikti_yoksa_metin_alani_HIC_CIZILMEZ()
     {
-        // Boş bir çerçeve göstermek "bir şey var ama okunamıyor" izlenimi verirdi.
+        // Showing an empty frame would give the impression "there is something but it is unreadable".
         Render(Failure(string.Empty), out PixelSize _, out Rect? bounds);
 
         bounds.ShouldBeNull();
@@ -159,8 +159,8 @@ public class GitOutputViewRenderTests
     [AvaloniaFact]
     public void Kaydedilen_mesaj_bolumu_cizilir()
     {
-        // P04-T09'un dersi: şablonun bir bölümü veriyi hiç çizmezse ViewModel testleri
-        // geçmeye devam eder. Mesaj bölümü ayrıca doğrulanıyor.
+        // The lesson of P04-T09: when a section of the template draws no data at all, the ViewModel
+        // tests carry on passing. The message section is verified separately.
         GitOutputViewModel viewModel = GitOutputViewModel.ForCommit(new CommitResult
         {
             Id = CommitId.Parse(new string('a', 40)),

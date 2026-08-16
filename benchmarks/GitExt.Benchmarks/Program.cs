@@ -10,32 +10,32 @@ using BenchmarkDotNet.Running;
 using GitExt.Benchmarks;
 
 /// <summary>
-/// Faz 09 benchmark çalıştırıcı.
+/// The Phase 09 benchmark runner.
 /// </summary>
 /// <remarks>
-/// Kullanım:
+/// Usage:
 /// <code>
-///   # Tüm benchmark'ları çalıştır (istatistiksel olarak anlamlı sonuçlar)
+///   # Run every benchmark (statistically meaningful results)
 ///   dotnet run --project benchmarks/GitExt.Benchmarks -c Release
 ///
-///   # Tek bir sınıf — desen sınıf adının parçasına uyar
+///   # A single class — the pattern matches part of the class name
 ///   dotnet run --project benchmarks/GitExt.Benchmarks -c Release -- --filter "*Linear*"
 ///
-///   # Tek bir metot — `Sınıf.Metot`
+///   # A single method — `Class.Method`
 ///   dotnet run --project benchmarks/GitExt.Benchmarks -c Release -- --filter "LinearBenchmarks.Linear_50k"
 ///
-///   # Hızlı smoke test — 1 warmup, 3 iterasyon
+///   # A quick smoke test — 1 warmup, 3 iterations
 ///   dotnet run --project benchmarks/GitExt.Benchmarks -c Release -- --fast --filter "*Parser*"
 /// </code>
 /// <para>
-/// Filtre tek bir desen alıyor; birden çok sınıf için komut tekrarlanır. Desendeki
-/// <c>*</c> okunabilirlik için — eşleme her hâlükârda "içerir" mantığıyla yapılıyor.
+/// The filter takes a single pattern; for several classes the command is repeated. The <c>*</c> in the
+/// pattern is for readability — the matching is done with "contains" semantics in any case.
 /// </para>
-/// Sonuçlar `BenchmarkDotNet.Artifacts/results/` dizinine JSON, XML ve Markdown yazılır.
+/// The results are written to `BenchmarkDotNet.Artifacts/results/` as JSON, XML and Markdown.
 /// </remarks>
 internal class Program
 {
-    /// <summary>Default logger + exporter kümesi (BenchmarkDotNet v0.15.6 uyumlu).</summary>
+    /// <summary>The default logger + exporter set (compatible with BenchmarkDotNet v0.15.6).</summary>
     private static readonly IExporter[] DefaultExporters =
     [
         PlainExporter.Default,
@@ -146,13 +146,13 @@ internal class Program
     }
 
     /// <summary>
-    /// Bir sınıf adının filtre desenine uyup uymadığı.
+    /// Whether a class name matches the filter pattern.
     /// </summary>
     /// <remarks>
-    /// Desen <c>*Graph*</c> gibi joker karakterler veya <c>Sınıf.Metot</c> biçiminde
-    /// olabiliyor. Sınıf seçiminde yalnızca sınıf kısmı bakılıyor; metot kısmını
-    /// BenchmarkDotNet'in kendi filtresi ayıklıyor. Desenin tamamı ham metin olarak
-    /// karşılaştırılırsa <c>*</c> hiçbir sınıfa uymaz ve koşu sessizce boş döner.
+    /// The pattern can use wildcards such as <c>*Graph*</c>, or take the form <c>Class.Method</c>. For
+    /// class selection only the class part is considered; the method part is picked out by
+    /// BenchmarkDotNet's own filter. Compared as raw text in its entirety, a <c>*</c> would match no
+    /// class at all and the run would silently come back empty.
     /// </remarks>
     private static bool MatchesType(string typeName, string pattern)
     {
@@ -173,7 +173,7 @@ internal class Program
         builder.AddLogger(new ConsoleLogger(true, null));
         builder.AddExporter(DefaultExporters);
 
-        // --fast modu: CI smoke test için hızlı çalıştır.
+        // --fast mode: a quick run for the CI smoke test.
         if (fastMode)
         {
             var fastJob = Job.Default
@@ -182,9 +182,9 @@ internal class Program
             builder.AddJob(fastJob);
         }
 
-        // Metot düzeyinde eşleme yalnızca desen `Sınıf.Metot` biçimindeyse yapılıyor.
-        // Noktasız bir desen (`*Linear*`) sınıf adını hedefler — onu Main süzüyor; burada
-        // da uygulanırsa metot adlarında karşılığı olmadığı için hiçbir şey çalışmaz.
+        // Method-level matching is only done when the pattern takes the `Class.Method` form.
+        // A pattern without a dot (`*Linear*`) targets the class name — Main filters on that; applied
+        // here as well, nothing would run because it has no counterpart among the method names.
         var filterIndex = Array.IndexOf(args, "--filter");
         if (filterIndex >= 0 && filterIndex + 1 < args.Length)
         {

@@ -5,12 +5,12 @@ using GitExt.UI.Commands;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Komut paleti (P08-T04).
+/// The command palette (P08-T04).
 /// </summary>
 /// <remarks>
-/// Keşfedilebilirliği tek başına çözüyor: bir komutun adını bilen, kısayolunu bilmeden de
-/// ona ulaşabiliyor — ve arama sonucunda kısayolu <b>öğreniyor</b>. Menüde gizli kalan
-/// komutlar için tek gerçekçi keşif yolu bu.
+/// It solves discoverability on its own: someone who knows a command's name can reach it without
+/// knowing its shortcut — and <b>learns</b> the shortcut from the search result. For commands buried
+/// in the menu this is the only realistic route to discovery.
 /// </remarks>
 public sealed partial class CommandPaletteViewModel : ViewModelBase
 {
@@ -35,8 +35,8 @@ public sealed partial class CommandPaletteViewModel : ViewModelBase
 
     public bool IsEmpty => Results.Count == 0;
 
-    /// <summary>Seçili komutu çalıştırır.</summary>
-    /// <returns>Çalıştırıldıysa <see langword="true"/> — palet ancak o zaman kapanmalı.</returns>
+    /// <summary>Runs the selected command.</summary>
+    /// <returns><see langword="true"/> when it ran — only then should the palette close.</returns>
     public bool RunSelected()
     {
         if (SelectedIndex < 0 || SelectedIndex >= Results.Count)
@@ -46,15 +46,16 @@ public sealed partial class CommandPaletteViewModel : ViewModelBase
 
         CommandPaletteItem item = Results[SelectedIndex];
 
-        // Çalıştırılamayan komut palette görünüyor ama SOLUK; seçilse bile çalışmıyor.
-        // Gizlemek daha kötü olurdu: kullanıcı komutu arar, bulamaz ve "yok" sanır.
+        // A command that cannot run is visible in the palette but DIMMED; even if selected it does not
+        // run. Hiding it would be worse: the user searches for the command, does not find it, and thinks
+        // it does not exist.
         return item.CanRun && _router.Run(item.CommandId);
     }
 
-    /// <summary>Seçimi listede kaydırır; uçlarda başa/sona sarar.</summary>
+    /// <summary>Moves the selection through the list; wraps around at either end.</summary>
     /// <remarks>
-    /// Sarma bilinçli: palet kısa bir liste ve kullanıcı aşağı basmayı sürdürüyor. Uçta
-    /// takılmak, listenin bittiğini fark etmeyen kullanıcıya sessiz bir duvar olurdu.
+    /// The wrapping is deliberate: the palette is a short list and the user keeps pressing down. Getting
+    /// stuck at the end would be a silent wall to a user who has not noticed the list finished.
     /// </remarks>
     public void MoveSelection(int delta)
     {
@@ -97,20 +98,20 @@ public sealed partial class CommandPaletteViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Sıralama önceliği: çalıştırılabilir komutlar önce.
+    /// The sort priority: runnable commands first.
     /// </summary>
     /// <remarks>
-    /// Depo açık değilken listenin başında "Push…" durması, paletin ilk denemede işe
-    /// yaramaması demekti — Enter'a basan kullanıcı hiçbir şey olmadığını görür.
+    /// With no repository open, "Push…" sitting at the top of the list meant the palette not working on
+    /// the first try — the user pressing Enter sees nothing happen.
     /// </remarks>
     private int Rank(CommandDefinition definition) => _router.CanRun(definition.Id) ? 0 : 1;
 
     /// <summary>
-    /// Sorgu eşleşmesi: harflerin <b>sırayla</b> geçmesi yeterli.
+    /// Query matching: it is enough for the letters to appear <b>in order</b>.
     /// </summary>
     /// <remarks>
-    /// "dlo" → "Dal oluştur". Tam alt dize araması, kısaltma yazan kullanıcıyı boş sonuçla
-    /// karşılardı; bulanık eşleşme paletin işe yaramasının şartı.
+    /// "dlo" → "Dal oluştur". A full substring search would meet a user typing an abbreviation with an
+    /// empty result; fuzzy matching is what makes the palette useful.
     /// </remarks>
     private bool Matches(CommandDefinition definition)
     {
@@ -126,11 +127,11 @@ public sealed partial class CommandPaletteViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// <paramref name="needle"/> harfleri <paramref name="haystack"/> içinde sırayla geçiyor mu?
+    /// Do <paramref name="needle"/>'s letters appear in order within <paramref name="haystack"/>?
     /// </summary>
     /// <remarks>
-    /// Karşılaştırma <b>kültüre duyarlı</b>: Türkçe'de <c>I</c>/<c>ı</c> ve <c>İ</c>/<c>i</c>
-    /// ayrı harfler. Ordinal karşılaştırma "İşlem" yazan kullanıcıya sonuç döndürmezdi.
+    /// The comparison is <b>culture-sensitive</b>: in Turkish, <c>I</c>/<c>ı</c> and <c>İ</c>/<c>i</c>
+    /// are separate letters. An ordinal comparison would return nothing to a user typing "İşlem".
     /// </remarks>
     private static bool IsSubsequence(string needle, string haystack)
     {
@@ -150,7 +151,7 @@ public sealed partial class CommandPaletteViewModel : ViewModelBase
     }
 }
 
-/// <summary>Palette görünen bir satır.</summary>
+/// <summary>A row shown in the palette.</summary>
 public sealed record CommandPaletteItem(
     string CommandId,
     string Title,

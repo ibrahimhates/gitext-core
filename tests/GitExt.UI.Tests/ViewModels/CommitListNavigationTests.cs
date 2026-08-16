@@ -6,12 +6,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P03-T14 — Seçim ve gezinme mantığı.
+/// P03-T14 — The selection and navigation logic.
 /// </summary>
 /// <remarks>
-/// Gezinme <b>kararı</b> ViewModel'da olduğu için burada test edilebiliyor; tuş eşlemesi ve
-/// sayfa boyutu görünüm işi (bkz. <c>CommitListView.axaml.cs</c>) ve
-/// <c>CommitListKeyboardTests</c>'te gerçek tuş olaylarıyla doğrulanıyor.
+/// Because the navigation <b>decision</b> lives in the ViewModel it can be tested here; the key
+/// mapping and the page size are the view's job (see <c>CommitListView.axaml.cs</c>) and are verified
+/// with real key events in <c>CommitListKeyboardTests</c>.
 /// </remarks>
 public class CommitListNavigationTests
 {
@@ -30,7 +30,7 @@ public class CommitListNavigationTests
     [AvaloniaFact]
     public async Task Depo_acilinca_en_yeni_commit_secilir()
     {
-        // Boş bir detay paneliyle karşılaşmak yerine kullanıcı doğrudan bir şey görsün.
+        // Rather than meeting an empty details panel, let the user see something straight away.
         CommitListViewModel viewModel = await LoadedAsync();
 
         viewModel.SelectedIndex.ShouldBe(0);
@@ -70,7 +70,7 @@ public class CommitListNavigationTests
     [AvaloniaFact]
     public async Task Liste_sinirlarinda_durulur_sarmalanmaz()
     {
-        // Sarmalamak, uzun bir listenin sonunda kullanıcının yerini kaybetmesi demek.
+        // Wrapping around means the user losing their place at the end of a long list.
         CommitListViewModel viewModel = await LoadedAsync(10);
 
         viewModel.SelectedIndex = 8;
@@ -87,8 +87,8 @@ public class CommitListNavigationTests
     [AvaloniaFact]
     public async Task Secim_yokken_ilk_hareket_listenin_ucundan_baslar()
     {
-        // Depo açılışında ilk satır seçiliyor; seçimsiz durum kullanıcının seçimi
-        // temizlemesiyle oluşur (örn. çoklu seçimde her şeyi bırakmak).
+        // The first row is selected when a repository is opened; the no-selection state arises when the
+        // user clears the selection (dropping everything in a multiple selection, say).
         CommitListViewModel viewModel = await LoadedAsync(10);
 
         viewModel.SelectedIndex = -1;
@@ -114,7 +114,7 @@ public class CommitListNavigationTests
     [AvaloniaFact]
     public async Task Ebeveyne_atlanir()
     {
-        // LinearHistory en yeniden en eskiye: satır 0 = commit 10, ebeveyni satır 1.
+        // LinearHistory is newest to oldest: row 0 = commit 10, its parent row 1.
         CommitListViewModel viewModel = await LoadedAsync(10);
         viewModel.SelectedIndex = 0;
 
@@ -157,11 +157,11 @@ public class CommitListNavigationTests
     [AvaloniaFact]
     public async Task Birlesme_commitinde_ilk_ebeveyne_gidilir()
     {
-        // Birleşmenin ikinci ebeveyni listede daha aşağıda; "ana hat" ilk ebeveyndir.
-        //   satır 0: merge (ebeveynler: 3, 2)
-        //   satır 1: commit 3   ← ilk ebeveyn
-        //   satır 2: commit 2
-        //   satır 3: commit 1
+        // The merge's second parent is further down the list; the "mainline" is the first parent.
+        //   row 0: merge (parents: 3, 2)
+        //   row 1: commit 3   ← the first parent
+        //   row 2: commit 2
+        //   row 3: commit 1
         CommitInfo[] commits =
         [
             FakeGitData.Commit(FakeGitData.Sha(4), [FakeGitData.Sha(3), FakeGitData.Sha(2)], "merge"),
@@ -182,7 +182,7 @@ public class CommitListNavigationTests
         viewModel.GoToParent().ShouldBeTrue();
         viewModel.SelectedIndex.ShouldBe(1);
 
-        // Çocuk taraması, ebeveyni birden fazla çocuğu olan bir commit'te de çalışmalı.
+        // The child scan must work for a commit whose parent has more than one child as well.
         viewModel.SelectedIndex = 3;
         viewModel.GoToChild().ShouldBeTrue();
         viewModel.SelectedIndex.ShouldBe(2);
@@ -203,8 +203,8 @@ public class CommitListNavigationTests
     {
         CommitListViewModel viewModel = await LoadedAsync(20);
 
-        // Sha(7) = 39 sıfır + "7"; öneki 4 sıfır — 20 commit'in hepsi sıfırla başlıyor,
-        // yani ilk eşleşen satır seçilmeli (satır 0 = commit 20).
+        // Sha(7) = 39 zeros plus "7"; its prefix is 4 zeros — all 20 commits start with zeros, so the
+        // first matching row should be selected (row 0 = commit 20).
         viewModel.TryGoToCommit("0000").ShouldBeTrue();
         viewModel.SelectedIndex.ShouldBe(0);
     }
@@ -215,10 +215,10 @@ public class CommitListNavigationTests
         CommitListViewModel viewModel = await LoadedAsync(20);
         viewModel.SelectedIndex = 5;
 
-        // git'in alt sınırı 4 karakter.
+        // git's lower bound is 4 characters.
         viewModel.TryGoToCommit("00").ShouldBeFalse();
 
-        // Geçerli uzunlukta ama hiçbir commit'le eşleşmiyor.
+        // A valid length, but matching no commit.
         viewModel.TryGoToCommit("dead").ShouldBeFalse();
 
         viewModel.SelectedIndex.ShouldBe(5);
@@ -234,7 +234,7 @@ public class CommitListNavigationTests
 
         viewModel.SearchStatus.ShouldNotBeNullOrEmpty();
 
-        // Yeniden yazmaya başlayınca uyarı kaybolmalı; eski hata yeni aramaya yapışmasın.
+        // The warning must disappear once typing resumes; the old error must not stick to the new search.
         viewModel.SearchText = "0000";
         viewModel.SearchStatus.ShouldBeNull();
 
@@ -250,10 +250,10 @@ public class CommitListNavigationTests
 
         await viewModel.OpenAsync("/tmp/baska-depo");
 
-        // Yeni depo kendi en yeni commit'iyle açılır; eski satır 7'de kalınmaz.
+        // A new repository opens on its own newest commit; it does not stay on the old row 7.
         viewModel.SelectedIndex.ShouldBe(0);
 
-        // Eski deponun indeksi kalsaydı, aynı SHA'lar yanlış satırlara götürürdü.
+        // Had the old repository's index remained, the same SHAs would lead to the wrong rows.
         viewModel.TryGoToCommit(FakeGitData.Sha(15)).ShouldBeTrue();
         viewModel.SelectedRow!.Commit.Id.Value.ShouldBe(FakeGitData.Sha(15));
     }
