@@ -128,7 +128,7 @@ jobs:
 
       - name: Cache git build
         id: cache-git
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/git-${{ env.GIT_VERSION }}
           key: git-${{ env.GIT_VERSION }}-${{ runner.os }}
