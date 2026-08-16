@@ -13,16 +13,16 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P05-T11 — satır seçimi <b>görsel olarak net</b> mi?
+/// P05-T11 — is the line selection <b>visually clear</b>?
 /// </summary>
 /// <remarks>
-/// Kısmi staging seçime dayanıyor: kullanıcı hangi satırların stage'leneceğini yalnızca
-/// ekrandan anlıyor. Seçim görünmezse yanlış satırları stage'ler ve git bunu kabul eder —
-/// yama geçerlidir, içerik <b>sessizce</b> yanlış olur (P05-T04'ün bulgusu).
+/// Partial staging rests on the selection: the user can only tell which lines will be staged from the
+/// screen. When the selection is invisible they stage the wrong lines and git accepts it — the patch is
+/// valid and the content is <b>silently</b> wrong (the finding of P05-T04).
 /// <para>
-/// Değişiklik satırlarının kendi arka planı var (yeşil/kırmızı); seçim vurgusu onların
-/// <b>altında</b> kalırsa tam da en çok seçilen satırlarda görünmez olur. Test bunu
-/// piksel karşılaştırmasıyla ölçüyor.
+/// Change lines have their own background (green/red); if the selection highlight ends up <b>beneath</b>
+/// them it becomes invisible on exactly the lines that are selected most. The test measures this by
+/// comparing pixels.
 /// </para>
 /// </remarks>
 public class DiffSelectionRenderTests
@@ -50,7 +50,7 @@ public class DiffSelectionRenderTests
         ],
     };
 
-    /// <summary>Verilen satır seçiliyken ekranı yakalar.</summary>
+    /// <summary>Captures the screen with the given row selected.</summary>
     private static async Task<uint[]> RenderAsync(int? selectedRow)
     {
         DiffViewModel model = new(new FakeDiffReader([Sample()]));
@@ -112,9 +112,9 @@ public class DiffSelectionRenderTests
     [AvaloniaFact]
     public async Task Secim_DEGISIKLIK_satirinda_gorunur()
     {
-        // 🔴 Asıl risk burada: eklenen/silinen satırların kendi arka planı var. Seçim vurgusu
-        // onların altında kalırsa, kullanıcının en çok seçtiği satırlarda seçim görünmez.
-        // Satır 2 = "iki eski" (silinen), satır 3 = "iki yeni" (eklenen).
+        // 🔴 The real risk is here: added and removed lines have their own background. If the selection
+        // highlight ends up beneath them, the selection is invisible on the lines the user selects most.
+        // Row 2 = "iki eski" (removed), row 3 = "iki yeni" (added).
         uint[] plain = await RenderAsync(selectedRow: null);
         uint[] selected = await RenderAsync(selectedRow: 3);
 
@@ -133,8 +133,8 @@ public class DiffSelectionRenderTests
     [AvaloniaFact]
     public async Task Iki_farkli_satirin_secimi_AYNI_gorunmez()
     {
-        // Karşı kanıt: yukarıdaki farklar gerçekten seçimden geliyor. Aynı çıkarsa test
-        // "bir şey değişti" der ama ne değiştiğini bilmez.
+        // The counter-evidence: the differences above really do come from the selection. Coming out the
+        // same, the test would say "something changed" without knowing what.
         uint[] first = await RenderAsync(selectedRow: 2);
         uint[] second = await RenderAsync(selectedRow: 3);
 

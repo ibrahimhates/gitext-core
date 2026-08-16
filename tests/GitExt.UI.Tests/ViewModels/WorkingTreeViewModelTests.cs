@@ -6,7 +6,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P05-T09 — çalışma dizini görünümü.
+/// P05-T09 — the working directory view.
 /// </summary>
 public class WorkingTreeViewModelTests
 {
@@ -51,9 +51,9 @@ public class WorkingTreeViewModelTests
     [AvaloniaFact]
     public async Task Takip_edilmeyenler_UNSTAGED_listesinde_durur()
     {
-        // 🔴 Plandan bilinçli sapma: plan ayrı bir "untracked" bölümü öngörüyordu.
-        // GitExtensions'ta öyle bir bölüm YOK — takip edilmeyenler Unstaged listesinde.
-        // Üçüncü bir liste, stage etmek için iki ayrı yere bakmayı gerektirirdi (CLAUDE.md § 9).
+        // 🔴 A deliberate divergence from the plan: the plan called for a separate "untracked" section.
+        // GitExtensions has NO such section — untracked files sit in the Unstaged list.
+        // A third list would require looking in two separate places to stage (CLAUDE.md § 9).
         Harness harness = await CreateAsync(Unstaged("a.txt"), Untracked("yeni.txt"));
 
         harness.Model.Unstaged.Select(r => r.Path.Value).ShouldBe(["a.txt", "yeni.txt"]);
@@ -75,14 +75,14 @@ public class WorkingTreeViewModelTests
     [AvaloniaFact]
     public async Task Stage_sonrasi_secim_SIRADAKI_dosyaya_kayar()
     {
-        // 🔑 Bu ekranın asıl kullanım biçimi: dosyaları sırayla gözden geçirip stage'lemek.
-        // Seçim listenin başına fırlarsa kullanıcı her dosyada elle geri gitmek zorunda kalır.
+        // 🔑 The way this screen is actually used: going through the files in order and staging them.
+        // If the selection jumps to the top of the list, the user has to go back by hand for every file.
         Harness harness = await CreateAsync(Unstaged("a.txt"), Unstaged("b.txt"), Unstaged("c.txt"));
 
         harness.Model.SelectedUnstagedIndex = 1;
         await harness.Model.StageSelectedAsync();
 
-        // "b.txt" gitti; aynı indeks artık "c.txt".
+        // "b.txt" is gone; the same index is now "c.txt".
         harness.Model.SelectedUnstagedIndex.ShouldBe(1);
         harness.Model.Unstaged[harness.Model.SelectedUnstagedIndex].Path.Value.ShouldBe("c.txt");
     }
@@ -102,8 +102,8 @@ public class WorkingTreeViewModelTests
     [AvaloniaFact]
     public async Task Bosalan_listede_KARSI_tarafa_atlanmaz()
     {
-        // ⚠️ Atlamak cazip ama tehlikeli: son dosyasını stage'leyen kullanıcının `Space`
-        // tuşu bu kez az önce stage'lediği dosyayı GERİ ALIRDI.
+        // ⚠️ Tempting but dangerous to skip: for a user staging their last file, the `Space` key would
+        // this time UNSTAGE the file they just staged.
         Harness harness = await CreateAsync(Unstaged("a.txt"));
 
         harness.Model.SelectedUnstagedIndex = 0;
@@ -140,7 +140,7 @@ public class WorkingTreeViewModelTests
     [AvaloniaFact]
     public async Task Bos_listede_tumunu_stage_le_GIT_CALISTIRMAZ()
     {
-        // ⚠️ Yolsuz `git add -A --` deponun tamamını stage'lerdi (P05-T03'teki koruma).
+        // ⚠️ A pathless `git add -A --` would stage the whole repository (the guard from P05-T03).
         Harness harness = await CreateAsync(Staged("a.txt"));
 
         await harness.Model.StageAllAsync();
@@ -153,9 +153,9 @@ public class WorkingTreeViewModelTests
     {
         Harness harness = await CreateAsync(Unstaged("a.txt"), Staged("b.txt"));
 
-        // Etkin listeyi görünümde ODAK belirliyor (`GotFocus`); ViewModel tarafında bunun
-        // karşılığı `IsStagedListActive`. Seçim indeksi tek başına yetmez: iki listede aynı
-        // anda seçim durabiliyor ve zaten seçili bir satıra tıklamak indeksi değiştirmiyor.
+        // The active list is determined in the view by FOCUS (`GotFocus`); its counterpart on the
+        // ViewModel side is `IsStagedListActive`. The selection index alone is not enough: both lists can
+        // hold a selection at once, and clicking an already-selected row does not change the index.
         harness.Model.IsStagedListActive = false;
         harness.Model.SelectedUnstagedIndex = 0;
         harness.Model.SelectedRow!.IsStagedSide.ShouldBeFalse();
@@ -168,8 +168,8 @@ public class WorkingTreeViewModelTests
     [AvaloniaFact]
     public async Task Diff_bileseninin_kendi_dosya_listesi_GIZLENIR()
     {
-        // Dosyalar zaten solda iki liste hâlinde; ikinci bir liste "seçim hangisinden?"
-        // sorusunu doğururdu.
+        // The files are already in two lists on the left; a second list would raise the question "which
+        // one is the selection from?".
         Harness harness = await CreateAsync(Unstaged("a.txt"));
 
         harness.Model.Diff.ShowFileList.ShouldBeFalse();

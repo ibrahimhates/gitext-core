@@ -3,11 +3,11 @@ using System.Collections.Concurrent;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Çalıştırılan her <c>git</c> komutunun kaydı.
+/// The record of every <c>git</c> command that runs.
 /// </summary>
 /// <remarks>
-/// README'de verilen "komutu göster" sözünün altyapısı: kullanıcı her zaman arkada hangi
-/// komutun çalıştığını görebilmeli ve onu terminalinde tekrarlayabilmeli.
+/// The infrastructure behind the "show the command" promise made in the README: the user must always
+/// be able to see which command ran underneath and to repeat it in their terminal.
 /// </remarks>
 public interface IGitCommandLog
 {
@@ -16,44 +16,44 @@ public interface IGitCommandLog
     void RecordFailure(GitCommand command, TimeSpan duration, string reason);
 
     /// <summary>
-    /// Yeni bir kayıt eklendiğinde tetiklenir (P06-T16).
+    /// Raised when a new entry is added (P06-T16).
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>Arayüz iş parçacığında DEĞİL</b>: git süreçleri havuz iş parçacıklarında
-    /// çalışıyor. Dinleyen taraf kendi bağlamına geçmek zorunda.
+    /// ⚠️ <b>NOT on the UI thread</b>: git processes run on pool threads. The listening side has to
+    /// marshal to its own context.
     /// </remarks>
     event EventHandler<GitCommandLogEntry>? Recorded;
 }
 
 /// <summary>
-/// Tek bir komut çalıştırma kaydı.
+/// The record of a single command run.
 /// </summary>
 public sealed record GitCommandLogEntry
 {
     public required DateTimeOffset Timestamp { get; init; }
 
-    /// <summary>Kullanıcıya gösterilebilecek komut metni.</summary>
+    /// <summary>The command text that can be shown to the user.</summary>
     public required string CommandLine { get; init; }
 
     public required string WorkingDirectory { get; init; }
 
     public required TimeSpan Duration { get; init; }
 
-    /// <summary>Süreç hiç tamamlanmadıysa (zaman aşımı, iptal) <see langword="null"/>.</summary>
+    /// <summary><see langword="null"/> when the process never completed (a timeout, a cancellation).</summary>
     public int? ExitCode { get; init; }
 
     public bool IsSuccess { get; init; }
 
-    /// <summary>stderr çıktısı veya tamamlanmama nedeni.</summary>
+    /// <summary>The stderr output, or the reason it did not complete.</summary>
     public string Details { get; init; } = string.Empty;
 }
 
 /// <summary>
-/// Son N komutu bellekte tutan halka tampon (ring buffer).
+/// A ring buffer keeping the last N commands in memory.
 /// </summary>
 /// <remarks>
-/// Sınır olmadan tutulursa uzun bir oturumda bellek sızıntısına dönüşür; grafiği kaydırmak
-/// binlerce komut üretebilir.
+/// Kept without a limit it turns into a memory leak over a long session; scrolling the graph can
+/// produce thousands of commands.
 /// </remarks>
 public sealed class InMemoryGitCommandLog : IGitCommandLog
 {
@@ -116,7 +116,7 @@ public sealed class InMemoryGitCommandLog : IGitCommandLog
 }
 
 /// <summary>
-/// Hiçbir şey kaydetmeyen günlük — günlükleme istenmediğinde kullanılır.
+/// A log that records nothing — used when logging is not wanted.
 /// </summary>
 public sealed class NullGitCommandLog : IGitCommandLog
 {
@@ -134,7 +134,7 @@ public sealed class NullGitCommandLog : IGitCommandLog
     {
     }
 
-    /// <remarks>Hiç tetiklenmiyor; ekleme/çıkarma sessizce yok sayılıyor.</remarks>
+    /// <remarks>Never fires; adds and removes are silently ignored.</remarks>
     public event EventHandler<GitCommandLogEntry>? Recorded
     {
         add { }

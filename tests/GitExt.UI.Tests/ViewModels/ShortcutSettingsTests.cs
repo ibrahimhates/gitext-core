@@ -5,7 +5,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P08-T03 — kısayol yeniden atama ve çakışma tespiti.
+/// P08-T03 — shortcut reassignment and conflict detection.
 /// </summary>
 public class ShortcutSettingsTests
 {
@@ -45,12 +45,12 @@ public class ShortcutSettingsTests
     }
 
     /// <summary>
-    /// 🔴 Küresel bir komuta değiştiricisiz harf atanamaz.
+    /// 🔴 A letter without a modifier cannot be assigned to a global command.
     /// </summary>
     /// <remarks>
-    /// P08-T00/M11+M12: küresel jest odaklı kontrolden tuşu koşulsuz alır. İzin verilseydi
-    /// kullanıcı bir daha hiçbir metin kutusuna o harfi <b>yazamazdı</b> ve hiçbir hata
-    /// görmediği için sebebini de bulamazdı.
+    /// P08-T00/M11+M12: a global gesture takes the key from the focused control unconditionally. Were it
+    /// allowed, the user could never <b>type</b> that letter into any text box again, and with no error
+    /// shown they would not find out why.
     /// </remarks>
     [Fact]
     public void Kuresel_komuta_ciplak_harf_atanamaz()
@@ -64,7 +64,7 @@ public class ShortcutSettingsTests
         registry.GetGesture(CommandIds.RepositoryRefresh).ShouldBe(new KeyGesture(Key.F5));
     }
 
-    /// <summary>Fonksiyon tuşları istisna: metin üretmedikleri için yazmayı engellemezler.</summary>
+    /// <summary>Function keys are the exception: because they produce no text, they do not block typing.</summary>
     [Fact]
     public void Kuresel_komuta_fonksiyon_tusu_atanabilir()
     {
@@ -75,7 +75,7 @@ public class ShortcutSettingsTests
         model.CaptureError.ShouldBeEmpty();
     }
 
-    /// <summary>Panel bağlamında çıplak harf serbest — GitExtensions'ta da öyle.</summary>
+    /// <summary>A bare letter is allowed in a panel context — as it is in GitExtensions.</summary>
     [Fact]
     public void Panel_baglaminda_ciplak_harf_atanabilir()
     {
@@ -86,7 +86,7 @@ public class ShortcutSettingsTests
     }
 
     /// <summary>
-    /// Yalnızca değiştiriciye basmak hata değil: jest henüz tamamlanmamıştır.
+    /// Pressing only a modifier is not an error: the gesture is simply not finished yet.
     /// </summary>
     [Fact]
     public void Yalniz_degistirici_sessizce_yok_sayilir()
@@ -113,7 +113,7 @@ public class ShortcutSettingsTests
         model.IsCapturing.ShouldBeFalse();
     }
 
-    /// <summary>Kaldırmak varsayılana dönmek değildir.</summary>
+    /// <summary>Removing is not the same as returning to the default.</summary>
     [Fact]
     public void Kaldirmak_ve_varsayilana_donmek_ayri()
     {
@@ -146,12 +146,12 @@ public class ShortcutSettingsTests
     }
 
     /// <summary>
-    /// 🔴 Çakışma <b>engellenmiyor</b> ama sessiz de kalmıyor.
+    /// 🔴 A conflict is <b>not blocked</b> but is not passed over silently either.
     /// </summary>
     /// <remarks>
-    /// Engellenseydi iki atamayı sırayla değiştirmek imkânsız olurdu (ilkini boşaltmadan
-    /// ikinciye geçemezdiniz). Sessiz kalınsaydı P08-T00/M10'daki davranış yaşanırdı:
-    /// Avalonia ikinci kaydı hiç çalıştırmıyor ve kullanıcı sebebini göremiyor.
+    /// Were it blocked, changing two assignments one after the other would be impossible (you could not
+    /// move to the second without clearing the first). Were it silent, the behaviour from P08-T00/M10
+    /// would follow: Avalonia never runs the second registration and the user cannot see why.
     /// </remarks>
     [Fact]
     public void Cakisma_engellenmez_ama_bildirilir()
@@ -181,7 +181,7 @@ public class ShortcutSettingsTests
         model.Rows.ShouldHaveSingleItem().CommandId.ShouldBe(CommandIds.HistoryRebase);
     }
 
-    /// <summary>"Bu tuş neye atanmış?" — jestin kendisiyle de aranabiliyor.</summary>
+    /// <summary>"What is this key assigned to?" — the gesture itself can be searched for too.</summary>
     [Fact]
     public void Filtre_jeste_gore_de_suzuyor()
     {
@@ -192,7 +192,7 @@ public class ShortcutSettingsTests
         model.Rows.ShouldHaveSingleItem().CommandId.ShouldBe(CommandIds.HistoryRebase);
     }
 
-    /// <summary>Süzme sonrası seçim korunuyor — atama yaparken liste altından kaymamalı.</summary>
+    /// <summary>The selection survives filtering — the list must not shift out from under an assignment.</summary>
     [Fact]
     public void Atamadan_sonra_secim_korunuyor()
     {

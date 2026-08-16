@@ -7,7 +7,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P05-T15 — yıkıcı işlemlerin onayı ve güvenlik ağı.
+/// P05-T15 — confirmation and the safety net for destructive operations.
 /// </summary>
 public class ResetConfirmationTests
 {
@@ -51,7 +51,7 @@ public class ResetConfirmationTests
     [AvaloniaFact]
     public async Task Onay_verilmezse_HICBIR_SEY_yapilmaz()
     {
-        // Diyalogdan iptal dönerse yıkıcı komut hiç çalışmamalı.
+        // When the dialog comes back cancelled, the destructive command must never run.
         Harness harness = await CreateAsync(ResetChangesDecision.Cancelled, Modified("a.txt"));
 
         await harness.Model.ResetChangesAsync(DiscardScope.UnstagedOnly);
@@ -63,8 +63,8 @@ public class ResetConfirmationTests
     [AvaloniaFact]
     public async Task Onaylayici_YOKSA_islem_calismaz()
     {
-        // 🔴 Onaysız yıkıcı işlem çalıştırmaktansa hiç çalıştırmamak yeğdir: onaylayıcı
-        // atanmadıysa (pencere kurulmadıysa) komut sessizce hiçbir şey yapmalı.
+        // 🔴 Not running a destructive operation at all beats running it unconfirmed: with no confirmer
+        // assigned (the window not having been built), the command must silently do nothing.
         FakeStatusReader status = new([Modified("a.txt")]);
         FakeWorkingTreeWriter writer = new(status);
 
@@ -96,8 +96,8 @@ public class ResetConfirmationTests
     [AvaloniaFact]
     public async Task Takip_edilmeyenler_yalnizca_ISTENIRSE_silinir()
     {
-        // GitExtensions'ta da ayrı bir onay kutusu: "Also delete new files and/or
-        // directories". Değişiklikleri sıfırlamak, yeni dosyaları silmeyi ima etmez.
+        // GitExtensions has a separate checkbox too: "Also delete new files and/or directories".
+        // Resetting changes does not imply deleting new files.
         Harness harness = await CreateAsync(
             new ResetChangesDecision { Confirmed = true, DeleteUntracked = false },
             Modified("a.txt"),
@@ -107,7 +107,7 @@ public class ResetConfirmationTests
 
         harness.Writer.Calls.ShouldNotContain(call => call.StartsWith("delete:", StringComparison.Ordinal));
 
-        // İstendiğinde silinmeli.
+        // It must be deleted when asked for.
         Harness second = await CreateAsync(
             new ResetChangesDecision { Confirmed = true, DeleteUntracked = true },
             Modified("a.txt"),
@@ -121,8 +121,8 @@ public class ResetConfirmationTests
     [AvaloniaFact]
     public async Task Takip_edilmeyen_dosya_MODIFIED_listesine_KARISMAZ()
     {
-        // 🔴 Karışsaydı `git restore` takip edilmeyen bir yol için düşer ve işlemin
-        // tamamı hata verirdi — kullanıcı hiçbir şeyin sıfırlanmadığını görürdü.
+        // 🔴 Had they been mixed, `git restore` would fail for an untracked path and the whole operation
+        // would error out — the user would see nothing reset at all.
         Harness harness = await CreateAsync(
             new ResetChangesDecision { Confirmed = true, DeleteUntracked = true },
             Modified("a.txt"),
@@ -175,7 +175,7 @@ public class ResetConfirmationTests
 
         harness.Model.Unstaged.Count.ShouldBe(0);
 
-        // İkinci bir dosya geldiğinde artık sormamalı.
+        // Once a second file arrives it must no longer ask.
         await harness.Model.OpenAsync("/tmp/depo");
         harness.Writer.Calls.Clear();
 
@@ -187,8 +187,8 @@ public class ResetConfirmationTests
     [AvaloniaFact]
     public async Task Bir_daha_sorma_GUVENLIK_AGINI_kapatmaz()
     {
-        // 🔑 Onay atlanabilir, yedek atlanamaz: kullanıcı sormamayı seçtiğinde bile içerik
-        // yedeklenmeli ve geri alma sunulmalı.
+        // 🔑 The confirmation can be skipped, the backup cannot: even when the user chooses not to be
+        // asked, the content has to be backed up and an undo offered.
         Harness harness = await CreateAsync(
             new ResetChangesDecision { Confirmed = true, DoNotAskAgain = true },
             Modified("a.txt"));
@@ -219,8 +219,8 @@ public class ResetConfirmationTests
     [AvaloniaFact]
     public async Task KISMI_kurtarma_basarili_gibi_gosterilmez()
     {
-        // `gc --prune=now` yedeği anında siliyor (ölçüldü). Kurtarılamayan dosya varken
-        // "geri yüklendi" demek, kullanıcıya olmayan bir sonuç vaat etmek olurdu.
+        // `gc --prune=now` deletes the backup immediately (measured). Saying "restored" while there is
+        // an unrecoverable file would promise the user an outcome that does not exist.
         Harness harness = await CreateAsync(
             new ResetChangesDecision { Confirmed = true, DeleteUntracked = true },
             Untracked("bir.cs"),
@@ -255,8 +255,7 @@ public class ResetConfirmationTests
     [AvaloniaFact]
     public async Task Hook_atlama_varsayilan_olarak_KAPALI()
     {
-        // Hook'ları atlamak sessiz bir varsayılan olamaz: `pre-commit` kullanıcının kendi
-        // kalite kontrolü.
+        // Skipping hooks cannot be a silent default: `pre-commit` is the user's own quality control.
         Harness harness = await CreateAsync(null, Staged("a.txt"));
 
         harness.Model.SkipHooks.ShouldBeFalse();

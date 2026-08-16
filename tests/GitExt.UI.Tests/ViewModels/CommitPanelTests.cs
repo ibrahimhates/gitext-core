@@ -11,7 +11,7 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P05-T12 — commit paneli: mesaj kutusu, 50/72 kılavuzu, sayaç, <c>Ctrl+Enter</c>.
+/// P05-T12 — the commit panel: the message box, the 50/72 guide, the counter, <c>Ctrl+Enter</c>.
 /// </summary>
 public class CommitPanelTests
 {
@@ -57,8 +57,9 @@ public class CommitPanelTests
     [AvaloniaFact]
     public void Uzun_konu_isaretlenir_ama_ENGELLENMEZ()
     {
-        // Uzun konu bir tercih olabilir; uygulamanın kullanıcıyı kendi deposunda kısıtlaması
-        // doğru değil. GitExtensions'ta da bu bir onay diyaloğu, engel değil.
+        // A long subject can be a deliberate choice; it is not right for the application to constrain
+        // the user in their own repository. In GitExtensions this is a confirmation dialog too, not a
+        // block.
         CommitMessageViewModel message = new() { Text = new string('x', 60) };
 
         message.IsSubjectTooLong.ShouldBeTrue();
@@ -69,7 +70,8 @@ public class CommitPanelTests
     [AvaloniaFact]
     public void Ikinci_satirin_dolu_olmasi_uyarilir()
     {
-        // git bu ayrımı anlamlı sayıyor: `%s` ilk satır, `%b` boş satırdan sonrası.
+        // git treats this distinction as meaningful: `%s` is the first line, `%b` what follows the blank
+        // line.
         CommitMessageViewModel message = new() { Text = "konu\ngovde\nbiraz daha" };
 
         message.HasNonEmptySecondLine.ShouldBeTrue();
@@ -93,13 +95,13 @@ public class CommitPanelTests
         message.HasNonEmptySecondLine.ShouldBeFalse();
     }
 
-    // ---- Commit akışı ----
+    // ---- The commit flow ----
 
     [AvaloniaFact]
     public async Task Mesaj_bosken_commit_KAPALI()
     {
-        // Boş mesajla `git commit` çıkış 1 veriyor (P05-T06'da ölçüldü); reddedileceği
-        // belli olan bir işlemi açık sunmak olurdu.
+        // `git commit` with an empty message exits 1 (measured in P05-T06); it would mean offering an
+        // operation that is known in advance to be rejected.
         Harness harness = await CreateAsync(Staged("a.txt"));
 
         harness.Model.CanCommit.ShouldBeFalse();
@@ -124,7 +126,7 @@ public class CommitPanelTests
     [AvaloniaFact]
     public async Task Amend_stage_lenmis_degisiklik_olmadan_da_commit_ettirir()
     {
-        // `--amend` yalnızca mesajı değiştirmek için de kullanılıyor.
+        // `--amend` is used to change just the message too.
         Harness harness = await CreateAsync();
 
         harness.Model.Message.Text = "duzeltilmis mesaj";
@@ -151,7 +153,7 @@ public class CommitPanelTests
     [AvaloniaFact]
     public async Task Basarili_commit_sonrasi_mesaj_TEMIZLENIR()
     {
-        // Aynı metinle ikinci bir commit atmak neredeyse her zaman kazadır.
+        // Making a second commit with the same text is nearly always an accident.
         Harness harness = await CreateAsync(Staged("a.txt"));
 
         harness.Model.Message.Text = "konu";
@@ -191,7 +193,7 @@ public class CommitPanelTests
     [AvaloniaFact]
     public async Task Commit_basarisiz_olursa_mesaj_KORUNUR()
     {
-        // 🔑 Mesajı silmek, kullanıcının yazdığı metni hata anında kaybettirmek olurdu.
+        // 🔑 Clearing the message would mean losing the text the user wrote at the moment of an error.
         Harness harness = await CreateAsync(Staged("a.txt"));
 
         harness.Commits.Failure = new GitExt.Core.Git.GitException(
@@ -214,13 +216,13 @@ public class CommitPanelTests
     [AvaloniaFact]
     public async Task Mesaj_kutusunda_BOSLUK_dosya_stage_LEMEZ()
     {
-        // 🔴 Tünellenen kısayol yüzünden `Space` mesaja boşluk yazmak yerine dosya
-        // stage'liyordu: mesaj yazan kullanıcı farkında olmadan index'i değiştirirdi.
+        // 🔴 Because of the tunnelled shortcut, `Space` was staging a file instead of typing a space into
+        // the message: a user writing a message would change the index without noticing.
         Harness harness = await CreateAsync(Unstaged("a.txt"));
 
         WorkingTreeView view = new() { DataContext = harness.Model };
 
-        // P08-T01: kısayollar komut kaydından geliyor.
+        // P08-T01: the shortcuts come from the command registry.
         view.AttachShortcuts(TestCommands.Registry());
 
         Window window = new() { Width = 900, Height = 600, Content = view };
@@ -243,15 +245,15 @@ public class CommitPanelTests
     [AvaloniaFact]
     public async Task Ctrl_Enter_commit_atar_ve_mesaja_SATIR_SONU_eklemez()
     {
-        // ÖLÇÜLDÜ: `AcceptsReturn` açık bir `TextBox` Ctrl+Enter'ı da satır sonu olarak
-        // işliyor; yakalanıp `Handled` işaretlenmezse mesaja boş satır girerdi.
+        // MEASURED: a `TextBox` with `AcceptsReturn` on handles Ctrl+Enter as a line ending too; unless
+        // it is caught and marked `Handled`, a blank line would go into the message.
         Harness harness = await CreateAsync(Staged("a.txt"));
 
         harness.Model.Message.Text = "konu";
 
         WorkingTreeView view = new() { DataContext = harness.Model };
 
-        // P08-T01: kısayollar komut kaydından geliyor.
+        // P08-T01: the shortcuts come from the command registry.
         view.AttachShortcuts(TestCommands.Registry());
 
         Window window = new() { Width = 900, Height = 600, Content = view };

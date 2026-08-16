@@ -1,56 +1,56 @@
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Dal oluşturma diyaloğuna verilen bağlam (P06-T01).
+/// The context handed to the create branch dialog (P06-T01).
 /// </summary>
 public sealed record CreateBranchRequest
 {
     /// <summary>
-    /// Başlangıç noktası (commit hash'i veya ref adı). <see langword="null"/> ise <c>HEAD</c>.
+    /// The starting point (a commit hash or a ref name). <c>HEAD</c> when <see langword="null"/>.
     /// </summary>
     public string? StartPoint { get; init; }
 
-    /// <summary>Kullanıcıya gösterilecek başlangıç noktası açıklaması.</summary>
+    /// <summary>The description of the starting point to show the user.</summary>
     public required string StartPointLabel { get; init; }
 
     /// <summary>
-    /// Çalışma ağacında kaydedilmemiş değişiklik var mı?
+    /// Are there uncommitted changes in the working tree?
     /// </summary>
     /// <remarks>
-    /// Yalnızca <b>uyarı</b> için: ölçüldü, <c>git switch -c</c> kirli ağaçta değişiklikleri
-    /// çoğu zaman taşıyor. Engel değil bilgi.
+    /// For the <b>warning</b> only: measured, <c>git switch -c</c> usually carries the changes across on
+    /// a dirty tree. Information, not a block.
     /// </remarks>
     public bool HasLocalChanges { get; init; }
 }
 
 /// <summary>
-/// Kullanıcının dal oluşturma diyaloğundaki kararı (P06-T01).
+/// The user's decision in the create branch dialog (P06-T01).
 /// </summary>
 public sealed record CreateBranchDecision
 {
-    /// <summary>Kullanıcı onayladı mı?</summary>
+    /// <summary>Did the user confirm?</summary>
     public bool Confirmed { get; init; }
 
-    /// <summary>Girilen dal adı.</summary>
+    /// <summary>The branch name entered.</summary>
     public string Name { get; init; } = string.Empty;
 
-    /// <summary>Oluşturduktan sonra dala geçilsin mi?</summary>
+    /// <summary>Should the branch be checked out after creating it?</summary>
     public bool Checkout { get; init; } = true;
 
-    /// <summary>İptal edilmiş karar.</summary>
+    /// <summary>A cancelled decision.</summary>
     public static CreateBranchDecision Cancelled { get; } = new();
 }
 
 /// <summary>
-/// Dal oluşturma diyaloğunu gösteren taraf (P06-T01).
+/// The side that shows the create branch dialog (P06-T01).
 /// </summary>
 /// <remarks>
-/// <see cref="IDestructiveActionConfirmer"/> ile aynı gerekçe: diyalog bir sahip pencere
-/// istiyor, o da ancak açılış anında biliniyor; ViewModel'in <c>Window</c> tanıması ise
-/// katman kuralını kırardı.
+/// The same reasoning as <see cref="IDestructiveActionConfirmer"/>: the dialog needs an owner window,
+/// and that is only known at the moment it opens; the ViewModel knowing about <c>Window</c> would break
+/// the layering rule.
 /// </remarks>
 public interface ICreateBranchPrompt
 {
-    /// <summary>Diyaloğu gösterir ve kararı döndürür.</summary>
+    /// <summary>Shows the dialog and returns the decision.</summary>
     Task<CreateBranchDecision> RequestAsync(CreateBranchRequest request);
 }

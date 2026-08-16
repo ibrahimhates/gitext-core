@@ -6,34 +6,34 @@ using Avalonia.Media;
 namespace GitExt.UI.Controls;
 
 /// <summary>
-/// Belirli sütun numaralarında dikey kılavuz çizgileri çizer (P05-T12).
+/// Draws vertical guide lines at particular column numbers (P05-T12).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Commit mesajında yerleşik gelenek: <b>konu satırı ≤ 50</b>, <b>gövde satırları ≤ 72</b>.
-/// Kılavuz kullanıcıya sınırı <i>yazarken</i> gösteriyor — commit anında uyarmak, mesajı
-/// zaten yazılmışken düzeltmeye zorlamak olurdu.
+/// The established convention for a commit message: the <b>subject line ≤ 50</b>, the <b>body lines ≤
+/// 72</b>. The guide shows the user the limit <i>while they type</i> — warning at commit time would
+/// mean forcing a fix on a message that is already written.
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLDÜ (P05-T12):</b> sütun kılavuzu sabit karakter genişliği gerektiriyor ve
-/// <c>"Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"</c> zinciri headless'ta
-/// <b>gerçekten monospace</b> çözülüyor (<c>iiii</c> ve <c>MMMM</c> aynı genişlikte).
-/// ⚠️ Zincirdeki adlar <b>tek tek</b> verilirse çalışmıyor: bu makinede <c>Cascadia Mono</c>
-/// ve <c>Consolas</c> yok ve orantılı bir yedeğe düşüyorlar (<c>iiii</c>=12,4 ·
-/// <c>MMMM</c>=43,5). Zincir olarak verildiğinde sıradaki ada geçiliyor.
+/// <b>MEASURED (P05-T12):</b> a column guide requires a fixed character width, and the chain
+/// <c>"Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace"</c> really does resolve to a
+/// <b>monospace</b> face headless (<c>iiii</c> and <c>MMMM</c> come out the same width).
+/// ⚠️ The names in the chain do not work when given <b>individually</b>: <c>Cascadia Mono</c> and
+/// <c>Consolas</c> do not exist on this machine and fall back to a proportional face
+/// (<c>iiii</c>=12.4 · <c>MMMM</c>=43.5). Given as a chain, it moves on to the next name.
 /// </para>
 /// </remarks>
 public sealed class ColumnGuides : Control
 {
-    /// <summary>Kılavuz çizilecek sütunlar.</summary>
+    /// <summary>The columns to draw guides at.</summary>
     public static readonly StyledProperty<IReadOnlyList<int>> ColumnsProperty =
         AvaloniaProperty.Register<ColumnGuides, IReadOnlyList<int>>(nameof(Columns), [50, 72]);
 
-    /// <summary>Çizgi rengi.</summary>
+    /// <summary>The line colour.</summary>
     public static readonly StyledProperty<IBrush?> StrokeProperty =
         AvaloniaProperty.Register<ColumnGuides, IBrush?>(nameof(Stroke));
 
-    /// <summary>Metnin sol kenar boşluğu — kutunun iç dolgusuyla aynı olmalı.</summary>
+    /// <summary>The text's left margin — it must match the box's inner padding.</summary>
     public static readonly StyledProperty<double> TextOffsetProperty =
         AvaloniaProperty.Register<ColumnGuides, double>(nameof(TextOffset));
 
@@ -88,8 +88,8 @@ public sealed class ColumnGuides : Control
 
         foreach (int column in Columns)
         {
-            // Yarım piksel kaydırma: tam sayıda çizilen 1 px'lik çizgi iki piksele yayılıp
-            // soluk görünüyor.
+            // A half-pixel offset: a 1 px line drawn on a whole number spreads across two pixels and
+            // looks faint.
             double x = Math.Floor(TextOffset + (column * characterWidth)) + 0.5;
 
             if (x > Bounds.Width)
@@ -102,11 +102,11 @@ public sealed class ColumnGuides : Control
     }
 
     /// <summary>
-    /// Tek karakterin genişliği.
+    /// The width of a single character.
     /// </summary>
     /// <remarks>
-    /// Ölçüm <b>çizim zamanında</b> yapılıyor: yazı tipi ve punto değişebiliyor (P04-T13'te
-    /// punto ayarı geldi) ve önbelleklenmiş bir değer sessizce eskir.
+    /// The measurement is made <b>at draw time</b>: the font and size can change (the size setting
+    /// arrived in P04-T13) and a cached value goes stale silently.
     /// </remarks>
     private double MeasureCharacterWidth()
     {

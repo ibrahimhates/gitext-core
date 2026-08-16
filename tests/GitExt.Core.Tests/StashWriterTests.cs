@@ -5,11 +5,11 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P07-T12 — stash işlemleri.
+/// P07-T12 — stash operations.
 /// </summary>
 /// <remarks>
-/// Ölçümün iki sessiz noktası: <c>pop</c>'un stage'lenmiş/stage'lenmemiş ayrımını
-/// kaybetmesi ve çakışmada girdinin <b>düşmemesi</b>.
+/// The two silent points from the measurement: <c>pop</c> losing the staged/unstaged distinction, and
+/// the entry <b>not being dropped</b> on a conflict.
 /// </remarks>
 public class StashWriterTests
 {
@@ -65,8 +65,8 @@ public class StashWriterTests
     [Fact]
     public async Task Degisiklik_YOKKEN_stash_olusmadi_diye_bildiriliyor()
     {
-        // git "No local changes to save" deyip çıkış kodu 0 veriyor. Bunu "stash'lendi"
-        // diye raporlamak, kullanıcıyı olmayan bir girdiyi aramaya iterdi.
+        // git says "No local changes to save" and gives exit code 0. Reporting that as "stashed" would
+        // send the user looking for an entry that does not exist.
         using Harness harness = await CreateAsync();
 
         bool stashed = await harness.Writer.PushAsync(harness.Path, new StashPushOptions(), Ct);
@@ -91,8 +91,8 @@ public class StashWriterTests
     [Fact]
     public async Task Untracked_DAHIL_edilince_ucuncu_ebeveynden_anlasiliyor()
     {
-        // ÖLÇÜLDÜ: `-u` ile alınan stash'in 3. ebeveyni var. Mesaja bakmak güvenilmez
-        // olurdu — mesajı kullanıcı yazıyor.
+        // MEASURED: a stash taken with `-u` has a 3rd parent. Looking at the message would be unreliable
+        // — the message is written by the user.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("f.txt", "degisti\n");
         harness.Repository.WriteFile("yeni.txt", "takipsiz\n");
@@ -171,7 +171,7 @@ public class StashWriterTests
     [Fact]
     public void SEKME_iceren_stash_mesaji_alanlari_KAYDIRMIYOR()
     {
-        // Mesajı kullanıcı yazıyor; sekme içerebilir. NUL ayırıcı bu yüzden.
+        // The message is written by the user; it can contain a tab. Hence the NUL separator.
         string output = "\u001erefs/stash@{0}\0abc\01786083756\0On main: konu\tsekmeli\0p1 p2\n";
 
         IReadOnlyList<StashEntry> entries = StashWriter.Parse(output);
@@ -198,8 +198,8 @@ public class StashWriterTests
     [Fact]
     public async Task POP_STAGE_ayrimini_KORUYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: varsayılan `pop` bu ayrımı sessizce kaybediyor — `f` stage'li,
-        // `g` stage'siz iken pop sonrası İKİSİ DE stage'siz oluyordu. `--index` korur.
+        // 🔴 MEASURED: the default `pop` silently loses this distinction — with `f` staged and `g`
+        // unstaged, after the pop BOTH were unstaged. `--index` preserves it.
         using Harness harness = await CreateAsync();
 
         harness.Repository.WriteFile("f.txt", "stageli\n");
@@ -250,8 +250,8 @@ public class StashWriterTests
     [Fact]
     public async Task POP_CAKISIRSA_girdi_KALIYOR_ve_bu_bildiriliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: git "The stash entry is kept in case you need it again." diyor ve
-        // rc=1 veriyor. Söylenmezse kullanıcı ya iki kez uygular ya da elle silerken kaybeder.
+        // 🔴 MEASURED: git says "The stash entry is kept in case you need it again." and gives rc=1.
+        // Unless it is said, the user either applies it twice or loses it while deleting it by hand.
         using Harness harness = await CreateAsync();
 
         harness.Repository.WriteFile("f.txt", "stashli\n");
@@ -272,14 +272,14 @@ public class StashWriterTests
     [Fact]
     public async Task BILINMEYEN_secici_FIRLATIYOR()
     {
-        // Gerçek hata; çakışma gibi yutulmamalı.
+        // A real error; it must not be swallowed the way a conflict is.
         using Harness harness = await CreateAsync();
 
         await Should.ThrowAsync<GitException>(async () =>
             await harness.Writer.ApplyAsync(harness.Path, "stash@{42}", drop: false, Ct));
     }
 
-    // ------------------------------------------------------------ diğer
+    // ------------------------------------------------------------ other
 
     [Fact]
     public async Task Drop_girdiyi_siliyor()

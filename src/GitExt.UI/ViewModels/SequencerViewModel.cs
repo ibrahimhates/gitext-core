@@ -6,11 +6,11 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Cherry-pick / revert diyaloğu (P07-T07, P07-T08).
+/// The cherry-pick / revert dialog (P07-T07, P07-T08).
 /// </summary>
 /// <remarks>
-/// İkisi tek ekran: git'te de aynı sequencer'ı kullanıyorlar ve kullanıcıya sorulan
-/// sorular aynı — hangi commit, commit'lensin mi, merge ise hangi ebeveyn.
+/// One screen for both: in git they use the same sequencer, and the questions put to the user are the
+/// same — which commit, should it be committed, and for a merge, which parent.
 /// </remarks>
 public sealed class SequencerViewModel : ViewModelBase
 {
@@ -73,7 +73,7 @@ public sealed class SequencerViewModel : ViewModelBase
         }
     }
 
-    /// <summary><c>-x</c> — yalnızca cherry-pick'te anlamlı.</summary>
+    /// <summary><c>-x</c> — meaningful only for cherry-pick.</summary>
     public bool RecordOrigin
     {
         get => _recordOrigin;
@@ -89,17 +89,17 @@ public sealed class SequencerViewModel : ViewModelBase
     public bool SupportsRecordOrigin => !IsRevert;
 
     /// <summary>
-    /// Seçilen commit bir merge commit'i mi?
+    /// Is the selected commit a merge commit?
     /// </summary>
     /// <remarks>
-    /// 🔴 ÖLÇÜLDÜ: merge commit'ini <c>-m</c> olmadan revert etmek rc=128 veriyor. Ebeveyn
-    /// seçimi bu yüzden görünür ve <b>zorunlu</b>.
+    /// 🔴 MEASURED: reverting a merge commit without <c>-m</c> gives rc=128. That is why the parent
+    /// selection is visible and <b>mandatory</b>.
     /// </remarks>
     public bool IsMergeCommit => _parentCount > 1;
 
     public int ParentCount => _parentCount;
 
-    /// <summary>Hangi ebeveyn "ana hat" sayılacak (1 tabanlı).</summary>
+    /// <summary>Which parent counts as the "mainline" (1-based).</summary>
     public int MainlineParent
     {
         get => _mainlineParent;
@@ -112,7 +112,7 @@ public sealed class SequencerViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Çalıştırılacak komut ("komutu göster" ilkesi).</summary>
+    /// <summary>The command that will run (the "show the command" principle).</summary>
     public string CommandLine => SequencerWriter.Describe(BuildOptions());
 
     public string? Error
@@ -127,7 +127,7 @@ public sealed class SequencerViewModel : ViewModelBase
         private set => SetProperty(ref _result, value);
     }
 
-    /// <summary>Çakışmayla durdu mu? (Çağıran çakışma ekranını açıyor.)</summary>
+    /// <summary>Did it stop on a conflict? (The caller opens the conflict screen.)</summary>
     public bool HasConflicts { get; private set; }
 
     public bool IsCompleted { get; private set; }
@@ -146,7 +146,7 @@ public sealed class SequencerViewModel : ViewModelBase
 
     public IAsyncRelayCommand RunCommand { get; }
 
-    /// <summary>Ekranı doldurur: merge commit'i mi diye bakar.</summary>
+    /// <summary>Populates the screen: checks whether it is a merge commit.</summary>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         _parentCount = await _sequencer
@@ -165,8 +165,8 @@ public sealed class SequencerViewModel : ViewModelBase
         NoCommit = NoCommit,
         RecordOrigin = RecordOrigin,
 
-        // Merge commit'i değilse `-m` verilmiyor: git tek ebeveynli bir commit'te bunu
-        // reddediyor.
+        // When it is not a merge commit, `-m` is not passed: git refuses it on a commit with a single
+        // parent.
         MainlineParent = IsMergeCommit ? MainlineParent : null,
     };
 
@@ -186,7 +186,7 @@ public sealed class SequencerViewModel : ViewModelBase
             Result = result.HasConflicts
                 ? $"{result.ConflictedPaths.Count} file(s) conflicted — resolve them and continue."
                 : result.RequiresCommit
-                    // 🔴 `--no-commit` "başarılı" dönüyor ama HEAD ilerlemiyor.
+                    // 🔴 `--no-commit` returns "success" but HEAD does not advance.
                     ? "Changes are staged but not committed yet."
                     : $"{result.CommitsCreated} commit(s) created. "
                       + $"To undo: {result.SafetyPoint.RecoveryCommand}";
@@ -204,7 +204,7 @@ public sealed class SequencerViewModel : ViewModelBase
     }
 }
 
-/// <summary>Cherry-pick / revert diyaloğunu gösteren taraf (P07-T07, P07-T08).</summary>
+/// <summary>The side that shows the cherry-pick / revert dialog (P07-T07, P07-T08).</summary>
 public interface ISequencerPrompt
 {
     Task ShowAsync(SequencerViewModel model);

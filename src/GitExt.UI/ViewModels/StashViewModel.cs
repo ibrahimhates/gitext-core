@@ -7,7 +7,7 @@ using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
-/// <summary>Listedeki bir stash satırı (P07-T13).</summary>
+/// <summary>A stash row in the list (P07-T13).</summary>
 public sealed class StashRowViewModel
 {
     public required StashEntry Entry { get; init; }
@@ -21,10 +21,10 @@ public sealed class StashRowViewModel
             ? string.Empty
             : Entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
-    /// <summary>Takip edilmeyen dosyalar da içeride mi?</summary>
+    /// <summary>Are untracked files included as well?</summary>
     /// <remarks>
-    /// Gösteriliyor çünkü uygulandığında ortaya çıkacak dosyaları kullanıcı önceden
-    /// bilmeli — özellikle <c>pop</c> geri alınamadığı için.
+    /// It is shown because the user needs to know in advance which files will appear when it is applied
+    /// — especially since <c>pop</c> cannot be undone.
     /// </remarks>
     public string Badge => Entry.IncludesUntracked ? "＋untracked" : string.Empty;
 
@@ -32,11 +32,12 @@ public sealed class StashRowViewModel
 }
 
 /// <summary>
-/// Stash ekranı (P07-T13).
+/// The stash screen (P07-T13).
 /// </summary>
 /// <remarks>
-/// Yerleşim GitExtensions <c>FormStash</c>'ten (§ 9): solda stash listesi, sağda seçili
-/// olanın diff'i, altta <i>Apply</i> / <i>Pop</i> / <i>Drop</i> / <i>Branch</i>.
+/// The layout comes from GitExtensions <c>FormStash</c> (§ 9): the stash list on the left, the
+/// selected one's diff on the right, and <i>Apply</i> / <i>Pop</i> / <i>Drop</i> / <i>Branch</i> at
+/// the bottom.
 /// </remarks>
 public sealed class StashViewModel : ViewModelBase
 {
@@ -87,14 +88,14 @@ public sealed class StashViewModel : ViewModelBase
 
     public bool IsEmpty => Rows.Count == 0;
 
-    /// <summary>Seçili stash'in diff'i — uygulamadan önce önizleme.</summary>
+    /// <summary>The selected stash's diff — a preview before applying.</summary>
     public string Diff
     {
         get => _diff;
         private set => SetProperty(ref _diff, value);
     }
 
-    /// <summary>Yeni stash'in mesajı.</summary>
+    /// <summary>The new stash's message.</summary>
     public string NewMessage
     {
         get => _newMessage;
@@ -113,7 +114,7 @@ public sealed class StashViewModel : ViewModelBase
         set => SetProperty(ref _keepIndex, value);
     }
 
-    /// <summary>Yeni dal adı — <c>stash branch</c> için.</summary>
+    /// <summary>The new branch name — for <c>stash branch</c>.</summary>
     public string BranchName { get; set; } = string.Empty;
 
     public string? Error
@@ -122,7 +123,7 @@ public sealed class StashViewModel : ViewModelBase
         private set => SetProperty(ref _error, value);
     }
 
-    /// <summary>Hata olmayan ama söylenmesi gereken şeyler.</summary>
+    /// <summary>Things that are not errors but need saying.</summary>
     public string? Notice
     {
         get => _notice;
@@ -204,8 +205,8 @@ public sealed class StashViewModel : ViewModelBase
                 KeepIndex = KeepIndex,
             }).ConfigureAwait(true);
 
-        // "Kenara konacak bir şey yoktu" sessizce geçilmiyor: kullanıcı olmayan bir
-        // girdiyi arardı.
+        // "There was nothing to set aside" is not passed over silently: the user would go looking for an
+        // entry that does not exist.
         Notice = stashed ? null : "Nothing to stash — the working tree is clean.";
 
         if (stashed)
@@ -226,17 +227,16 @@ public sealed class StashViewModel : ViewModelBase
         {
             notices.Add($"{result.ConflictedPaths.Count} file(s) conflicted.");
 
-            // 🔴 ÖLÇÜLDÜ: pop çakışırsa girdi DÜŞMÜYOR. Söylenmezse kullanıcı ya iki kez
-            // uygular ya da elle silerken kaybeder.
+            // 🔴 MEASURED: when pop conflicts the entry IS NOT DROPPED. Unless it is said, the user
+            // either applies it twice or loses it while deleting it by hand.
             if (drop && result.EntryKept)
             {
                 notices.Add("The stash entry was kept because the merge conflicted.");
             }
         }
 
-        // 🔴 ÖLÇÜLDÜ: `--index` uygulanamadığında stage'lenmiş/stage'lenmemiş ayrımı
-        // sessizce kayboluyor. Sessiz kalmak, kullanıcının hazırladığı index'i fark
-        // etmeden kaybetmesi demekti.
+        // 🔴 MEASURED: when `--index` cannot be applied, the staged/unstaged distinction is silently
+        // lost. Staying quiet would mean the user losing the index they prepared without noticing.
         if (!result.IndexRestored)
         {
             notices.Add("The staged/unstaged split could not be restored; everything is unstaged.");
@@ -283,7 +283,7 @@ public sealed class StashViewModel : ViewModelBase
     }
 }
 
-/// <summary>Stash ekranını gösteren taraf (P07-T13).</summary>
+/// <summary>The side that shows the stash screen (P07-T13).</summary>
 public interface IStashPrompt
 {
     Task ShowAsync(StashViewModel model);

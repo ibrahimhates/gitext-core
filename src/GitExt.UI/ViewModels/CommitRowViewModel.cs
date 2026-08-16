@@ -5,18 +5,19 @@ using GitExt.Graph;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Commit listesindeki tek bir satır: commit verisi + grafik yerleşimi (P03-T11).
+/// A single row in the commit list: the commit data plus the graph layout (P03-T11).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bilinçli olarak <b>hafif</b> tutuldu. 500 bin satırlık bir depoda satır başına her ek alan
-/// yüzlerce megabayta dönüşür — ölçüldü: <see cref="CommitInfo"/> ~1,1 KB, <see cref="GraphRow"/>
-/// ~330 bayt, yani 500k'da ~700 MB. Bu tip yalnızca ikisine referans tutar, kopya çıkarmaz.
+/// Deliberately kept <b>light</b>. In a repository of 500 thousand rows, every extra field per row
+/// turns into hundreds of megabytes — measured: <see cref="CommitInfo"/> is ~1.1 KB and
+/// <see cref="GraphRow"/> ~330 bytes, that is ~700 MB at 500k. This type holds only references to the
+/// two and makes no copies.
 /// </para>
 /// <para>
-/// Gösterim dizeleri (<see cref="ShortId"/>, <see cref="DateText"/>) <b>tembel</b> üretilir:
-/// yalnızca ekrana gelen satırlar için hesaplanır. Yapıcıda üretmek, hiç görülmeyecek
-/// yüz binlerce dize demek olurdu.
+/// The display strings (<see cref="ShortId"/>, <see cref="DateText"/>) are produced <b>lazily</b>:
+/// they are computed only for the rows that reach the screen. Producing them in the constructor would
+/// mean hundreds of thousands of strings that are never seen.
 /// </para>
 /// </remarks>
 public sealed class CommitRowViewModel
@@ -37,7 +38,7 @@ public sealed class CommitRowViewModel
 
     public CommitInfo Commit { get; }
 
-    /// <summary>Bu satırın şerit/renk/kenar yerleşimi.</summary>
+    /// <summary>This row's lane/colour/edge layout.</summary>
     public GraphRow GraphRow { get; }
 
     public string ShortId => _shortId ??= Commit.Id.ToShortString();
@@ -47,23 +48,23 @@ public sealed class CommitRowViewModel
     public string AuthorName => Commit.Author.Name;
 
     /// <summary>
-    /// Yazar tarihi, yerel biçimde.
+    /// The author date, in local format.
     /// </summary>
     /// <remarks>
-    /// Yazar tarihi gösteriliyor, kaydeden tarihi değil — kullanıcının beklediği "bu değişiklik
-    /// ne zaman yazıldı" bilgisi budur. Rebase sonrası ikisi ayrışır; kaydeden tarihi detay
-    /// panelinde ayrıca gösterilecek (P03-T15).
+    /// The author date is shown, not the committer date — "when was this change written" is what the
+    /// user expects. After a rebase the two diverge; the committer date is shown separately in the
+    /// details panel (P03-T15).
     /// </remarks>
     public string DateText => _dateText ??=
         Commit.Author.When.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture);
 
     /// <summary>
-    /// Bu commit'e işaret eden ref'ler, <b>türleriyle birlikte</b>.
+    /// The refs pointing at this commit, <b>with their kinds</b>.
     /// </summary>
     /// <remarks>
-    /// <c>CommitInfo.Refs</c> (git'in <c>%D</c> alanı) tür bilgisi taşımıyor — yerel ve uzak
-    /// dal ayırt edilemiyor. Rozetler bu yüzden <c>for-each-ref</c> verisinden üretiliyor
-    /// (bkz. <see cref="RefBadgeIndex"/>).
+    /// <c>CommitInfo.Refs</c> (git's <c>%D</c> field) carries no kind information — a local branch
+    /// cannot be told from a remote one. That is why the badges are produced from <c>for-each-ref</c>
+    /// data (see <see cref="RefBadgeIndex"/>).
     /// </remarks>
     public IReadOnlyList<RefBadge> Badges { get; }
 

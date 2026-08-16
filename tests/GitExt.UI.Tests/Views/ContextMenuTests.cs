@@ -9,13 +9,12 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T14 — bağlam menüleri.
+/// P06-T14 — the context menus.
 /// </summary>
 /// <remarks>
-/// § 9: menü öğeleri GitExtensions'taki yerinde duruyor; uygulanmamış olanlar
-/// <b>kaldırılmıyor</b>, devre dışı bırakılıyor. Bu testler hem sıranın hem de
-/// <b>etkinliğin</b> doğru olduğunu sabitliyor — bir öğenin sessizce ölü kalması
-/// P06-T07'de gerçekten yaşanmıştı.
+/// § 9: the menu items sit where they do in GitExtensions; the unimplemented ones are <b>not
+/// removed</b>, they are disabled. These tests pin down both the order and the <b>enabled state</b> —
+/// an item silently staying dead really did happen in P06-T07.
 /// </remarks>
 public class ContextMenuTests
 {
@@ -66,10 +65,10 @@ public class ContextMenuTests
         ((RefTreeViewModel)view.DataContext!).Selected = Find(view, fullName);
 
     /// <remarks>
-    /// ⚠️ Menü GERÇEKTEN açılıyor: bir <c>ContextMenu</c> açılana kadar görsel ağaçta
-    /// olmadığı için bağlamaları da değerlendirilmiyor. Ölçüldü — headless'ta
-    /// <c>Opening</c> olayı ise hiç tetiklenmiyor; ilk uygulama etkinliği o olayda elle
-    /// ayarlıyordu ve <b>test edilemezdi</b>. Karar ViewModel'e taşındı.
+    /// ⚠️ The menu is REALLY opened: because a <c>ContextMenu</c> is not in the visual tree until it
+    /// opens, its bindings are not evaluated either. Measured — headless, the <c>Opening</c> event never
+    /// fires at all; the first implementation set the enabled state by hand in that event and
+    /// <b>could not be tested</b>. The decision was moved into the ViewModel.
     /// </remarks>
     private static void Open(RefTreeView view)
     {
@@ -100,8 +99,8 @@ public class ContextMenuTests
     [AvaloniaFact]
     public void MEVCUT_dal_silinemiyor_ve_kendine_birlestirilemiyor()
     {
-        // Üzerinde bulunulan dalı silmek ya da kendine birleştirmek git'in de reddettiği
-        // şeyler; menüde etkin bırakmak kullanıcıyı hata mesajına götürürdü.
+        // Deleting the branch you are on, or merging it into itself, are things git refuses as well;
+        // leaving them enabled in the menu would lead the user to an error message.
         RefTreeView view = CreateTree();
 
         Select(view, "main");
@@ -115,7 +114,8 @@ public class ContextMenuTests
     [AvaloniaFact]
     public void UZAK_dal_yeniden_adlandirilamiyor()
     {
-        // `git branch -m` uzak dalı değiştirmez; menüde sunmak yanlış bir vaat olurdu.
+        // `git branch -m` does not change a remote branch; offering it in the menu would be a false
+        // promise.
         RefTreeView view = CreateTree();
 
         Select(view, "origin/main");
@@ -161,7 +161,7 @@ public class ContextMenuTests
     [AvaloniaFact]
     public void Uygulanmamis_ogeler_YERINDE_ama_devre_disi()
     {
-        // § 9: kaldırmak yerine devre dışı. Rebase ve upstream ayarı Faz 07'nin konusu.
+        // § 9: disabled rather than removed. Rebase and setting the upstream are Phase 07's subject.
         RefTreeView view = CreateTree();
 
         Select(view, "feature/login");
@@ -197,14 +197,14 @@ public class ContextMenuTests
         ]);
     }
 
-    // ------------------------------------------------------- commit menüsü
+    // ------------------------------------------------------- the commit menu
 
     [AvaloniaFact]
     public async Task Commit_menusundeki_push_ve_merge_artik_ETKIN()
     {
-        // P08-T27'de bu iki öğe yerinde ama devre dışıydı; komutları T08 ve T11'de geldi.
-        // Bir öğenin komut geldikten sonra da ölü kalması, bu projede gerçekten yaşanmış
-        // bir hata (P06-T07'nin menü bağlaması).
+        // In P08-T27 these two items were in place but disabled; their commands arrived in T08 and T11.
+        // An item staying dead even after its command arrives is a bug that really happened in this
+        // project (P06-T07's menu binding).
         FakePushWriter push = new();
         FakeRemoteReader remotes = new();
         remotes.Remotes.Add(new GitRemote { Name = "origin", FetchUrls = ["https://e.com/a.git"] });

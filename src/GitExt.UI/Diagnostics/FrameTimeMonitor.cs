@@ -3,24 +3,24 @@ using Avalonia.Controls;
 namespace GitExt.UI.Diagnostics;
 
 /// <summary>
-/// Kare süresi ölçer (P09-T03).
+/// Measures frame time (P09-T03).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Performans bütçesi grafik kaydırma için "60 FPS, kare düşmesi yok" diyor. Ortalama FPS
-/// bunu <b>doğrulamıyor</b>: saniyede bir kare 200 ms sürse ortalama hâlâ 55 FPS görünür,
-/// ama kullanıcının gördüğü şey takılmadır. Bu yüzden burada asıl rapor edilen
-/// <see cref="WorstMilliseconds"/> ve <see cref="DroppedFrames"/>.
+/// The performance budget says "60 FPS, no dropped frames" for scrolling the graph. Average FPS does
+/// <b>not</b> verify that: if one frame a second took 200 ms the average would still look like 55 FPS,
+/// while what the user sees is a stutter. That is why what is really reported here are
+/// <see cref="WorstMilliseconds"/> and <see cref="DroppedFrames"/>.
 /// </para>
 /// <para>
-/// Ölçüm <see cref="TopLevel.RequestAnimationFrame"/> ile yapılıyor — kare gerçekten
-/// oluşturulduğunda tetikleniyor. Bir zamanlayıcıyla ölçmek arayüzün donduğu anları
-/// kaçırırdı: donmuş arayüzde zamanlayıcı da çalışmaz.
+/// The measurement uses <see cref="TopLevel.RequestAnimationFrame"/> — it fires when a frame is
+/// actually composed. Measuring with a timer would miss the moments the UI freezes: in a frozen UI the
+/// timer does not run either.
 /// </para>
 /// </remarks>
 public sealed class FrameTimeMonitor : IDisposable
 {
-    /// <summary>60 FPS'in kare bütçesi.</summary>
+    /// <summary>60 FPS's frame budget.</summary>
     public const double TargetFrameMilliseconds = 1000.0 / 60.0;
 
     private readonly TopLevel _topLevel;
@@ -41,23 +41,23 @@ public sealed class FrameTimeMonitor : IDisposable
         _capacity = capacity;
     }
 
-    /// <summary>Örneklenen kare sayısı.</summary>
+    /// <summary>The number of frames sampled.</summary>
     public int SampleCount => _samples.Count;
 
-    /// <summary>Ortalama kare süresi (ms).</summary>
+    /// <summary>The average frame time (ms).</summary>
     public double AverageMilliseconds => _samples.Count == 0 ? 0 : _samples.Average();
 
-    /// <summary>En kötü kare süresi (ms) — takılmayı gösteren sayı budur.</summary>
+    /// <summary>The worst frame time (ms) — this is the number that shows a stutter.</summary>
     public double WorstMilliseconds => _samples.Count == 0 ? 0 : _samples.Max();
 
-    /// <summary>Bütçeyi aşan kare sayısı.</summary>
+    /// <summary>The number of frames exceeding the budget.</summary>
     public int DroppedFrames => _samples.Count(s => s > TargetFrameMilliseconds);
 
-    /// <summary>Ortalamadan türetilen FPS.</summary>
+    /// <summary>The FPS derived from the average.</summary>
     public double AverageFramesPerSecond =>
         AverageMilliseconds <= 0 ? 0 : 1000.0 / AverageMilliseconds;
 
-    /// <summary>Ölçümü başlatır. Zaten çalışıyorsa bir şey yapmaz.</summary>
+    /// <summary>Starts the measurement. Does nothing when it is already running.</summary>
     public void Start()
     {
         if (_running || _disposed)
@@ -70,7 +70,7 @@ public sealed class FrameTimeMonitor : IDisposable
         RequestNext();
     }
 
-    /// <summary>Ölçümü durdurur; toplanan örnekler kalır.</summary>
+    /// <summary>Stops the measurement; the samples collected remain.</summary>
     public void Stop() => _running = false;
 
     public void Reset()
@@ -111,8 +111,8 @@ public sealed class FrameTimeMonitor : IDisposable
         {
             double elapsed = (now - _previous).TotalMilliseconds;
 
-            // Negatif ya da saçma büyük aralıklar: uygulama arka plana alınmış ya da
-            // saat geri gitmiş olabilir. Bunları takılma diye raporlamak yanlış alarm olurdu.
+            // Negative or nonsensically large intervals: the application may have been backgrounded, or
+            // the clock may have gone backwards. Reporting those as stutters would be a false alarm.
             if (elapsed > 0 && elapsed < 10_000)
             {
                 Add(elapsed);

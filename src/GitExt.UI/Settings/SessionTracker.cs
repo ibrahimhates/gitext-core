@@ -1,29 +1,30 @@
 namespace GitExt.UI.Settings;
 
 /// <summary>
-/// Oturumlar arası hatırlananları yazar ve okur (P08-T16).
+/// Writes and reads what is remembered between sessions (P08-T16).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Ayrı bir sınıf çünkü <b>ne hatırlanacağı</b> bir ürün kararı, ayar dosyasının biçimi
-/// değil. Burada tutulan üç şey var: son açılan depo, o depodaki son seçili commit ve
-/// pencerenin boyutu (sonuncusu <c>MainWindow.Layout</c>'ta, pencereyi tanıdığı için).
+/// A separate class because <b>what is remembered</b> is a product decision, not a matter of the
+/// settings file's format. Three things are kept here: the last repository opened, the last selected
+/// commit in it, and the window's size (the last of those in <c>MainWindow.Layout</c>, since that is
+/// where the window is known).
 /// </para>
 /// <para>
-/// <b>Seçili commit depo başına saklanıyor.</b> Tek bir "son seçili commit" tutmak,
-/// depo değiştiren kullanıcıda anlamsız — üstelik SHA başka bir depoda hiç bulunmaz ve
-/// geri yükleme sessizce hiçbir şey yapmazdı.
+/// <b>The selected commit is stored per repository.</b> Keeping a single "last selected commit" is
+/// meaningless for a user who switches repositories — and the SHA would never be found in another
+/// repository, so restoring it would silently do nothing.
 /// </para>
 /// </remarks>
 public sealed class SessionTracker
 {
     /// <summary>
-    /// Depo başına saklanan en fazla seçim kaydı.
+    /// The maximum number of selection records stored per repository.
     /// </summary>
     /// <remarks>
-    /// Sınırsız bırakılsaydı ayar dosyası, kullanıcının bir kez açtığı her deponun kaydıyla
-    /// zamanla büyürdü. Son açılanlar listesiyle aynı boyutta tutuluyor: daha eski bir
-    /// deponun seçimini hatırlamanın zaten bir yolu yok.
+    /// Left unbounded, the settings file would grow over time with a record for every repository the user
+    /// ever opened. It is kept the same size as the recent-repositories list: there is no way to reach an
+    /// older repository's selection anyway.
     /// </remarks>
     public const int MaximumTrackedRepositories = 12;
 
@@ -31,7 +32,7 @@ public sealed class SessionTracker
 
     public SessionTracker(ISettingsStore settings) => _settings = settings;
 
-    /// <summary>Kapanışta açık olan depo; yoksa boş.</summary>
+    /// <summary>The repository open at shutdown; empty when there is none.</summary>
     public string LastRepository => _settings.Current.Session.LastRepository;
 
     public void RememberRepository(string workingDirectory)
@@ -41,7 +42,7 @@ public sealed class SessionTracker
         _settings.Update(s => s.Session.LastRepository = workingDirectory);
     }
 
-    /// <summary>Depo kapandığında çağrılır; sonraki açılışta karşılama ekranı gelir.</summary>
+    /// <summary>Called when a repository is closed; the welcome screen appears on the next start.</summary>
     public void ForgetRepository() =>
         _settings.Update(s => s.Session.LastRepository = "");
 
@@ -64,9 +65,9 @@ public sealed class SessionTracker
                 return;
             }
 
-            // Sıra bilgisi yok; en son yazılanı korumak için yalnızca güncel depo dışında
-            // rastgele bir kayıt atılıyor. Kesin bir LRU tutmak, ayar dosyasına zaman damgası
-            // eklemek demekti — hatırlanan bir seçim için fazla bedel.
+            // There is no ordering information; to preserve the most recently written one, an arbitrary
+            // record other than the current repository is dropped. Keeping a proper LRU would mean adding
+            // a timestamp to the settings file — too high a price for a remembered selection.
             string? victim = s.Session.SelectedCommits.Keys
                 .FirstOrDefault(k => !string.Equals(k, workingDirectory, StringComparison.Ordinal));
 

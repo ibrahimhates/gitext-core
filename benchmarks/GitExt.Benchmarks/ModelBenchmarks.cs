@@ -6,12 +6,12 @@ using GitExt.Graph;
 namespace GitExt.Benchmarks;
 
 /// <summary>
-/// Commit veri modeli ve nesne oluşturma benchmark'ları (P09-T02).
+/// Commit data model and object creation benchmarks (P09-T02).
 /// </summary>
 /// <remarks>
-/// Commit listeleme sırasında oluşturulan `CommitInfo`, `Signature` gibi nesnelerin
-/// tahsis maliyetini ölçer. Faz 08'de "metin interning" optimizasyonunu değerlendirmek
-/// için temel çizgi sağlar.
+/// Measures the allocation cost of the objects created while listing commits, such as `CommitInfo`
+/// and `Signature`. Provides the baseline for evaluating the "string interning" optimisation in
+/// Phase 08.
 /// </remarks>
 public class ModelBenchmarks
 {
@@ -33,7 +33,7 @@ public class ModelBenchmarks
         "dependabot@github.com",
     ];
 
-    // ── Bellek tutulması — rows/commits birlikte (GraphBenchmark pattern) ─────
+    // ── Memory retention — rows/commits together (the GraphBenchmark pattern) ─
 
     private CommitInfo[] _textWeightCommits = null!;
     private Signature[] _signatures = null!;
@@ -41,8 +41,8 @@ public class ModelBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        // MeasureTextWeight'in üzerinden geçeceği hazır commit'ler. Generate_10k bunları
-        // kullanmıyor — üretim maliyetini ölçtüğü için nesneleri kendi kuruyor.
+        // The ready-made commits MeasureTextWeight will run over. Generate_10k does not use them —
+        // because it measures the cost of producing them, it builds its own objects.
         var textWeights = new CommitInfo[10_000];
 
         for (int i = 0; i < 10_000; i++)
@@ -65,10 +65,10 @@ public class ModelBenchmarks
         _signatures = sigs;
     }
 
-    /// <summary>10.000 benzersiz <c>CommitInfo</c> oluşturma — tahsis maliyeti.</summary>
+    /// <summary>Creating 10,000 unique <c>CommitInfo</c>s — the allocation cost.</summary>
     /// <remarks>
-    /// Nesneler burada kuruluyor, <see cref="Setup"/>'ta değil: hazır bir diziyi okumak
-    /// ölçülen işi tamamen dışarıda bırakır ve sonuç sıfıra yakın çıkar.
+    /// The objects are built here rather than in <see cref="Setup"/>: reading a ready-made array would
+    /// leave the measured work out entirely and the result would come out close to zero.
     /// </remarks>
     [Benchmark(Baseline = true)]
     public CommitInfo[] Generate_10k()
@@ -83,7 +83,7 @@ public class ModelBenchmarks
         return commits;
     }
 
-    /// <summary>Tek bir commit oluşturma — `ParseRecord`'ın son aşaması ile aynı.</summary>
+    /// <summary>Creating a single commit — the same as the final stage of `ParseRecord`.</summary>
     private CommitInfo CreateSingleCommit(int index) => new()
     {
         Id = CommitId.Parse($"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6{(index % 10000):D4}"),
@@ -108,7 +108,7 @@ public class ModelBenchmarks
             : "",
     };
 
-    /// <summary>Parent commit ID üretir: 40 karakterlik hex, index-1 ile benzersiz.</summary>
+    /// <summary>Produces a parent commit ID: 40 hex characters, made unique with index-1.</summary>
     private CommitId CreateParentId(int index) =>
         CommitId.Parse("feed" + $"{(index == 0 ? 0 : index - 1).ToString().PadLeft(36, '0')}");
 
@@ -151,7 +151,7 @@ public class ModelBenchmarks
         return GC.GetTotalMemory(forceFullCollection: true) / 1024; // KB cinsinden
     }
 
-    /// <summary>Text alanlarının toplam bayt ağırlığı.</summary>
+    /// <summary>The total byte weight of the text fields.</summary>
     [Benchmark]
     public long MeasureTextWeight()
     {
@@ -172,7 +172,7 @@ public class ModelBenchmarks
         return subjectBytes + bodyBytes + peopleBytes;
     }
 
-    // ── Refs parsing varyantları ──────────────────────────────────────────────
+    // ── Refs parsing variants ─────────────────────────────────────────────────
 
     private const int RefParseIterations = 100_000;
 
@@ -212,7 +212,7 @@ public class ModelBenchmarks
 
     // ── Signature comparison (hot path: sorting/filtering by author) ──────────
 
-    /// <summary>10k signature içinden unique yazar sayısı.</summary>
+    /// <summary>The number of unique authors among 10k signatures.</summary>
     [Benchmark]
     public int FindUniqueAuthors()
     {
@@ -229,7 +229,7 @@ public class ModelBenchmarks
 }
 
 /// <summary>
-/// CommitLogReader.ParseRefs'ın izole edilmiş hali — benchmark için internal erişim.
+/// CommitLogReader.ParseRefs in isolation — internal access for the benchmark.
 /// </summary>
 internal static class Helpers
 {

@@ -5,8 +5,8 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P02-T10 — Çalışma dizini durumu. Fazın en karmaşık ayrıştırıcısı.
-/// Tüm satır tipleri gerçek <c>git</c> ile üretilip doğrulanıyor.
+/// P02-T10 — the working directory state. The most complex parser in this phase.
+/// Every line type is produced with real <c>git</c> and verified.
 /// </summary>
 public class StatusReaderTests
 {
@@ -37,7 +37,7 @@ public class StatusReaderTests
     [Fact]
     public async Task Dogmamis_depo_initial_olarak_raporlanir()
     {
-        // "# branch.oid (initial)" — ölçüldü.
+        // "# branch.oid (initial)" — measured.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("yeni.txt", "içerik\n");
 
@@ -54,7 +54,7 @@ public class StatusReaderTests
     [Fact]
     public async Task Detached_HEAD_raporlanir()
     {
-        // "# branch.head (detached)" — ölçüldü.
+        // "# branch.head (detached)" — measured.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("commit", "--allow-empty", "-m", "ikinci");
         repository.Git("checkout", "--detach", "HEAD~1");
@@ -76,11 +76,11 @@ public class StatusReaderTests
         repository.Git("add", "-A");
         repository.Git("commit", "-m", "base");
 
-        // a.txt: stage'lenmiş değişiklik
+        // a.txt: a staged change
         repository.WriteFile("a.txt", "değişti ve eklendi\n");
         repository.Git("add", "a.txt");
 
-        // b.txt: stage'lenmemiş değişiklik
+        // b.txt: an unstaged change
         repository.WriteFile("b.txt", "değişti ama eklenmedi\n");
 
         StatusReader reader = await CreateReaderAsync();
@@ -123,9 +123,9 @@ public class StatusReaderTests
     [Fact]
     public async Task Rename_kaynak_yolu_ayri_kayittan_okunur()
     {
-        // KRİTİK: -z modunda rename girdisi İKİ NUL kaydına yayılır (ölçüldü).
-        // "2 …" satırı yeni yolla biter, bir SONRAKİ kayıt kaynak yoldur.
-        // Tek kayıt varsayılsaydı sonraki tüm girdiler kayar ve veri sessizce bozulurdu.
+        // CRITICAL: in -z mode a rename entry spans TWO NUL records (measured).
+        // The "2 …" line ends with the new path, and the NEXT record is the source path.
+        // Assume a single record and every following entry shifts, corrupting the data silently.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("eski.txt", "yeterince uzun içerik\nikinci satır\nüçüncü satır\n");
         repository.Git("add", "-A");
@@ -148,8 +148,8 @@ public class StatusReaderTests
     [Fact]
     public async Task Rename_sonrasi_gelen_girdiler_kaymaz()
     {
-        // Rename'in ikinci kaydı yanlış tüketilirse sonraki girdiler bozulur.
-        // Bu test tam olarak o hizalamayı doğruluyor.
+        // If the rename's second record is consumed wrongly, the following entries are corrupted.
+        // This test verifies exactly that alignment.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("eski.txt", "uzun içerik\nikinci\nüçüncü\n");
         repository.WriteFile("sonraki.txt", "içerik\n");
@@ -196,7 +196,7 @@ public class StatusReaderTests
         repository.Git("add", "-A");
         repository.Git("commit", "-m", "ana");
 
-        // merge çakışacak; başarısız çıkış kodu bekleniyor.
+        // the merge will conflict; a failing exit code is expected.
         try
         {
             repository.Git("merge", "yan");
@@ -287,7 +287,7 @@ public class StatusReaderTests
     [Fact]
     public async Task Bosluklu_ve_unicode_dosya_adlari_bozulmadan_okunur()
     {
-        // Yol alanı boşluk içerebilir; sınırlı bölme (Split limit) bu yüzden şart.
+        // The path field can contain spaces; that is why a limited split (Split limit) is essential.
         const string awkward = "klasör adı/çalışma günlüğü ÖĞÜŞİ.md";
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -312,7 +312,7 @@ public class StatusReaderTests
         super.AddSubmodule(inner, "altmodul");
         super.Git("commit", "-m", "submodule eklendi");
 
-        // Submodule içinde takip edilmeyen bir değişiklik oluştur.
+        // Create an untracked change inside the submodule.
         File.WriteAllText(Path.Combine(super.Path, "altmodul", "yeni.txt"), "içerik\n");
 
         StatusReader reader = await CreateReaderAsync();
@@ -328,7 +328,7 @@ public class StatusReaderTests
     [Fact]
     public async Task Normal_dosyada_submodule_alani_null_olur()
     {
-        // "N..." → submodule değil.
+        // "N..." → not a submodule.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("a.txt", "a\n");
 

@@ -4,29 +4,29 @@ using BenchmarkDotNet.Attributes;
 namespace GitExt.Benchmarks;
 
 /// <summary>
-/// Çizim yolundaki Pen/Brush önbelleğinin erişim maliyeti (P09-T09).
+/// The access cost of the Pen/Brush cache on the drawing path (P09-T09).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>CommitGraphCell.Render</c> her kenar için önbellekten bir kalem alıyor ve erişim
-/// <c>lock</c> altında. 500k commit'lik bir depoda ekranda ~50 satır, satır başına
-/// birkaç kenar var; yani kare başına yüzlerce kilit alma.
+/// <c>CommitGraphCell.Render</c> takes a pen from the cache for every edge, and the access is under a
+/// <c>lock</c>. In a 500k-commit repository there are ~50 rows on screen with a few edges each; that is
+/// hundreds of lock acquisitions per frame.
 /// </para>
 /// <para>
-/// <b>Optimizasyondan önce ölçmek</b> için burada: kilidin maliyeti gürültü seviyesindeyse
-/// kilitsiz bir yapıya geçmek yalnızca risk ekler. Avalonia'nın çizimi tek iş parçacığında
-/// yapıyor olması kilidi gereksiz gösterse de, önbellek statik ve başka bir yerden
-/// erişilirse veri yarışı gerçek olurdu.
+/// It is here <b>to measure before optimising</b>: if the lock's cost is at the noise level, moving to
+/// a lock-free structure only adds risk. Even though Avalonia doing its drawing on a single thread
+/// makes the lock look unnecessary, the cache is static and the data race would be real if it were
+/// reached from somewhere else.
 /// </para>
 /// <para>
-/// Gerçek tiplerle (<c>Pen</c>, <c>SolidColorBrush</c>) ölçülemiyor: bu proje Avalonia'ya
-/// bağımlı değil (ADR-0003). Ölçülen şey erişim <b>deseninin</b> kendisi — sözlük araması
-/// artı senkronizasyon.
+/// It cannot be measured with the real types (<c>Pen</c>, <c>SolidColorBrush</c>): this project does
+/// not depend on Avalonia (ADR-0003). What is measured is the access <b>pattern</b> itself — a
+/// dictionary lookup plus the synchronisation.
 /// </para>
 /// </remarks>
 public class RenderCacheBenchmarks
 {
-    /// <summary>Kare başına yapılan kalem/fırça araması (~50 satır × birkaç kenar).</summary>
+    /// <summary>The pen/brush lookups made per frame (~50 rows × a few edges).</summary>
     private const int LookupsPerFrame = 300;
 
     private readonly Dictionary<(uint Color, double Thickness), object> _locked = [];
@@ -38,7 +38,7 @@ public class RenderCacheBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        // Sekiz şerit rengi — paletin boyutu (GraphPalettes).
+        // Eight lane colours — the palette's size (GraphPalettes).
         var keys = new (uint, double)[LookupsPerFrame];
 
         for (int i = 0; i < keys.Length; i++)
@@ -55,7 +55,7 @@ public class RenderCacheBenchmarks
         }
     }
 
-    /// <summary>Şu anki uygulama: sözlük + <c>lock</c>.</summary>
+    /// <summary>The current implementation: a dictionary plus a <c>lock</c>.</summary>
     [Benchmark(Baseline = true)]
     public int LockedDictionary()
     {

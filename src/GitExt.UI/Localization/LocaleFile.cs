@@ -4,31 +4,31 @@ using System.Text.Json.Serialization;
 namespace GitExt.UI.Localization;
 
 /// <summary>
-/// Bir dil dosyasının çözümlenmiş hâli (P11-T01).
+/// A language file in its parsed form (P11-T01).
 /// </summary>
 /// <remarks>
-/// JSON düz bir <c>anahtar → metin</c> sözlüğü; tek istisna <c>_meta</c> bloğu. Düz tutulması
-/// bilinçli: iç içe bir yapı, çevirmenin anahtarı bulmak için ağaçta gezinmesini gerektirirdi
-/// ve <c>settings.tab.appearance</c> gibi bir anahtar zaten hiyerarşiyi taşıyor.
+/// The JSON is a flat <c>key → text</c> dictionary; the one exception is the <c>_meta</c> block.
+/// Keeping it flat is deliberate: a nested structure would make a translator navigate a tree to find a
+/// key, and a key such as <c>settings.tab.appearance</c> already carries the hierarchy.
 /// </remarks>
 internal sealed class LocaleFile
 {
-    /// <summary>Dilin kendi tanımı: kod ve görünen ad.</summary>
+    /// <summary>The language's own description: its code and display name.</summary>
     [JsonPropertyName("_meta")]
     public LocaleMeta? Meta { get; set; }
 
     /// <summary>
-    /// <c>_meta</c> dışındaki her şey: anahtar → çevrilmiş metin.
+    /// Everything other than <c>_meta</c>: key → translated text.
     /// </summary>
     /// <remarks>
-    /// <see cref="JsonExtensionDataAttribute"/> ile toplanıyor, böylece her yeni anahtar için
-    /// C# tarafında bir özellik tanımlamak gerekmiyor — dil dosyası tek başına büyüyebiliyor.
+    /// Collected with <see cref="JsonExtensionDataAttribute"/>, so no property has to be defined on the
+    /// C# side for every new key — the language file can grow on its own.
     /// </remarks>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Entries { get; set; }
 }
 
-/// <summary>Dil dosyasının kendini tanıttığı blok.</summary>
+/// <summary>The block in which a language file describes itself.</summary>
 internal sealed class LocaleMeta
 {
     [JsonPropertyName("code")]
@@ -39,14 +39,14 @@ internal sealed class LocaleMeta
 }
 
 /// <summary>
-/// Dil dosyaları için kaynak üretici (source-generated) JSON bağlamı.
+/// The source-generated JSON context for the language files.
 /// </summary>
 /// <remarks>
-/// 🔴 <b>Yansımalı <c>JsonSerializer</c> aşırı yüklemeleri KULLANILAMAZ.</b> Ölçüldü (P11-T00):
-/// gömülü bir JSON'u <c>JsonSerializer.Deserialize&lt;Dictionary&lt;string,string&gt;&gt;</c> ile
-/// okumak <c>PublishTrimmed=true</c> altında <b>çalışma zamanında</b> çöküyor — derleme
-/// sırasında değil. Aynı tuzak bu projede daha önce ayarlar tarafında da yaşandı
-/// (<c>SettingsSerializer</c>); orada da ancak gerçek bir trimmed publish denemesinde çıkmıştı.
+/// 🔴 <b>The reflection-based <c>JsonSerializer</c> overloads CANNOT BE USED.</b> Measured (P11-T00):
+/// reading an embedded JSON with
+/// <c>JsonSerializer.Deserialize&lt;Dictionary&lt;string,string&gt;&gt;</c> crashes <b>at runtime</b>
+/// under <c>PublishTrimmed=true</c> — not at build time. The same trap hit this project earlier on the
+/// settings side (<c>SettingsSerializer</c>); there too it only surfaced in a real trimmed publish.
 /// </remarks>
 [JsonSourceGenerationOptions(ReadCommentHandling = JsonCommentHandling.Skip)]
 [JsonSerializable(typeof(LocaleFile))]

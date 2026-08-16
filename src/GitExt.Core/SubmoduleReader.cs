@@ -3,40 +3,40 @@ using GitExt.Core.Model;
 
 namespace GitExt.Core;
 
-/// <summary>Alt modülün durumu (P07-T19).</summary>
+/// <summary>The state of a submodule (P07-T19).</summary>
 public enum SubmoduleStatusKind
 {
-    /// <summary>Kayıtlı ama içi boş — <c>init</c>/<c>update</c> gerekiyor.</summary>
+    /// <summary>Registered but empty — it needs <c>init</c>/<c>update</c>.</summary>
     NotInitialized,
 
-    /// <summary>Kayıtlı commit ile eşleşiyor.</summary>
+    /// <summary>It matches the recorded commit.</summary>
     UpToDate,
 
-    /// <summary>Üst deponun beklediğinden farklı bir commit'te.</summary>
+    /// <summary>It is on a different commit from the one the superproject expects.</summary>
     Modified,
 
-    /// <summary>Birleştirme çakışması var.</summary>
+    /// <summary>There is a merge conflict.</summary>
     Conflicted,
 }
 
-/// <summary>Bir alt modül (P07-T19).</summary>
+/// <summary>A submodule (P07-T19).</summary>
 public sealed record Submodule
 {
     public required RepositoryPath Path { get; init; }
 
-    /// <summary>Alt modülün bulunduğu commit.</summary>
+    /// <summary>The commit the submodule is on.</summary>
     public required string ObjectId { get; init; }
 
     public required SubmoduleStatusKind Status { get; init; }
 
-    /// <summary>git'in parantez içinde verdiği açıklama (etiket/açıklama).</summary>
+    /// <summary>The description git gives in parentheses (a tag/description).</summary>
     public string Describe { get; init; } = string.Empty;
 
-    /// <summary>Alt modüle "girip" ayrı depo gibi incelemek için mutlak yol.</summary>
+    /// <summary>The absolute path for "entering" the submodule and examining it as a separate repository.</summary>
     public string ResolvePath(string repositoryRoot) => Path.ToAbsolutePath(repositoryRoot);
 }
 
-/// <summary>Alt modül işlemleri (P07-T19).</summary>
+/// <summary>Submodule operations (P07-T19).</summary>
 public interface ISubmoduleReader
 {
     Task<IReadOnlyList<Submodule>> ListAsync(
@@ -50,7 +50,7 @@ public interface ISubmoduleReader
         bool recursive = false,
         CancellationToken cancellationToken = default);
 
-    /// <summary><c>git submodule sync</c>: URL değişikliklerini yayar.</summary>
+    /// <summary><c>git submodule sync</c>: propagates URL changes.</summary>
     Task SyncAsync(
         string workingDirectory,
         RepositoryPath? path = null,
@@ -58,12 +58,12 @@ public interface ISubmoduleReader
 }
 
 /// <summary>
-/// <c>git submodule status</c> okuyucusu (P07-T19).
+/// The <c>git submodule status</c> reader (P07-T19).
 /// </summary>
 /// <remarks>
-/// Çıktı satırları <c>&lt;işaret&gt;&lt;sha&gt; &lt;yol&gt; (&lt;describe&gt;)</c>
-/// biçiminde. Baştaki işaret durumu veriyor: <c>-</c> başlatılmamış, <c>+</c> farklı
-/// commit'te, <c>U</c> çakışma, <b>boşluk</b> güncel.
+/// The output lines take the form <c>&lt;marker&gt;&lt;sha&gt; &lt;path&gt; (&lt;describe&gt;)</c>.
+/// The leading marker gives the state: <c>-</c> uninitialised, <c>+</c> on a different commit,
+/// <c>U</c> conflicted, <b>a space</b> up to date.
 /// </remarks>
 public sealed class SubmoduleReader : ISubmoduleReader
 {
@@ -113,7 +113,7 @@ public sealed class SubmoduleReader : ISubmoduleReader
                 _ => SubmoduleStatusKind.UpToDate,
             };
 
-            // Güncel durumda satır boşlukla başlıyor; diğerlerinde işaretle.
+            // In the up-to-date state the line starts with a space; in the others, with a marker.
             string body = line[0] is '-' or '+' or 'U' ? line[1..] : line.TrimStart();
 
             int space = body.IndexOf(' ', StringComparison.Ordinal);
@@ -126,7 +126,7 @@ public sealed class SubmoduleReader : ISubmoduleReader
             string objectId = body[..space];
             string rest = body[(space + 1)..];
 
-            // Yol boşluk içerebilir; describe kısmı SONDAKİ parantez içinde.
+            // The path can contain spaces; the describe part is inside the LAST parentheses.
             string describe = string.Empty;
             int open = rest.LastIndexOf(" (", StringComparison.Ordinal);
 

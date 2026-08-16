@@ -7,7 +7,7 @@ using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
-/// <summary>Reflog listesindeki bir satır (P07-T14).</summary>
+/// <summary>A row in the reflog list (P07-T14).</summary>
 public sealed class ReflogRowViewModel
 {
     public required ReflogEntry Entry { get; init; }
@@ -26,11 +26,11 @@ public sealed class ReflogRowViewModel
             : Entry.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Bu commit'e artık hiçbir daldan erişilemiyor mu?
+    /// Is this commit no longer reachable from any branch?
     /// </summary>
     /// <remarks>
-    /// Reflog tarayıcısının asıl işi bu: kullanıcı <c>reset --hard</c> ile kaybettiği
-    /// commit'i burada bulacak. İşaretli satırlar öne çıkarılıyor.
+    /// This is what the reflog browser is really for: the user will find the commit they lost to
+    /// <c>reset --hard</c> here. The marked rows are brought to the front.
     /// </remarks>
     public bool IsUnreachable => Entry.IsUnreachable;
 
@@ -38,16 +38,16 @@ public sealed class ReflogRowViewModel
 }
 
 /// <summary>
-/// Reflog tarayıcısı (P07-T14).
+/// The reflog browser (P07-T14).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Fazın sigortası.</b> Faz 07'deki her işlem geçmişi yeniden yazıyor; kullanıcı bir
-/// şeyi kaybettiğinde onu buradan geri alacak.
+/// <b>The phase's insurance policy.</b> Every operation in Phase 07 rewrites history; when the user
+/// loses something, this is where they will get it back.
 /// </para>
 /// <para>
-/// ⚠️ "Buraya dön" komutu <b>seçiciyi değil SHA'yı</b> kullanıyor: <c>HEAD@{3}</c> kayan
-/// bir referans ve yeni bir işlem reflog'a girdi eklediğinde başka bir commit'i gösterir.
+/// ⚠️ The "return here" command uses <b>the SHA, not the selector</b>: <c>HEAD@{3}</c> is a sliding
+/// reference and points at a different commit as soon as another operation adds an entry to the reflog.
 /// </para>
 /// </remarks>
 public sealed class ReflogViewModel : ViewModelBase
@@ -94,10 +94,10 @@ public sealed class ReflogViewModel : ViewModelBase
 
     public bool HasSelection => Selected is not null;
 
-    /// <summary>Seçili girdiye dönmek için çalıştırılacak komut — ekranda gösteriliyor.</summary>
+    /// <summary>The command to run to return to the selected entry — shown on screen.</summary>
     public string SelectedRecoveryCommand => Selected?.RecoveryCommand ?? string.Empty;
 
-    /// <summary>Yalnızca erişilemeyen ("kayıp") commit'leri göster.</summary>
+    /// <summary>Show only the unreachable ("lost") commits.</summary>
     public bool OnlyUnreachable
     {
         get => _onlyUnreachable;
@@ -112,7 +112,7 @@ public sealed class ReflogViewModel : ViewModelBase
 
     public int UnreachableCount => All.Count(row => row.IsUnreachable);
 
-    /// <summary>Ulaşılamaz commit sayısının çevrilmiş metni (P11-T08).</summary>
+    /// <summary>The translated text of the unreachable commit count (P11-T08).</summary>
     public string UnreachableCountText => Loc.F("reflog.unreachable_count", UnreachableCount);
 
     public bool IsEmpty => Rows.Count == 0;
@@ -184,9 +184,9 @@ public sealed class ReflogViewModel : ViewModelBase
     private bool CanReturn() => Selected is not null && _reset is not null && !IsBusy;
 
     /// <remarks>
-    /// <c>--hard</c> ile dönülüyor: kullanıcının istediği şey "o andaki hâle dön". Ama bu
-    /// commit'lenmemiş işi siler, o yüzden güvenlik noktası alınıp geri dönüş komutu
-    /// gösteriliyor — kaybın kendisi de geri alınabilir olsun.
+    /// It returns with <c>--hard</c>: what the user wants is "go back to how it was then". But that
+    /// deletes uncommitted work, so a safety point is taken and the way back is shown — so the loss
+    /// itself can be undone too.
     /// </remarks>
     private async Task ReturnAsync()
     {
@@ -219,7 +219,7 @@ public sealed class ReflogViewModel : ViewModelBase
     }
 }
 
-/// <summary>Reflog tarayıcısını gösteren taraf (P07-T14).</summary>
+/// <summary>The side that shows the reflog browser (P07-T14).</summary>
 public interface IReflogPrompt
 {
     Task ShowAsync(ReflogViewModel model);

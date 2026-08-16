@@ -8,7 +8,7 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Kısayol düzenleme ekranının modeli (P08-T03).
+/// The model of the shortcut editing screen (P08-T03).
 /// </summary>
 public sealed partial class ShortcutSettingsViewModel : ViewModelBase
 {
@@ -20,11 +20,11 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
     [ObservableProperty]
     private ShortcutRow? _selected;
 
-    /// <summary>Şu an tuş bekliyor muyuz?</summary>
+    /// <summary>Are we currently waiting for a key?</summary>
     [ObservableProperty]
     private bool _isCapturing;
 
-    /// <summary>Son atama denemesinin reddedilme sebebi; başarılıysa boş.</summary>
+    /// <summary>Why the last assignment attempt was rejected; empty on success.</summary>
     [ObservableProperty]
     private string _captureError = string.Empty;
 
@@ -43,7 +43,7 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
 
     public ObservableCollection<ShortcutRow> Rows { get; } = [];
 
-    /// <summary>Çakışan atamaların insan okunur özeti; çakışma yoksa boş.</summary>
+    /// <summary>A human-readable summary of the conflicting assignments; empty when there is no conflict.</summary>
     public IReadOnlyList<string> ConflictMessages { get; private set; } = [];
 
     public bool HasConflicts => ConflictMessages.Count > 0;
@@ -59,17 +59,18 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
     public IRelayCommand ResetAllCommand { get; }
 
     /// <summary>
-    /// Yakalanan tuşu seçili komuta atar.
+    /// Assigns the captured key to the selected command.
     /// </summary>
     /// <returns>
-    /// Atandıysa <see langword="true"/>. Reddedildiyse <see cref="CaptureError"/> doldurulur
-    /// ve <b>yakalama sürer</b>: kullanıcı başka bir tuş deneyebilmeli.
+    /// <see langword="true"/> when it was assigned. On rejection, <see cref="CaptureError"/> is filled
+    /// in and <b>the capture continues</b>: the user must be able to try another key.
     /// </returns>
     /// <remarks>
-    /// <b>Çakışma atamayı ENGELLEMEZ, uyarır.</b> Kullanıcı bilerek çakıştırmak isteyebilir
-    /// (ör. eski atamayı birazdan değiştirecek). Engellemek, iki atamayı sırayla değiştirmeyi
-    /// imkânsız kılardı. Ama sessiz de kalınmıyor — P08-T00/M10'da ölçüldü: Avalonia çakışan
-    /// ikinci kaydı hiç çalıştırmıyor ve kullanıcı sebebini göremezdi.
+    /// <b>A conflict DOES NOT BLOCK the assignment, it warns.</b> The user may want to conflict
+    /// deliberately (they are about to change the old assignment, say). Blocking it would make it
+    /// impossible to change two assignments one after the other. But it is not passed over silently
+    /// either — measured in P08-T00/M10: Avalonia never runs the second, conflicting registration and
+    /// the user could not see why.
     /// </remarks>
     public bool TryApplyCapture(KeyGesture gesture)
     {
@@ -84,8 +85,8 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
 
         if (rejection is GestureRejection.ModifierOnly)
         {
-            // Değiştirici tuşun kendisi hata değil, henüz tamamlanmamış bir jest:
-            // kullanıcı Ctrl'ye basıp harfi bekletiyor olabilir. Sessizce yok sayılıyor.
+            // A modifier key on its own is not an error but an unfinished gesture: the user may have
+            // pressed Ctrl and be holding it while reaching for the letter. It is silently ignored.
             return false;
         }
 
@@ -134,7 +135,7 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
         CaptureError = string.Empty;
     }
 
-    /// <summary>Kısayolu <b>kaldırır</b> (varsayılana dönmez).</summary>
+    /// <summary><b>Removes</b> the shortcut (it does not return to the default).</summary>
     private void Clear()
     {
         if (Selected is { } row)
@@ -210,7 +211,8 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
             return true;
         }
 
-        // Kısayolun kendisiyle de aranabiliyor: "bu tuş neye atanmış?" en sık sorulan soru.
+        // The shortcut itself can be searched for too: "what is this key assigned to?" is the most
+        // frequently asked question.
         return definition.Title.Contains(Filter, StringComparison.CurrentCultureIgnoreCase)
             || definition.Id.Contains(Filter, StringComparison.OrdinalIgnoreCase)
             || _registry.GetGesture(definition.Id)?.ToString()
@@ -218,7 +220,7 @@ public sealed partial class ShortcutSettingsViewModel : ViewModelBase
     }
 }
 
-/// <summary>Kısayol listesinin bir satırı.</summary>
+/// <summary>A row in the shortcut list.</summary>
 public sealed record ShortcutRow(
     string CommandId,
     string Title,
@@ -229,7 +231,7 @@ public sealed record ShortcutRow(
 {
     public string GestureText => Gesture?.ToString() ?? "—";
 
-    /// <summary>Bağlamın kullanıcıya gösterilen adı.</summary>
+    /// <summary>The context's name as shown to the user.</summary>
     public string ContextText => Context switch
     {
         CommandContext.Global => "Her yerde",

@@ -9,11 +9,11 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P07-T11 — yarım kalmış operasyon şeridi.
+/// P07-T11 — the half-finished operation strip.
 /// </summary>
 /// <remarks>
-/// Planın gerekçesi: <i>"Kullanıcı uygulamayı kapatıp açtığında rebase'in ortasında
-/// olduğunu unutabilir. Bu banner gerçek bir kurtarıcı."</i>
+/// The plan's reasoning: <i>"When the user closes the application and reopens it they can forget they
+/// are in the middle of a rebase. This banner is a genuine rescue."</i>
 /// </remarks>
 public class InProgressBannerTests
 {
@@ -50,9 +50,9 @@ public class InProgressBannerTests
     [InlineData(InProgressOperation.ApplyMailbox)]
     public async Task HER_yarim_islemden_CIKIS_yolu_var(InProgressOperation operation)
     {
-        // 🔑 P06-T12'de yalnızca merge iptal edilebiliyordu; diğerlerinin iptali farklı
-        // komutlar olduğu için bilinçli olarak dışarıda bırakılmıştı. Faz 07'de doğru
-        // fiil DURUM DOSYALARINDAN seçildiği için hepsi sunulabiliyor.
+        // 🔑 In P06-T12 only a merge could be aborted; the others were deliberately left out because
+        // aborting them takes different commands. In Phase 07, because the right verb is chosen FROM THE
+        // STATE FILES, all of them can be offered.
         FakeInProgressOperationReader operations = new();
         FakeConflictResolver resolver = new(operation, []);
 
@@ -84,8 +84,8 @@ public class InProgressBannerTests
     [AvaloniaFact]
     public async Task BISECT_icin_iptal_SUNULMUYOR()
     {
-        // Bisect'in bir `--abort`u yok; `git bisect reset` bambaşka bir şey. Yanlış
-        // komutu sunmak yarım kalmış bir işi bozardı.
+        // Bisect has no `--abort`; `git bisect reset` is a different thing entirely. Offering the wrong
+        // command would break a half-finished job.
         FakeInProgressOperationReader operations = new();
         FakeConflictResolver resolver = new(InProgressOperation.Bisect, []);
 
@@ -101,8 +101,8 @@ public class InProgressBannerTests
     [AvaloniaFact]
     public async Task Iptal_ONAYSIZ_yapilmiyor()
     {
-        // İptal çalışma ağacını işlem öncesine döndürüyor: çakışmaları çözerken yazılan
-        // her şey gider (P06-T12'de ölçüldü).
+        // Aborting returns the working tree to its pre-operation state: everything written while
+        // resolving conflicts is lost (measured in P06-T12).
         FakeInProgressOperationReader operations = new();
         FakeConflictResolver resolver = new(InProgressOperation.Rebase, []);
         FakeMergeAbortConfirmer confirmer = new() { Answer = false };
@@ -143,8 +143,8 @@ public class InProgressBannerTests
     [AvaloniaFact]
     public async Task Servis_YOKKEN_komutlar_ETKIN_DEGIL()
     {
-        // Faz 07 servisleri verilmezse (testler, kısmi kurulum) düğmeler soluk kalmalı;
-        // tıklanıp hiçbir şey olmaması daha kötü olurdu.
+        // When the Phase 07 services are not supplied (tests, a partial setup) the buttons must stay
+        // dimmed; being clickable and doing nothing would be worse.
         FakeInProgressOperationReader operations = new();
 
         MainWindowViewModel model = CreateMain(operations);
@@ -183,8 +183,7 @@ public class InProgressBannerTests
     [AvaloniaFact]
     public async Task Faz07_menu_ogeleri_ETKIN()
     {
-        // Menü konumları GitExtensions'ı takip ediyor (§ 9); Faz 06'da yer tutucu olarak
-        // devre dışı bırakılmışlardı.
+        // The menu positions follow GitExtensions (§ 9); they were disabled as placeholders in Phase 06.
         FakeInProgressOperationReader operations = new();
 
         MainWindowViewModel model = CreateMain(

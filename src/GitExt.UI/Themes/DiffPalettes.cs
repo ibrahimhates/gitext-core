@@ -4,34 +4,34 @@ using Avalonia.Styling;
 namespace GitExt.UI.Themes;
 
 /// <summary>
-/// Diff renklerinin renk körlüğü uyumlu kaplaması (P08-T09, P09-T11'de koda taşındı).
+/// The colour-blind safe overlay for the diff colours (P08-T09, moved into code in P09-T11).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Değerler <c>Themes/ColorBlindSafe.axaml</c> ile birebir aynı; ayrım kırmızı/yeşil
-/// yerine <b>mavi/turuncu</b>, çünkü deuteranopi ve protanopide kırmızı ile yeşil aynı
-/// görünüyor. Renk tek başına anlam da taşımıyor — eklenen/çıkarılan satırın
-/// <c>+</c>/<c>-</c> öneki zaten var (P04).
+/// The values are identical to <c>Themes/ColorBlindSafe.axaml</c>; the distinction is <b>blue/orange</b>
+/// rather than red/green, because under deuteranopia and protanopia red and green look the same.
+/// Colour does not carry the meaning alone either — an added/removed line already has its
+/// <c>+</c>/<c>-</c> prefix (P04).
 /// </para>
 /// <para>
-/// 🔴 <b>Neden XAML değil de kod?</b> Kaplama çalışma zamanında açılıp kapanıyor ve bunu
-/// <c>new ResourceInclude(uri)</c> ile yapmak <c>AvaloniaXamlLoader</c>'ı çağırıyor:
-/// trimmer hangi kaynağın yükleneceğini göremiyor ve <c>IL2026</c> ile
-/// <c>PublishTrimmed</c>'i tamamen kırıyor. Faz 01'de çalışan trimming, P08'de bu satır
-/// eklendiğinde sessizce bozulmuştu — P09-T04'ün publish denemesinde ortaya çıktı.
+/// 🔴 <b>Why code rather than XAML?</b> The overlay is switched on and off at runtime, and doing that
+/// with <c>new ResourceInclude(uri)</c> invokes <c>AvaloniaXamlLoader</c>: the trimmer cannot see which
+/// resource will be loaded, and it breaks <c>PublishTrimmed</c> outright with <c>IL2026</c>. Trimming
+/// worked in Phase 01 and was silently broken in P08 when this line was added — it surfaced in
+/// P09-T04's publish attempt.
 /// </para>
 /// <para>
-/// XAML'de yazılan <c>ResourceInclude</c> derleme zamanında çözülüyor ve güvenli; ama o
-/// yol yalnızca <b>sabit</b> sözlükler için geçerli. Açılıp kapanan bir kaplamanın
-/// değerlerini koda taşımak, aynı sonucu trimming'i kırmadan veriyor.
+/// A <c>ResourceInclude</c> written in XAML is resolved at compile time and is safe; but that route
+/// only applies to <b>fixed</b> dictionaries. Moving the values of a toggleable overlay into code gives
+/// the same result without breaking trimming.
 /// </para>
 /// </remarks>
 public static class DiffPalettes
 {
-    /// <summary>Kaplamanın ezdiği kaynak anahtarları.</summary>
+    /// <summary>The resource keys the overlay overrides.</summary>
     /// <remarks>
-    /// Kaldırma da bu liste üzerinden yapılıyor: elle sayılan bir anahtar kümesi,
-    /// birinin unutulup paletler arası sessizce ayrışması demekti.
+    /// Removal goes through this list too: a hand-counted set of keys meant one being forgotten and
+    /// silently diverging between the palettes.
     /// </remarks>
     public static IReadOnlyList<string> OverlayKeys { get; } =
     [
@@ -72,7 +72,7 @@ public static class DiffPalettes
         };
 
     /// <summary>
-    /// Verilen tema için renk körlüğü kaplamasının fırçaları.
+    /// The colour-blind overlay's brushes for the given theme.
     /// </summary>
     public static IReadOnlyDictionary<string, Color> ColorBlindSafe(ThemeVariant variant) =>
         variant == ThemeVariant.Dark ? DarkColorBlindSafe : LightColorBlindSafe;

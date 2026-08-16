@@ -6,10 +6,11 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Dal oluşturma diyaloğu (P06-T01).
+/// The create branch dialog (P06-T01).
 /// </summary>
 /// <remarks>
-/// GitExtensions'ta karşılığı <c>FormCreateBranch</c>; yerleşim ve sıra oradan alındı (§ 9).
+/// Its counterpart in GitExtensions is <c>FormCreateBranch</c>; the layout and the order were taken
+/// from there (§ 9).
 /// </remarks>
 public partial class CreateBranchDialog : Window
 {
@@ -19,9 +20,9 @@ public partial class CreateBranchDialog : Window
     {
         InitializeComponent();
 
-        // ⚠️ `TextChanged` yerine özellik değişimi: `TextChanged` görsel ağaca bağlı
-        // olmayan bir pencerede tetiklenmiyor (headless testte ölçüldü) ve doğrulama
-        // sessizce hiç çalışmıyordu.
+        // ⚠️ A property change rather than `TextChanged`: `TextChanged` does not fire in a window that is
+        // not attached to the visual tree (measured in a headless test), and the validation was silently
+        // never running.
         BranchNameTextBox.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty)
@@ -36,7 +37,7 @@ public partial class CreateBranchDialog : Window
         Revalidate();
     }
 
-    /// <summary>Diyaloğu modal açar ve kullanıcının kararını döndürür.</summary>
+    /// <summary>Opens the dialog modally and returns the user's decision.</summary>
     internal static async Task<CreateBranchDecision> ShowAsync(
         CreateBranchRequest request,
         Window owner)
@@ -52,7 +53,7 @@ public partial class CreateBranchDialog : Window
         return dialog._decision;
     }
 
-    /// <summary>İsteği diyalog üzerine yansıtır.</summary>
+    /// <summary>Reflects the request onto the dialog.</summary>
     internal void Apply(CreateBranchRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -71,12 +72,12 @@ public partial class CreateBranchDialog : Window
     private bool _hasLocalChanges;
 
     /// <summary>
-    /// Ad geçerli değilse <b>nedenini</b> yazar ve düğmeyi kapatır.
+    /// When the name is invalid, writes <b>why</b> and disables the button.
     /// </summary>
     /// <remarks>
-    /// Doğrulama <see cref="BranchName"/> ile yapılıyor; her tuş vuruşunda <c>git</c> süreci
-    /// başlatmamak için saf. Kuralların git ile aynı kaldığı <c>BranchNameTests</c>'teki
-    /// ayrık testle sabitlendi.
+    /// The validation is done with <see cref="BranchName"/>; it is pure so as not to start a
+    /// <c>git</c> process on every keystroke. That the rules stay the same as git's is pinned down by
+    /// the differential test in <c>BranchNameTests</c>.
     /// </remarks>
     private void Revalidate()
     {
@@ -85,7 +86,7 @@ public partial class CreateBranchDialog : Window
 
         CreateButton.IsEnabled = problem is null;
 
-        // Boş kutuda hata metni göstermek, henüz bir şey yapmamış kullanıcıyı azarlamaktır.
+        // Showing an error message on an empty box is telling off a user who has not done anything yet.
         bool show = problem is not null and not BranchNameProblem.Empty;
 
         ValidationText.IsVisible = show;
@@ -93,12 +94,12 @@ public partial class CreateBranchDialog : Window
     }
 
     /// <summary>
-    /// Checkout işaretliyken ve çalışma ağacı kirliyken uyarır.
+    /// Warns when checkout is ticked and the working tree is dirty.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: <c>git switch -c</c> kirli ağaçta değişiklikleri çoğu zaman <b>taşıyor</b>,
-    /// ama çakışma varsa <b>reddediyor</b> (ve dalı da oluşturmuyor). Bu yüzden bu bir engel
-    /// değil bilgi: kullanıcıya ne olabileceğini söylüyoruz, kararı ona bırakıyoruz.
+    /// MEASURED: on a dirty tree <c>git switch -c</c> usually <b>carries</b> the changes across, but
+    /// <b>refuses</b> when there is a conflict (and then does not create the branch either). So this is
+    /// not a block but information: we tell the user what may happen and leave the decision to them.
     /// </remarks>
     private void UpdateDirtyWarning()
     {

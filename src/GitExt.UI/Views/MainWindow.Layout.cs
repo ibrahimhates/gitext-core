@@ -6,21 +6,21 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Panel düzeni ve oturum kalıcılığı (P08-T13, P08-T16).
+/// The panel layout and session persistence (P08-T13, P08-T16).
 /// </summary>
 public partial class MainWindow
 {
     private ISettingsStore? _settings;
 
-    /// <summary>Ayarları uygularken tetiklenen değişiklikleri geri yazmamak için.</summary>
+    /// <summary>So the changes raised while applying the settings are not written back.</summary>
     private bool _applyingLayout;
 
     /// <summary>
-    /// Kaydedilmiş düzeni uygular ve değişiklikleri kaydetmeye başlar.
+    /// Applies the saved layout and starts saving changes.
     /// </summary>
     /// <remarks>
-    /// Pencere <b>gösterilmeden önce</b> çağrılmalı: sonrasına kalsaydı uygulama önce
-    /// varsayılan boyutlarla açılıp gözle görülür biçimde yeniden yerleşirdi.
+    /// Must be called <b>before the window is shown</b>: left until afterwards, the application would
+    /// open at its default sizes first and visibly re-lay itself out.
     /// </remarks>
     public void AttachLayout(ISettingsStore settings)
     {
@@ -28,9 +28,9 @@ public partial class MainWindow
 
         ApplyStoredLayout();
 
-        // 🔴 Ayırıcı sürüklemesi saniyede onlarca değişiklik üretiyor. Kayıt gecikmeli
-        // (SettingsStore.DefaultSaveDelay) olduğu için her biri diske yazılmıyor; burada
-        // yalnızca son değer bildiriliyor.
+        // 🔴 Dragging a splitter produces dozens of changes a second. Because the save is delayed
+        // (SettingsStore.DefaultSaveDelay) not every one of them is written to disk; only the final
+        // value is reported here.
         MainSplitGrid.ColumnDefinitions[0]
             .GetObservable(ColumnDefinition.WidthProperty)
             .Subscribe(new AnonymousObserver<GridLength>(width => Persist(
@@ -45,10 +45,10 @@ public partial class MainWindow
         Closing += (_, _) => PersistWindow();
     }
 
-    /// <summary>Sol paneli açar/kapatır (<c>Ctrl+Alt+C</c>).</summary>
+    /// <summary>Toggles the left panel (<c>Ctrl+Alt+C</c>).</summary>
     public void ToggleBranchPanel() => SetBranchPanelVisible(!BranchPanelHost.IsVisible);
 
-    /// <summary>Alt paneli açar/kapatır (<c>Ctrl+Alt+D</c>).</summary>
+    /// <summary>Toggles the bottom panel (<c>Ctrl+Alt+D</c>).</summary>
     public void ToggleBottomPanel() => SetBottomPanelVisible(!BottomPanel.IsVisible);
 
     private void ApplyStoredLayout()
@@ -64,9 +64,8 @@ public partial class MainWindow
         {
             LayoutSettings layout = settings.Current.Layout;
 
-            // Sıfır ya da saçma değerler yok sayılıyor: elle düzenlenmiş bir ayar dosyası
-            // paneli GÖRÜNMEZ genişliğe düşürebilir ve kullanıcı onu geri getirecek tutamağı
-            // bulamazdı.
+            // Zero or nonsensical values are ignored: a hand-edited settings file could shrink the panel
+            // to an INVISIBLE width and the user would not find the handle to bring it back.
             if (layout.BranchPanelWidth >= 80)
             {
                 MainSplitGrid.ColumnDefinitions[0].Width = new GridLength(layout.BranchPanelWidth);
@@ -104,8 +103,8 @@ public partial class MainWindow
         BranchPanelHost.IsVisible = visible;
         BranchPanelSplitter.IsVisible = visible;
 
-        // Sütun gizlenirken GENİŞLİĞİ de sıfırlanmalı: yalnızca `IsVisible` kapatmak,
-        // sütunu 220 piksellik BOŞ bir şerit olarak bırakırdı.
+        // When the column is hidden its WIDTH has to be reset too: turning off `IsVisible` alone would
+        // leave the column as an EMPTY 220-pixel strip.
         MainSplitGrid.ColumnDefinitions[0].Width = visible
             ? new GridLength(StoredBranchWidth())
             : new GridLength(0);
@@ -143,8 +142,8 @@ public partial class MainWindow
         {
             s.Session.WindowMaximized = maximized;
 
-            // Büyütülmüş pencerenin boyutunu kaydetmiyoruz: geri alındığında kullanıcı
-            // ekranı kaplayan bir "normal" pencereyle kalırdı.
+            // We do not save a maximised window's size: on restore the user would be left with a
+            // "normal" window covering the screen.
             if (!maximized)
             {
                 s.Session.WindowWidth = Width;

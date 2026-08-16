@@ -3,12 +3,12 @@ using GitExt.Core.Model;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T10 — Yan yana yerleşim.
+/// P04-T10 — the side-by-side layout.
 /// </summary>
 /// <remarks>
-/// Buradaki asıl koruma <b>projeksiyon değişmezi</b>: sol sütun yukarıdan aşağı okununca
-/// dosyanın eski hâli, sağ sütun okununca yeni hâli çıkmalı. Hizalama bozulursa satırlar
-/// hâlâ ekranda görünür ama <b>yanlış yerde</b> olur; tek dürüst kontrol budur.
+/// The real thing protected here is the <b>projection invariant</b>: reading the left column top to
+/// bottom must give the file's old state, and the right column its new state. When the alignment
+/// breaks, the lines are still on screen but <b>in the wrong place</b>; this is the only honest check.
 /// </remarks>
 public class SideBySideDiffTests
 {
@@ -91,9 +91,8 @@ public class SideBySideDiffTests
     [Fact]
     public void Eslesmeyen_satirlar_yan_yana_KONULMAZ()
     {
-        // Eşleme algoritması bu ikisinin karşılıklı olmadığına karar verdiyse, yan yana
-        // koymak kullanıcıya "bunlar karşılıklı" demek olurdu. Yer tasarrufu için
-        // doğruluktan vazgeçilmiyor.
+        // If the matching algorithm decided these two are not counterparts, putting them side by side
+        // would be telling the user "these correspond". Correctness is not given up to save space.
         IReadOnlyList<SideBySideRow> rows = SideBySideDiff.Build(Hunk(
             Removed("aaaa bbbb cccc"),
             Added("aaaa bbbb cccc dddd"),
@@ -104,7 +103,7 @@ public class SideBySideDiffTests
         paired.Left!.Content.ShouldBe("aaaa bbbb cccc");
         paired.Right!.Content.ShouldBe("aaaa bbbb cccc dddd");
 
-        // Eşsiz satır kendi başına, karşısı dolgu.
+        // An unmatched line stands alone, with a filler opposite it.
         rows.Count(r => r.Left is null && r.Right is not null
             && r.Right.Content == "tamamen alakasiz bir sey").ShouldBe(1);
     }
@@ -112,8 +111,8 @@ public class SideBySideDiffTests
     [Fact]
     public void Hizalama_satir_ici_vurgulamayla_AYNI_eslemeyi_kullanir()
     {
-        // Bu iki mekanizma ayrışırsa kullanıcı aynı ekranda iki çelişkili cevap görür:
-        // vurgulama bir çifti işaretlerken yan yana yerleşim başka bir çifti gösterir.
+        // If these two mechanisms diverge, the user sees two contradictory answers on the same screen:
+        // the highlighting marks one pair while the side-by-side layout shows another.
         DiffLine[] lines =
         [
             Removed("public void Bir() { }"),
@@ -124,12 +123,12 @@ public class SideBySideDiffTests
         IReadOnlyList<DiffLine> annotated = InlineDiff.Annotate(lines);
         IReadOnlyList<SideBySideRow> rows = SideBySideDiff.Build(Hunk(lines));
 
-        // Vurgulama hangi silinen satırı eşledi?
+        // Which removed line did the highlighting match?
         string highlighted = annotated
             .Single(l => l.Kind == DiffLineKind.Removed && l.Segments.Count > 0)
             .Content;
 
-        // Yan yana yerleşim aynı satırı eşlemeli.
+        // The side-by-side layout must match the same line.
         SideBySideRow paired = rows.Single(r => r.Left is not null && r.Right is not null);
 
         paired.Left!.Content.ShouldBe(highlighted);
@@ -138,7 +137,7 @@ public class SideBySideDiffTests
     [Fact]
     public void Sol_sutun_dosyanin_eski_hali_sag_sutun_yeni_hali()
     {
-        // Projeksiyon değişmezi — hizalamanın asıl doğruluk ölçütü.
+        // The projection invariant — the real correctness measure for the alignment.
         IReadOnlyList<SideBySideRow> rows = SideBySideDiff.Build(Hunk(
             Context("using System;"),
             Context(""),
@@ -177,7 +176,7 @@ public class SideBySideDiffTests
         rows[0].IsHunkHeader.ShouldBeTrue();
         rows[2].IsHunkHeader.ShouldBeTrue();
 
-        // Başlık satırının iki tarafı da boş.
+        // Both sides of a header row are empty.
         rows[0].Left.ShouldBeNull();
         rows[0].Right.ShouldBeNull();
     }

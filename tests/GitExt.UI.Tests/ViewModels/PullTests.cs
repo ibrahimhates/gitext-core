@@ -7,7 +7,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T06 + P06-T07 — Pull/Fetch ekranı (ViewModel tarafı).
+/// P06-T06 + P06-T07 — the Pull/Fetch screen (the ViewModel side).
 /// </summary>
 public class PullTests
 {
@@ -32,9 +32,9 @@ public class PullTests
     }
 
     /// <remarks>
-    /// ⚠️ Sembolik <c>origin/HEAD</c> bilerek listede: git onu <c>origin/HEAD</c> değil
-    /// <b><c>origin</c></b> diye kısaltıyor (P03-T12'de ölçülmüş) ve sahte veri bunu
-    /// yansıtıyor — süzme yanlışsa test kırmızı olmalı.
+    /// ⚠️ The symbolic <c>origin/HEAD</c> is in the list deliberately: git abbreviates it not as
+    /// <c>origin/HEAD</c> but as <b><c>origin</c></b> (measured in P03-T12) and the fake data reflects
+    /// that — if the filtering is wrong, the test must turn red.
     /// </remarks>
     private static IReadOnlyList<GitRef> Branches() =>
     [
@@ -50,8 +50,8 @@ public class PullTests
     [AvaloniaFact]
     public async Task Ekran_kullanicinin_AYARIYLA_aciliyor_ve_sebebi_yazili()
     {
-        // 🔑 Ayarı rebase olan kullanıcıya merge seçili bir ekran açmak, ona sessizce
-        // beklemediği şeyi yaptırırdı.
+        // 🔑 Opening a screen with merge selected for a user whose setting is rebase would silently make
+        // them do something they did not expect.
         (PullViewModel model, _, _) = Create(
             new ResolvedPullStrategy(PullStrategy.Rebase, PullStrategySource.BranchSetting, "true"));
 
@@ -77,7 +77,7 @@ public class PullTests
     [AvaloniaFact]
     public async Task Komut_onizlemesi_secimlerle_birlikte_degisiyor()
     {
-        // "Komutu göster" ilkesi: metin gerçek seçimlerden üretiliyor.
+        // The "show the command" principle: the text is produced from the actual selections.
         (PullViewModel model, _, _) = Create();
 
         await LoadAsync(model);
@@ -107,7 +107,7 @@ public class PullTests
 
         model.SelectedRemote.ShouldBe("origin");
 
-        // `origin/HEAD` sembolik — listede olmamalı (P03-T12 ve P06-T06'nın dersi).
+        // `origin/HEAD` is symbolic — it must not be in the list (the lesson of P03-T12 and P06-T06).
         model.RemoteBranches.ShouldBe(["main", "dev"]);
         model.SelectedBranch.ShouldBe("main");
 
@@ -128,8 +128,8 @@ public class PullTests
         model.CanPruneTags.ShouldBeTrue();
         model.PruneTags = true;
 
-        // Prune kapatılınca alt seçenek de kapanmalı: git `--prune-tags`i tek başına
-        // kabul etmiyor.
+        // When prune is turned off the sub-option has to go off too: git does not accept `--prune-tags`
+        // on its own.
         model.Prune = false;
         model.PruneTags.ShouldBeFalse();
     }
@@ -153,7 +153,8 @@ public class PullTests
     [AvaloniaFact]
     public async Task Fetch_kismi_basarisizligi_UYARI_olarak_gosteriliyor()
     {
-        // 🔴 `--all`'da bir remote bozukken diğerleri geliyor; sessiz kalmak olmaz.
+        // 🔴 With `--all`, when one remote is broken the others still come through; staying silent will
+        // not do.
         (PullViewModel model, FakeFetchWriter fetch, _) = Create();
 
         fetch.Result = new FetchResult
@@ -213,8 +214,8 @@ public class PullTests
     [AvaloniaFact]
     public async Task AUTOSTASH_cakismasi_AYRI_bir_metinle_anlatiliyor()
     {
-        // 🔴 İki durumun kullanıcıya söylediği iş farklı: burada pull BAŞARILI, çakışan
-        // kullanıcının kendi kaydedilmemiş değişikliği ve stash'te duruyor.
+        // 🔴 The two situations tell the user to do different things: here the pull SUCCEEDED, and what
+        // conflicted is the user's own uncommitted change, which is sitting in the stash.
         (PullViewModel model, _, FakePullWriter pull) = Create();
 
         pull.Result = new PullResult
@@ -255,7 +256,7 @@ public class PullTests
     [AvaloniaFact]
     public async Task Zaten_guncelken_geri_alma_komutu_GOSTERILMIYOR()
     {
-        // Hiçbir şey değişmediyse "geri al" demek kullanıcıyı kuşkuya düşürürdü.
+        // If nothing changed, saying "undo" would leave the user in doubt.
         (PullViewModel model, _, _) = Create();
 
         await LoadAsync(model);
@@ -268,8 +269,8 @@ public class PullTests
     [AvaloniaFact]
     public async Task Depo_acikken_MENU_komutu_etkin_ve_ekran_DOLU_aciliyor()
     {
-        // Menü bağlantısı: eksik bir bağımlılıkta öğe sessizce ölü kalırdı
-        // (`MainWindowBindingTests`'in yakaladığı hatanın aynı sınıfı).
+        // The menu wiring: with a dependency missing, the item would silently stay dead
+        // (the same class of bug `MainWindowBindingTests` caught).
         FakeRemoteReader remotes = new();
         remotes.Remotes.Add(new GitRemote { Name = "origin", FetchUrls = ["https://example.com/a.git"] });
 

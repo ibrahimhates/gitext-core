@@ -5,20 +5,20 @@ using GitExt.Core;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Kimlik doğrulama başarısızlığında gösterilen ekran (P06-T09).
+/// The screen shown when authentication fails (P06-T09).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔑 <b>Ekran ne olduğunu söylüyor, "hata" demiyor.</b> Ölçümde git aynı satırı
-/// (<c>Could not read from remote repository.</c>) hem eksik SSH anahtarında hem
-/// çözülemeyen sunucu adında yazıyor; ham metni göstermek kullanıcıyı adresini
-/// kurcalamaya iterdi.
+/// 🔑 <b>The screen says what happened; it does not say "error".</b> In the measurement git wrote the
+/// same line (<c>Could not read from remote repository.</c>) both for a missing SSH key and for a host
+/// name that could not be resolved; showing the raw text would push the user into fiddling with their
+/// address.
 /// </para>
 /// <para>
-/// 🔒 <b>Gizli değer hiçbir yere yazılmıyor:</b> ne komut önizlemesine, ne komut
-/// günlüğüne, ne diske. <c>credential.helper</c> ayarı yokken git de bir şey kaydetmiyor
-/// (ölçüldü) — yani girilen token yalnızca o çağrı boyunca yaşıyor. Kaydetmek isteyen
-/// kullanıcıya <b>helper önerisi</b> veriliyor, parolasını bizim saklamamız değil.
+/// 🔒 <b>The secret is written nowhere:</b> not into the command preview, not into the command log,
+/// not to disk. With no <c>credential.helper</c> configured git saves nothing either (measured) — so
+/// the token entered lives only for the duration of that call. A user who wants it saved is given a
+/// <b>helper suggestion</b>, rather than us storing their password.
 /// </para>
 /// </remarks>
 public sealed class AuthenticationViewModel : ViewModelBase
@@ -42,7 +42,7 @@ public sealed class AuthenticationViewModel : ViewModelBase
 
     public AuthenticationDiagnosis Diagnosis { get; }
 
-    /// <summary>Ne olduğunun açıklaması.</summary>
+    /// <summary>The explanation of what happened.</summary>
     public string Explanation => Diagnosis.Explanation;
 
     /// <summary>Uzak depo adresi (parola maskeli).</summary>
@@ -50,12 +50,12 @@ public sealed class AuthenticationViewModel : ViewModelBase
 
     public bool HasUrl => !string.IsNullOrEmpty(Url);
 
-    /// <summary>Çalıştırılabilir öneriler.</summary>
+    /// <summary>Runnable suggestions.</summary>
     public ObservableCollection<string> Suggestions { get; } = [];
 
     public bool HasSuggestions => Suggestions.Count > 0;
 
-    /// <summary>Kimlik bilgisi alanları gösterilsin mi?</summary>
+    /// <summary>Should the credential fields be shown?</summary>
     public bool CanEnterCredentials => Diagnosis.CanRetryWithCredentials;
 
     public string Username
@@ -70,7 +70,7 @@ public sealed class AuthenticationViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Parola ya da kişisel erişim token'ı.</summary>
+    /// <summary>The password or personal access token.</summary>
     public string Secret
     {
         get => _secret;
@@ -89,10 +89,10 @@ public sealed class AuthenticationViewModel : ViewModelBase
 
     public IRelayCommand SubmitCommand { get; }
 
-    /// <summary>Kullanıcının verdiği kimlik; iptal edildiyse <see langword="null"/>.</summary>
+    /// <summary>The credential the user supplied; <see langword="null"/> when cancelled.</summary>
     public GitCredentials? Result { get; private set; }
 
-    /// <summary>Ekran kapanmalı mı?</summary>
+    /// <summary>Should the screen close?</summary>
     public event EventHandler? Completed;
 
     private void Submit()
@@ -113,12 +113,12 @@ public sealed class AuthenticationViewModel : ViewModelBase
     }
 }
 
-/// <summary>Kimlik doğrulama ekranını gösteren taraf (P06-T09).</summary>
+/// <summary>The side that shows the authentication screen (P06-T09).</summary>
 public interface IAuthenticationPrompt
 {
     /// <summary>
-    /// Ekranı modal gösterir; kullanıcı kimlik verdiyse onu, vermediyse
-    /// <see langword="null"/> döndürür.
+    /// Shows the screen modally; returns the credential when the user supplied one, and
+    /// <see langword="null"/> otherwise.
     /// </summary>
     Task<GitCredentials?> ShowAsync(AuthenticationViewModel model);
 }
