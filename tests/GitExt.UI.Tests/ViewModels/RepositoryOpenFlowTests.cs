@@ -8,7 +8,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P03-T16 — Depo açma akışı · P03-T17 — Yükleme ve boş durumlar.
+/// P03-T16 — The repository open flow · P03-T17 — Loading and empty states.
 /// </summary>
 public class RepositoryOpenFlowTests
 {
@@ -50,7 +50,7 @@ public class RepositoryOpenFlowTests
     [AvaloniaFact]
     public async Task Acik_yol_verildiginde_basarisizlik_hata_olarak_gosterilir()
     {
-        // Kullanıcı bu yolu açıkça istedi; sessizce yutmak onu şaşırtır.
+        // The user asked for this path explicitly; swallowing it silently would puzzle them.
         MainWindowViewModel viewModel = Create(locateFailure: NotARepository());
 
         await viewModel.StartAsync("/tmp/depo-degil");
@@ -62,8 +62,8 @@ public class RepositoryOpenFlowTests
     [AvaloniaFact]
     public async Task Calisma_dizini_depo_degilse_hata_gosterilmez()
     {
-        // Uygulama masaüstünden başlatıldığında çalışma dizini rastgele bir yerdir;
-        // "burası depo değil" hatası göstermek anlamsız olur.
+        // When the application is started from the desktop the working directory is somewhere arbitrary;
+        // showing a "this is not a repository" error would be meaningless.
         MainWindowViewModel viewModel = Create(locateFailure: NotARepository());
 
         await viewModel.StartAsync(explicitPath: null);
@@ -132,8 +132,8 @@ public class RepositoryOpenFlowTests
     [AvaloniaFact]
     public async Task Birakilan_DOSYA_icin_bulundugu_klasor_denenir()
     {
-        // Kullanıcı dosya yöneticisinden bir dosya sürükleyebilir. git zaten üst klasörlere
-        // doğru depo kökünü aradığı için deponun içindeki herhangi bir dosya yeterlidir.
+        // The user may drag a file from their file manager. Because git already searches upwards for the
+        // repository root, any file inside the repository is enough.
         string file = Path.Combine(Path.GetTempPath(), $"gitext-{Guid.NewGuid():N}.txt");
         await File.WriteAllTextAsync(file, "x", TestContext.Current.CancellationToken);
 
@@ -143,7 +143,7 @@ public class RepositoryOpenFlowTests
 
             (await viewModel.TryOpenDroppedAsync([file])).ShouldBeTrue();
 
-            // Dosyanın kendisi değil, bulunduğu klasör açılmış olmalı.
+            // The folder the file is in must have been opened, not the file itself.
             viewModel.Commits.Repository!.WorkingDirectory
                 .ShouldBe(Path.GetDirectoryName(file));
         }
@@ -166,7 +166,7 @@ public class RepositoryOpenFlowTests
     [AvaloniaFact]
     public async Task Commitsiz_depo_bos_olarak_isaretlenir()
     {
-        // Yeni `git init`: hata değil, anlatılması gereken durum (P03-T17).
+        // A fresh `git init`: not an error but a state that needs explaining (P03-T17).
         MainWindowViewModel viewModel = Create(commitCount: 0);
 
         await viewModel.OpenRepositoryAsync("/tmp/bos-depo");
@@ -198,8 +198,8 @@ public class RepositoryOpenFlowTests
     [AvaloniaFact]
     public async Task Basarisiz_acilis_onceki_depoyu_ekranda_birakmaz()
     {
-        // Aksi halde satırları temizlenmiş bir deponun yolu başlıkta kalır ve kullanıcı
-        // hâlâ onun açık olduğunu sanır.
+        // Otherwise the path of a repository whose rows have been cleared stays in the title and the user
+        // thinks it is still open.
         CommitListViewModel commits = new(
             new FailingAfterFirstLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(3)),
@@ -217,7 +217,7 @@ public class RepositoryOpenFlowTests
         viewModel.ShowWelcome.ShouldBeTrue();
     }
 
-    /// <summary>İlk çağrıda başarılı, sonrakilerde başarısız olan konumlandırıcı.</summary>
+    /// <summary>A locator that succeeds on the first call and fails on the ones after.</summary>
     private sealed class FailingAfterFirstLocator : IRepositoryLocator
     {
         private int _calls;

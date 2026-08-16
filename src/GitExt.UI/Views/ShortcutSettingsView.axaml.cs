@@ -6,12 +6,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Kısayol düzenleme ekranı (P08-T03).
+/// The shortcut editing screen (P08-T03).
 /// </summary>
 /// <remarks>
-/// Tuş yakalama kod arkasında olmak zorunda: yakalanan şey bir <see cref="KeyGesture"/> ve
-/// onu üreten ham tuş olayı yalnızca burada görülüyor. Karar (atanabilir mi, çakışıyor mu)
-/// ViewModel'da ve orada ayrıca test ediliyor.
+/// The key capture has to live in the code-behind: what is captured is a <see cref="KeyGesture"/> and
+/// the raw key event producing it is only visible here. The decision (can it be assigned, does it
+/// conflict) lives in the ViewModel and is tested separately there.
 /// </remarks>
 public partial class ShortcutSettingsView : UserControl
 {
@@ -19,11 +19,11 @@ public partial class ShortcutSettingsView : UserControl
     {
         InitializeComponent();
 
-        // 🔴 TÜNEL fazı şart, iki ayrı sebeple:
-        //   1. Yakalama sırasında basılan tuş önce listeye ulaşırsa `↓` seçimi kaydırır,
-        //      `Space` satırı seçer ve kullanıcı o tuşları HİÇ atayamaz.
-        //   2. Odak "Kısayol ata…" düğmesinde kalıyor; kabarma fazında `Space` ve `Enter`
-        //      düğmeye gider ve yine atanamazdı.
+        // 🔴 The TUNNEL phase is essential, for two separate reasons:
+        //   1. If a key pressed during capture reaches the list first, `↓` moves the selection and
+        //      `Space` selects a row, and the user can NEVER assign those keys.
+        //   2. Focus stays on the "Assign shortcut…" button; in the bubbling phase `Space` and `Enter`
+        //      go to the button and again could not be assigned.
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
 
@@ -36,8 +36,8 @@ public partial class ShortcutSettingsView : UserControl
             return;
         }
 
-        // Escape yakalamadan çıkar; atanabilir bir kısayol olarak okunsaydı vazgeçmenin
-        // klavyeyle yolu kalmazdı.
+        // Escape leaves capture; read as an assignable shortcut, there would be no keyboard way to back
+        // out.
         if (e.Key is Key.Escape)
         {
             model.CancelCaptureCommand.Execute(null);
@@ -48,8 +48,8 @@ public partial class ShortcutSettingsView : UserControl
 
         model.TryApplyCapture(new KeyGesture(e.Key, e.KeyModifiers));
 
-        // Sonuç ne olursa olsun tüketiliyor: yakalama modundayken hiçbir tuş listeye
-        // veya kısayol dağıtımına gitmemeli.
+        // It is consumed whatever the outcome: while in capture mode no key may reach the list or the
+        // shortcut dispatch.
         e.Handled = true;
     }
 

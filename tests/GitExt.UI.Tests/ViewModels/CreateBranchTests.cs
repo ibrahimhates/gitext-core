@@ -7,7 +7,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T01 — dal oluşturma akışı (ViewModel tarafı).
+/// P06-T01 — the create branch flow (the ViewModel side).
 /// </summary>
 public class CreateBranchTests
 {
@@ -48,9 +48,9 @@ public class CreateBranchTests
     [AvaloniaFact]
     public async Task Dal_secili_COMMIT_ten_olusturuluyor()
     {
-        // 🔴 GitExtensions'ta bu komutun etiketi "Create branch at this revision" ve yeri
-        // commit sağ tık menüsü. Seçili commit'i yok sayıp HEAD'den oluşturmak, kullanıcının
-        // istediğinden BAŞKA bir şey yapmak olurdu — üstelik sessizce.
+        // 🔴 In GitExtensions this command's label is "Create branch at this revision" and its place is
+        // the commit right-click menu. Ignoring the selected commit and creating from HEAD would be doing
+        // something OTHER than what the user asked for — and silently at that.
         FakeBranchWriter writer = new();
         FakeBranchPrompt prompt = new(new CreateBranchDecision { Confirmed = true, Name = "ozellik" });
         MainWindowViewModel model = Create(writer, prompt);
@@ -111,9 +111,9 @@ public class CreateBranchTests
     [AvaloniaFact]
     public async Task Kendiliginden_kurulan_upstream_KULLANICIYA_soyleniyor()
     {
-        // ÖLÇÜLDÜ: uzak izleme dalından oluşturulunca upstream'i git KENDİSİ kuruyor.
-        // Kullanıcı istemeden kurulan bir bağın sessiz kalması, sonraki `push`un nereye
-        // gideceğini sürpriz yapardı.
+        // MEASURED: when created from a remote tracking branch, git sets the upstream up ITSELF.
+        // A link set up without the user asking, left unmentioned, would make where the next `push` goes
+        // a surprise.
         FakeBranchWriter writer = new() { Upstream = "origin/ozellik" };
         MainWindowViewModel model = Create(writer, new FakeBranchPrompt());
 
@@ -144,7 +144,7 @@ public class CreateBranchTests
 
         model.BranchNotice.ShouldBe("A branch with that name already exists.");
 
-        // Ham stderr birincil mesaj DEĞİL (GitFailureKind'ın varlık sebebi).
+        // Raw stderr is NOT the primary message (the reason GitFailureKind exists).
         model.BranchNotice!.ShouldNotContain("fatal:");
     }
 
@@ -158,8 +158,8 @@ public class CreateBranchTests
         await model.OpenRepositoryAsync("/tmp/depo");
         await model.CreateBranchCommand.ExecuteAsync(null);
 
-        // Durum okuyucu verilmedi → uyarı yok; ama istek yine de kuruluyor ve
-        // başlangıç noktası açıklaması boş kalmıyor.
+        // No status reader supplied → no warning; but the request is still built and the starting point
+        // description is not left empty.
         prompt.LastRequest.ShouldNotBeNull();
         prompt.LastRequest.StartPointLabel.ShouldNotBeNullOrWhiteSpace();
     }

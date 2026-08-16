@@ -5,13 +5,13 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Commit ekranı (P05-T09).
+/// The commit screen (P05-T09).
 /// </summary>
 /// <remarks>
-/// GitExtensions'ta karşılığı <c>FormCommit</c> ve <b>modal</b> açılıyor
-/// (<c>GitUICommands.StartCommitDialog</c> → <c>form.ShowDialog(owner)</c>). Açılış biçimi de
-/// yerleşim gibi takip ediliyor (CLAUDE.md § 9) — ayrıca modal olması doğru: kullanıcı bu
-/// ekranda index'i değiştiriyor, arkadaki commit listesi eski durumu gösterirdi.
+/// Its counterpart in GitExtensions is <c>FormCommit</c> and it opens <b>modally</b>
+/// (<c>GitUICommands.StartCommitDialog</c> → <c>form.ShowDialog(owner)</c>). How it opens is followed
+/// just like the layout (CLAUDE.md § 9) — and modal is right anyway: the user changes the index on
+/// this screen, and the commit list behind it would be showing the old state.
 /// </remarks>
 public partial class WorkingTreeWindow : Window
 {
@@ -19,24 +19,24 @@ public partial class WorkingTreeWindow : Window
     {
         InitializeComponent();
 
-        // 🔑 Taslak, pencere kapanırken KESİN olarak yazılıyor (P05-T13). Gecikmeli kayıt
-        // (750 ms) henüz çalışmamış olabilir ve kullanıcının en son yazdığı satır — yani
-        // tam da bırakıp gittiği yer — kaybolurdu.
+        // 🔑 The draft is written DEFINITIVELY as the window closes (P05-T13). The delayed save (750 ms)
+        // may not have run yet, and the last line the user typed — the very place they left off — would
+        // be lost.
         Closing += (_, _) =>
         {
             if (DataContext is WorkingTreeViewModel model)
             {
                 _ = model.Message.FlushDraftAsync();
 
-                // İzleyici uygulama ömrü boyunca yaşıyor, bu pencere ise kapanıyor:
-                // abonelik bırakılmazsa kapalı bir ekran için `git status` çalışmaya
-                // devam ederdi (P05-T14).
+                // The watcher lives for the lifetime of the application while this window closes:
+                // unless the subscription is released, `git status` would carry on running for a closed
+                // screen (P05-T14).
                 model.Dispose();
             }
         };
     }
 
-    /// <summary>Commit ekranını sahibinin üstünde <b>modal</b> açar.</summary>
+    /// <summary>Opens the commit screen <b>modally</b> above its owner.</summary>
     internal static Task Open(WorkingTreeViewModel viewModel, Window owner, ICommandRegistry? registry = null)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -49,15 +49,15 @@ public partial class WorkingTreeWindow : Window
             window.GetControl<WorkingTreeView>("Files").AttachShortcuts(registry);
         }
 
-        // Onay diyaloğu bu pencerenin üstünde açılacak; sahip pencere ancak burada belli
-        // oluyor (P05-T15).
+        // The confirmation dialog will open above this window; the owner window is only known here
+        // (P05-T15).
         viewModel.Confirmer = new DialogConfirmer(window);
 
         return window.ShowDialog(owner);
     }
 
     /// <summary>
-    /// Onayı gerçek bir diyalogla soran uygulama (P05-T15).
+    /// The implementation that asks for confirmation with a real dialog (P05-T15).
     /// </summary>
     private sealed class DialogConfirmer : IDestructiveActionConfirmer
     {

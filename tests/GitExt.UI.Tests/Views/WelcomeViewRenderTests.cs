@@ -11,13 +11,13 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P03-T16 — Karşılama ekranının gerçekten <b>görünür</b> olduğunu doğrular.
+/// P03-T16 — Verifies that the welcome screen really is <b>visible</b>.
 /// </summary>
 /// <remarks>
-/// Bu testlerin varlık sebebi ölçülmüş bir hata: <c>IsVisible="{Binding Recent…Count}"</c>
-/// ile bir <c>int</c>'i <c>bool</c>'a bağlamak Avalonia'da <b>sessizce çalışmıyor</b> —
-/// son açılanlar bölümü hiç görünmüyordu ve hiçbir ViewModel testi bunu yakalamazdı.
-/// Bölüm gerçekten ekrana geliyor mu, görsel ağaçtan doğrulanıyor.
+/// These tests exist because of a measured bug: binding an <c>int</c> to a <c>bool</c> with
+/// <c>IsVisible="{Binding Recent…Count}"</c> <b>silently does not work</b> in Avalonia — the recent
+/// section was never visible and no ViewModel test would have caught it.
+/// Whether the section really reaches the screen is verified from the visual tree.
 /// </remarks>
 public class WelcomeViewRenderTests
 {
@@ -59,7 +59,7 @@ public class WelcomeViewRenderTests
 
         buttons.Count.ShouldBe(2);
 
-        // IsVisible yetmez: üst bir kapsayıcı gizliyse öğe yine çizilmez.
+        // IsVisible is not enough: when a parent container is hidden the element is still not drawn.
         buttons.ShouldAllBe(b => b.IsEffectivelyVisible);
 
         window.Close();
@@ -101,7 +101,7 @@ public class WelcomeViewRenderTests
     [AvaloniaFact]
     public async Task Commitsiz_depoda_aciklama_gosterilir()
     {
-        // P03-T17: yeni `git init` edilmiş depoda kullanıcı boş ekrana bakmamalı.
+        // P03-T17: in a freshly `git init`ed repository the user must not be looking at a blank screen.
         MainWindowViewModel viewModel = new(
             new CommitListViewModel(
                 new FakeRepositoryLocator(),
@@ -127,10 +127,10 @@ public class WelcomeViewRenderTests
     [AvaloniaFact]
     public async Task Depo_acilamadiginda_AYRINTILAR_dugmesi_gorunur()
     {
-        // P05-T07 — "bu klasör bir Git deposu değil" EN SIK hata yolu ve depo açılamadığı
-        // için ekranda commit listesi değil karşılama ekranı var. Düğme yalnızca commit
-        // listesine konsaydı git'in asıl çıktısı tam da en çok gerekli olduğu anda
-        // görünmezdi.
+        // P05-T07 — "this folder is not a Git repository" is the MOST FREQUENT error path, and because
+        // the repository could not be opened, what is on screen is the welcome screen and not the commit
+        // list. Had the button been put only on the commit list, git's actual output would be invisible
+        // at exactly the moment it is most needed.
         MainWindowViewModel viewModel = Create();
         MainWindow window = Show(viewModel);
 
@@ -150,7 +150,7 @@ public class WelcomeViewRenderTests
     [AvaloniaFact]
     public async Task Hata_yokken_AYRINTILAR_dugmesi_GORUNMEZ()
     {
-        // Karşı kanıt: düğme her zaman görünseydi yukarıdaki test hiçbir şey kanıtlamazdı.
+        // The counter-evidence: were the button always visible, the test above would prove nothing.
         MainWindowViewModel viewModel = new(
             new CommitListViewModel(
                 new FakeRepositoryLocator(),

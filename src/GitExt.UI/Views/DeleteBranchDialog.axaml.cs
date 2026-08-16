@@ -4,13 +4,13 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Dal silme onayı (P06-T03).
+/// The branch deletion confirmation (P06-T03).
 /// </summary>
 /// <remarks>
-/// İki turlu akış: ilk turda sıradan bir onay sorulur. git dalı <b>birleştirilmemiş</b>
-/// diye reddederse diyalog ikinci kez, bu kez <b>kurtarma komutuyla</b> açılır.
-/// Birleşmişliği önden hesaplamıyoruz çünkü ölçüldü — <c>git branch -d</c> upstream'ine
-/// birleşmiş dalı da siliyor ve kendi hesabımız yanlış alarm üretirdi.
+/// A two-round flow: the first round asks for an ordinary confirmation. When git refuses the branch as
+/// <b>unmerged</b>, the dialog opens a second time, this time <b>with the recovery command</b>.
+/// We do not work out whether it is merged in advance, because it was measured — <c>git branch -d</c>
+/// also deletes a branch merged into its upstream, and our own calculation would produce false alarms.
 /// </remarks>
 public partial class DeleteBranchDialog : Window
 {
@@ -53,9 +53,9 @@ public partial class DeleteBranchDialog : Window
 
         UnmergedPanel.IsVisible = request.IsUnmerged;
 
-        // 🔴 Kurtarmanın tek güvenilir yolu bu komut: ölçüldü, silinen dalın KENDİ reflog'u
-        // da siliniyor ve dal bu çalışma ağacında hiç checkout edilmemişse HEAD
-        // reflog'unda da iz yok.
+        // 🔴 This command is the only reliable route to recovery: measured, the deleted branch's OWN
+        // reflog goes too, and if the branch was never checked out in this working tree there is no
+        // trace of it in HEAD's reflog either.
         RecoveryCommand.Text = request.LastCommitId is { Length: > 0 } id
             ? $"git branch {request.Name} {id}"
             : string.Empty;
@@ -64,12 +64,12 @@ public partial class DeleteBranchDialog : Window
     }
 
     /// <summary>
-    /// Birleştirilmemiş dalda <b>Sil</b>, kutu işaretlenmeden açılmıyor.
+    /// On an unmerged branch, <b>Delete</b> does not enable until the box is ticked.
     /// </summary>
     /// <remarks>
-    /// Onay kutusu yeterli, ayrı bir diyalog gerekmiyor: kurtarma komutu ekranda duruyor,
-    /// yani işlem geri döndürülebilir (P05-T15'in "diyalog yalnızca geri getirilemeyen
-    /// işlemler için" kuralı).
+    /// A checkbox is enough and no separate dialog is needed: the recovery command is on screen, which
+    /// means the operation can be undone (P05-T15's rule that "a dialog is only for irrecoverable
+    /// operations").
     /// </remarks>
     private void UpdateButton() =>
         DeleteButton.IsEnabled = !_isUnmerged || ForceBox.IsChecked == true;

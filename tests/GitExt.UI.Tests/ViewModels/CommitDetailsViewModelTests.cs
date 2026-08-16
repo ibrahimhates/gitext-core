@@ -63,7 +63,7 @@ public class CommitDetailsViewModelTests
 
         details.Show(Row(Commit()), "/tmp/depo");
 
-        // Kısaltılmış değil TAM SHA: kullanıcı kopyalayıp başka yerde kullanacak.
+        // The FULL SHA, not the abbreviated one: the user will copy it and use it elsewhere.
         details.FullId.ShouldBe(FakeGitData.Sha(7));
         details.FullId.Length.ShouldBe(40);
     }
@@ -77,8 +77,8 @@ public class CommitDetailsViewModelTests
 
         details.AuthorDate.ShouldNotBeNullOrWhiteSpace();
 
-        // Testin çalıştığı makine +09:00'da olabilir; o durumda orijinal tarih gizlenir
-        // (aynı değeri iki kez yazmanın anlamı yok). İki durumu da doğruluyoruz.
+        // The machine running the test may be at +09:00; in that case the original date is hidden
+        // (there is no point writing the same value twice). We verify both cases.
         if (TimeZoneInfo.Local.GetUtcOffset(_authoredAt) == TimeSpan.FromHours(9))
         {
             details.AuthorOriginalDate.ShouldBeNull();
@@ -103,7 +103,7 @@ public class CommitDetailsViewModelTests
     [AvaloniaFact]
     public void Kaydeden_yazardan_farkliysa_isaretlenir()
     {
-        // Rebase/cherry-pick/yama durumunda ayrışır ve bu önemli bilgidir.
+        // They diverge on a rebase/cherry-pick/patch, and that is important information.
         CommitDetailsViewModel details = Create();
 
         details.Show(
@@ -164,9 +164,9 @@ public class CommitDetailsViewModelTests
     [AvaloniaFact]
     public async Task Dogrulanamayan_imza_sorun_olarak_isaretlenir()
     {
-        // "İmzasız" ile "doğrulanamadı" farkı ölçülmüş bir git tuzağından geliyor
-        // (allowedSignersFile yoksa git imzalı commit'e "N" diyor). Panel bu ikisini
-        // karıştırırsa kullanıcı imzalı bir commit'i imzasız sanır.
+        // The difference between "unsigned" and "could not be verified" comes from a measured git trap
+        // (without an allowedSignersFile, git says "N" to a signed commit). If the panel conflates the
+        // two, the user takes a signed commit for an unsigned one.
         CommitDetailsViewModel details = Create(new CommitSignatureInfo
         {
             Status = SignatureStatus.CannotVerify,
@@ -198,9 +198,9 @@ public class CommitDetailsViewModelTests
     [AvaloniaFact]
     public async Task Hizli_gezinmede_onceki_imza_okumasi_iptal_edilir()
     {
-        // Kullanıcı ↓ tuşuna basılı tutabilir. Her satır için git süreci başlatmamak adına
-        // okuma gecikmeli; seçim değişince iptal edilmeli, yoksa eski commit'in imzası
-        // yeni commit'in yanında görünür.
+        // The user can hold the ↓ key down. To avoid starting a git process for every row the read is
+        // delayed; it has to be cancelled when the selection changes, otherwise the old commit's
+        // signature shows up next to the new commit.
         FakeCommitSignatureReader reader = new(new CommitSignatureInfo { Status = SignatureStatus.Valid });
         CommitDetailsViewModel details = new(reader, _ => true);
 
@@ -211,8 +211,8 @@ public class CommitDetailsViewModelTests
 
         await WaitForSignatureAsync(details);
 
-        // Anlamlı özellik: 20 hızlı seçim tek bir okuma üretmeli. ("Şu anda 0 okuma var"
-        // demek zamanlamaya bağlı ve yük altında kırılgan olurdu.)
+        // The meaningful property: 20 rapid selections must produce a single read. (Saying "there are 0
+        // reads right now" would depend on timing and be fragile under load.)
         reader.ReadCallCount.ShouldBe(1);
     }
 

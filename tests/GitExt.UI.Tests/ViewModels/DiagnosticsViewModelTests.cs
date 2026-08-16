@@ -4,12 +4,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P09-T03 — teşhis paneli ViewModel'i.
+/// P09-T03 — the diagnostics panel's ViewModel.
 /// </summary>
 public class DiagnosticsViewModelTests
 {
     /// <summary>
-    /// Testin verdiği sayıları aynen döndüren teşhis.
+    /// A diagnostics implementation that returns the numbers the test gives it.
     /// </summary>
     private sealed class FakeDiagnostics : IPerformanceDiagnostics
     {
@@ -62,7 +62,7 @@ public class DiagnosticsViewModelTests
             FailureCount = failures,
         };
 
-    // ------------------------------------------------------- gösterim
+    // ------------------------------------------------------- display
 
     [Fact]
     public void ShouldProjectCommandStatistics()
@@ -81,7 +81,7 @@ public class DiagnosticsViewModelTests
     }
 
     /// <remarks>
-    /// Toplam, tablodaki satırların toplamı olmalı: kullanıcının ilk baktığı sayı bu.
+    /// The total has to be the sum of the rows in the table: it is the first number the user looks at.
     /// </remarks>
     [Fact]
     public void ShouldSumTotalsAcrossCommands()
@@ -97,7 +97,7 @@ public class DiagnosticsViewModelTests
     }
 
     /// <remarks>
-    /// Bir saniyeyi aşan süreler saniye olarak gösteriliyor: "12483 ms" okunabilir değil.
+    /// Durations over a second are shown in seconds: "12483 ms" is not readable.
     /// </remarks>
     [Fact]
     public void ShouldSwitchToSecondsForLongDurations()
@@ -132,7 +132,7 @@ public class DiagnosticsViewModelTests
         model.TotalCommandCount.ShouldBe(0);
     }
 
-    // ------------------------------------------------------- aktif işler
+    // ------------------------------------------------------- active operations
 
     [Fact]
     public void ShouldShowActiveOperations()
@@ -155,7 +155,8 @@ public class DiagnosticsViewModelTests
     }
 
     /// <remarks>
-    /// Tazeleme, biten bir işi listeden düşürmeli — yoksa panel biteni "sürüyor" gösterir.
+    /// A refresh has to drop a finished operation from the list — otherwise the panel shows a finished
+    /// one as "in progress".
     /// </remarks>
     [Fact]
     public void ShouldDropFinishedOperationsOnRefresh()
@@ -196,8 +197,8 @@ public class DiagnosticsViewModelTests
     }
 
     /// <remarks>
-    /// Süreç belleği okunamadığında sıfır geliyor; "0 B" yazmak yanlış bir ölçüm gibi
-    /// okunurdu — tire "bilinmiyor" demek.
+    /// When the process memory cannot be read it comes back as zero; writing "0 B" would read as a wrong
+    /// measurement — a dash means "unknown".
     /// </remarks>
     [Fact]
     public void ShouldShowDashWhenProcessMemoryUnavailable()
@@ -230,8 +231,8 @@ public class DiagnosticsViewModelTests
     // ------------------------------------------------------- kare istatistikleri
 
     /// <remarks>
-    /// Kare ölçümü bir pencereye bağlı; olmadığında ilgili satırlar gizleniyor. Boş
-    /// değerleri "0 ms" diye göstermek, 0 ms'lik mükemmel bir kare süresi gibi okunurdu.
+    /// The frame measurement is tied to a window; without one, the related rows are hidden. Showing the
+    /// empty values as "0 ms" would read as a perfect 0 ms frame time.
     /// </remarks>
     [Fact]
     public void ShouldHideFrameSectionWithoutMonitor()
@@ -261,8 +262,8 @@ public class DiagnosticsViewModelTests
     }
 
     /// <remarks>
-    /// Tazeleme yeni çalıştırmaları göstermeli; panel açıkken çalışan komutlar
-    /// görünmezse teşhis eldeki en taze veriyi kaçırır.
+    /// A refresh has to show the new runs; if commands running while the panel is open are invisible, the
+    /// diagnosis misses the freshest data available.
     /// </remarks>
     [Fact]
     public void ShouldPickUpNewStatisticsOnRefresh()

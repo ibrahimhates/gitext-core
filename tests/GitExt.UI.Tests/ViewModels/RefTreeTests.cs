@@ -55,8 +55,8 @@ public class RefTreeTests
     [AvaloniaFact]
     public void Egik_cizgili_adlar_KLASORLENIYOR()
     {
-        // `feature/login` ve `feature/logout` düz listede iki satır olurdu; GitExtensions'ın
-        // ağacı da bunları tek bir "feature" düğümü altında topluyor (§ 9).
+        // `feature/login` and `feature/logout` would be two rows in a flat list; GitExtensions' tree
+        // gathers them under a single "feature" node too (§ 9).
         RefNodeViewModel branches = Root(Create(), "Branches");
 
         RefNodeViewModel folder = branches.Children.Single(node => node.Kind == RefNodeKind.Folder);
@@ -83,8 +83,8 @@ public class RefTreeTests
     [AvaloniaFact]
     public void Sembolik_origin_HEAD_agacta_YOK()
     {
-        // Beşinci kez aynı tuzak (P03-T12, P06-T05, T06, T08): aynı commit'te ikinci bir
-        // dal gibi görünürdü.
+        // The same trap for the fifth time (P03-T12, P06-T05, T06, T08): it would look like a second
+        // branch on the same commit.
         RefNodeViewModel origin = Root(Create(), "Remotes").Children.Single();
 
         origin.Children.ShouldNotContain(node => node.Name == "HEAD");
@@ -114,7 +114,7 @@ public class RefTreeTests
     [AvaloniaFact]
     public void Upstream_SILINMISSE_ayri_yaziliyor()
     {
-        // "0/0" göstermek dalın güncel olduğunu düşündürürdü.
+        // Showing "0/0" would suggest the branch is up to date.
         RefTreeViewModel model = new();
 
         model.Load(FakeGitData.Refs(localBranches:
@@ -177,7 +177,7 @@ public class RefTreeTests
     [AvaloniaFact]
     public void Baslik_ve_klasor_CHECKOUT_edilemez()
     {
-        // Ağacı gezerken kazara dal değiştirmek olmamalı.
+        // Changing branch by accident while moving through the tree must not happen.
         RefTreeViewModel model = Create();
 
         Root(model, "Branches").IsCheckoutable.ShouldBeFalse();
@@ -225,8 +225,8 @@ public class RefTreeTests
     [AvaloniaFact]
     public async Task Cift_tiklama_MENUDEKI_checkout_akisini_cagiriyor()
     {
-        // 🔑 İkinci bir geçiş yolu yazmak, birinin kirli-ağaç korumasız kalması demekti
-        // (P06-T02: değişiklikleri kaybettirecek hiçbir yol olmamalı).
+        // 🔑 Writing a second checkout path meant one of them ending up without the dirty-tree guard
+        // (P06-T02: there must be no path that loses changes).
         FakeCheckoutPrompt prompt = new(new CheckoutDecision { Confirmed = false });
         FakeBranchWriter writer = new();
 
@@ -251,7 +251,7 @@ public class RefTreeTests
         writer.Switched.ShouldBeEmpty("iptal edildiğinde geçiş yapılmamalı");
     }
 
-    // ---------------------------------------------------------- yerleşim
+    // ---------------------------------------------------------- layout
 
     [AvaloniaFact]
     public void Panel_SOLDA_ve_arama_kutusu_ustte()
@@ -262,7 +262,7 @@ public class RefTreeTests
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
-        // Ad kapsamı UserControl'e ait, barındıran pencereye değil.
+        // The name scope belongs to the UserControl, not to the hosting window.
         TextBox filter = view.GetControl<TextBox>("FilterBox");
         TreeView tree = view.GetControl<TreeView>("RefTree");
 

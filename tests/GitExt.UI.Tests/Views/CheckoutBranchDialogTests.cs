@@ -6,7 +6,7 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T02 — dala geçme diyaloğunun içeriği ve GitExtensions yerleşimi.
+/// P06-T02 — the checkout branch dialog's content and its GitExtensions layout.
 /// </summary>
 public class CheckoutBranchDialogTests
 {
@@ -49,8 +49,7 @@ public class CheckoutBranchDialogTests
     [AvaloniaFact]
     public void Varsayilan_secim_DOKUNMA()
     {
-        // Yıkıcı bir seçeneğin varsayılan olması, Enter'a basan kullanıcıya veri
-        // kaybettirirdi.
+        // A destructive option as the default would lose data for a user who presses Enter.
         CheckoutBranchDialog dialog = Create();
 
         dialog.GetControl<RadioButton>("KeepOption").IsChecked.ShouldBe(true);
@@ -60,7 +59,7 @@ public class CheckoutBranchDialogTests
     [AvaloniaFact]
     public void Temiz_agacta_yerel_degisiklik_grubu_GIZLI()
     {
-        // Dört seçenek de aynı sonucu verirdi; sormak yalnızca gürültü.
+        // All four options would give the same result; asking is nothing but noise.
         Create(hasLocalChanges: false)
             .GetControl<StackPanel>("LocalChangesGroup").IsVisible.ShouldBeFalse();
     }
@@ -75,10 +74,9 @@ public class CheckoutBranchDialogTests
     [AvaloniaFact]
     public void Her_secenek_NE_YAPACAGINI_yaziyor()
     {
-        // 🔴 Etiketler yetmiyor: ölçümde "sıfırla" takip edilmeyen dosyalara DOKUNMUYOR
-        // ama takip edilen stage'lenmemiş içeriği geri getirilemez biçimde siliyor;
-        // "stash" ikisini de koruyor. Bu fark seçim anında görünmezse kullanıcı yanlış
-        // seçeneği masum sanır.
+        // 🔴 The labels are not enough: in the measurement "reset" DOES NOT TOUCH untracked files but
+        // deletes tracked unstaged content irrecoverably; "stash" preserves both. If that difference is
+        // invisible at the moment of choosing, the user takes the wrong option for an innocent one.
         CheckoutBranchDialog dialog = Create();
         TextBlock hint = dialog.GetControl<TextBlock>("ActionHint");
 
@@ -105,15 +103,14 @@ public class CheckoutBranchDialogTests
 
         hint.ShouldContain("DISCARDED");
 
-        // Yedeklendiği de söylenmeli: yıkıcı ama geri dönüşü var (P05-T15 kuralı).
+        // That it is backed up has to be said too: destructive, but with a way back (the P05-T15 rule).
         hint.ShouldContain("backed up", Case.Insensitive);
     }
 
     [AvaloniaFact]
     public void Detached_gecis_ACIKCA_uyariyor()
     {
-        // Ayrık HEAD'de atılan commit'ler hiçbir dalda görünmez; bunu söylememek
-        // kullanıcıya iş kaybettirir.
+        // Commits made on a detached HEAD appear on no branch; not saying so costs the user work.
         Create(isDetached: true).GetControl<TextBlock>("DetachWarning").IsVisible.ShouldBeTrue();
     }
 

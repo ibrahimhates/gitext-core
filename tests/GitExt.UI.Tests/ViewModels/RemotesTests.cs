@@ -8,7 +8,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T05 — uzak depo yönetimi (ViewModel tarafı).
+/// P06-T05 — remote management (the ViewModel side).
 /// </summary>
 public class RemotesTests
 {
@@ -44,7 +44,7 @@ public class RemotesTests
     [AvaloniaFact]
     public async Task Listede_parola_MASKELI_duzenleme_kutusunda_HAM()
     {
-        // 🔴 Maskeleme kutuya sızsaydı kullanıcı `***`'ı kaydeder ve parolasını bozardı.
+        // 🔴 Had the masking leaked into the box, the user would save `***` and break their own password.
         (RemotesViewModel model, _, _, _) =
             Create(true, Origin(url: "https://ali:s3cr3t@example.com/a.git"));
 
@@ -115,7 +115,8 @@ public class RemotesTests
 
         writer.Renamed.Single().ShouldBe(("origin", "uzak"));
 
-        // Sıra önemli: URL YENİ ada yazılmalı, yoksa eski adı yazıp kaybederdik.
+        // The order matters: the URL has to be written to the NEW name, otherwise we would write it to
+        // the old one and lose it.
         writer.UrlChanges.Single().Name.ShouldBe("uzak");
         writer.UrlChanges.Single().Kind.ShouldBe(RemoteUrlKind.Fetch);
     }
@@ -123,8 +124,8 @@ public class RemotesTests
     [AvaloniaFact]
     public async Task Yeniden_adlandirmada_git_in_UYARISI_yuzeye_cikiyor()
     {
-        // 🔴 Çıkış kodu 0 ama iş yarım: varsayılan olmayan refspec güncellenmiyor.
-        // Yalnızca rc'ye bakan arayüz "başarılı" derdi.
+        // 🔴 Exit code 0 but the job is half done: a non-default refspec is not updated.
+        // A UI looking only at the rc would say "succeeded".
         (RemotesViewModel model, _, FakeRemoteWriter writer, _) = Create(true, Origin());
         writer.RenameWarnings = ["Not updating non-default fetch refspec …"];
 
@@ -140,7 +141,7 @@ public class RemotesTests
     [AvaloniaFact]
     public async Task Coklu_URL_de_kaydetme_KAPALI_ve_sebebi_yaziliyor()
     {
-        // ÖLÇÜLDÜ: bu durumda `git remote set-url` "has multiple values" ile çöküyor.
+        // MEASURED: `git remote set-url` fails with "has multiple values" in this case.
         (RemotesViewModel model, _, _, _) = Create(true, new GitRemote
         {
             Name = "origin",
@@ -187,7 +188,8 @@ public class RemotesTests
     [AvaloniaFact]
     public async Task Silme_plani_SILMEDEN_ONCE_isteniyor()
     {
-        // Silme sonrası hiçbir bilgi okunamıyor; onay ekranı boş çıkardı.
+        // After the deletion none of the information can be read; the confirmation screen would come out
+        // empty.
         (RemotesViewModel model, _, FakeRemoteWriter writer, _) = Create(true, Origin());
 
         await model.LoadAsync(Path);
@@ -231,12 +233,13 @@ public class RemotesTests
     }
 
     /// <summary>
-    /// Ana pencereden bağlantı: komut ancak depo açıkken VE bağımlılıklar verilmişken etkin.
+    /// The wiring from the main window: the command is only enabled with a repository open AND the
+    /// dependencies supplied.
     /// </summary>
     /// <remarks>
-    /// Menü öğesi <c>Command</c>'a bağlı; eksik bir bağımlılıkta öğe <b>sessizce</b> ölü
-    /// kalırdı (P03-T16'daki eksik DI kaydının uygulamayı yalnızca açılışta çökertmesiyle
-    /// aynı sınıf).
+    /// The menu item is bound to <c>Command</c>; with a dependency missing the item would <b>silently</b>
+    /// stay dead (the same class as the missing DI registration in P03-T16 that crashed the application
+    /// only at startup).
     /// </remarks>
     private static MainWindowViewModel CreateMainWindow(
         bool withServices = true,
@@ -314,7 +317,7 @@ public class RemotesTests
         await model.OpenRepositoryAsync("/depo");
         await model.ManageRemotesCommand.ExecuteAsync(null);
 
-        // Pencere boş bir listeyle açılsaydı kullanıcı "hiç remote yok" sanırdı.
+        // Had the window opened with an empty list, the user would think there were no remotes at all.
         prompt.Shown!.Remotes.Select(r => r.Name).ShouldBe(["origin"]);
     }
 

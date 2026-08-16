@@ -7,11 +7,11 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P05-T15 — onay diyaloğunun içeriği ve GitExtensions yerleşimi.
+/// P05-T15 — the confirmation dialog's content and its GitExtensions layout.
 /// </summary>
 /// <remarks>
-/// Diyalog <b>gerçekten kuruluyor</b>: P05-T13'te ölçüldüğü gibi, kurulmamış bir denetimin
-/// özellikleri değerlendirilmemiş varsayılanlarında kalır ve test yanlış cevap verir.
+/// The dialog is <b>really built</b>: as measured in P05-T13, the properties of a control that has not
+/// been built stay at their never-evaluated defaults and the test gives the wrong answer.
 /// </remarks>
 public class ResetChangesDialogTests
 {
@@ -42,8 +42,8 @@ public class ResetChangesDialogTests
     [AvaloniaFact]
     public void Etkilenecek_dosyalar_GERCEKTEN_listeleniyor()
     {
-        // "Emin misiniz?" sorusu neyin gideceğini söylemeden sorulduğunda kullanıcıyı
-        // düşünmeye değil tıklamaya yönlendirir. P05-T08 bu önizlemeyi T15'e devretmişti.
+        // An "Are you sure?" asked without saying what will go pushes the user towards clicking rather
+        // than thinking. P05-T08 handed this preview over to T15.
         ResetChangesDialog dialog = Create(Request(modified: 2, untracked: 1));
 
         IReadOnlyList<string> items =
@@ -69,7 +69,7 @@ public class ResetChangesDialogTests
     [AvaloniaFact]
     public void Yeni_dosya_yoksa_silme_kutusu_kapali_ve_devre_disi()
     {
-        // GitExtensions'taki davranış: seçimde yeni dosya yoksa kutu zorla kapalı.
+        // The behaviour in GitExtensions: when there is no new file in the selection the box is forced off.
         ResetChangesDialog dialog = Create(Request(modified: 3, untracked: 0));
 
         CheckBox box = dialog.GetControl<CheckBox>("DeleteUntrackedBox");
@@ -81,8 +81,8 @@ public class ResetChangesDialogTests
     [AvaloniaFact]
     public void YALNIZCA_yeni_dosya_varsa_kutu_zorla_isaretli()
     {
-        // Yine GitExtensions'taki davranış: yapılabilecek tek şey silmek olduğunda kutu
-        // işaretli ve devre dışı — kapalıyken "Reset" hiçbir şey yapmazdı.
+        // Again the behaviour in GitExtensions: when deleting is the only thing that can be done, the box
+        // is ticked and disabled — unticked, "Reset" would do nothing.
         ResetChangesDialog dialog = Create(Request(modified: 0, untracked: 4));
 
         CheckBox box = dialog.GetControl<CheckBox>("DeleteUntrackedBox");
@@ -94,8 +94,8 @@ public class ResetChangesDialogTests
     [AvaloniaFact]
     public void Bastirilamayan_islemde_bir_daha_sorma_GORUNMUYOR()
     {
-        // 🔴 Yedeği olmayan bir işlemde bu kutuyu sunmak, kullanıcının bir daha asla
-        // uyarılmayacağı bir veri kaybı yolunu açmak olurdu.
+        // 🔴 Offering this box on an operation with no backup would open a data-loss path the user would
+        // never be warned about again.
         ResetChangesDialog dialog = Create(Request(canSuppress: false));
 
         dialog.GetControl<CheckBox>("DoNotAskAgainBox").IsVisible.ShouldBeFalse();

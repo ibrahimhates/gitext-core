@@ -6,7 +6,7 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T03 — dal yeniden adlandırma ve silme diyalogları.
+/// P06-T03 — the branch rename and delete dialogs.
 /// </summary>
 public class BranchEditDialogTests
 {
@@ -32,12 +32,12 @@ public class BranchEditDialogTests
         return dialog;
     }
 
-    // ---- Yeniden adlandırma ----
+    // ---- Rename ----
 
     [AvaloniaFact]
     public void Yeni_ad_kutusu_MEVCUT_adla_dolu_geliyor()
     {
-        // Yeniden adlandırma çoğunlukla küçük bir düzeltme; sıfırdan yazdırmak gereksiz iş.
+        // A rename is usually a small correction; making them type it from scratch is needless work.
         Rename("ozellik/eski").GetControl<TextBox>("NewNameTextBox").Text.ShouldBe("ozellik/eski");
     }
 
@@ -78,8 +78,7 @@ public class BranchEditDialogTests
     [AvaloniaFact]
     public void Merge_edilmis_dalda_zorlama_paneli_GIZLI()
     {
-        // Yanlış alarm: birleştirilmiş dalda "commit'ler kaybolacak" demek, uyarıyı
-        // okunmaz hâle getirir.
+        // A false alarm: saying "commits will be lost" on a merged branch makes the warning unreadable.
         DeleteBranchDialog dialog = Delete(unmerged: false);
 
         dialog.GetControl<StackPanel>("UnmergedPanel").IsVisible.ShouldBeFalse();
@@ -102,9 +101,9 @@ public class BranchEditDialogTests
     [AvaloniaFact]
     public void Kurtarma_KOMUTU_calistirilabilir_bicimde_gosteriliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: silinen dalın KENDİ reflog'u da siliniyor ve dal bu çalışma ağacında
-        // hiç checkout edilmemişse HEAD reflog'unda da iz yok — "reflog'dan geri
-        // alabilirsiniz" demek her durumda DOĞRU DEĞİL. Komutun kendisi veriliyor.
+        // 🔴 MEASURED: the deleted branch's OWN reflog goes too, and if the branch was never checked out
+        // in this working tree there is no trace in HEAD's reflog either — so "you can get it back from
+        // the reflog" IS NOT TRUE in every case. The command itself is given.
         DeleteBranchDialog dialog = Delete(unmerged: true, lastCommit: "1234567890abcdef");
 
         string command = dialog.GetControl<TextBox>("RecoveryCommand").Text!;
@@ -117,15 +116,14 @@ public class BranchEditDialogTests
     [AvaloniaFact]
     public void Kurtarma_kutusu_SALT_OKUNUR()
     {
-        // Kullanıcının yanlışlıkla düzenleyip kopyaladığı bir komut, kurtarma vaadini
-        // sessizce boşa çıkarırdı.
+        // A command the user edits and copies by mistake would silently make the recovery promise worthless.
         Delete(unmerged: true).GetControl<TextBox>("RecoveryCommand").IsReadOnly.ShouldBeTrue();
     }
 
     [AvaloniaFact]
     public void Reflog_un_de_silindigi_SOYLENIYOR()
     {
-        // Kullanıcı komutu not almazsa gerçekten kaybedebilir; sebebi yazılmalı.
+        // Unless the user notes the command down they really can lose it; the reason has to be written out.
         Delete(unmerged: true).GetControl<TextBlock>("RecoveryNote").Text!.ShouldContain("reflog");
     }
 

@@ -6,18 +6,18 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Yıkıcı sıfırlama işlemi için onay diyaloğu (P05-T15).
+/// The confirmation dialog for a destructive reset operation (P05-T15).
 /// </summary>
 /// <remarks>
-/// GitExtensions'ta karşılığı <c>FormResetChanges</c>; yerleşim ve düğme sırası oradan
-/// alındı (§ 9). Tek fark, etkilenecek dosyaların <b>listelenmesi</b>.
+/// Its counterpart in GitExtensions is <c>FormResetChanges</c>; the layout and the button order were
+/// taken from there (§ 9). The one difference is that the affected files are <b>listed</b>.
 /// </remarks>
 public partial class ResetChangesDialog : Window
 {
-    /// <summary>Listede gösterilecek en fazla yol.</summary>
+    /// <summary>The maximum number of paths to show in the list.</summary>
     /// <remarks>
-    /// Binlerce satırlık bir liste kimseyi bilgilendirmez; ilk birkaç yol "hangi klasör"
-    /// sorusuna cevap verir, sayı zaten başlıkta yazıyor.
+    /// A list of thousands of lines informs nobody; the first few paths answer the "which folder"
+    /// question, and the count is already in the heading.
     /// </remarks>
     public const int PreviewLimit = 40;
 
@@ -28,7 +28,7 @@ public partial class ResetChangesDialog : Window
         InitializeComponent();
     }
 
-    /// <summary>Diyaloğu modal açar ve kullanıcının kararını döndürür.</summary>
+    /// <summary>Opens the dialog modally and returns the user's decision.</summary>
     internal static async Task<ResetChangesDecision> ShowAsync(
         ResetChangesRequest request,
         Window owner)
@@ -44,7 +44,7 @@ public partial class ResetChangesDialog : Window
         return dialog._decision;
     }
 
-    /// <summary>İsteği diyalog üzerine yansıtır.</summary>
+    /// <summary>Reflects the request onto the dialog.</summary>
     internal void Apply(ResetChangesRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -60,8 +60,8 @@ public partial class ResetChangesDialog : Window
 
         AffectedList.ItemsSource = Preview(request);
 
-        // GitExtensions'taki davranış: seçimde yeni dosya yoksa kutu kapalı ve devre dışı,
-        // yalnızca yeni dosya varsa açık ve devre dışı (tek seçenek o).
+        // The behaviour in GitExtensions: with no new file in the selection the box is off and disabled;
+        // only when there is a new file is it on and disabled (that being the only option).
         DeleteUntrackedBox.Content = $"Also delete {untracked} new files and/or directories";
         DeleteUntrackedBox.IsEnabled = untracked > 0 && modified > 0;
         DeleteUntrackedBox.IsChecked = untracked > 0 && modified == 0;

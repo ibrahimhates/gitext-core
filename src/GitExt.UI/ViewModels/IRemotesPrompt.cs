@@ -1,24 +1,24 @@
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Uzak depo yönetimi ekranını gösteren taraf (P06-T05).
+/// The side that shows the remote management screen (P06-T05).
 /// </summary>
 /// <remarks>
-/// <see cref="ICreateBranchPrompt"/> ile aynı gerekçe: pencere bir sahip istiyor ve o
-/// yalnızca görünüm tarafında biliniyor. Silme onayı da buradan geliyor, çünkü onu gösteren
-/// de aynı pencere.
+/// The same reasoning as <see cref="ICreateBranchPrompt"/>: the window needs an owner and that is only
+/// known on the view side. The deletion confirmation comes from here too, because the same window is
+/// what shows it.
 /// </remarks>
 public interface IRemotesPrompt
 {
-    /// <summary>Silme onayını soran taraf.</summary>
+    /// <summary>The side that asks for the deletion confirmation.</summary>
     IRemoteRemovalConfirmer RemovalConfirmer { get; }
 
-    /// <summary>Yönetim ekranını modal gösterir ve kapanmasını bekler.</summary>
+    /// <summary>Shows the management screen modally and waits for it to close.</summary>
     Task ShowAsync(RemotesViewModel model);
 }
 
 /// <summary>
-/// Pull / Fetch ekranını gösteren taraf (P06-T06 + P06-T07).
+/// The side that shows the Pull / Fetch screen (P06-T06 + P06-T07).
 /// </summary>
 public interface IPullPrompt
 {
@@ -27,7 +27,7 @@ public interface IPullPrompt
 }
 
 /// <summary>
-/// Push ekranını gösteren taraf (P06-T08).
+/// The side that shows the push screen (P06-T08).
 /// </summary>
 public interface IPushPrompt
 {

@@ -4,11 +4,11 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Tek bir commit'in imza durumunu okur (P03-T15).
+/// Reads a single commit's signature status (P03-T15).
 /// </summary>
 /// <remarks>
-/// Ayrı bir okuyucu olmasının sebebi maliyet: imza doğrulaması toplu <c>git log</c>
-/// okumasına eklendiğinde geçmişi yavaşlatıyor (bkz. <see cref="CommitSignatureInfo"/>).
+/// The reason for a separate reader is cost: adding signature verification to the bulk <c>git log</c>
+/// read slows the history down (see <see cref="CommitSignatureInfo"/>).
 /// </remarks>
 public interface ICommitSignatureReader
 {
@@ -52,7 +52,7 @@ public sealed class CommitSignatureReader : ICommitSignatureReader
                 "-1",
                 $"--format={Format}",
                 commit.Value,
-                // Ayırıcı: revizyonun dosya yolu olarak yorumlanmasını engeller.
+                // The separator: keeps the revision from being interpreted as a file path.
                 "--"),
             cancellationToken).ConfigureAwait(false);
 
@@ -68,7 +68,7 @@ public sealed class CommitSignatureReader : ICommitSignatureReader
 
     private static CommitSignatureInfo Build(string[] fields, string standardError)
     {
-        // %GK son alan olduğu için sonunda kayıt sonu karakteri taşıyabilir.
+        // Because %GK is the last field it can carry the record separator at its end.
         string code = fields[0].Trim();
         string signer = fields[1];
         string key = fields[2].Trim('\n', '\r', '\0');
@@ -85,9 +85,9 @@ public sealed class CommitSignatureReader : ICommitSignatureReader
             _ => SignatureStatus.None,
         };
 
-        // ÖLÇÜLDÜ: allowedSignersFile yapılandırılmamışken git, SSH imzalı bir commit için
-        // %G? alanında "N" (imzasız) döner ve yalnızca stderr'e hata yazar. Bu ayrımı
-        // yapmazsak imzalı bir commit'e "imzasız" demiş oluruz.
+        // MEASURED: with no allowedSignersFile configured, git returns "N" (unsigned) in the %G? field
+        // for an SSH-signed commit and writes the error only to stderr. Without making this distinction
+        // we would be calling a signed commit "unsigned".
         string? reason = DescribeVerifierFailure(standardError);
 
         if (reason is not null && status is SignatureStatus.None or SignatureStatus.CannotVerify)
@@ -107,12 +107,12 @@ public sealed class CommitSignatureReader : ICommitSignatureReader
     }
 
     /// <summary>
-    /// stderr doğrulayıcının çalışamadığını mı söylüyor?
+    /// Is stderr saying the verifier could not run?
     /// </summary>
     /// <remarks>
-    /// Metne bakmak kırılgandır ama alternatifi yok: git bu durumu çıkış kodu veya
-    /// <c>%G?</c> ile bildirmiyor. Eşleşme başarısız olursa sonuç eskisi gibi "imzasız"
-    /// olur — yani kötüleşme değil, sadece iyileştirmenin kaçırılması.
+    /// Looking at the text is fragile, but there is no alternative: git does not report this state via
+    /// the exit code or via <c>%G?</c>. If the match fails, the result is "unsigned" as before — so not
+    /// a regression, just a missed improvement.
     /// </remarks>
     private static string? DescribeVerifierFailure(string standardError)
     {

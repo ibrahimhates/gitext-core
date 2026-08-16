@@ -7,15 +7,15 @@ using GitExt.Core.Model;
 namespace GitExt.Benchmarks;
 
 /// <summary>
-/// Çekirdek katmanı ayrıştırıcı mikro-benchmark'ları (P09-T02).
+/// Core layer parser micro-benchmarks (P09-T02).
 /// </summary>
 /// <remarks>
-/// <see cref="CommitLogReader"/>'ın statik ayrıştırma metodlarını gerçek git süreci olmadan
-/// ölçer. Girdiler, `git log -z --format=...` çıktısında görünecek şekilde simüle edilmiştir.
+/// Measures <see cref="CommitLogReader"/>'s static parsing methods without a real git process. The
+/// inputs are simulated to look the way they would in `git log -z --format=...` output.
 /// </remarks>
 public class ParserBenchmarks
 {
-    // ── Simüle girdiler (NUL-ayraçlı alan dizileri) ───────────────────────────
+    // ── Simulated inputs (NUL-separated field sequences) ──────────────────────
 
     /// <summary>12 alan: id, parent(s), authorName, authorEmail, authorDate, committerName, committerEmail, committerDate, refs, encoding, subject, body.</summary>
     private string[] _singleCommitFields = null!;
@@ -23,7 +23,7 @@ public class ParserBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        // Tek bir merge commit için 12 alan (gerçek git çıktısı formatı).
+        // 12 fields for a single merge commit (the real git output format).
         string id = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
         string parents = "prevId0000000000000000000000000000000 mergeParentId00000000000000000000000";
         string authorName = "İbrahim Hates";
@@ -52,14 +52,14 @@ public class ParserBenchmarks
             _commitIds[i] = GenerateFakeSha(i);
     }
 
-    // ── CommitLogReader.ParseRecord eşdeğeri ───────────────────────────────────
+    // ── The CommitLogReader.ParseRecord equivalent ─────────────────────────────
 
     [Benchmark(Baseline = true)]
     public CommitInfo ParseSingleRecord() => ParseRecord(_singleCommitFields);
 
     /// <summary>
-    /// <see cref="CommitLogReader"/>'ın `ParseRecord` metodunun birebir kopyası —
-    /// performans karakteristiklerini ölçmek için izole edilmiş hali.
+    /// A verbatim copy of <see cref="CommitLogReader"/>'s `ParseRecord` method — isolated so its
+    /// performance characteristics can be measured.
     /// </summary>
     private static CommitInfo ParseRecord(ReadOnlySpan<string> fields) => new()
     {
@@ -73,7 +73,7 @@ public class ParserBenchmarks
         Body = fields[11].TrimEnd('\n'),
     };
 
-    // ── Alt ayrıştırma metodları (gerçek implementasyonlarla aynı) ─────────────
+    // ── The sub-parsing methods (identical to the real implementations) ───────
 
     private static IReadOnlyList<CommitId> ParseParents(string value)
     {
@@ -115,7 +115,7 @@ public class ParserBenchmarks
             ? parsed
             : DateTimeOffset.UnixEpoch;
 
-    // ── CommitId operasyonları ────────────────────────────────────────────────
+    // ── CommitId operations ───────────────────────────────────────────────────
 
     private CommitId[] _commitIds = null!;
 

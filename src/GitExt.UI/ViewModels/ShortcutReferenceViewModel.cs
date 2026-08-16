@@ -5,12 +5,12 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Kısayol referans ekranı (P08-T06, <c>F1</c>).
+/// The shortcut reference screen (P08-T06, <c>F1</c>).
 /// </summary>
 /// <remarks>
-/// Bağlama göre gruplanıyor, kategoriye göre değil: kullanıcının sorusu "şu an, buradayken
-/// hangi tuşlar çalışıyor?" — ve cevap tam olarak bağlamdır. Kategoriye göre gruplamak,
-/// diff panelindeyken commit listesi kısayollarını aynı listede gösterirdi.
+/// Grouped by context rather than by category: the user's question is "which keys work right now, where
+/// I am?" — and the answer is exactly the context. Grouping by category would show the commit list's
+/// shortcuts in the same list while you are in the diff panel.
 /// </remarks>
 public sealed partial class ShortcutReferenceViewModel : ViewModelBase
 {
@@ -28,7 +28,7 @@ public sealed partial class ShortcutReferenceViewModel : ViewModelBase
 
     public List<ShortcutReferenceGroup> Groups { get; private set; } = [];
 
-    /// <summary>Çakışan atamalar; kullanıcı burada da görmeli.</summary>
+    /// <summary>Conflicting assignments; the user should see them here too.</summary>
     public IReadOnlyList<string> ConflictMessages { get; private set; } = [];
 
     public bool HasConflicts => ConflictMessages.Count > 0;
@@ -62,8 +62,8 @@ public sealed partial class ShortcutReferenceViewModel : ViewModelBase
                         _registry.GetGesture(d.Id),
                         _registry.IsCustomized(d.Id)))
 
-                    // Kısayolu olmayan komutlar listenin SONUNDA: ekran "hangi tuş ne yapar"
-                    // sorusuna cevap veriyor, komut kataloğu değil.
+                    // Commands without a shortcut go at the END of the list: the screen answers the
+                    // question "which key does what", it is not a command catalogue.
                     .OrderBy(r => r.Gesture is null)
                     .ThenBy(r => r.Title, StringComparer.CurrentCulture)
             ];
@@ -111,5 +111,5 @@ public sealed partial class ShortcutReferenceViewModel : ViewModelBase
     };
 }
 
-/// <summary>Bağlama göre gruplanmış kısayollar.</summary>
+/// <summary>The shortcuts grouped by context.</summary>
 public sealed record ShortcutReferenceGroup(string Title, IReadOnlyList<ShortcutRow> Rows);

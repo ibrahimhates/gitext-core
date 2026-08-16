@@ -5,12 +5,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P03-T12 — Ref rozetlerinin türe göre üretilmesi.
+/// P03-T12 — Producing the ref badges by kind.
 /// </summary>
 /// <remarks>
-/// Bu testlerin var olma sebebi ölçüm: <c>git log --format=%D</c> tür bilgisi taşımıyor
-/// (yerel dal <c>ikinci</c>, uzak dal <c>origin/main</c> — ikisi de çıplak isim). Rozetler
-/// bu yüzden <c>for-each-ref</c> verisinden üretiliyor ve buradaki testler o eşlemeyi korur.
+/// These tests exist because of a measurement: <c>git log --format=%D</c> carries no kind information
+/// (a local branch is <c>ikinci</c>, a remote branch <c>origin/main</c> — both bare names). The badges
+/// are therefore produced from <c>for-each-ref</c> data, and the tests here protect that mapping.
 /// </remarks>
 public class RefBadgeIndexTests
 {
@@ -51,8 +51,8 @@ public class RefBadgeIndexTests
     [Fact]
     public void Gecerli_dal_once_gosterilir()
     {
-        // Sıralama görsel bir karar değil, veri kararı: kullanıcının en çok umursadığı
-        // rozet (nerede olduğu) solda durmalı.
+        // The ordering is not a visual decision but a data one: the badge the user cares about most
+        // (where they are) must sit on the left.
         RepositoryRefs refs = FakeGitData.Refs(
             localBranches:
             [
@@ -71,8 +71,8 @@ public class RefBadgeIndexTests
     [Fact]
     public void Annotated_tag_cozulmus_commite_baglanir()
     {
-        // Annotated tag'de ref tag NESNESİNE işaret eder; rozet commit'e düşmezse
-        // grafikte yanlış satırda görünür.
+        // On an annotated tag the ref points at the tag OBJECT; unless the badge lands on the commit it
+        // shows on the wrong row in the graph.
         RepositoryRefs refs = FakeGitData.Refs(tags: [FakeGitData.Tag("v2.0", Sha(5), annotated: true)]);
 
         RefBadgeIndex index = RefBadgeIndex.Build(refs);
@@ -97,7 +97,7 @@ public class RefBadgeIndexTests
 
         index.For(Id(3)).Single().Kind.ShouldBe(RefBadgeKind.Head);
 
-        // Detached durumda hiçbir dal "geçerli" değil.
+        // In a detached state no branch is "current".
         index.For(Id(1)).Single().IsCurrent.ShouldBeFalse();
     }
 
@@ -113,9 +113,9 @@ public class RefBadgeIndexTests
     [Fact]
     public void Sembolik_uzak_ref_rozet_uretmez()
     {
-        // origin/HEAD klonlanan HER depoda var ve origin/main ile aynı commit'i gösteriyor
-        // (bu depoda ölçüldü). Üstelik kısa adı "origin" — elenmezse kullanıcı origin/main'in
-        // yanında "origin" yazan anlamsız bir rozet görür.
+        // origin/HEAD exists in EVERY cloned repository and points at the same commit as origin/main
+        // (measured in this repository). On top of that its short name is "origin" — unless it is
+        // filtered out, the user sees a meaningless badge reading "origin" next to origin/main.
         RepositoryRefs refs = FakeGitData.Refs(
             remoteBranches:
             [
@@ -131,8 +131,8 @@ public class RefBadgeIndexTests
     [Fact]
     public void Rozetsiz_commit_icin_ayni_bos_liste_donulur()
     {
-        // 500 bin satırda rozetsiz commit'ler baskın; her biri için yeni liste ayırmak
-        // gereksiz tahsis olurdu.
+        // Across 500 thousand rows, commits without badges dominate; allocating a new list for each of
+        // them would be a needless allocation.
         RefBadgeIndex index = RefBadgeIndex.Build(FakeGitData.NoRefs());
 
         index.For(Id(1)).ShouldBeSameAs(index.For(Id(2)));

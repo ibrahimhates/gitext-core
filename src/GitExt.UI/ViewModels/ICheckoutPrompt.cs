@@ -3,44 +3,44 @@ using GitExt.Core;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Dala geçme diyaloğuna verilen bağlam (P06-T02).
+/// The context given to the checkout branch dialog (P06-T02).
 /// </summary>
 public sealed record CheckoutRequest
 {
-    /// <summary>Hedef: dal adı veya commit hash'i.</summary>
+    /// <summary>The target: a branch name or a commit hash.</summary>
     public required string Target { get; init; }
 
-    /// <summary>Kullanıcıya gösterilecek hedef açıklaması.</summary>
+    /// <summary>The description of the target to show the user.</summary>
     public required string TargetLabel { get; init; }
 
     /// <summary>
-    /// Hedef bir dal değil, doğrudan bir commit mi? (detached HEAD olacak)
+    /// Is the target not a branch but a commit directly? (it will become a detached HEAD)
     /// </summary>
     public bool IsDetached { get; init; }
 
-    /// <summary>Çalışma ağacında kaydedilmemiş değişiklik var mı?</summary>
+    /// <summary>Are there uncommitted changes in the working tree?</summary>
     /// <remarks>
-    /// Yoksa "yerel değişiklikler" grubunun tamamı anlamsız; gösterilmiyor.
+    /// Without them the whole "local changes" group is meaningless; it is not shown.
     /// </remarks>
     public bool HasLocalChanges { get; init; }
 }
 
 /// <summary>
-/// Kullanıcının dala geçme diyaloğundaki kararı (P06-T02).
+/// The user's decision in the checkout branch dialog (P06-T02).
 /// </summary>
 public sealed record CheckoutDecision
 {
     public bool Confirmed { get; init; }
 
-    /// <summary>Yerel değişikliklere ne yapılacak?</summary>
+    /// <summary>What is to be done with the local changes?</summary>
     public LocalChangesAction LocalChanges { get; init; } = LocalChangesAction.Keep;
 
-    /// <summary>İptal edilmiş karar.</summary>
+    /// <summary>A cancelled decision.</summary>
     public static CheckoutDecision Cancelled { get; } = new();
 }
 
 /// <summary>
-/// Dala geçme diyaloğunu gösteren taraf (P06-T02).
+/// The side that shows the checkout branch dialog (P06-T02).
 /// </summary>
 public interface ICheckoutPrompt
 {

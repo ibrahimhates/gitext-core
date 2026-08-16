@@ -5,11 +5,11 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Uzak depo kaldırma onayı (P06-T05).
+/// The remote removal confirmation (P06-T05).
 /// </summary>
 /// <remarks>
-/// Ayrı bir diyalog değil <b>onay kutusu</b> yeterli, çünkü kurtarma komutları ekranda
-/// (P05-T15 kuralı). Kutu işaretlenmeden <i>Kaldır</i> etkin olmuyor.
+/// A <b>checkbox</b> is enough rather than a separate dialog, because the recovery commands are on
+/// screen (the P05-T15 rule). <i>Remove</i> does not enable until the box is ticked.
 /// </remarks>
 public partial class RemoveRemoteDialog : Window
 {
@@ -19,8 +19,8 @@ public partial class RemoveRemoteDialog : Window
     {
         InitializeComponent();
 
-        // `IsCheckedChanged` görsel ağaca bağlı olmayan pencerede de çalışıyor (P06-T01'de
-        // ölçüldü; `TextChanged` çalışmıyor — fark yanıltıcı).
+        // `IsCheckedChanged` works even in a window not attached to the visual tree (measured in P06-T01;
+        // `TextChanged` does not — the difference is misleading).
         ConfirmBox.IsCheckedChanged += (_, _) => RemoveButton.IsEnabled = ConfirmBox.IsChecked == true;
 
         RemoveButton.IsEnabled = false;
@@ -49,12 +49,12 @@ public partial class RemoveRemoteDialog : Window
     }
 
     /// <summary>
-    /// Neyin kaybedileceğini <b>somut</b> anlatır.
+    /// States <b>concretely</b> what will be lost.
     /// </summary>
     /// <remarks>
-    /// Tek bir genel metin ("emin misiniz?") kullanıcıya kararını verecek bilgiyi vermez:
-    /// upstream'i giden dal sayısı ve silinecek uzak izleme dalı sayısı burada farkı
-    /// yaratıyor (P06-T02'deki "her seçenek ne yapacağını yazar" kuralı).
+    /// A single generic text ("are you sure?") does not give the user what they need to decide: the
+    /// number of branches losing their upstream and the number of remote tracking branches to be deleted
+    /// are what make the difference here (the "every option states what it will do" rule from P06-T02).
     /// </remarks>
     internal static string DescribeImpact(RemoteRemovalRequest request)
     {

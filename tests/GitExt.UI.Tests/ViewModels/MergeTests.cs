@@ -11,7 +11,7 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T11 + P06-T12 — merge ekranı ve merge'den çıkış (arayüz tarafı).
+/// P06-T11 + P06-T12 — the merge screen and getting out of a merge (the UI side).
 /// </summary>
 public class MergeTests
 {
@@ -28,7 +28,8 @@ public class MergeTests
     [AvaloniaFact]
     public async Task Mevcut_dal_listede_YOK()
     {
-        // Kendini kendine birleştirmek anlamsız; listede olmaması hatayı baştan engelliyor.
+        // Merging something into itself is meaningless; keeping it out of the list prevents the error
+        // from the start.
         (MergeViewModel model, _) = Create();
 
         await LoadAsync(model);
@@ -97,8 +98,8 @@ public class MergeTests
     [AvaloniaFact]
     public async Task SQUASH_secilince_ne_olacagi_ONCEDEN_yazili()
     {
-        // 🔴 Sonradan söylemek de gerekiyor ama önceden söylemek daha iyi: kullanıcı
-        // hangi işe giriştiğini bilerek başlasın.
+        // 🔴 It has to be said afterwards as well, but saying it beforehand is better: let the user start
+        // knowing what they are getting into.
         (MergeViewModel model, _) = Create();
 
         await LoadAsync(model);
@@ -114,8 +115,8 @@ public class MergeTests
     [AvaloniaFact]
     public async Task SQUASH_sonrasi_commit_gerektigi_UYARI_olarak_bildiriliyor()
     {
-        // 🔴 git çıkış kodu 0 veriyor ve HEAD yerinde kalıyor (ölçüldü). Yalnızca
-        // "hazırlandı" demek, kullanıcının birleştirdiğini sanmasına yeterdi.
+        // 🔴 git gives exit code 0 and HEAD stays put (measured). Saying only "prepared" would be enough
+        // for the user to think they had merged.
         (MergeViewModel model, FakeMergeWriter merge) = Create();
 
         merge.Result = new MergeResult
@@ -233,7 +234,7 @@ public class MergeTests
 
         prompt.Shown.ShouldNotBeNull();
 
-        // Uzak dallar da birleştirilebilir (§ 9: GitExtensions'ın listesi de ikisini içeriyor).
+        // Remote branches can be merged too (§ 9: GitExtensions' list includes both as well).
         prompt.Shown!.Sources.ShouldBe(["ozellik", "origin/main"]);
         prompt.Shown.CurrentBranch.ShouldBe("main");
     }
@@ -241,8 +242,8 @@ public class MergeTests
     [AvaloniaFact]
     public async Task IPTAL_dugmesi_yalnizca_MERGE_surerken_gorunuyor()
     {
-        // Rebase/cherry-pick'in iptali başka komutlar; yanlış komutu sunmak yarım kalmış
-        // bir işi bozardı.
+        // Aborting a rebase/cherry-pick takes different commands; offering the wrong one would break a
+        // half-finished job.
         FakeInProgressOperationReader operations = new();
         FakeMergeWriter merge = new();
 
@@ -272,8 +273,8 @@ public class MergeTests
     [AvaloniaFact]
     public async Task Iptal_ONAYSIZ_yapilmiyor()
     {
-        // `merge --abort` çalışma ağacını merge öncesine döndürüyor: çakışmaları çözerken
-        // yazılan her şey gider (ölçüldü).
+        // `merge --abort` returns the working tree to its pre-merge state: everything written while
+        // resolving conflicts is lost (measured).
         FakeMergeWriter merge = new();
         FakeMergeAbortConfirmer confirmer = new() { Answer = false };
 
@@ -292,7 +293,7 @@ public class MergeTests
         model.BranchNotice!.ShouldContain("aborted");
     }
 
-    // ---------------------------------------------------------- yerleşim
+    // ---------------------------------------------------------- layout
 
     [AvaloniaFact]
     public async Task Yerlesim_FormMergeBranch_sirasiyla_ayni()
@@ -344,7 +345,7 @@ public class MergeTests
         window.GetControl<StackPanel>("AdvancedPanel").IsVisible.ShouldBeTrue();
         window.GetControl<CheckBox>("SquashBox").IsEnabled.ShouldBeTrue();
 
-        // Yerinde ama devre dışı (§ 9): Faz 07'nin konusu.
+        // In place but disabled (§ 9): Phase 07's subject.
         window.GetControl<CheckBox>("CustomStrategyBox").IsEnabled.ShouldBeFalse();
         window.GetControl<CheckBox>("AddLogMessagesBox").IsEnabled.ShouldBeFalse();
 

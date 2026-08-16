@@ -10,16 +10,16 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T05 — uzak depo ekranının yerleşimi ve silme onayı.
+/// P06-T05 — the remotes screen's layout and the deletion confirmation.
 /// </summary>
 /// <remarks>
-/// § 9: öğelerin <b>yeri ve sırası</b> GitExtensions <c>FormRemotes</c>'takiyle aynı olmalı.
-/// Kaynaktaki sıra: <c>Url</c> → <c>Name</c> → … → <c>checkBoxSepPushUrl</c> →
-/// <c>Push Url</c>, en altta <c>Save changes</c>; liste solda, <c>New</c>/<c>Delete</c>
-/// listenin sağında.
+/// § 9: the <b>position and order</b> of the elements must be the same as in GitExtensions'
+/// <c>FormRemotes</c>. The order in the source: <c>Url</c> → <c>Name</c> → … →
+/// <c>checkBoxSepPushUrl</c> → <c>Push Url</c>, with <c>Save changes</c> at the bottom; the list on the
+/// left, <c>New</c>/<c>Delete</c> to the right of the list.
 /// <para>
-/// Test <b>konum</b> karşılaştırıyor: alanların yer değiştirmesi ekranda "her şey var"
-/// gösterir ama kullanıcının kas hafızasını kırar.
+/// The test compares <b>position</b>: fields swapping places shows "everything is there" on screen but
+/// breaks the user's muscle memory.
 /// </para>
 /// </remarks>
 public class RemotesLayoutTests
@@ -98,14 +98,14 @@ public class RemotesLayoutTests
     [AvaloniaFact]
     public async Task Pull_davranisi_sekmesi_YERINDE_ama_devre_disi()
     {
-        // Uygulanmamış komutlar "devre dışı ama yerinde" (§ 9): sonradan araya sokmak
-        // sırayı bozardı. İçeriği P06-T07.
+        // Unimplemented commands are "disabled but in place" (§ 9): slotting one in later would break
+        // the order. Its content is P06-T07.
         Window window = await ShowAsync();
 
         window.GetControl<TabItem>("PullBehaviorTab").IsEnabled.ShouldBeFalse();
     }
 
-    // ---- Silme onayı ----
+    // ---- The deletion confirmation ----
 
     private static RemoveRemoteDialog RemoveDialog(RemoteRemovalRequest request)
     {
@@ -130,7 +130,7 @@ public class RemotesLayoutTests
     [AvaloniaFact]
     public void Kurtarma_komutlari_EKRANDA()
     {
-        // P05-T15 kuralı: kurtarma yolu ekrandaysa onay kutusu yeterli.
+        // The P05-T15 rule: when the way back is on screen, a checkbox is enough.
         RemoveRemoteDialog dialog = RemoveDialog(new RemoteRemovalRequest
         {
             Name = "origin",
@@ -142,14 +142,15 @@ public class RemotesLayoutTests
         text.ShouldContain("git remote add origin");
         text.ShouldContain("git fetch origin");
 
-        // ⚠️ Dal silmeden farkı yazılı olmalı: komutlar nesneleri geri getirmiyor.
+        // ⚠️ The difference from deleting a branch has to be written out: the commands do not bring the
+        // objects back.
         (dialog.GetControl<TextBlock>("RecoveryNote").Text ?? string.Empty).ShouldContain("fetch");
     }
 
     [AvaloniaFact]
     public void Etki_metni_her_durumda_FARKLI()
     {
-        // Tek bir "emin misiniz?" metni kullanıcıya kararını verecek bilgiyi vermez.
+        // A single "are you sure?" text does not give the user what they need to decide.
         string bos = RemoveRemoteDialog.DescribeImpact(new RemoteRemovalRequest { Name = "origin" });
 
         string tracking = RemoveRemoteDialog.DescribeImpact(new RemoteRemovalRequest

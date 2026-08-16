@@ -6,11 +6,11 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Performans teşhis penceresi (P09-T03).
+/// The performance diagnostics window (P09-T03).
 /// </summary>
 /// <remarks>
-/// Modal DEĞİL: teşhisin amacı uygulamayı kullanırken izlemek. Modal olsaydı, ölçmek
-/// istediğimiz işi yapmak imkânsız olurdu.
+/// NOT modal: the point of the diagnostics is to watch while using the application. Modal, it would be
+/// impossible to do the very work we want to measure.
 /// </remarks>
 public partial class DiagnosticsWindow : Window
 {
@@ -20,11 +20,11 @@ public partial class DiagnosticsWindow : Window
     }
 
     /// <summary>
-    /// Pencereyi açar ve kare ölçümünü <paramref name="owner"/> üzerinden bağlar.
+    /// Opens the window and attaches the frame measurement through <paramref name="owner"/>.
     /// </summary>
     /// <remarks>
-    /// Kare ölçümü teşhis penceresine değil <b>ana pencereye</b> bağlanıyor: ölçmek
-    /// istediğimiz şey grafiğin kaydırılması, teşhis panelinin kendi çizimi değil.
+    /// The frame measurement attaches to the <b>main window</b> and not to the diagnostics window: what
+    /// we want to measure is scrolling the graph, not the diagnostics panel drawing itself.
     /// </remarks>
     internal static Task ShowAsync(IPerformanceDiagnostics diagnostics, Window owner)
     {
@@ -36,8 +36,8 @@ public partial class DiagnosticsWindow : Window
 
         DiagnosticsWindow window = new() { DataContext = model };
 
-        // Kapanışta zamanlayıcı ve kare ölçümü bırakılıyor; aksi halde pencere kapansa
-        // bile saniyede bir tetiklenen bir zamanlayıcı arka planda çalışmaya devam ederdi.
+        // The timer and the frame measurement are released on close; otherwise a timer firing once a
+        // second would carry on running in the background even with the window closed.
         window.Closed += (_, _) => model.Dispose();
 
         window.Show(owner);

@@ -12,12 +12,12 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T08 — Push ekranının yerleşimi.
+/// P06-T08 — The push screen's layout.
 /// </summary>
 /// <remarks>
-/// § 9: sıra GitExtensions <c>FormPush</c>'tan — <c>GroupBox2</c> ("Push to": Remote / Url)
+/// § 9: the order comes from GitExtensions <c>FormPush</c> — <c>GroupBox2</c> ("Push to": Remote / Url)
 /// → <c>TabControlTagBranch</c> (Push branches · Push tags · Push multiple branches) →
-/// alt sıra (Pull · Load SSH key · Push).
+/// the bottom row (Pull · Load SSH key · Push).
 /// </remarks>
 public class PushLayoutTests
 {
@@ -82,7 +82,7 @@ public class PushLayoutTests
     [AvaloniaFact]
     public async Task Alt_sirada_Pull_ve_SSH_dugmeleri_Push_tan_ONCE()
     {
-        // GitExtensions'ta da alt sıra soldan sağa: Pull · Load SSH key · Push.
+        // In GitExtensions the bottom row is left to right too: Pull · Load SSH key · Push.
         Window window = await ShowAsync();
 
         Rect pull = BoundsIn(window, window.GetControl<Button>("PullButton"));
@@ -121,8 +121,8 @@ public class PushLayoutTests
     [AvaloniaFact]
     public async Task Ciplak_zorlama_kutusu_YERINDE_ama_devre_disi()
     {
-        // Kutuyu tamamen kaldırmak "bu program zorlayamıyor" izlenimi verirdi; yerinde
-        // ama kapalı ve hemen altında nedeni yazılı.
+        // Removing the box entirely would give the impression "this program cannot force"; it is in place
+        // but off, with the reason written right below it.
         Window window = await ShowAsync();
 
         window.GetControl<CheckBox>("ForcePushBox").IsEnabled.ShouldBeFalse();
@@ -137,7 +137,7 @@ public class PushLayoutTests
     [AvaloniaFact]
     public async Task URL_ve_SSH_secenekleri_YERINDE_ama_devre_disi()
     {
-        // İkisi de P06-T09'un kimlik doğrulama akışına bağlı (§ 9).
+        // Both depend on P06-T09's authentication flow (§ 9).
         Window window = await ShowAsync();
 
         window.GetControl<RadioButton>("ToUrlRadio").IsEnabled.ShouldBeFalse();
@@ -150,7 +150,7 @@ public class PushLayoutTests
     [AvaloniaFact]
     public async Task Secenekler_paneli_baslangicta_GIZLI()
     {
-        // GitExtensions'ta `PushOptionsPanel` da "Show options" tıklanana kadar gizli.
+        // In GitExtensions the `PushOptionsPanel` is hidden too until "Show options" is clicked.
         Window window = await ShowAsync();
 
         window.GetControl<StackPanel>("PushOptionsPanel").IsVisible.ShouldBeFalse();

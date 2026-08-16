@@ -6,11 +6,11 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Dala geçme diyaloğu (P06-T02).
+/// The checkout branch dialog (P06-T02).
 /// </summary>
 /// <remarks>
-/// GitExtensions'ta karşılığı <c>FormCheckoutBranch</c>; "Local changes" grubunun sırası
-/// oradan alındı (§ 9): <i>Don't change · Merge · Stash · Reset</i>.
+/// Its counterpart in GitExtensions is <c>FormCheckoutBranch</c>; the order of the "Local changes"
+/// group was taken from there (§ 9): <i>Don't change · Merge · Stash · Reset</i>.
 /// </remarks>
 public partial class CheckoutBranchDialog : Window
 {
@@ -30,7 +30,7 @@ public partial class CheckoutBranchDialog : Window
 
     private RadioButton[] Options => [KeepOption, MergeOption, StashOption, DiscardOption];
 
-    /// <summary>Diyaloğu modal açar ve kullanıcının kararını döndürür.</summary>
+    /// <summary>Opens the dialog modally and returns the user's decision.</summary>
     internal static async Task<CheckoutDecision> ShowAsync(CheckoutRequest request, Window owner)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -44,7 +44,7 @@ public partial class CheckoutBranchDialog : Window
         return dialog._decision;
     }
 
-    /// <summary>İsteği diyalog üzerine yansıtır.</summary>
+    /// <summary>Reflects the request onto the dialog.</summary>
     internal void Apply(CheckoutRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -53,20 +53,20 @@ public partial class CheckoutBranchDialog : Window
         TargetLabel.Text = request.IsDetached ? Loc.T("checkout_branch_dialog.axaml.commit_to_check_out") : Loc.T("checkout_branch_dialog.axaml.branch_to_switch_to");
         DetachWarning.IsVisible = request.IsDetached;
 
-        // Temiz ağaçta dört seçenek de aynı sonucu verir; sormak yalnızca gürültü olur.
+        // On a clean tree all four options give the same result; asking would be nothing but noise.
         LocalChangesGroup.IsVisible = request.HasLocalChanges;
 
         UpdateHint();
     }
 
     /// <summary>
-    /// Seçilen eylemin <b>ne yapacağını</b> yazar.
+    /// States <b>what the selected action will do</b>.
     /// </summary>
     /// <remarks>
-    /// Etiketler tek başına yetmiyor: ölçümde "sıfırla" takip edilmeyen dosyalara
-    /// <b>dokunmuyor</b> ama takip edilen stage'lenmemiş içeriği <b>geri getirilemez</b>
-    /// biçimde siliyor, "stash" ise ikisini de koruyor. Bu fark seçim anında görünmezse
-    /// kullanıcı yanlış seçeneği masum sanır.
+    /// The labels are not enough on their own: in the measurement "reset" <b>does not touch</b> untracked
+    /// files but deletes tracked unstaged content <b>irrecoverably</b>, while "stash" preserves both. If
+    /// that difference is invisible at the moment of choosing, the user takes the wrong option for an
+    /// innocent one.
     /// </remarks>
     private void UpdateHint()
     {
@@ -117,7 +117,7 @@ public partial class CheckoutBranchDialog : Window
         {
             Confirmed = true,
 
-            // Grup gizliyse ağaç temiz; eylem sormanın anlamı yok.
+            // When the group is hidden the tree is clean; there is no point asking about an action.
             LocalChanges = LocalChangesGroup.IsVisible ? SelectedAction : LocalChangesAction.Keep,
         };
 

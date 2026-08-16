@@ -3,33 +3,33 @@ using System.Globalization;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Bir <c>git</c> sürüm numarası.
+/// A <c>git</c> version number.
 /// </summary>
 /// <remarks>
-/// <c>git --version</c> çıktısı platforma göre değişir:
+/// The output of <c>git --version</c> varies by platform:
 /// <list type="bullet">
 ///   <item><c>git version 2.55.0</c></item>
 ///   <item><c>git version 2.39.5 (Apple Git-154)</c></item>
 ///   <item><c>git version 2.47.1.windows.1</c></item>
 /// </list>
-/// Bu yüzden yalnızca baştaki sayısal bileşenler okunur; kalan platform eki yok sayılır.
+/// So only the leading numeric components are read; the remaining platform suffix is ignored.
 /// </remarks>
 public readonly record struct GitVersion(int Major, int Minor, int Patch)
     : IComparable<GitVersion>
 {
     /// <summary>
-    /// Desteklenen en düşük sürüm (ADR-0002).
+    /// The lowest supported version (ADR-0002).
     /// </summary>
     /// <remarks>
-    /// 2.30 (Ocak 2021): <c>--porcelain=v2</c>, <c>for-each-ref</c> format desteği ve
-    /// <c>switch</c>/<c>restore</c> burada güvenle mevcut.
+    /// 2.30 (January 2021): <c>--porcelain=v2</c>, <c>for-each-ref</c> format support and
+    /// <c>switch</c>/<c>restore</c> are all safely present here.
     /// </remarks>
     public static GitVersion Minimum { get; } = new(2, 30, 0);
 
     /// <summary>
-    /// <c>git --version</c> çıktısını ayrıştırır.
+    /// Parses the output of <c>git --version</c>.
     /// </summary>
-    /// <returns>Ayrıştırılabildiyse <see langword="true"/>.</returns>
+    /// <returns><see langword="true"/> when it could be parsed.</returns>
     public static bool TryParse(string? output, out GitVersion version)
     {
         version = default;
@@ -39,8 +39,8 @@ public readonly record struct GitVersion(int Major, int Minor, int Patch)
             return false;
         }
 
-        // "git version " önekini atla; bazı derlemeler farklı önek kullanabilir, o yüzden
-        // öneki zorunlu tutmak yerine ilk rakama kadar ilerliyoruz.
+        // Skip the "git version " prefix; some builds may use a different prefix, so rather than
+        // requiring it we advance to the first digit.
         ReadOnlySpan<char> span = output.AsSpan().Trim();
         int start = span.IndexOfAnyInRange('0', '9');
         if (start < 0)
@@ -75,7 +75,7 @@ public readonly record struct GitVersion(int Major, int Minor, int Patch)
     }
 
     /// <summary>
-    /// Baştaki ardışık rakamları okur; rakam yoksa -1 döner.
+    /// Reads the leading run of digits; returns -1 when there is no digit.
     /// </summary>
     private static int ReadComponent(ref ReadOnlySpan<char> span)
     {

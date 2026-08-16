@@ -12,19 +12,19 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P03-T12 — Ref rozetlerinin <b>görsel olarak</b> ayrıştığını doğrular.
+/// P03-T12 — Verifies that the ref badges are <b>visually</b> distinct.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bu testin ViewModel testlerinden ayrı olarak var olma sebebi şu: rozet türü doğru
-/// üretilse bile XAML tarafındaki <c>Classes.local="{Binding IsLocalBranch}"</c> bağlaması
-/// sessizce çalışmayabilir — o durumda tüm rozetler aynı görünür ve hiçbir ViewModel testi
-/// bunu yakalamaz. Tek dürüst doğrulama piksele bakmaktır.
+/// The reason this test exists separately from the ViewModel tests is this: even when the badge kind is
+/// produced correctly, the <c>Classes.local="{Binding IsLocalBranch}"</c> binding on the XAML side can
+/// silently fail — in which case every badge looks the same and no ViewModel test catches it. The only
+/// honest verification is to look at the pixels.
 /// </para>
 /// <para>
-/// Renk sabitleri <c>CommitListView.axaml</c>'deki değerlerin kopyasıdır. Orası
-/// değişirse burası da değişmeli; testin amacı belli bir tonu korumak değil,
-/// <b>türlerin birbirinden ayrıştığını</b> korumak.
+/// The colour constants are copies of the values in <c>CommitListView.axaml</c>. If that changes, this
+/// has to change too; the test's aim is not to preserve a particular shade but to preserve that <b>the
+/// kinds are distinct from one another</b>.
 /// </para>
 /// </remarks>
 public class CommitListViewRenderTests
@@ -34,8 +34,8 @@ public class CommitListViewRenderTests
     private const uint TagBackground = 0xFCF0D0;
 
     /// <summary>
-    /// Yakalanan kare RGBA sıralı; little-endian <c>uint</c> olarak <c>0xAABBGGRR</c> okunur
-    /// (ölçüldü — bkz. <c>CommitGraphCellTests</c>). Bu dönüşüm olmadan kırmızı ve mavi yer değiştirir.
+    /// The captured frame is RGBA-ordered; read as a little-endian <c>uint</c> it is <c>0xAABBGGRR</c>
+    /// (measured — see <c>CommitGraphCellTests</c>). Without this conversion red and blue swap places.
     /// </summary>
     private static uint ToPixel(uint rgb) =>
         0xFF000000u | ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF);
@@ -106,8 +106,8 @@ public class CommitListViewRenderTests
     [AvaloniaFact]
     public async Task Rozet_yoksa_rozet_rengi_hic_cizilmez()
     {
-        // Karşı kanıt: yukarıdaki testin renkleri gerçekten rozetlerden geldiğini,
-        // sayfadaki başka bir öğeden gelmediğini gösterir.
+        // The counter-evidence: it shows that the colours in the test above really do come from the
+        // badges and not from some other element on the page.
         uint[] pixels = await RenderAsync(FakeGitData.NoRefs());
 
         pixels.ShouldNotContain(ToPixel(LocalBranchBackground));

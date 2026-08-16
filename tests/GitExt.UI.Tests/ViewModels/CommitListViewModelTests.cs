@@ -7,12 +7,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P03-T13 — Commit listesinin artımlı yüklenmesi.
+/// P03-T13 — Incremental loading of the commit list.
 /// </summary>
 /// <remarks>
-/// ViewModel gerçek <c>git</c> süreci başlatmadan test edilir; <c>git</c> davranışı
-/// <c>GitExt.Core.Tests</c>'te doğrulanıyor. Testler <see cref="AvaloniaFactAttribute"/>
-/// kullanıyor çünkü ViewModel <c>Dispatcher.UIThread</c> üzerinden toplu güncelleme yapıyor.
+/// The ViewModel is tested without starting a real <c>git</c> process; <c>git</c>'s behaviour is
+/// verified in <c>GitExt.Core.Tests</c>. The tests use <see cref="AvaloniaFactAttribute"/> because the
+/// ViewModel batches its updates through <c>Dispatcher.UIThread</c>.
 /// </remarks>
 public class CommitListViewModelTests
 {
@@ -48,7 +48,7 @@ public class CommitListViewModelTests
 
         await viewModel.OpenAsync("/tmp/depo");
 
-        // Doğrusal geçmiş tek şeritte kalmalı (ADR-0007, düz şerit kuralı).
+        // A linear history must stay in a single lane (ADR-0007, the straight-lane rule).
         viewModel.Rows.ShouldAllBe(r => r.GraphRow.Lane == 0);
         viewModel.Rows[0].GraphRow.ShouldNotBeNull();
     }
@@ -56,15 +56,15 @@ public class CommitListViewModelTests
     [AvaloniaFact]
     public async Task Parti_boyutundan_buyuk_gecmis_tamamen_yuklenir()
     {
-        // Toplu güncelleme sınırı 256; bunun üstünde birden fazla parti oluşur.
-        // Partiler arasında satır kaybı olmamalı.
+        // The batch update limit is 256; above that, more than one batch is formed.
+        // No rows may be lost between the batches.
         CommitListViewModel viewModel = Create(FakeGitData.LinearHistory(600));
 
         await viewModel.OpenAsync("/tmp/depo");
 
         viewModel.Rows.Count.ShouldBe(600);
 
-        // Sıra korunmalı: en yeni önce.
+        // The order must be preserved: newest first.
         viewModel.Rows[0].Subject.ShouldBe("commit 600");
         viewModel.Rows[^1].Subject.ShouldBe("commit 1");
     }
@@ -92,7 +92,7 @@ public class CommitListViewModelTests
     [AvaloniaFact]
     public async Task Bos_depo_hata_vermeden_bos_liste_dondurur()
     {
-        // Doğmamış depo: `git log` hata veriyor ama bu kullanıcı için hata değil.
+        // An unborn repository: `git log` errors out, but that is not an error for the user.
         CommitListViewModel viewModel = Create(
             logFailure: new GitException(
                 GitFailureKind.UnknownRevision, "revizyon yok", "git log", 128, string.Empty));
@@ -132,7 +132,7 @@ public class CommitListViewModelTests
 
         await viewModel.OpenAsync("/tmp/baska-depo");
 
-        // Eski satırlar kalmamalı — aksi halde iki deponun geçmişi karışır.
+        // No old rows may remain — otherwise two repositories' histories get mixed up.
         viewModel.Rows.Count.ShouldBe(4);
     }
 
@@ -146,7 +146,7 @@ public class CommitListViewModelTests
 
         await viewModel.OpenAsync("/tmp/depo", cancellation.Token);
 
-        // İptal kullanıcı eylemidir, hata değil.
+        // Cancellation is a user action, not an error.
         viewModel.ErrorMessage.ShouldBeNull();
         viewModel.IsLoading.ShouldBeFalse();
     }
@@ -162,7 +162,7 @@ public class CommitListViewModelTests
 
         await viewModel.OpenAsync("/tmp/depo");
 
-        // LinearHistory en yeniden en eskiye üretir: satır 0 = commit 3, satır 2 = commit 1.
+        // LinearHistory produces newest to oldest: row 0 = commit 3, row 2 = commit 1.
         viewModel.Rows[0].Badges.Single().Text.ShouldBe("main");
         viewModel.Rows[1].HasBadges.ShouldBeFalse();
         viewModel.Rows[2].Badges.Single().Kind.ShouldBe(RefBadgeKind.Tag);
@@ -171,7 +171,8 @@ public class CommitListViewModelTests
     [AvaloniaFact]
     public async Task Ref_okumasi_basarisiz_olursa_gecmis_yine_de_gosterilir()
     {
-        // Rozetler yardımcı bilgidir; okunamaması geçmişi göstermemek için sebep değil.
+        // The badges are supplementary information; failing to read them is no reason not to show the
+        // history.
         CommitListViewModel viewModel = Create(
             FakeGitData.LinearHistory(3),
             refFailure: new GitException(

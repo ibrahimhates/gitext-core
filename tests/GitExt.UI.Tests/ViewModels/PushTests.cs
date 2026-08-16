@@ -7,7 +7,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T08 — Push ekranı (ViewModel tarafı).
+/// P06-T08 — The push screen (the ViewModel side).
 /// </summary>
 public class PushTests
 {
@@ -69,7 +69,7 @@ public class PushTests
     [AvaloniaFact]
     public async Task Upstream_i_olmayan_dalda_kutu_KENDILIGINDEN_isaretli()
     {
-        // Ölçüldü: upstream'i olmayan dalda çıplak `git push` çalışmıyor (çıkış kodu 128).
+        // Measured: on a branch with no upstream, a bare `git push` does not work (exit code 128).
         (PushViewModel model, FakePushWriter push) = Create();
 
         push.Plan = push.Plan with { HasUpstream = false, RemoteTipObjectId = null, RemoteBranches = [] };
@@ -83,8 +83,8 @@ public class PushTests
     [AvaloniaFact]
     public async Task KIRA_cipasi_komuta_ACIK_olarak_yaziliyor()
     {
-        // 🔴 Bu testin sabitlediği şey: bayrak asla çıplak yazılmıyor. Çıplak hâli, araya
-        // giren bir fetch'ten sonra korumayı bırakıyor (Core'daki karşı-kanıt testi).
+        // 🔴 What this test pins down: the flag is never written bare. In its bare form it gives up the
+        // guard after an intervening fetch (the counter-evidence test in Core).
         (PushViewModel model, FakePushWriter push) = Create();
 
         await LoadAsync(model);
@@ -99,8 +99,8 @@ public class PushTests
     [AvaloniaFact]
     public async Task Hedef_adi_degisince_CIPA_dusuyor()
     {
-        // Çıpa "main"in ucu; kullanıcı hedefi "baska" yaparsa o çıpa artık başka bir dalın
-        // ucu olurdu — yanlış dalın kirasıyla zorlamak sessiz bir felaket olurdu.
+        // The anchor is "main"'s tip; if the user changes the target to "baska", that anchor would now be
+        // another branch's tip — forcing with the wrong branch's lease would be a silent disaster.
         (PushViewModel model, FakePushWriter push) = Create();
 
         await LoadAsync(model);
@@ -244,12 +244,12 @@ public class PushTests
         model.Rows.First(row => row.LocalBranch == "ozellik").AheadBehind.ShouldBe("takip yok");
     }
 
-    // ----------------------------------------------------------------- sonuç
+    // ----------------------------------------------------------------- result
 
     [AvaloniaFact]
     public async Task KISMI_basari_hem_gideni_hem_reddedileni_soyluyor()
     {
-        // 🔴 "Push başarısız" demek, gerçekten gitmiş bir dalı kullanıcıdan gizlerdi.
+        // 🔴 Saying "the push failed" would hide from the user a branch that really did go.
         (PushViewModel model, FakePushWriter push) = Create();
 
         push.Result = new PushResult
@@ -273,8 +273,8 @@ public class PushTests
     [AvaloniaFact]
     public async Task BAYAT_kira_reddi_ayri_bir_ONERIYLE_anlatiliyor()
     {
-        // Geride kalmakla kiranın tutmaması farklı şeyler: ilkinde "önce çek", ikincisinde
-        // "ekranı açtığından beri değişti" demek gerekiyor.
+        // Being behind and the lease not matching are different things: the first calls for "pull first",
+        // the second for "it changed since you opened this screen".
         (PushViewModel model, FakePushWriter push) = Create();
 
         push.Result = new PushResult

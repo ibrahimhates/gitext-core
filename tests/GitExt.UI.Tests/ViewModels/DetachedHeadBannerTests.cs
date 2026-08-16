@@ -7,7 +7,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T04 — ayrık HEAD ve süren işlem şeritleri (ViewModel tarafı).
+/// P06-T04 — the detached HEAD and in-progress operation strips (the ViewModel side).
 /// </summary>
 public class DetachedHeadBannerTests
 {
@@ -64,9 +64,9 @@ public class DetachedHeadBannerTests
     [AvaloniaFact]
     public async Task Rebase_sirasinda_ayrik_serit_GOSTERILMIYOR()
     {
-        // 🔴 P06-T04'ün merkezi kararı. ÖLÇÜLDÜ: rebase sırasında HEAD gerçekten ayrık.
-        // Düz bir uyarı burada da açılır ve "buradan dal oluştur" derdi — oysa kullanıcı
-        // bilerek bir işlemin ortasında ve dal oluşturmak yapması gereken şey değil.
+        // 🔴 P06-T04's central decision. MEASURED: during a rebase HEAD really is detached.
+        // A plain warning would pop up here too and say "create a branch here" — whereas the user is
+        // deliberately in the middle of an operation and creating a branch is not the thing to do.
         MainWindowViewModel model = Create(detached: true, operation: InProgressOperation.Rebase);
 
         await model.OpenRepositoryAsync("/tmp/depo");
@@ -90,7 +90,7 @@ public class DetachedHeadBannerTests
     [AvaloniaFact]
     public async Task Merge_cakismasi_dal_uzerindeyken_de_bildiriliyor()
     {
-        // Merge çakışması HEAD'i ayırmıyor; şerit yine de görünmeli.
+        // A merge conflict does not detach HEAD; the strip must appear all the same.
         MainWindowViewModel model = Create(detached: false, operation: InProgressOperation.Merge);
 
         await model.OpenRepositoryAsync("/tmp/depo");
@@ -102,8 +102,8 @@ public class DetachedHeadBannerTests
     [AvaloniaFact]
     public async Task Her_islem_KENDI_metnini_veriyor()
     {
-        // Hepsi tek bir "işlem sürüyor" metnine düşerse kullanıcı ne yapacağını bilemez;
-        // asıl bilgi hangi işlemin sürdüğü ve nasıl çıkılacağı.
+        // If they all fall back to a single "an operation is in progress" text the user cannot tell what
+        // to do; the real information is which operation is in progress and how to get out of it.
         List<string> texts = [];
 
         foreach (InProgressOperation operation in Enum.GetValues<InProgressOperation>())
@@ -134,7 +134,7 @@ public class DetachedHeadBannerTests
 
         model.CloseRepositoryCommand.Execute(null);
 
-        // Kapalı depo için "rebase sürüyor" demek kalıntı bilgi olurdu.
+        // Saying "a rebase is in progress" for a closed repository would be leftover information.
         await model.OpenRepositoryAsync(string.Empty);
 
         model.ShowOperationBanner.ShouldBeFalse();
