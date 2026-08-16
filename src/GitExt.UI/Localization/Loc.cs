@@ -4,33 +4,33 @@ using GitExt.Core.Git;
 namespace GitExt.UI.Localization;
 
 /// <summary>
-/// Kod içinden çeviri erişimi (P11-T05).
+/// Access to translations from code (P11-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Bu bir Service Locator değil — ama sınırı burada çizmek gerekiyor.</b>
-/// ADR-0004 Service Locator'ı yasaklıyor ve gerekçesi şu: bağımlılıklar gizlenirse bir
-/// sınıfın neye ihtiyaç duyduğu yapıcısına bakılarak anlaşılamaz. Çeviri bu kuralın
-/// dışında tutuluyor, çünkü:
+/// 🔴 <b>This is not a Service Locator — but the line has to be drawn here.</b>
+/// ADR-0004 forbids the Service Locator, and its reasoning is this: when dependencies are hidden, what
+/// a class needs cannot be worked out from its constructor. Translation is kept outside that rule,
+/// because:
 /// </para>
 /// <list type="bullet">
 ///   <item>
-///     <b>Uygulama genelinde tek ve değişmez bir kaynak.</b> Test için sahtelenmesi
-///     gereken bir davranışı yok — <see cref="UseForTesting"/> ile değiştirilebiliyor.
+///     <b>It is a single, unchanging source across the application.</b> It has no behaviour that needs
+///     faking for a test — it can be swapped with <see cref="UseForTesting"/>.
 ///   </item>
 ///   <item>
-///     <b>Alternatifin maliyeti gerçek:</b> 22 ViewModel'in yapıcısına bir parametre daha
-///     eklemek, hepsinin çağrı yerlerini ve testlerini değiştirmek demekti — hiçbiri
-///     çeviriyi <i>farklı</i> yapmayacakken.
+///     <b>The alternative has a real cost:</b> adding one more parameter to the constructors of 22
+///     ViewModels meant changing all their call sites and their tests — while none of them would do
+///     translation <i>differently</i>.
 ///   </item>
 ///   <item>
-///     Aynı gerekçe <see cref="TranslateExtension"/> için de geçerli ve orada teknik bir
-///     zorunluluktu (markup extension'ı XAML çözümleyici yaratıyor).
+///     The same reasoning applies to <see cref="TranslateExtension"/>, where it was a technical
+///     necessity (the markup extension is created by the XAML resolver).
 ///   </item>
 /// </list>
 /// <para>
-/// <b>Kural:</b> buraya yalnızca <b>kullanıcıya gösterilen metin</b> için başvurulur.
-/// Başka bir servise bu yoldan erişilmez.
+/// <b>The rule:</b> this is consulted only for <b>text shown to the user</b>. No other service is
+/// reached this way.
 /// </para>
 /// </remarks>
 public static class Loc
@@ -78,25 +78,25 @@ public static class Loc
         }
     }
 
-    /// <summary>Etkin çevirmeni tanıtır. Composition root'tan bir kez çağrılıyor.</summary>
+    /// <summary>Registers the translator in force. Called once from the composition root.</summary>
     public static void Attach(ITranslator translator) => _translator = translator;
 
-    /// <summary>Testlerin çevirmeni değiştirmesi için.</summary>
+    /// <summary>For tests to swap the translator.</summary>
     internal static void UseForTesting(ITranslator? translator) => _translator = translator;
 
     /// <summary>
-    /// Bir git hatasının kullanıcıya gösterilecek metni (P11-T06).
+    /// The text to show the user for a git error (P11-T06).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <see cref="GitExt.Core"/> arayüz katmanına bağlanamıyor (ADR-0003), dolayısıyla
-    /// dil dosyasına da erişemiyor. Ama <see cref="GitException.Kind"/> zaten sınıflandırma
-    /// katmanı tarafından dolduruluyor: çeviri <b>metne değil bu enum'a</b> bakıyor.
+    /// <see cref="GitExt.Core"/> cannot depend on the UI layer (ADR-0003), so it cannot reach the
+    /// language file either. But <see cref="GitException.Kind"/> is already filled in by the
+    /// classification layer: the translation looks at <b>that enum, not at the text</b>.
     /// </para>
     /// <para>
-    /// <see cref="GitFailureKind.Unknown"/> <b>ham mesaja düşüyor.</b> Bilinmeyen bir git
-    /// hatasını uydurma bir metnin arkasına saklamak, teşhisi imkânsızlaştırırdı — kullanıcı
-    /// da biz de git'in ne dediğini görmek zorundayız.
+    /// <see cref="GitFailureKind.Unknown"/> <b>falls back to the raw message.</b> Hiding an unknown git
+    /// error behind an invented text would make diagnosis impossible — both the user and we have to
+    /// see what git said.
     /// </para>
     /// </remarks>
     public static string GitError(GitException exception)
@@ -121,7 +121,7 @@ public static class Loc
             GitFailureKind.RemoteNameConflict => "git.error.remote_name_conflict",
             GitFailureKind.RemoteUnreachable => "git.error.remote_unreachable",
 
-            // Sınıflandırılamamış hata: git'in kendi mesajı gösteriliyor.
+            // An unclassified error: git's own message is shown.
             _ => string.Empty,
         };
 

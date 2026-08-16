@@ -7,13 +7,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P05-T13 — commit mesajı yardımcıları: geçmiş, şablon, amend mesajı, taslak koruma.
+/// P05-T13 — the commit message helpers: history, template, the amend message, draft preservation.
 /// </summary>
 /// <remarks>
-/// 🔑 Bu testlerin çoğu <b>tek bir değişmezi</b> koruyor: <i>kullanıcının yazdığı metnin
-/// üzerine hiçbir kaynak yazmaz.</i> Taslağın, şablonun ya da <c>MERGE_MSG</c>'in yarım
-/// kalmış bir mesajı ezmesi, bu fazın en sinsi veri kaybı olurdu — hata mesajı yok, geri
-/// alma yok.
+/// 🔑 Most of these tests protect <b>a single invariant</b>: <i>no source overwrites the text the
+/// user wrote.</i> A draft, a template or <c>MERGE_MSG</c> wiping out a half-finished message would
+/// be this phase's most insidious data loss — no error message, no undo.
 /// </remarks>
 public class CommitMessageHelperTests
 {
@@ -50,7 +49,7 @@ public class CommitMessageHelperTests
             reader,
             store);
 
-        // Testler taslağın gecikmesini beklemesin; gecikme davranışı ayrıca test ediliyor.
+        // The tests must not wait on the draft's delay; the delay behaviour is tested separately.
         model.Message.DraftSaveDelay = TimeSpan.Zero;
 
         await model.OpenAsync(Repository);
@@ -58,13 +57,13 @@ public class CommitMessageHelperTests
         return new Harness(model, reader, store, commits);
     }
 
-    // ---- Geçmiş ----
+    // ---- History ----
 
     [AvaloniaFact]
     public async Task Gecmis_depo_acilirken_OKUNMAZ()
     {
-        // Menü açılırken okunuyor: her depo açılışında fazladan bir `git log` çalıştırmak,
-        // kullanıcının hiç açmayacağı bir menünün bedeli olurdu.
+        // It is read as the menu opens: running an extra `git log` on every repository open would be
+        // the price of a menu the user may never open.
         FakeCommitMessageReader reader = new();
         reader.Recent.Add("eski mesaj");
 
@@ -81,8 +80,8 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Gecmis_etiketi_ILK_SATIR_ve_kisaltilmis()
     {
-        // Menü öğesi tek satır olmak zorunda; çok satırlı bir mesaj menüyü ekran dışına
-        // taşırırdı (GitExtensions'ta da sınır 72).
+        // A menu item has to be a single line; a multi-line message would push the menu off screen
+        // (GitExtensions caps it at 72 too).
         FakeCommitMessageReader reader = new();
         reader.Recent.Add("konu satiri\n\ngövde burada ve menüde GÖRÜNMEMELİ");
         reader.Recent.Add(new string('u', 200));
@@ -101,8 +100,8 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Gecmisten_secilen_mesaj_kutuya_KONUR()
     {
-        // Var olan metnin üzerine yazılan TEK yer burası: kullanıcı menüden seçerek tam
-        // olarak bunu istedi (GitExtensions'ın `ReplaceMessage`'ı da böyle).
+        // This is the ONE place existing text is overwritten: the user asked for exactly this by
+        // picking from the menu (GitExtensions' `ReplaceMessage` does the same).
         FakeCommitMessageReader reader = new();
         reader.Recent.Add("geri çağrılan mesaj\n\ngövdesiyle birlikte");
 
@@ -156,14 +155,14 @@ public class CommitMessageHelperTests
         harness.Model.CanCommit.ShouldBeTrue();
     }
 
-    // ---- Şablon ----
+    // ---- Template ----
 
     [AvaloniaFact]
     public async Task Sablon_YORUMLARI_TEMIZLENEREK_yuklenir()
     {
-        // 🔴 Bizim commit yolumuz `--cleanup=whitespace` ve yorumları KORUYOR (P05-T06,
-        // bilinçli). Şablon olduğu gibi yüklenseydi git'in editör yolunda commit'e
-        // girmeyen `# …` satırları bizde commit gövdesine girerdi.
+        // 🔴 Our commit path is `--cleanup=whitespace` and KEEPS comments (P05-T06, deliberately).
+        // Had the template been loaded as is, the `# …` lines that never reach the commit on git's
+        // editor path would end up in our commit body.
         FakeCommitMessageReader reader = new()
         {
             Template = new CommitTemplate
@@ -185,9 +184,8 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Sablonun_yorum_karakteri_DEPODAN_okunur()
     {
-        // 🔴 ÖLÇÜLDÜ: `core.commentChar` `#` olmak zorunda değil. `;` olan bir depoda kör
-        // bir `#` filtresi hem gerçek yorumları bırakır hem kullanıcının issue satırını
-        // silerdi.
+        // 🔴 MEASURED: `core.commentChar` does not have to be `#`. In a repository where it is `;`, a
+        // blind `#` filter would both leave the real comments in and delete the user's issue line.
         FakeCommitMessageReader reader = new()
         {
             CommentCharacter = ";",
@@ -207,8 +205,8 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Bulunamayan_sablon_menude_GORUNUR_ama_uygulanamaz()
     {
-        // git'in kendisi bu durumda commit'i `fatal: could not read` ile reddediyor
-        // (ölçüldü) — yapılandırma gerçekten bozuk. Menüyü boş göstermek onu saklamak olurdu.
+        // git itself rejects the commit in this case with `fatal: could not read` (measured) — the
+        // configuration really is broken. Showing an empty menu would be hiding it.
         FakeCommitMessageReader reader = new()
         {
             Template = new CommitTemplate { Path = "/tmp/depo/yok.txt", Text = null },
@@ -242,7 +240,7 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Amend_DOLU_kutunun_uzerine_YAZMAZ()
     {
-        // Kullanıcı yeni bir mesaj yazmaya başladıysa amend'i işaretlemek onu silmemeli.
+        // If the user has started writing a new message, ticking amend must not delete it.
         FakeCommitMessageReader reader = new() { HeadMessage = "eski commit mesajı" };
 
         Harness harness = await CreateAsync(reader);
@@ -256,7 +254,7 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Commitsiz_depoda_amend_kutuyu_BOZMAZ()
     {
-        // Çekirdek burada null döndürüyor (gerçek git'te `git log` çıkış 128).
+        // The core returns null here (with real git, `git log` exits 128).
         Harness harness = await CreateAsync(new FakeCommitMessageReader { HeadMessage = null });
 
         harness.Model.Amend = true;
@@ -275,7 +273,7 @@ public class CommitMessageHelperTests
 
         harness.Message.Text = "yarım kalan iş";
 
-        // Gecikme sıfır; kaydın kuyruğa alınan devamı çalışsın.
+        // Zero delay; let the queued continuation of the save run.
         await Task.Delay(20);
 
         store.Drafts[Repository].ShouldBe("yarım kalan iş");
@@ -303,7 +301,8 @@ public class CommitMessageHelperTests
 
         harness.Message.Text = "kullanıcının yazdığı";
 
-        // Aynı ekranda depo yeniden açılırsa (yenileme/depo değişimi) yazılan metin durmalı.
+        // If the repository is reopened on the same screen (a refresh or a repository switch), the text
+        // typed must stay.
         await harness.Model.OpenAsync(Repository);
 
         harness.Message.Text.ShouldBe("kullanıcının yazdığı");
@@ -312,8 +311,8 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Basarili_commit_TASLAGI_da_siler()
     {
-        // 🔑 Taslak silinmezse ekran bir daha açıldığında az önce commit'lenen metin geri
-        // gelir ve kullanıcıyı ikinci bir commit'e davet eder.
+        // 🔑 Unless the draft is deleted, the text just committed comes back the next time the screen
+        // opens and invites the user into a second commit.
         FakeCommitMessageStore store = new();
 
         Harness harness = await CreateAsync(null, store, Staged("a.txt"));
@@ -332,8 +331,8 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Basarisiz_commit_TASLAGI_KORUR()
     {
-        // P05-T12'de mesajın korunduğu test edilmişti; taslağın da korunması gerekiyor,
-        // yoksa hata anında uygulama kapanınca metin yine kaybolurdu.
+        // P05-T12 tested that the message is preserved; the draft has to be preserved as well, or the
+        // text would still be lost if the application closed at the moment of an error.
         FakeCommitMessageStore store = new();
 
         Harness harness = await CreateAsync(null, store, Staged("a.txt"));
@@ -373,8 +372,8 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Kapanirken_bekleyen_taslak_HEMEN_yazilir()
     {
-        // 🔑 Gecikmeli kayıt henüz çalışmamış olabilir; pencere kapanırken kullanıcının en
-        // son yazdığı satır — bıraktığı yer — kaybolurdu.
+        // 🔑 The delayed save may not have run yet; the last line the user typed — where they left off
+        // — would be lost as the window closed.
         FakeCommitMessageStore store = new();
 
         Harness harness = await CreateAsync(null, store);
@@ -392,7 +391,7 @@ public class CommitMessageHelperTests
     [AvaloniaFact]
     public async Task Yuklenen_mesaj_taslak_kaydini_TETIKLEMEZ()
     {
-        // Taslaktan yüklenen metni hemen geri yazmak boşuna disk yazması olurdu.
+        // Writing the text loaded from the draft straight back would be a pointless disk write.
         FakeCommitMessageStore store = new();
         store.Drafts[Repository] = "diskten gelen";
 
@@ -404,7 +403,7 @@ public class CommitMessageHelperTests
         store.SaveCount.ShouldBe(0);
     }
 
-    // ---- git'in hazırladığı mesaj ----
+    // ---- The message git prepared ----
 
     [AvaloniaFact]
     public async Task Merge_mesaji_ekran_acilinca_YUKLENIR()

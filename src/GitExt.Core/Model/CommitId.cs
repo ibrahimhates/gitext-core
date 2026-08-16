@@ -3,23 +3,23 @@ using System.Diagnostics.CodeAnalysis;
 namespace GitExt.Core.Model;
 
 /// <summary>
-/// Bir Git nesne kimliği (SHA).
+/// A Git object id (SHA).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Bu tip bilinçli olarak <see cref="string"/> değildir.</b> Bir SHA'yı düz metin olarak
-/// taşımak iki hata sınıfını davet eder: kısa ve tam SHA'ların karıştırılması, ve yanlışlıkla
-/// bir dosya yolunun veya ref adının SHA bekleyen bir parametreye geçirilmesi. İkisi de
-/// derleme zamanında yakalanabilecekken çalışma zamanına kalır.
+/// <b>This type is deliberately not a <see cref="string"/>.</b> Carrying a SHA as plain text invites
+/// two classes of bug: confusing short and full SHAs, and accidentally passing a file path or a ref
+/// name to a parameter expecting a SHA. Both could be caught at compile time but would otherwise be
+/// left to run time.
 /// </para>
 /// <para>
-/// Hem SHA-1 (40 onaltılık karakter) hem SHA-256 (64 karakter) depoları desteklenir.
-/// Kısaltılmış SHA'lar da geçerlidir (en az 4 karakter, <c>git</c>'in kabul ettiği alt sınır).
+/// Both SHA-1 (40 hex characters) and SHA-256 (64 characters) repositories are supported. Abbreviated
+/// SHAs are valid too (at least 4 characters, the lower bound <c>git</c> accepts).
 /// </para>
 /// </remarks>
 public readonly record struct CommitId : IComparable<CommitId>
 {
-    /// <summary><c>git</c>'in kabul ettiği en kısa benzersiz önek uzunluğu.</summary>
+    /// <summary>The shortest unique prefix length <c>git</c> accepts.</summary>
     public const int MinimumLength = 4;
 
     private const int Sha1Length = 40;
@@ -32,25 +32,25 @@ public readonly record struct CommitId : IComparable<CommitId>
         _value = value;
     }
 
-    /// <summary>Onaltılık gösterim, küçük harf.</summary>
+    /// <summary>The hexadecimal representation, in lower case.</summary>
     public string Value => _value ?? string.Empty;
 
-    /// <summary>Değer atanmamış mı?</summary>
+    /// <summary>Has no value been assigned?</summary>
     public bool IsEmpty => string.IsNullOrEmpty(_value);
 
     /// <summary>
-    /// Tam uzunlukta bir SHA mı (SHA-1 için 40, SHA-256 için 64)?
+    /// Is it a full-length SHA (40 for SHA-1, 64 for SHA-256)?
     /// </summary>
     /// <remarks>
-    /// Kısaltılmış SHA'lar zamanla belirsizleşebilir (depo büyüdükçe önek çakışır), bu yüzden
-    /// kalıcı olarak saklanacak kimlikler tam olmalıdır.
+    /// Abbreviated SHAs can become ambiguous over time (as the repository grows, prefixes collide), so
+    /// ids to be stored permanently have to be full.
     /// </remarks>
     public bool IsFull => _value?.Length is Sha1Length or Sha256Length;
 
     /// <summary>
-    /// Metinden bir <see cref="CommitId"/> üretir.
+    /// Produces a <see cref="CommitId"/> from text.
     /// </summary>
-    /// <exception cref="FormatException">Değer geçerli bir onaltılık SHA değilse.</exception>
+    /// <exception cref="FormatException">When the value is not a valid hexadecimal SHA.</exception>
     public static CommitId Parse(string value)
     {
         if (!TryParse(value, out CommitId id))
@@ -64,7 +64,7 @@ public readonly record struct CommitId : IComparable<CommitId>
     }
 
     /// <summary>
-    /// Metinden bir <see cref="CommitId"/> üretmeyi dener.
+    /// Tries to produce a <see cref="CommitId"/> from text.
     /// </summary>
     public static bool TryParse([NotNullWhen(true)] string? value, out CommitId id)
     {
@@ -90,19 +90,18 @@ public readonly record struct CommitId : IComparable<CommitId>
             }
         }
 
-        // git SHA'ları küçük harf üretir; büyük harfli girdiyi normalleştir ki
-        // karşılaştırmalar tutarlı olsun.
+        // git produces lower-case SHAs; normalise upper-case input so comparisons stay consistent.
         id = new CommitId(span.ToString().ToLowerInvariant());
         return true;
     }
 
     /// <summary>
-    /// Kullanıcıya gösterilecek kısa biçim.
+    /// The short form to show the user.
     /// </summary>
-    /// <param name="length">Karakter sayısı. Değer zaten daha kısaysa olduğu gibi döner.</param>
+    /// <param name="length">The number of characters. When the value is already shorter it is returned as is.</param>
     /// <remarks>
-    /// Varsayılan 7, <c>git log --oneline</c> ile aynı. Bu <b>yalnızca gösterim içindir</b>;
-    /// kısaltılmış değer git'e geri verilmemeli.
+    /// The default is 7, the same as <c>git log --oneline</c>. This is <b>for display only</b>; the
+    /// abbreviated value must not be handed back to git.
     /// </remarks>
     public string ToShortString(int length = 7)
     {
@@ -113,11 +112,11 @@ public readonly record struct CommitId : IComparable<CommitId>
     }
 
     /// <summary>
-    /// Bu kimlik, verilen kimliğin öneki mi?
+    /// Is this id a prefix of the given one?
     /// </summary>
     /// <remarks>
-    /// Kısaltılmış bir SHA'nın tam bir SHA'ya karşılık gelip gelmediğini anlamak için.
-    /// Eşitlik karşılaştırması bunu yapmaz — <c>abc1234</c> ile tam SHA'sı eşit değildir.
+    /// For working out whether an abbreviated SHA corresponds to a full one. An equality comparison
+    /// does not do this — <c>abc1234</c> is not equal to its full SHA.
     /// </remarks>
     public bool IsPrefixOf(CommitId other) =>
         !IsEmpty && other.Value.StartsWith(Value, StringComparison.Ordinal);

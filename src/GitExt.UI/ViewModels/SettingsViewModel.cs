@@ -9,12 +9,12 @@ using GitExt.UI.Themes;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Ayarlar ekranı (P08-T15).
+/// The settings screen (P08-T15).
 /// </summary>
 /// <remarks>
-/// Üç bölüm: görünüm, kısayollar ve git kimliği. Git ayarları buraya <b>ait</b>, çünkü
-/// kullanıcı açısından "commit'lerimde hangi isim görünüyor" bir uygulama ayarı gibi
-/// hissediliyor — nerede saklandığı (git'in kendi dosyası) uygulamanın iç meselesi.
+/// Three sections: appearance, shortcuts and git identity. The git settings <b>belong</b> here,
+/// because from the user's point of view "which name shows on my commits" feels like an application
+/// setting — where it is stored (git's own file) is the application's internal business.
 /// </remarks>
 public sealed partial class SettingsViewModel : ViewModelBase
 {
@@ -76,8 +76,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         _config = config;
         _workingDirectory = workingDirectory;
 
-        // Çevirmen verilmediğinde (bazı testler) dil listesi boş kalıyor ve açılır liste
-        // devre dışı görünüyor — çökmüyor.
+        // When no translator is supplied (as in some tests) the language list stays empty and the
+        // dropdown appears disabled — it does not crash.
         Languages = translator?.Available ?? [];
 
         Shortcuts = new ShortcutSettingsViewModel(registry);
@@ -87,28 +87,28 @@ public sealed partial class SettingsViewModel : ViewModelBase
         LoadFromSettings();
     }
 
-    /// <summary>Kısayol düzenleme bölümü (P08-T03).</summary>
+    /// <summary>The shortcut editing section (P08-T03).</summary>
     public ShortcutSettingsViewModel Shortcuts { get; }
 
     /// <summary>
-    /// Yerel git ayarları düzenlenebilir mi?
+    /// Can the local git settings be edited?
     /// </summary>
     /// <remarks>
-    /// 🔴 Depo açık değilken <c>--local</c> git tarafından <b>reddediliyor</b>
-    /// (<c>fatal: --local can only be used inside a git repository</c>, çıkış kodu 128).
-    /// Alanları etkin bırakmak, kullanıcıya kaydedilmeyecek bir kutu sunmak olurdu.
+    /// 🔴 With no repository open, <c>--local</c> is <b>refused</b> by git
+    /// (<c>fatal: --local can only be used inside a git repository</c>, exit code 128).
+    /// Leaving the fields enabled would offer the user a box that will not be saved.
     /// </remarks>
     public bool CanEditLocal => _workingDirectory is { Length: > 0 };
 
     public bool CanEditGit => _config is not null;
 
     /// <summary>
-    /// Kullanılabilir diller (P11-T07).
+    /// The available languages (P11-T07).
     /// </summary>
     /// <remarks>
-    /// Tema/Palet listelerinden farklı olarak sabit değil: gömülü dil dosyalarından
-    /// çalışma anında geliyor. <c>Locales/</c> klasörüne yeni bir JSON eklemek, bu listede
-    /// bir satır daha görünmesi için yeterli.
+    /// Unlike the Theme/Palette lists this one is not fixed: it comes from the embedded language files
+    /// at runtime. Adding a new JSON to the <c>Locales/</c> folder is enough for another row to appear
+    /// in this list.
     /// </remarks>
     public IReadOnlyList<LanguageInfo> Languages { get; }
 
@@ -120,7 +120,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     public IAsyncRelayCommand SaveGitCommand { get; }
 
-    /// <summary>Git ayarlarını diskten okur.</summary>
+    /// <summary>Reads the git settings from disk.</summary>
     public async Task LoadGitAsync(CancellationToken cancellationToken = default)
     {
         if (_config is null)
@@ -176,12 +176,12 @@ public sealed partial class SettingsViewModel : ViewModelBase
         Apply(() => _appearance.SetFontSizes(UiFontSize, MonospaceFontSize));
 
     /// <summary>
-    /// Değişikliği uygular — ama ekran <b>yüklenirken</b> değil.
+    /// Applies the change — but not while the screen is <b>loading</b>.
     /// </summary>
     /// <remarks>
-    /// Yükleme sırasında özellik atamaları da <c>PropertyChanged</c> tetikliyor. Süzülmezse
-    /// ekranı açmak, hiçbir şey değiştirilmemişken ayarları yeniden yazardı — ve ayar
-    /// dosyasının değişme zamanı kullanıcının hiç dokunmadığı bir anda kayardı.
+    /// During loading, the property assignments raise <c>PropertyChanged</c> too. Unless they are
+    /// filtered out, opening the screen would rewrite the settings with nothing having been changed —
+    /// and the settings file's modification time would shift at a moment the user never touched it.
     /// </remarks>
     private void Apply(Action action)
     {
@@ -199,9 +199,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
         {
             AppearanceSettings appearance = _settings.Current.Appearance;
 
-            // Etkin dil, ayardaki koddan DEĞİL çevirmenin kendisinden okunuyor: ayar boş
-            // olabilir (ilk çalıştırma) ya da tanınmayan bir kod içerebilir; ikisinde de
-            // çevirmen çoktan İngilizceye düşmüştür ve açılır liste onu göstermeli.
+            // The active language is read from the translator itself, NOT from the code in the
+            // settings: the setting may be empty (first run) or hold an unrecognised code; in both
+            // cases the translator has already fallen back to English and the dropdown should show that.
             Language = _translator is null
                 ? null
                 : Languages.FirstOrDefault(l => l.Code == _translator.Current);
@@ -245,7 +245,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         }
         catch (GitException ex)
         {
-            // Ham stderr birincil mesaj değil ama erişilebilir kalmalı (P02-T12).
+            // Raw stderr is not the primary message but must stay reachable (P02-T12).
             GitError = Loc.GitError(ex);
         }
     }

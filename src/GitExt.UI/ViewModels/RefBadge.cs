@@ -3,29 +3,29 @@ using GitExt.Core.Model;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Commit satırında gösterilen ref rozetinin türü (P03-T12).
+/// The kind of ref badge shown on a commit row (P03-T12).
 /// </summary>
 public enum RefBadgeKind
 {
     /// <summary>Yerel dal.</summary>
     LocalBranch,
 
-    /// <summary>Uzak takip dalı (<c>origin/main</c>).</summary>
+    /// <summary>A remote tracking branch (<c>origin/main</c>).</summary>
     RemoteBranch,
 
     /// <summary>Tag (hafif veya annotated).</summary>
     Tag,
 
-    /// <summary><c>HEAD</c> — detached durumda tek başına gösterilir.</summary>
+    /// <summary><c>HEAD</c> — shown on its own in a detached state.</summary>
     Head,
 }
 
 /// <summary>
-/// Bir commit'e işaret eden, türü belli ref.
+/// A ref of a known kind pointing at a commit.
 /// </summary>
-/// <param name="Text">Gösterilecek kısa ad.</param>
-/// <param name="Kind">Rozet türü — görsel stil buna göre seçilir.</param>
-/// <param name="IsCurrent">Checkout edilmiş dal mı?</param>
+/// <param name="Text">The short name to display.</param>
+/// <param name="Kind">The badge kind — the visual style is chosen from it.</param>
+/// <param name="IsCurrent">Is it the checked-out branch?</param>
 public sealed record RefBadge(string Text, RefBadgeKind Kind, bool IsCurrent)
 {
     public bool IsLocalBranch => Kind == RefBadgeKind.LocalBranch;
@@ -40,20 +40,20 @@ public sealed record RefBadge(string Text, RefBadgeKind Kind, bool IsCurrent)
 }
 
 /// <summary>
-/// Commit kimliğinden rozetlere eşleme.
+/// The mapping from commit id to badges.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden <c>%D</c> ayrıştırılmıyor?</b> <c>git log</c>'un <c>%D</c> alanı ölçüldü ve
-/// tür bilgisi vermiyor: yerel dal <c>ikinci</c>, uzak dal <c>origin/main</c> olarak geliyor —
-/// ikisi de çıplak isim. Bunları ayırmak için uzak adlarını bilip önek eşleştirmek gerekirdi,
-/// yani tahmin yürütmek. (<c>tag:</c> öneki var, stash ise <c>refs/stash</c> olarak tam adla
-/// geliyor — biçim tutarsız.)
+/// <b>Why is <c>%D</c> not parsed?</b> <c>git log</c>'s <c>%D</c> field was measured and it gives no
+/// kind information: a local branch arrives as <c>ikinci</c> and a remote branch as <c>origin/main</c>
+/// — both bare names. Telling them apart would mean knowing the remote names and matching prefixes,
+/// which is guesswork. (There is a <c>tag:</c> prefix, while a stash arrives by its full name as
+/// <c>refs/stash</c> — the format is inconsistent.)
 /// </para>
 /// <para>
-/// <c>for-each-ref</c> ise <b>yetkili tam adı</b> veriyor (<c>refs/heads/…</c>,
-/// <c>refs/remotes/…</c>, <c>refs/tags/…</c>) ve annotated tag'lerde hedef commit'i
-/// çözüyor. Rozetler oradan üretiliyor.
+/// <c>for-each-ref</c>, on the other hand, gives the <b>authoritative full name</b>
+/// (<c>refs/heads/…</c>, <c>refs/remotes/…</c>, <c>refs/tags/…</c>) and resolves the target commit on
+/// annotated tags. The badges are produced from there.
 /// </para>
 /// </remarks>
 public sealed class RefBadgeIndex
@@ -62,11 +62,11 @@ public sealed class RefBadgeIndex
 
     private readonly Dictionary<CommitId, List<RefBadge>> _byCommit = [];
 
-    /// <summary>Boş dizin — depo açılmadan veya ref okuması başarısız olduğunda kullanılır.</summary>
+    /// <summary>An empty index — used before a repository is open, or when the ref read fails.</summary>
     public static RefBadgeIndex Empty { get; } = new();
 
     /// <summary>
-    /// Ref okumasından rozet dizini üretir.
+    /// Produces the badge index from a ref read.
     /// </summary>
     public static RefBadgeIndex Build(RepositoryRefs refs)
     {
@@ -74,7 +74,7 @@ public sealed class RefBadgeIndex
 
         RefBadgeIndex index = new();
 
-        // Detached HEAD: hiçbir dal geçerli değil, HEAD kendi rozetini alır.
+        // Detached HEAD: no branch is current, and HEAD gets its own badge.
         if (refs.Head is { IsDetached: true, Commit.IsEmpty: false })
         {
             index.Add(refs.Head.Commit, new RefBadge("HEAD", RefBadgeKind.Head, IsCurrent: true));
@@ -89,9 +89,9 @@ public sealed class RefBadgeIndex
 
         foreach (BranchInfo branch in refs.RemoteBranches)
         {
-            // origin/HEAD gibi sembolik ref'ler atlanır: klonlanan HER depoda bulunurlar,
-            // işaret ettikleri dalla aynı commit'i gösterirler ve yan yana iki özdeş rozet
-            // üretirler. İsim tahminiyle değil git'in %(symref) alanıyla ayırt ediliyor.
+            // Symbolic refs such as origin/HEAD are skipped: they exist in EVERY cloned repository,
+            // point at the same commit as the branch they reference, and produce two identical badges
+            // side by side. They are told apart by git's %(symref) field, not by guessing at the name.
             if (branch.Ref.IsSymbolic)
             {
                 continue;
@@ -104,15 +104,15 @@ public sealed class RefBadgeIndex
 
         foreach (TagInfo tag in refs.Tags)
         {
-            // Annotated tag'de TargetCommit çözülmüş commit'tir, tag nesnesi değil —
-            // aksi halde rozet grafikte yanlış satıra düşerdi.
+            // On an annotated tag, TargetCommit is the resolved commit and not the tag object —
+            // otherwise the badge would land on the wrong row in the graph.
             index.Add(tag.Ref.TargetCommit, new RefBadge(tag.Name, RefBadgeKind.Tag, IsCurrent: false));
         }
 
         return index;
     }
 
-    /// <summary>Bu commit'e işaret eden rozetler; yoksa boş liste.</summary>
+    /// <summary>The badges pointing at this commit; an empty list when there are none.</summary>
     public IReadOnlyList<RefBadge> For(CommitId commit) =>
         _byCommit.TryGetValue(commit, out List<RefBadge>? badges) ? badges : _noBadges;
 
@@ -131,8 +131,8 @@ public sealed class RefBadgeIndex
             _byCommit[commit] = badges;
         }
 
-        // Sıralama: geçerli dal önce, sonra HEAD, dal, uzak dal, tag.
-        // Kullanıcının en çok umursadığı bilgi solda dursun.
+        // The order: the current branch first, then HEAD, branch, remote branch, tag.
+        // So the information the user cares about most sits on the left.
         badges.Add(badge);
         badges.Sort(static (a, b) => Rank(a).CompareTo(Rank(b)));
     }

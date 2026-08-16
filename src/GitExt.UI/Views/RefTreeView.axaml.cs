@@ -10,37 +10,37 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Dal paneli (P06-T13) ve bağlam menüsü (P06-T14).
+/// The branch panel (P06-T13) and its context menu (P06-T14).
 /// </summary>
 /// <remarks>
-/// Çift tıklama ve menü öğeleri burada karşılanıyor çünkü seçilen düğümün ne olduğuna
-/// bakmak gerekiyor: klasör ya da başlık üzerinde bir şey yapılmamalı, yoksa kullanıcı
-/// ağacı gezerken kazara dal değiştirirdi.
+/// Double-clicks and menu items are handled here because what the selected node is has to be taken
+/// into account: nothing should happen on a folder or a heading, otherwise the user would change
+/// branch by accident while moving through the tree.
 /// </remarks>
 public partial class RefTreeView : UserControl
 {
-    /// <summary>Checkout isteğini üstlenen taraf.</summary>
+    /// <summary>The side that takes on the checkout request.</summary>
     internal Func<string, Task>? Checkout { get; set; }
 
-    /// <summary>Ana penceredeki komutları çağıran taraf.</summary>
+    /// <summary>The side that invokes the main window's commands.</summary>
     internal MainWindowViewModel? Commands { get; set; }
 
-    /// <summary>Sürükle-bırak birleştirmesini üstlenen taraf (P06-T15).</summary>
+    /// <summary>The side that takes on a drag-and-drop merge (P06-T15).</summary>
     internal Func<string, string, Task>? MergeDropped { get; set; }
 
-    /// <summary>Sürüklenen dalın adı; sürükleme yokken boş.</summary>
+    /// <summary>The name of the branch being dragged; empty when there is no drag.</summary>
     private string _dragged = string.Empty;
 
     private ShortcutDispatcher? _dispatcher;
 
     /// <summary>
-    /// Bağlam kısayollarını komut kaydına bağlar (P08-T01).
+    /// Binds the context shortcuts to the command registry (P08-T01).
     /// </summary>
     /// <remarks>
-    /// <c>Delete</c> ve <c>F2</c> GitExtensions'ın <c>RepoObjectsTree</c>'siyle aynı
-    /// (<c>Command.Delete</c>, <c>Command.Rename</c>). İkisi de <b>çıplak tuş</b>, bu yüzden
-    /// yalnızca bu panelin bağlamında geçerli — küresel olsalardı her metin kutusunda
-    /// silme tuşunu ele geçirirlerdi (P08-T00/M11).
+    /// <c>Delete</c> and <c>F2</c> are the same as in GitExtensions' <c>RepoObjectsTree</c>
+    /// (<c>Command.Delete</c>, <c>Command.Rename</c>). Both are <b>bare keys</b>, so they apply only in
+    /// this panel's context — were they global they would seize the delete key in every text box
+    /// (P08-T00/M11).
     /// </remarks>
     public ShortcutDispatcher AttachShortcuts(ICommandRegistry registry)
     {
@@ -51,19 +51,19 @@ public partial class RefTreeView : UserControl
 
         _dispatcher = dispatcher;
 
-        // Tünelleme: ağaç kabaran tuşu kendi gezinmesi için yutabiliyor.
+        // Tunnelling: the tree can swallow a bubbling key for its own navigation.
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
 
         return dispatcher;
     }
 
-    /// <summary>Panele odaklanır (P08-T05).</summary>
+    /// <summary>Focuses the panel (P08-T05).</summary>
     public bool FocusPanel() => RefTree.Focus();
 
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
-        // Ağaçta yeniden adlandırma kutusu açıkken kısayollar devre dışı: `Delete` orada
-        // metin siler, dal değil.
+        // While the rename box is open in the tree the shortcuts are disabled: `Delete` deletes text
+        // there, not a branch.
         if (e.Source is TextBox)
         {
             return;
@@ -83,7 +83,7 @@ public partial class RefTreeView : UserControl
 
         if (!command.CanExecute(null))
         {
-            // Yapılamayan bir komut için tuşu yutmak, kullanıcıya sessiz bir duvar olurdu.
+            // Swallowing the key for a command that cannot run would be a silent wall to the user.
             return false;
         }
 
@@ -92,20 +92,20 @@ public partial class RefTreeView : UserControl
         return true;
     }
 
-    /// <summary>Sürüklemenin başlaması için gereken en küçük hareket.</summary>
+    /// <summary>The smallest movement required for a drag to start.</summary>
     /// <remarks>
-    /// 🔑 Eşik olmadan tek bir tıklamadaki minik titreme bile sürükleme sayılırdı — planın
-    /// "kazara sürükleme gerçek bir risk" maddesi. Onay diyaloğu ikinci savunma hattı,
-    /// bu ilki.
+    /// 🔑 Without a threshold, even the slightest tremor during a single click would count as a drag —
+    /// the plan's "an accidental drag is a real risk" item. The confirmation dialog is the second line
+    /// of defence; this is the first.
     /// </remarks>
     private const double DragThreshold = 6;
 
     private Point _pressedAt;
 
     /// <remarks>
-    /// ⚠️ Avalonia'nın <c>DoDragDropAsync</c>'i <b>basma</b> olayının argümanını istiyor
-    /// (ölçüldü: <c>PointerEventArgs</c> kabul etmiyor). Eşiği hareket olayında ölçüp
-    /// sürüklemeyi saklanan basma argümanıyla başlatmak bu yüzden gerekli.
+    /// ⚠️ Avalonia's <c>DoDragDropAsync</c> wants the argument of the <b>press</b> event (measured: it
+    /// does not accept a <c>PointerEventArgs</c>). That is why the threshold is measured on the move
+    /// event while the drag is started with the stored press argument.
     /// </remarks>
     private PointerPressedEventArgs? _pressed;
 
@@ -120,7 +120,7 @@ public partial class RefTreeView : UserControl
         RefTree.AddHandler(DragDrop.DropEvent, OnDrop);
     }
 
-    /// <summary>Sürükleme verisinin biçimi — yalnızca bu görünümün ürettiği veri kabul edilir.</summary>
+    /// <summary>The drag data's format — only data produced by this view is accepted.</summary>
     internal static DataFormat<string> BranchFormat { get; } = DataFormat.CreateStringApplicationFormat("gitext-branch");
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -157,8 +157,8 @@ public partial class RefTreeView : UserControl
 
     private void OnDragOver(object? sender, DragEventArgs e)
     {
-        // Yalnızca bu görünümden gelen dal verisi kabul ediliyor; dosya sürüklemesi
-        // ana pencerenin işi (depo açma) ve buraya karışmamalı.
+        // Only branch data coming from this view is accepted; dragging files is the main window's job
+        // (opening a repository) and must not get mixed up here.
         e.DragEffects = e.DataTransfer.Contains(BranchFormat)
             ? DragDropEffects.Move
             : DragDropEffects.None;

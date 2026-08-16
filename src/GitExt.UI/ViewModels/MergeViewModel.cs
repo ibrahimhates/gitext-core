@@ -7,19 +7,19 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Merge ekranı (P06-T11).
+/// The merge screen (P06-T11).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Yerleşim GitExtensions <c>FormMergeBranch</c>'ten (§ 9): <i>Merge branch</i> seçimi →
-/// <i>Into current branch</i> → <i>fast forward</i> / <i>always create a merge commit</i>
-/// → <i>Do not commit</i> → <i>Show advanced options</i> (squash · allow unrelated
-/// histories · merge message) → <i>Merge</i>.
+/// The layout comes from GitExtensions <c>FormMergeBranch</c> (§ 9): the <i>Merge branch</i>
+/// selection → <i>Into current branch</i> → <i>fast forward</i> / <i>always create a merge commit</i>
+/// → <i>Do not commit</i> → <i>Show advanced options</i> (squash · allow unrelated histories · merge
+/// message) → <i>Merge</i>.
 /// </para>
 /// <para>
-/// 🔴 <b>"Squash" seçildiğinde sonuç ekranı bunu açıkça söylüyor:</b> git çıkış kodu 0
-/// verip <c>HEAD</c>'i ilerletmiyor (ölçüldü). "Birleştirildi" deyip geçmek, kullanıcının
-/// commit'lemeyi unutup dalı silmesi demekti.
+/// 🔴 <b>When "Squash" is chosen the result screen says so explicitly:</b> git gives exit code 0 and
+/// does not advance <c>HEAD</c> (measured). Saying "merged" and moving on would mean the user
+/// forgetting to commit and deleting the branch.
 /// </para>
 /// </remarks>
 public sealed class MergeViewModel : ViewModelBase
@@ -49,10 +49,10 @@ public sealed class MergeViewModel : ViewModelBase
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
     }
 
-    /// <summary>Birleştirilebilecek dallar ve etiketler.</summary>
+    /// <summary>The branches and tags that can be merged.</summary>
     public ObservableCollection<string> Sources { get; } = [];
 
-    /// <summary>Üzerinde bulunulan dal (salt okunur).</summary>
+    /// <summary>The branch we are on (read-only).</summary>
     public string CurrentBranch
     {
         get => _currentBranch;
@@ -197,11 +197,11 @@ public sealed class MergeViewModel : ViewModelBase
     public bool HasRecoveryCommand => !string.IsNullOrEmpty(RecoveryCommand);
 
     /// <summary>
-    /// Squash seçiliyken <b>önceden</b> gösterilen uyarı.
+    /// The warning shown <b>in advance</b> while squash is selected.
     /// </summary>
     /// <remarks>
-    /// Sonradan söylemek de gerekiyor ama önceden söylemek daha iyi: kullanıcı hangi işe
-    /// giriştiğini bilerek başlasın.
+    /// It has to be said afterwards as well, but saying it beforehand is better: let the user start
+    /// knowing what they are getting into.
     /// </remarks>
     public string? SquashNotice => Strategy != MergeStrategy.Squash
         ? null
@@ -209,7 +209,7 @@ public sealed class MergeViewModel : ViewModelBase
 
     public bool HasSquashNotice => SquashNotice is not null;
 
-    /// <summary>Seçilen dalın ne getireceği.</summary>
+    /// <summary>What the selected branch will bring.</summary>
     public string? PreviewNotice => _preview is not { } preview
         ? null
         : !preview.HasCommonAncestor
@@ -222,7 +222,7 @@ public sealed class MergeViewModel : ViewModelBase
 
     public bool HasPreviewNotice => PreviewNotice is not null;
 
-    /// <summary>Çalıştırılacak komut ("komutu göster" ilkesi).</summary>
+    /// <summary>The command that will run (the "show the command" principle).</summary>
     public string CommandPreview => Source is not { Length: > 0 }
         ? string.Empty
         : MergeWriter.Describe(BuildOptions());
@@ -231,7 +231,7 @@ public sealed class MergeViewModel : ViewModelBase
 
     public IAsyncRelayCommand RunCommand { get; }
 
-    /// <summary>Ekranı doldurur.</summary>
+    /// <summary>Populates the screen.</summary>
     public async Task LoadAsync(
         string workingDirectory,
         string currentBranch,
@@ -249,8 +249,8 @@ public sealed class MergeViewModel : ViewModelBase
 
         foreach (string source in sources)
         {
-            // Kendini kendine birleştirmek anlamsız; listede olmaması seçim hatasını
-            // baştan engelliyor.
+            // Merging something into itself is meaningless; keeping it out of the list prevents the
+            // selection mistake from the start.
             if (!string.Equals(source, currentBranch, StringComparison.Ordinal))
             {
                 Sources.Add(source);
@@ -361,7 +361,7 @@ public sealed class MergeViewModel : ViewModelBase
                 break;
 
             case MergeOutcome.Staged:
-                // 🔴 Ölçümün kalbi: çıkış kodu 0 ama HEAD yerinde.
+                // 🔴 The heart of the measurement: exit code 0 but HEAD has not moved.
                 Notice = Loc.T("merge.the_changes_were_staged");
                 Warning = Loc.T("merge.nothing_was_committed_yet_the_changes_are_st")
                     + Loc.T("merge.you_need_to_finish_it_from_the_commit_screen");
@@ -380,36 +380,36 @@ public sealed class MergeViewModel : ViewModelBase
     }
 }
 
-/// <summary>Merge ekranını gösteren taraf (P06-T11).</summary>
+/// <summary>The side that shows the merge screen (P06-T11).</summary>
 public interface IMergePrompt
 {
-    /// <summary>Ekranı modal gösterir ve kapanmasını bekler.</summary>
+    /// <summary>Shows the screen modally and waits for it to close.</summary>
     Task ShowAsync(MergeViewModel model);
 }
 
-/// <summary>Sürükle-bırak birleştirmesinin isteği (P06-T15).</summary>
-/// <param name="Source">Sürüklenen dal.</param>
-/// <param name="Target">Bırakılan dal — <b>mevcut dal</b> olmak zorunda.</param>
-/// <param name="Command">Çalıştırılacak komut; onay ekranında birebir gösteriliyor.</param>
+/// <summary>The request of a drag-and-drop merge (P06-T15).</summary>
+/// <param name="Source">The branch being dragged.</param>
+/// <param name="Target">The branch it is dropped on — it must be <b>the current branch</b>.</param>
+/// <param name="Command">The command that will run; shown verbatim on the confirmation screen.</param>
 public sealed record MergeDropRequest(string Source, string Target, string Command);
 
-/// <summary>Sürükle-bırak birleştirmesini onaylayan taraf (P06-T15).</summary>
+/// <summary>The side that confirms a drag-and-drop merge (P06-T15).</summary>
 /// <remarks>
-/// 🔑 <b>Onay her zaman soruluyor</b> — planın maddesi. Kazara sürükleme gerçek bir risk:
-/// bir dalı yanlışlıkla birkaç piksel oynatmak, sessizce geçmişi değiştiren bir işlem
-/// başlatmamalı.
+/// 🔑 <b>Confirmation is always asked for</b> — an item from the plan. An accidental drag is a real
+/// risk: moving a branch a few pixels by mistake must not start an operation that silently rewrites
+/// history.
 /// </remarks>
 public interface IMergeDropConfirmer
 {
     Task<bool> ConfirmAsync(MergeDropRequest request);
 }
 
-/// <summary>Süren merge'in iptalini onaylayan taraf (P06-T12).</summary>
+/// <summary>The side that confirms aborting an in-progress merge (P06-T12).</summary>
 public interface IMergeAbortConfirmer
 {
     /// <summary>
-    /// İptali onaylatır.
+    /// Asks for confirmation of the abort.
     /// </summary>
-    /// <param name="conflicted">Çözülmemiş dosyalar — kullanıcı neyi kaybedeceğini görsün.</param>
+    /// <param name="conflicted">The unresolved files — so the user can see what they will lose.</param>
     Task<bool> ConfirmAsync(IReadOnlyList<string> conflicted);
 }

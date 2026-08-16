@@ -8,7 +8,7 @@ using GitExt.UI.Diagnostics;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Teşhis tablosundaki tek bir komut satırı (P09-T03).
+/// A single command row in the diagnostics table (P09-T03).
 /// </summary>
 public sealed class CommandStatisticsRowViewModel
 {
@@ -34,24 +34,24 @@ public sealed class CommandStatisticsRowViewModel
 }
 
 /// <summary>
-/// Performans teşhis paneli (P09-T03).
+/// The performance diagnostics panel (P09-T03).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Panel <b>gizli</b>: normal kullanıcı için gürültü, ama "yavaş" şikâyeti geldiğinde
-/// tek pratik teşhis yolu. Toplama her zaman açık (bkz. <see cref="IPerformanceDiagnostics"/>);
-/// gizli olan yalnızca gösterim.
+/// The panel is <b>hidden</b>: noise for a normal user, but the only practical route to a diagnosis
+/// when a "it's slow" complaint arrives. Collection is always on (see
+/// <see cref="IPerformanceDiagnostics"/>); what is hidden is only the display.
 /// </para>
 /// <para>
-/// Sayılar bir zamanlayıcıyla tazeleniyor. Canlı olay akışı yerine yoklama seçildi çünkü
-/// bellek ve kare süresi zaten sürekli değişen büyüklükler — her değişimde arayüzü
-/// güncellemek, teşhis panelinin kendisini yavaşlığın kaynağı yapardı.
+/// The numbers are refreshed on a timer. Polling was chosen over a live event stream because memory
+/// and frame time are continuously changing quantities anyway — updating the UI on every change would
+/// make the diagnostics panel itself the source of the slowness.
 /// </para>
 /// </remarks>
 public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
 {
     /// <summary>
-    /// Tazeleme aralığı. Bir saniyenin altına inmek panelin kendi maliyetini görünür kılar.
+    /// The refresh interval. Going below a second makes the panel's own cost visible.
     /// </summary>
     public static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(1);
 
@@ -73,8 +73,8 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
 
         _frames?.Start();
 
-        // Headless testlerde zamanlayıcı kurmak gereksiz: testler Refresh'i doğrudan
-        // çağırıyor ve zamanlayıcı, kapanmış bir pencereyi canlı tutabilir.
+        // Setting up a timer is unnecessary in headless tests: the tests call Refresh directly, and a
+        // timer can keep a closed window alive.
         if (Dispatcher.UIThread.CheckAccess())
         {
             _timer = new DispatcherTimer { Interval = RefreshInterval };
@@ -85,32 +85,32 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
         Refresh();
     }
 
-    /// <summary>Komut istatistikleri, toplam süreye göre azalan.</summary>
+    /// <summary>The command statistics, descending by total time.</summary>
     public ObservableCollection<CommandStatisticsRowViewModel> Commands { get; } = [];
 
-    /// <summary>O an devam eden uzun işler.</summary>
+    /// <summary>The long-running operations currently in progress.</summary>
     public ObservableCollection<string> ActiveOperations { get; } = [];
 
     public bool HasActiveOperations => ActiveOperations.Count > 0;
 
     public bool IsEmpty => Commands.Count == 0;
 
-    /// <summary>Toplam git çağrısı sayısı.</summary>
+    /// <summary>The total number of git calls.</summary>
     public int TotalCommandCount { get; private set; }
 
-    /// <summary>Toplam git süresi.</summary>
+    /// <summary>The total git time.</summary>
     public string TotalCommandDuration { get; private set; } = "0 ms";
 
     public string ManagedMemory { get; private set; } = "—";
 
     public string ProcessMemory { get; private set; } = "—";
 
-    /// <summary>Nesil bazında GC toplama sayıları.</summary>
+    /// <summary>The GC collection counts per generation.</summary>
     public string Collections { get; private set; } = "—";
 
     public string Uptime { get; private set; } = "—";
 
-    /// <summary>Kare ölçümü var mı? Yoksa ilgili satırlar gizleniyor.</summary>
+    /// <summary>Is there a frame measurement? Without one, the related rows are hidden.</summary>
     public bool HasFrameStatistics => _frames is not null;
 
     public string AverageFrameTime { get; private set; } = "—";
@@ -120,7 +120,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
     public string DroppedFrames { get; private set; } = "—";
 
     /// <summary>
-    /// Kare bütçesi aşıldı mı? Arayüzde uyarı olarak gösteriliyor.
+    /// Was the frame budget exceeded? Shown as a warning in the UI.
     /// </summary>
     public bool HasDroppedFrames { get; private set; }
 
@@ -129,7 +129,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
     public IRelayCommand RefreshCommand { get; }
 
     /// <summary>
-    /// Bütün göstergeleri yeniden okur.
+    /// Re-reads all the indicators.
     /// </summary>
     public void Refresh()
     {
@@ -227,7 +227,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
     private void OnTick(object? sender, EventArgs e) => Refresh();
 
     /// <summary>
-    /// Bayt sayısını okunabilir birime çevirir.
+    /// Converts a byte count into a readable unit.
     /// </summary>
     internal static string FormatBytes(long bytes)
     {
@@ -245,7 +245,7 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Çalışma süresini okunabilir biçime çevirir.
+    /// Converts the uptime into a readable form.
     /// </summary>
     internal static string FormatUptime(TimeSpan value) => value.TotalHours >= 1
         ? string.Create(CultureInfo.InvariantCulture, $"{(int)value.TotalHours} sa {value.Minutes} dk")
@@ -272,10 +272,10 @@ public sealed class DiagnosticsViewModel : ViewModelBase, IDisposable
     }
 }
 
-/// <summary>Teşhis panelini gösteren taraf (P09-T03).</summary>
+/// <summary>The side that shows the diagnostics panel (P09-T03).</summary>
 /// <remarks>
-/// ViewModel değil <see cref="IPerformanceDiagnostics"/> alıyor: kare ölçümü ana pencereye
-/// bağlanmak zorunda ve o pencere yalnızca gösterim tarafında biliniyor.
+/// It takes an <see cref="IPerformanceDiagnostics"/> rather than the ViewModel: the frame measurement
+/// has to attach to the main window, and that window is known only on the display side.
 /// </remarks>
 public interface IDiagnosticsPrompt
 {

@@ -13,18 +13,20 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P04-T09 — Unified diff'in <b>gerçekten çizildiğini</b> doğrular.
+/// P04-T09 — verifies that the unified diff <b>really is drawn</b>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bu testin ViewModel testlerinden ayrı var olma sebebi ölçülmüş bir hatadır: satır şablonu
-/// metni <b>yalnızca</b> <c>Segments</c> üzerinden çiziyor, hunk başlığı ise parçasız
-/// üretiliyordu — sonuç, ekranda <b>boş gri bir şerit</b>. ViewModel testleri
-/// (<c>Text</c> doğruydu) bunu görmedi; yalnızca gerçek depo render'ında fark edildi.
+/// The reason this test exists separately from the ViewModel tests is a measured bug: the line
+/// template draws text <b>only</b> through <c>Segments</c>, while the hunk header was produced
+/// without any segments — the result being an <b>empty grey strip</b> on screen. The ViewModel tests
+/// (where <c>Text</c> was correct) did not see it; it was noticed only in a render of a real
+/// repository.
 /// </para>
 /// <para>
-/// Renk sabitleri <c>DiffView.axaml</c>'den kopyadır. Amaç belli bir tonu korumak değil,
-/// <b>ayrımın</b> korunması: satır arka planı ile satır içi vurgulama farklı olmalı.
+/// The colour constants are copies from <c>DiffView.axaml</c>. The aim is not to preserve a
+/// particular shade but to preserve the <b>distinction</b>: the line background and the intra-line
+/// highlight must differ.
 /// </para>
 /// </remarks>
 public class DiffViewRenderTests
@@ -37,8 +39,8 @@ public class DiffViewRenderTests
     private const uint FillerBackground = 0xE9E9EF;
 
     /// <summary>
-    /// Kare RGBA sıralı; little-endian <c>uint</c> olarak <c>0xAABBGGRR</c> okunur.
-    /// Bu dönüşüm olmadan kırmızı ile mavi yer değiştirir (bkz. <c>CommitGraphCellTests</c>).
+    /// The frame is RGBA-ordered; read as a little-endian <c>uint</c> it is <c>0xAABBGGRR</c>.
+    /// Without this conversion red and blue swap places (see <c>CommitGraphCellTests</c>).
     /// </summary>
     private static uint ToPixel(uint rgb) =>
         0xFF000000u | ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF);
@@ -168,7 +170,7 @@ public class DiffViewRenderTests
     [AvaloniaFact]
     public async Task Parca_yoksa_vurgulama_rengi_hic_cizilmez()
     {
-        // Karşı kanıt: yukarıdaki renkler gerçekten parçalardan geliyor.
+        // The counter-evidence: the colours above really do come from the segments.
         Frame frame = await RenderAsync(Modified(
             new DiffLine(DiffLineKind.Removed, "iki") { OldLineNumber = 2 },
             new DiffLine(DiffLineKind.Added, "IKI") { NewLineNumber = 2 }));
@@ -180,12 +182,12 @@ public class DiffViewRenderTests
     [AvaloniaFact]
     public async Task Hunk_basliginin_metni_cizilir()
     {
-        // ÖLÇÜLEN HATA: başlık parçasız üretilince şablon hiçbir metin çizmiyordu; satır
-        // vardı, gri arka plan vardı, YAZI yoktu.
+        // THE MEASURED BUG: with the header produced without segments the template drew no text at
+        // all; there was a row, there was a grey background, there was NO WRITING.
         //
-        // ⚠️ Yalnızca "başlık satırlarında koyu piksel var mı" diye bakmak YETMİYOR: aynı
-        // y'lerde SOLDAKİ dosya listesinin yazısı da var ve hatalı sürüm testi geçiyordu
-        // (denendi). Bu yüzden arama, başlık şeridinin kendi dikdörtgeniyle sınırlı.
+        // ⚠️ Looking only at "is there a dark pixel on the header rows" is NOT ENOUGH: at the same y
+        // values there is also the text of the file list ON THE LEFT, and the faulty version passed the
+        // test (it was tried). So the search is confined to the header strip's own rectangle.
         Frame frame = await RenderAsync(Modified(
             new DiffLine(DiffLineKind.Added, "kod") { NewLineNumber = 1 }));
 
@@ -221,21 +223,21 @@ public class DiffViewRenderTests
         darkPixels.ShouldBeGreaterThan(20);
     }
 
-    // ---- P04-T10: yan yana görünüm ----
+    // ---- P04-T10: the side-by-side view ----
 
     [AvaloniaFact]
     public async Task Yan_yana_gorunumde_silinen_solda_eklenen_sagda_cizilir()
     {
-        // Taraflar yer değiştirirse ekranda "her şey var" görünür ama diff TERS okunur.
-        // Bu yüzden renk sayısı değil, rengin HANGİ YARIDA olduğu kontrol ediliyor.
+        // If the sides swap, everything looks present on screen but the diff READS BACKWARDS.
+        // That is why what is checked is not the number of colours but WHICH HALF the colour is in.
         Frame frame = await RenderAsync(
             Modified(
                 new DiffLine(DiffLineKind.Removed, "eski satir") { OldLineNumber = 1 },
                 new DiffLine(DiffLineKind.Added, "yeni satir") { NewLineNumber = 1 }),
             sideBySide: true);
 
-        // Yarı sınırını piksel aritmetiğiyle tahmin etmek yerine iki bölgenin KONUMLARI
-        // karşılaştırılıyor: silinenin tamamı, eklenenin tamamının solunda kalmalı.
+        // Rather than guessing the half boundary with pixel arithmetic, the POSITIONS of the two
+        // regions are compared: all of the removal must lie to the left of all of the addition.
         List<int> removedX = [];
         List<int> addedX = [];
 
@@ -269,28 +271,28 @@ public class DiffViewRenderTests
             Modified(new DiffLine(DiffLineKind.Added, "yeni satir") { NewLineNumber = 1 }),
             sideBySide: true);
 
-        // Dolgu kendi rengiyle çiziliyor: boş bir bağlam satırından ayırt edilebilmeli.
+        // The filler is drawn in its own colour: it has to be distinguishable from an empty context line.
         frame.Count(ToPixel(FillerBackground)).ShouldBeGreaterThan(100);
     }
 
     [AvaloniaFact]
     public async Task Birlesik_gorunumde_dolgu_rengi_hic_cizilmez()
     {
-        // Karşı kanıt: dolgu rengi yalnızca yan yana görünümden geliyor.
+        // The counter-evidence: the filler colour comes only from the side-by-side view.
         Frame frame = await RenderAsync(
             Modified(new DiffLine(DiffLineKind.Added, "yeni satir") { NewLineNumber = 1 }));
 
         frame.Contains(ToPixel(FillerBackground)).ShouldBeFalse();
     }
 
-    // ---- P04-T13: görsel ayarlar ----
+    // ---- P04-T13: display settings ----
 
     [AvaloniaFact]
     public async Task Satir_kaydirma_acikken_satir_yukselir()
     {
-        // ÖLÇÜLDÜ: değişken satır yüksekliği sanallaştırmayı bozmuyor. Burada korunan şey
-        // şablondaki sabit yüksekliğin geri gelmemesi — gelirse wrap sessizce ETKİSİZ olur
-        // (metin sarılır ama satır büyümediği için alt satırlar KIRPILIR).
+        // MEASURED: a variable row height does not break virtualisation. What is protected here is that
+        // the fixed height in the template does not come back — if it does, wrapping is silently
+        // INEFFECTIVE (the text wraps, but because the row does not grow the lower lines are CLIPPED).
         string longLine = string.Join(' ', Enumerable.Repeat("kelime", 60));
 
         FileDiff diff = Modified(new DiffLine(DiffLineKind.Added, longLine) { NewLineNumber = 1 });
@@ -302,7 +304,7 @@ public class DiffViewRenderTests
         Frame off = await RenderAsync(diff);
         Frame on = await RenderAsync(diff, configure: vm => vm.WordWrap = true);
 
-        // Sarılan satır ekranda BİRDEN ÇOK satır yüksekliği kaplamalı.
+        // A wrapped line must occupy MORE THAN ONE line height on screen.
         WrappedRows(on).ShouldBeGreaterThan(WrappedRows(off) * 2);
     }
 
@@ -317,7 +319,7 @@ public class DiffViewRenderTests
         Frame small = await RenderAsync(diff, configure: vm => vm.FontSize = 10);
         Frame large = await RenderAsync(diff, configure: vm => vm.FontSize = 22);
 
-        // Punto kalıtsal; kök öğede verilen değer satır şablonlarına geçmeli.
+        // Font size is inherited; the value given on the root element must reach the row templates.
         DarkPixels(large).ShouldBeGreaterThan(DarkPixels(small));
     }
 }

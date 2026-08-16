@@ -9,22 +9,23 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P08-T25…T27 — Yerleşimin <b>GitExtensions'ı takip ettiğini</b> sabitler.
+/// P08-T25…T27 — Pins down that the layout <b>follows GitExtensions</b>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kullanıcının kuralı: görsel birebir aynı olmak zorunda değil ama <b>öğelerin yeri ve
-/// sırası</b> aynı olmalı — GitExtensions'a alışkın biri aynı şeyi aynı yerde bulmalı.
+/// The user's rule: it does not have to look identical, but the <b>position and order of the
+/// elements</b> must be the same — someone used to GitExtensions must find the same thing in the same
+/// place.
 /// </para>
 /// <para>
-/// Bu yüzden burada <b>sıra</b> test ediliyor, görünüm değil. Beklenen diziler
-/// GitExtensions kaynağından çıkarıldı: menüler <c>FormBrowse.Designer.cs</c> ve
-/// <c>StartToolStripMenuItem.Designer.cs</c>, commit bağlam menüsü
+/// So what is tested here is <b>order</b>, not appearance. The expected sequences were taken from the
+/// GitExtensions source: the menus from <c>FormBrowse.Designer.cs</c> and
+/// <c>StartToolStripMenuItem.Designer.cs</c>, the commit context menu from
 /// <c>RevisionGridControl.Designer.cs</c> (<c>mainContextMenu.Items.AddRange</c>).
 /// </para>
 /// <para>
-/// Henüz uygulanmamış komutlar <b>devre dışı ama yerinde</b>; testler bunu da koruyor,
-/// çünkü sonradan araya sokmak sırayı bozar.
+/// Commands not implemented yet are <b>disabled but in place</b>; the tests protect that too, because
+/// slotting one in later breaks the order.
 /// </para>
 /// </remarks>
 public class GitExtensionsLayoutTests
@@ -42,7 +43,7 @@ public class GitExtensionsLayoutTests
     private static string[] Headers(ItemsControl menu) =>
         [.. menu.Items.OfType<MenuItem>().Select(item => item.Header?.ToString() ?? string.Empty)];
 
-    /// <summary>Ayraçlar dahil, menü öğelerinin görünen sırası.</summary>
+    /// <summary>The visible order of the menu items, separators included.</summary>
     private static string[] Rows(ItemsControl menu) =>
         [.. menu.Items.Select(item => item switch
         {
@@ -95,8 +96,8 @@ public class GitExtensionsLayoutTests
     [AvaloniaFact]
     public void Uygulanmamis_komutlar_KALDIRILMIYOR_devre_disi_duruyor()
     {
-        // Sırayı korumanın bedeli bu: öğe görünür ama tıklanamaz. Sonradan araya sokmak
-        // kullanıcının kas hafızasını bozardı.
+        // This is the price of keeping the order: the item is visible but cannot be clicked. Slotting
+        // one in later would break the user's muscle memory.
         MainWindow window = new() { DataContext = CreateViewModel() };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -156,8 +157,8 @@ public class GitExtensionsLayoutTests
     [AvaloniaFact]
     public async Task Karsilama_ekraninda_son_depolar_ORTADA_listeleniyor()
     {
-        // Sol panel bağlantılar için; depo listesi ortada/sağda — GitExtensions'taki
-        // `userRepositoriesList` gibi.
+        // The left panel is for the links; the repository list is in the middle/right — like
+        // `userRepositoriesList` in GitExtensions.
         MainWindowViewModel model = CreateViewModel("/tmp/bir", "/tmp/iki");
         await model.StartAsync(explicitPath: null);
 
@@ -169,7 +170,7 @@ public class GitExtensionsLayoutTests
         Grid root = view.GetVisualDescendants().OfType<Grid>().First();
         root.ColumnDefinitions.Count.ShouldBe(2);
 
-        // Sol panel sabit genişlikte, sağ taraf esner.
+        // The left panel is a fixed width, the right side stretches.
         root.ColumnDefinitions[0].Width.IsAbsolute.ShouldBeTrue();
         root.ColumnDefinitions[1].Width.IsStar.ShouldBeTrue();
 
@@ -242,8 +243,8 @@ public class GitExtensionsLayoutTests
     [AvaloniaFact]
     public async Task Panoya_kopyala_alt_menusu_GitExtensions_alanlariyla_ayni()
     {
-        // GitExtensions `CopyContextMenuItem`: hash · message · author · date, ayrıca
-        // satırdaki dal/etiket adları.
+        // GitExtensions `CopyContextMenuItem`: hash · message · author · date, plus the branch/tag
+        // names on the row.
         CommitListViewModel list = new(
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(5)),
@@ -289,10 +290,10 @@ public class GitExtensionsLayoutTests
     {
         // GitExtensions `FileViewer.Designer.cs` → `contextMenu.Items.AddRange`:
         //   stageSelectedLines · unstageSelectedLines · resetSelectedLines ·
-        //   copy · copyPatch · copyNewVersion · copyOldVersion · ayraç · gösterim seçenekleri
+        //   copy · copyPatch · copyNewVersion · copyOldVersion · separator · display options
         //
-        // Gösterim seçenekleri bizde araç çubuğunda (P04-T13); menünün ilk yedi öğesi
-        // birebir aynı sırada.
+        // The display options live in our toolbar (P04-T13); the menu's first seven items are in
+        // exactly the same order.
         DiffViewModel model = new(new FakeDiffReader());
 
         DiffView view = new() { DataContext = model };
@@ -323,11 +324,11 @@ public class GitExtensionsLayoutTests
             "Copy old version",
         ]);
 
-        // ⚠️ Burada kullanılabilirlik SINANMIYOR, yalnızca sıra. Menü açılmadan bağlamalar
-        // değerlendirilmiyor ve `IsEnabled` değerlendirilmemiş varsayılanında (true) kalıyor
-        // — P05-T13'te ölçülen tuzak. Üç eylemin kullanılabilirliği, kaynağı olan
-        // `IPartialStagingHost` üzerinden `PartialStagingTests` içinde test ediliyor.
-        // "Reset" P05-T15'te açıldı; sıradaki yeri değişmedi (§ 9).
+        // ⚠️ Availability is NOT tested here, only the order. Until the menu is opened the bindings are
+        // not evaluated and `IsEnabled` stays at its never-evaluated default (true) — the trap measured
+        // in P05-T13. The availability of the three actions is tested in `PartialStagingTests` through
+        // their source, `IPartialStagingHost`.
+        // "Reset" was enabled in P05-T15; its place in the order did not change (§ 9).
 
         window.Close();
 

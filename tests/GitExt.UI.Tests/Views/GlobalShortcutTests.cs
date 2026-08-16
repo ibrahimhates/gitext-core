@@ -12,19 +12,19 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P08-T01 — küresel kısayollar <b>gerçek pencerede</b>.
+/// P08-T01 — global shortcuts <b>in a real window</b>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Bu dosyanın varlık sebebi gerçek bir kusur.</b> Faz 08'e girilirken
-/// <c>MainWindow.axaml</c>'de <c>InputGesture="F5"</c> yazıyordu ve başka hiçbir bağlama
-/// yoktu. P08-T00/M03'te ölçüldü: <c>InputGesture</c> komutu <b>çalıştırmıyor</b>, yalnızca
-/// menüye yazı yazıyor. Yani <b>F5 ölü bir tuştu</b> — menüde kısayolu görünüyor, basınca
-/// hiçbir şey olmuyordu ve bunu görecek hiçbir test yoktu.
+/// 🔴 <b>This file exists because of a real defect.</b> Going into Phase 08, <c>MainWindow.axaml</c>
+/// said <c>InputGesture="F5"</c> and there was no other binding at all. Measured in P08-T00/M03:
+/// <c>InputGesture</c> <b>does not run</b> the command, it only writes text into the menu. So
+/// <b>F5 was a dead key</b> — the shortcut showed in the menu, nothing happened when it was pressed,
+/// and there was no test that would see it.
 /// </para>
 /// <para>
-/// ViewModel testi bunu yakalayamazdı: kırık olan <c>RefreshCommand</c> değil, ona giden
-/// <b>yol</b>. Bu yüzden testler gerçek pencereye gerçek tuş gönderiyor.
+/// A ViewModel test could not have caught this: what was broken was not <c>RefreshCommand</c> but the
+/// <b>path</b> to it. That is why these tests send real keys to a real window.
 /// </para>
 /// </remarks>
 public class GlobalShortcutTests
@@ -65,11 +65,11 @@ public class GlobalShortcutTests
     }
 
     /// <summary>
-    /// Menü öğesini <b>mantıksal</b> ağaçtan bulur.
+    /// Finds the menu item in the <b>logical</b> tree.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Görsel ağaçta aranamaz: alt menüler ancak <b>açıldıklarında</b> gerçekleşiyor, o
-    /// yüzden <c>GetVisualDescendants()</c> kapalı bir menünün öğelerini hiç görmüyor.
+    /// ⚠️ It cannot be searched for in the visual tree: submenus are only realised when they are
+    /// <b>opened</b>, so <c>GetVisualDescendants()</c> never sees the items of a closed menu.
     /// </remarks>
     private static MenuItem Menu(Window window, string name)
     {
@@ -92,7 +92,7 @@ public class GlobalShortcutTests
     }
 
     /// <summary>
-    /// 🔴 <c>F5</c> gerçekten yeniliyor mu?
+    /// 🔴 Does <c>F5</c> really refresh?
     /// </summary>
     [AvaloniaFact]
     public async Task F5_gercekten_yeniliyor()
@@ -116,12 +116,11 @@ public class GlobalShortcutTests
     }
 
     /// <summary>
-    /// <c>F6</c> odağı bir sonraki panele taşıyor (P08-T05).
+    /// <c>F6</c> moves focus to the next panel (P08-T05).
     /// </summary>
     /// <remarks>
-    /// P08-T00/M09'da ölçüldü: <c>F6</c> Avalonia'da varsayılan olarak <b>hiçbir şey
-    /// yapmıyor</b>. Bağlanmasaydı sessizce ölü bir tuş olurdu — tam da <c>F5</c>'in Faz 08
-    /// öncesindeki hâli.
+    /// Measured in P08-T00/M09: by default <c>F6</c> <b>does nothing</b> in Avalonia. Unless it were
+    /// bound it would be a silently dead key — exactly what <c>F5</c> was before Phase 08.
     /// </remarks>
     [AvaloniaFact]
     public async Task F6_odagi_sonraki_panele_tasiyor()
@@ -145,11 +144,13 @@ public class GlobalShortcutTests
     }
 
     /// <summary>
-    /// Menüde yazan kısayol ile gerçekten çalışan kısayol <b>aynı kaynaktan</b> geliyor.
+    /// The shortcut written in the menu and the shortcut that actually works come from <b>the same
+    /// source</b>.
     /// </summary>
     /// <remarks>
-    /// İkisi ayrı yazılsaydı sessizce ayrışırlardı: kullanıcı menüde <c>F5</c> görür, başka
-    /// bir tuş çalışır. Eski kodun tam olarak yaptığı buydu (etiket vardı, bağlama yoktu).
+    /// Written separately, they would silently diverge: the user sees <c>F5</c> in the menu while
+    /// another key works. That is exactly what the old code did (there was a label, there was no
+    /// binding).
     /// </remarks>
     [AvaloniaFact]
     public async Task Menudeki_etiket_kayitla_ayni()
@@ -168,7 +169,7 @@ public class GlobalShortcutTests
     }
 
     /// <summary>
-    /// Kullanıcı kısayolu yeniden atayınca hem bağlama hem etiket <b>anında</b> güncelleniyor.
+    /// When the user rebinds a shortcut, both the binding and the label update <b>immediately</b>.
     /// </summary>
     [AvaloniaFact]
     public async Task Yeniden_atama_bagi_ve_etiketi_birlikte_gunceller()
@@ -193,7 +194,7 @@ public class GlobalShortcutTests
     }
 
     /// <summary>
-    /// Kısayolu olmayan komutlar için menüde <b>hiçbir jest yazmıyor</b>.
+    /// For commands with no shortcut, <b>no gesture is written</b> in the menu.
     /// </summary>
     [AvaloniaFact]
     public async Task Kisayolsuz_komutun_menusunde_jest_yazmaz()
@@ -207,11 +208,12 @@ public class GlobalShortcutTests
     }
 
     /// <summary>
-    /// 🔴 Aynı jeste iki komut kayıtlıysa pencereye <b>bir</b> bağlama giriyor.
+    /// 🔴 When two commands are registered on the same gesture, <b>one</b> binding goes to the window.
     /// </summary>
     /// <remarks>
-    /// P08-T00/M10: Avalonia ikinciyi sessizce yutuyor. Hiç kaydetmemek, "bazen çalışıyor"
-    /// davranışından dürüst — çakışma zaten kayıtta raporlanıp kullanıcıya gösteriliyor.
+    /// P08-T00/M10: Avalonia swallows the second one silently. Not registering it at all is more honest
+    /// than "it works sometimes" behaviour — the conflict is reported in the registry and shown to the
+    /// user anyway.
     /// </remarks>
     [AvaloniaFact]
     public async Task Cakisan_jest_pencereye_bir_kez_giriyor()

@@ -5,18 +5,18 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P09-T10 · P09-T14 — bellek büyümesi ve sızıntı avı.
+/// P09-T10 · P09-T14 — memory growth and the hunt for leaks.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bütçenin maddeleri: <i>"Bellek kullanımı kaydırmayla <b>artmamalı</b>"</i> ve
-/// <i>"repo kapatıldığında scope'un gerçekten temizlendiğini doğrula"</i> (ADR-0004).
+/// The budget's items: <i>"Memory use must <b>not</b> grow with scrolling"</i> and
+/// <i>"verify that the scope really is disposed when the repository is closed"</i> (ADR-0004).
 /// </para>
 /// <para>
-/// Ölçüm <b>zayıf referansla</b> yapılıyor, bellek sayısıyla değil:
-/// <c>GC.GetTotalMemory</c> gürültülü ve "kaç MB'tan sonra sızıntı sayılır" eşiği keyfî
-/// olurdu. Zayıf referansın hayatta kalması ise kesin bir olgu — nesne toplanmadıysa
-/// birileri onu hâlâ tutuyor.
+/// The measurement is made with a <b>weak reference</b>, not with a memory figure:
+/// <c>GC.GetTotalMemory</c> is noisy and any "how many MB counts as a leak" threshold would be
+/// arbitrary. A weak reference surviving, on the other hand, is a definite fact — if the object was
+/// not collected, somebody is still holding it.
 /// </para>
 /// </remarks>
 public class MemoryStressTests
@@ -31,12 +31,12 @@ public class MemoryStressTests
             new FakeDiffReader());
 
     /// <summary>
-    /// Toplamayı zorlar ve nesnenin hâlâ yaşayıp yaşamadığını söyler.
+    /// Forces a collection and says whether the object is still alive.
     /// </summary>
     /// <remarks>
-    /// İki tur: sonlandırıcısı olan nesneler ilk turda yalnızca kuyruğa giriyor, ancak
-    /// ikinci turda gerçekten toplanıyorlar. Tek tur, canlı olmayan bir nesneyi "sızmış"
-    /// gösterip yanlış alarm üretirdi.
+    /// Two rounds: objects with a finaliser only enter the queue on the first round and are actually
+    /// collected on the second. A single round would show a non-live object as "leaked" and produce a
+    /// false alarm.
     /// </remarks>
     private static bool StillAlive(WeakReference reference)
     {
@@ -50,9 +50,9 @@ public class MemoryStressTests
     }
 
     /// <remarks>
-    /// 🔴 Asıl risk: satırlar temizlense bile <c>_rowIndex</c> sözlüğü commit
-    /// kimliklerini tutmaya devam ederse kapatılan deponun verisi bellekte kalır.
-    /// Depolar arasında geçen uzun bir oturumda bu, her geçişte biriken bir sızıntı olur.
+    /// 🔴 The real risk: even with the rows cleared, if the <c>_rowIndex</c> dictionary keeps holding
+    /// the commit ids, the closed repository's data stays in memory. Over a long session moving
+    /// between repositories, that is a leak accumulating with every switch.
     /// </remarks>
     [AvaloniaFact]
     public async Task Kapatma_satirlari_gercekten_birakiyor()
@@ -72,23 +72,23 @@ public class MemoryStressTests
     }
 
     /// <remarks>
-    /// Referans ayrı bir metotta bırakılıyor: aynı metottaki bir yerel değişken nesneyi
-    /// canlı tutabilir ve test hiçbir şey ölçmezdi.
+    /// The reference is left in a separate method: a local variable in the same method could keep the
+    /// object alive and the test would measure nothing.
     /// </remarks>
     /// <summary>
-    /// İlk satıra zayıf bir referans üretir ve güçlü referansı bırakır.
+    /// Produces a weak reference to the first row and releases the strong one.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Ayrı ve <b>senkron</b> bir metot olması şart. Satır, çağıran <c>async</c> testin
-    /// yerel değişkeninde tutulursa derleyicinin ürettiği durum makinesinde alan oluyor ve
-    /// test bitene kadar canlı kalıyor; ölçüm o hâliyle kapatmanın işe yarayıp
-    /// yaramadığını değil, durum makinesinin ömrünü ölçerdi.
+    /// ⚠️ It must be a separate and <b>synchronous</b> method. Held in a local of the calling
+    /// <c>async</c> test, the row becomes a field in the compiler-generated state machine and stays
+    /// alive until the test finishes; the measurement would then measure the state machine's lifetime
+    /// rather than whether closing works.
     /// </remarks>
     private static WeakReference Forget(CommitListViewModel model) => new(model.Rows[0]);
 
     /// <remarks>
-    /// Depolar arası hızlı geçiş (P09-T14). Her açılış öncekini bırakmalı; bırakmazsa
-    /// bellek her geçişte artar ve saatlerce açık kalan oturumda şişer.
+    /// Rapid switching between repositories (P09-T14). Every open must release the previous one;
+    /// without that, memory grows with each switch and swells over a session left open for hours.
     /// </remarks>
     [AvaloniaFact]
     public async Task Depolar_arasi_gecis_oncekini_birakiyor()
@@ -111,13 +111,13 @@ public class MemoryStressTests
     }
 
     /// <remarks>
-    /// 🔴 <b>Kapatma detay panelini de temizlemeli.</b> Eskiden <c>Show(null, …)</c>
-    /// yalnızca <c>HasCommit</c>'i kapatıyor, <c>Badges</c> ile <c>Parents</c> kapatılan
-    /// deponun nesnelerini tutmaya devam ediyordu. Panel gizli olduğu için gözle
-    /// görülmüyordu; kapalı bir depoya ait rozetler bellekte duruyordu.
+    /// 🔴 <b>Closing must clear the details panel too.</b> <c>Show(null, …)</c> used to turn off only
+    /// <c>HasCommit</c>, while <c>Badges</c> and <c>Parents</c> kept holding objects belonging to the
+    /// closed repository. Because the panel was hidden it could not be seen by eye; badges belonging
+    /// to a closed repository were sitting in memory.
     /// <para>
-    /// Bu, zayıf referans testiyle <b>yakalanamayan</b> bir durum: satırın kendisi
-    /// zaten başka yerden de bırakılıyor. Ölçülebilir olan, panelin açıkça boş kalması.
+    /// This is a case the weak-reference test <b>cannot</b> catch: the row itself is released from
+    /// elsewhere anyway. What is measurable is that the panel is explicitly left empty.
     /// </para>
     /// </remarks>
     [AvaloniaFact]
@@ -140,8 +140,8 @@ public class MemoryStressTests
     }
 
     /// <remarks>
-    /// Kapatma sayaçları da sıfırlamalı; sıfırlamazsa arayüz kapalı bir depo için
-    /// "N commit yüklendi" göstermeye devam eder — veri gitmiş, sayı kalmış olur.
+    /// Closing must reset the counters as well; without that the UI carries on showing "N commits
+    /// loaded" for a closed repository — the data is gone, the number remains.
     /// </remarks>
     [AvaloniaFact]
     public async Task Kapatma_sayaclari_sifirliyor()
@@ -160,9 +160,9 @@ public class MemoryStressTests
     }
 
     /// <remarks>
-    /// Aynı depoyu tekrar tekrar açmak satır sayısını <b>artırmamalı</b>. Artıyorsa
-    /// açılış eskisini temizlemiyor demektir ve tazeleme yapan bir oturumda liste
-    /// katlanarak büyürdü.
+    /// Opening the same repository over and over must <b>not</b> increase the row count. If it does,
+    /// opening is not clearing the previous one, and in a session that refreshes, the list would grow
+    /// exponentially.
     /// </remarks>
     [AvaloniaFact]
     public async Task Tekrarli_acilis_satirlari_biriktirmiyor()

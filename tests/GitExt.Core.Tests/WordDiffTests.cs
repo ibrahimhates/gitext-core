@@ -5,19 +5,19 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P04-T05 — Satır içi (kelime/karakter seviyesi) diff.
+/// P04-T05 — Intra-line (word/character level) diff.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>git'in <c>--word-diff</c>'i kullanılmıyor.</b> Plan onunla başlamayı öneriyordu ama
-/// ölçüm doğru olmadığını gösterdi: (1) varsayılan kelime ayracıyla eski satırın sonuna sahte
-/// boşluk ekleniyor, (2) karakter ayracı bunu düzeltse de <b>eklenen/silinen boş satır için
-/// yalnızca çıplak <c>~</c></b> geliyor ve satırın hangi tarafa ait olduğu çıktıda hiç yok —
-/// gerçek depoda 150 commit'te 5.701 satır yanlış tarafa düşüyordu.
+/// <b>git's <c>--word-diff</c> is not used.</b> The plan suggested starting with it, but measurement
+/// showed it is not correct: (1) with the default word separator a phantom space is added to the end
+/// of the old line, (2) even with a character separator, <b>an added/removed blank line yields only a
+/// bare <c>~</c></b> and which side the line belongs to is nowhere in the output — in a real
+/// repository that put 5,701 lines on the wrong side across 150 commits.
 /// </para>
 /// <para>
-/// Parçalar bu yüzden <see cref="InlineDiff"/> ile, ayrıştırıcının ürettiği <b>kesin</b>
-/// satır metinleri üzerinde yerel olarak hesaplanıyor.
+/// The segments are therefore computed locally with <see cref="InlineDiff"/>, over the <b>exact</b>
+/// line texts the parser produces.
 /// </para>
 /// </remarks>
 public class WordDiffTests
@@ -66,7 +66,7 @@ public class WordDiffTests
 
         added.HasSegments.ShouldBeTrue();
 
-        // Yalnızca eklenen kısım işaretlenmeli; satırın geri kalanı bağlam.
+        // Only the added part should be marked; the rest of the line is context.
         added.Segments.Where(s => s.Kind == DiffLineKind.Added)
             .Select(s => s.Text)
             .ShouldBe(["Dunya"]);
@@ -98,9 +98,9 @@ public class WordDiffTests
     [Fact]
     public async Task Satir_icerigi_normal_diffle_BIREBIR_ayni()
     {
-        // Parçalar satır metnini DEĞİŞTİRMEMELİ. git'in --word-diff'i tam olarak burada
-        // başarısız oluyordu (boş satırlar yanlış tarafa düşüyor, eski satıra sahte boşluk
-        // ekleniyor); yerel hesaplama kesin satırlar üzerinde çalıştığı için bu risk yok.
+        // The segments MUST NOT CHANGE the line text. git's --word-diff failed at exactly this point
+        // (blank lines landing on the wrong side, a phantom space added to the old line); because the
+        // local computation works over the exact lines, that risk does not exist.
         using TestRepository repository = CreateWith(
             "bir  iki\tuc\nsonda bosluk   \n\nson satir\n",
             "bir  IKI\tuc\nsonda bosluk   \n\nson satir DEGISTI\n");
@@ -163,7 +163,7 @@ public class WordDiffTests
     [Fact]
     public async Task Kelime_diffi_istenmezse_parcalar_bos_kalir()
     {
-        // Varsayılan yol değişmemeli: parça hesaplamak ek bir git çalıştırması ve ek iş.
+        // The default path must not change: computing segments means an extra git run and extra work.
         using TestRepository repository = CreateWith("bir\n", "iki\n");
 
         DiffReader reader = await CreateReaderAsync();
@@ -178,10 +178,10 @@ public class WordDiffTests
     [Fact]
     public async Task Kelime_diffinde_dosya_bilgisi_korunur()
     {
-        // Kelime diff'i yama bölümünün yerine geçiyor; ham bölüm (yol, tür, mod) etkilenmemeli.
+        // Word diff replaces the patch section; the raw section (path, kind, mode) must be unaffected.
         using TestRepository repository = TestRepository.CreateEmpty();
-        // Dosya yeterince uzun olmalı: kısa dosyada tek kelimelik değişiklik benzerliği
-        // %50'nin altına düşürüp yeniden adlandırmayı gizler.
+        // The file has to be long enough: in a short file a one-word change drops the similarity below
+        // 50% and hides the rename.
         string original = string.Join('\n', Enumerable.Range(1, 20).Select(i => $"satır {i}")) + "\n";
 
         repository.WriteFile("eski.txt", original);
@@ -229,9 +229,9 @@ public class WordDiffTests
     [Fact]
     public async Task Farkli_sayida_satirda_DOGRU_satirlar_eslesir()
     {
-        // Sırayla eşleme (i'inci ↔ i'inci) burada YANLIŞ olurdu: iki satır silinip üç satır
-        // eklendiğinde eşleşmesi gereken çiftler kaymış olur. En çok kelime paylaşan çifti
-        // çapa alan yaklaşım GitExtensions'ın LinesMatcher'ından uyarlandı.
+        // Positional matching (i-th ↔ i-th) would be WRONG here: with two lines removed and three
+        // added, the pairs that should match are shifted. The approach anchoring on the pair that
+        // shares the most words was adapted from GitExtensions' LinesMatcher.
         using TestRepository repository = CreateWith(
             "alpha bir\nbeta iki\n",
             "YEPYENI SATIR\nalpha BIR\nbeta IKI\n");
@@ -244,18 +244,19 @@ public class WordDiffTests
 
         DiffLine alphaAdded = lines.Single(l => l.Kind == DiffLineKind.Added && l.Content.StartsWith("alpha", StringComparison.Ordinal));
 
-        // "alpha" ortak olduğu için bağlam parçası olmalı; yalnızca "bir"→"BIR" değişmeli.
+        // Because "alpha" is shared it must be a context segment; only "bir"→"BIR" should change.
         alphaAdded.Segments.ShouldContain(s => s.Kind == DiffLineKind.Context && s.Text.Contains("alpha", StringComparison.Ordinal));
         alphaAdded.Segments.Where(s => s.Kind == DiffLineKind.Added).Select(s => s.Text).ShouldBe(["BIR"]);
 
-        // Eşleşmeyen yeni satır parçasız kalmalı — uydurma bir eşleme yanlış yeri vurgulardı.
+        // An unmatched new line must be left without segments — an invented match would highlight the
+        // wrong place.
         lines.Single(l => l.Content == "YEPYENI SATIR").HasSegments.ShouldBeFalse();
     }
 
     [Fact]
     public void Cok_uzun_satirda_satir_ici_hesaplanmaz()
     {
-        // Küçültülmüş JS gibi tek satırlık dev dosyalarda vurgulama okunmaz, hesaplamak boşuna.
+        // In single-line giants such as minified JS, highlighting is unreadable and computing it is wasted.
         string longOld = new('a', InlineDiff.MaximumLineLength + 1);
         string longNew = new('b', InlineDiff.MaximumLineLength + 1);
 
@@ -269,14 +270,14 @@ public class WordDiffTests
     [Fact]
     public void Parcalar_ayni_turde_birlestirilir()
     {
-        // Her jeton ayrı parça olsaydı arayüzde yüzlerce gereksiz çizim öğesi olurdu.
+        // Were every token its own segment, there would be hundreds of needless drawing elements in the UI.
         (IReadOnlyList<DiffSegment> old, IReadOnlyList<DiffSegment> updated) =
             InlineDiff.Compute("bir iki uc", "bir DORT BES uc");
 
         old.ShouldNotContain(s => s.Kind == DiffLineKind.Added);
         updated.ShouldNotContain(s => s.Kind == DiffLineKind.Removed);
 
-        // Ardışık aynı türde parça kalmamalı.
+        // No two consecutive segments of the same kind should remain.
         for (int i = 1; i < updated.Count; i++)
         {
             updated[i].Kind.ShouldNotBe(updated[i - 1].Kind);

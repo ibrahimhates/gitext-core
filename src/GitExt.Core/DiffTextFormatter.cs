@@ -4,56 +4,55 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Diff metninin <b>gösterim</b> ayarları (P04-T13).
+/// The <b>display</b> settings for diff text (P04-T13).
 /// </summary>
 /// <remarks>
-/// Yalnızca ekranda görüneni etkiler; model içeriği değişmez (Faz 05'te yamayı
-/// <c>git apply</c>'a birebir geri vermek gerekiyor).
+/// Affects only what appears on screen; the model content does not change (in Phase 05 the patch has
+/// to be handed back to <c>git apply</c> verbatim).
 /// </remarks>
 public sealed record DiffTextOptions
 {
     public static DiffTextOptions Default { get; } = new();
 
-    /// <summary>Bir sekmenin kaç sütun ilerlettiği.</summary>
+    /// <summary>How many columns a tab advances.</summary>
     public int TabWidth { get; init; } = 4;
 
-    /// <summary>Boşluk ve sekmeler görünür karakterlerle gösterilsin mi?</summary>
+    /// <summary>Should spaces and tabs be shown with visible characters?</summary>
     /// <remarks>
-    /// GitExtensions'ta da <b>tek anahtar</b>: boşluk ve sekme ayrı ayrı değil, birlikte
-    /// açılıyor (<c>ShowSpaces = ShowTabs = show</c>).
+    /// GitExtensions has <b>a single switch</b> here too: spaces and tabs are turned on together rather
+    /// than separately (<c>ShowSpaces = ShowTabs = show</c>).
     /// </remarks>
     public bool ShowWhitespace { get; init; }
 
-    /// <summary>Hiçbir dönüşüm gerekmiyor mu?</summary>
+    /// <summary>Is no transformation needed at all?</summary>
     internal bool IsIdentity => !ShowWhitespace && TabWidth <= 0;
 }
 
 /// <summary>
-/// Diff satırlarını gösterime hazırlar: sekmeleri açar, isteğe bağlı olarak boşlukları
-/// görünür kılar (P04-T13).
+/// Prepares diff lines for display: expands tabs and optionally makes whitespace visible (P04-T13).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ:</b> Avalonia'nın <c>TextBlock</c>'unda sekme <b>tab-stop değil</b>, sabit
-/// dört boşluk genişliğinde çiziliyor (<c>"ab\tc"</c> ile <c>"ab    c"</c> aynı genişlikte;
-/// gerçek tab-stop olsaydı iki boşluk olurdu). Ayrıca sekme genişliğini ayarlayan bir
-/// özellik yok. Bu yüzden dönüşüm <b>burada</b> yapılıyor.
+/// <b>MEASURED:</b> in Avalonia's <c>TextBlock</c> a tab is <b>not a tab stop</b>, it is drawn at a
+/// fixed width of four spaces (<c>"ab\tc"</c> and <c>"ab    c"</c> come out the same width; with a
+/// real tab stop it would be two spaces). There is also no property to set the tab width. That is why
+/// the transformation is done <b>here</b>.
 /// </para>
 /// <para>
-/// Dönüşüm <b>parça sınırlarını koruyor</b> ve sütun sayacı parçalar arasında devam ediyor:
-/// tab-stop satırın başından itibaren hesaplanır, parça başından değil. Aksi hâlde satır içi
-/// vurgulama olan satırlarda sekmeler farklı yere hizalanırdı.
+/// The transformation <b>preserves the segment boundaries</b> and the column counter carries on
+/// across segments: tab stops are computed from the start of the line, not from the start of a
+/// segment. Otherwise, tabs would align differently on lines that have intra-line highlighting.
 /// </para>
 /// </remarks>
 public static class DiffTextFormatter
 {
-    /// <summary>Boşluk göstergesi (orta nokta).</summary>
+    /// <summary>The space marker (a middle dot).</summary>
     public const char SpaceMarker = '·';
 
-    /// <summary>Sekme göstergesi (çift ok) — ICSharpCode/GitExtensions ile aynı.</summary>
+    /// <summary>The tab marker (a double arrow) — the same as ICSharpCode/GitExtensions.</summary>
     public const char TabMarker = '»';
 
-    /// <summary>Bir satırın parçalarını gösterime hazırlar.</summary>
+    /// <summary>Prepares a line's segments for display.</summary>
     public static IReadOnlyList<DiffSegment> Format(
         IReadOnlyList<DiffSegment> segments,
         DiffTextOptions options)
@@ -78,7 +77,7 @@ public static class DiffTextFormatter
         return result;
     }
 
-    /// <summary>Tek bir metni gösterime hazırlar (satırın başından başlayarak).</summary>
+    /// <summary>Prepares a single text for display (starting from the beginning of the line).</summary>
     public static string Format(string text, DiffTextOptions options)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -94,7 +93,7 @@ public static class DiffTextFormatter
     }
 
     /// <summary>
-    /// Metni açar ve <paramref name="column"/>'u ilerletir.
+    /// Expands the text and advances <paramref name="column"/>.
     /// </summary>
     private static string Expand(string text, DiffTextOptions options, ref int column)
     {
@@ -103,8 +102,8 @@ public static class DiffTextFormatter
             return text;
         }
 
-        // Yaygın durum: ne sekme var ne de boşluk gösterimi isteniyor. Yeni dize üretmemek
-        // için önce kontrol ediliyor — satır sayısı on binlere çıkabiliyor.
+        // The common case: no tab, and no whitespace display requested. It is checked first to avoid
+        // producing a new string — the line count can run into the tens of thousands.
         if (!options.ShowWhitespace && !text.Contains('\t'))
         {
             column += text.Length;
@@ -117,7 +116,7 @@ public static class DiffTextFormatter
         {
             if (character == '\t' && options.TabWidth > 0)
             {
-                // Tab-stop: bir sonraki katına kadar doldur (hiç ilerletmemek yerine en az 1).
+                // Tab stop: pad up to the next multiple (at least 1, rather than not advancing at all).
                 int width = options.TabWidth - (column % options.TabWidth);
 
                 builder.Append(options.ShowWhitespace ? TabMarker : ' ');

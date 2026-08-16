@@ -3,34 +3,34 @@ using GitExt.Core.Git;
 namespace GitExt.Core;
 
 /// <summary>
-/// Depoda süren çok adımlı bir işlem (P06-T04).
+/// A multi-step operation in progress in the repository (P06-T04).
 /// </summary>
 public enum InProgressOperation
 {
-    /// <summary>Süren işlem yok.</summary>
+    /// <summary>No operation in progress.</summary>
     None,
 
-    /// <summary>Rebase (interaktif veya değil).</summary>
+    /// <summary>A rebase (interactive or not).</summary>
     Rebase,
 
-    /// <summary><c>git am</c> ile yama uygulanıyor.</summary>
+    /// <summary>A patch being applied with <c>git am</c>.</summary>
     ApplyMailbox,
 
-    /// <summary>Merge çakışmayla durdu.</summary>
+    /// <summary>A merge stopped on a conflict.</summary>
     Merge,
 
-    /// <summary>Cherry-pick sürüyor.</summary>
+    /// <summary>A cherry-pick in progress.</summary>
     CherryPick,
 
-    /// <summary>Revert sürüyor.</summary>
+    /// <summary>A revert in progress.</summary>
     Revert,
 
-    /// <summary>Bisect sürüyor.</summary>
+    /// <summary>A bisect in progress.</summary>
     Bisect,
 }
 
 /// <summary>
-/// Depoda süren işlemi okur (P06-T04).
+/// Reads the operation in progress in the repository (P06-T04).
 /// </summary>
 public interface IInProgressOperationReader
 {
@@ -40,24 +40,25 @@ public interface IInProgressOperationReader
 }
 
 /// <summary>
-/// Git dizinindeki durum dosyalarına bakarak süren işlemi belirler (P06-T04).
+/// Determines the operation in progress by looking at the state files in the git directory (P06-T04).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden gerekli?</b> ÖLÇÜLDÜ: <b>rebase ve bisect sırasında HEAD ayrık</b>
-/// (<c>symbolic-ref</c> çıkış kodu 1, <c>--porcelain=v2</c> <c>(detached)</c> diyor).
-/// Düz bir "ayrık HEAD" uyarısı bu iki durumda da açılırdı; oysa kullanıcı bilerek bir
-/// işlemin ortasında ve ona söylenmesi gereken şey "buradan dal oluştur" değil,
-/// <b>hangi işlemin sürdüğü</b>.
+/// <b>Why is this needed?</b> MEASURED: <b>during a rebase and a bisect, HEAD is detached</b>
+/// (<c>symbolic-ref</c> exit code 1, <c>--porcelain=v2</c> says <c>(detached)</c>).
+/// A plain "detached HEAD" warning would pop up in both of those cases; the user is deliberately in
+/// the middle of an operation, and what they need to be told is not "create a branch here" but
+/// <b>which operation is in progress</b>.
 /// </para>
 /// <para>
-/// Dosya adları <see cref="RepositoryChangeClassifier"/>'ın izlediği adlarla aynı — orada
-/// "depo durumu değişti" sayılan şeyler tam olarak bunlar (P05-T14).
+/// The file names are the same as the ones <see cref="RepositoryChangeClassifier"/> watches — those
+/// are exactly what counts there as "the repository state changed" (P05-T14).
 /// </para>
 /// <para>
-/// ⚠️ Yol <c>--absolute-git-dir</c> ile alınıyor: <c>--git-path</c> <b>göreli</b> dönüyor ve
-/// çalışma dizinine bağlı (P05-T13, madde 20e). Bağlı çalışma ağacında da doğru olan bu —
-/// bu dosyalar ortak dizinde değil, o worktree'nin <b>kendi</b> dizininde duruyor.
+/// ⚠️ The path is obtained with <c>--absolute-git-dir</c>: <c>--git-path</c> returns a <b>relative</b>
+/// path that depends on the working directory (P05-T13, item 20e). This is also the right thing in a
+/// linked working tree — these files live not in the common directory but in that worktree's <b>own</b>
+/// directory.
 /// </para>
 /// </remarks>
 public sealed class InProgressOperationReader : IInProgressOperationReader
@@ -89,10 +90,10 @@ public sealed class InProgressOperationReader : IInProgressOperationReader
         return gitDirectory.Length == 0 ? InProgressOperation.None : Classify(gitDirectory);
     }
 
-    /// <summary>Git dizinindeki durum dosyalarına bakar.</summary>
+    /// <summary>Looks at the state files in the git directory.</summary>
     /// <remarks>
-    /// Sıra önemli: rebase sırasında <c>MERGE_HEAD</c> de oluşabiliyor, ama kullanıcı için
-    /// asıl bağlam rebase'dir.
+    /// The order matters: <c>MERGE_HEAD</c> can appear during a rebase as well, but the context that
+    /// matters to the user is the rebase.
     /// </remarks>
     internal static InProgressOperation Classify(string gitDirectory)
     {
@@ -101,8 +102,8 @@ public sealed class InProgressOperationReader : IInProgressOperationReader
             return InProgressOperation.Rebase;
         }
 
-        // `rebase-apply` hem `rebase --apply` hem `git am` tarafından kullanılıyor;
-        // ayrımı içindeki `applying` dosyası veriyor.
+        // `rebase-apply` is used by both `rebase --apply` and `git am`;
+        // the `applying` file inside it makes the distinction.
         string applyDirectory = Path.Combine(gitDirectory, "rebase-apply");
 
         if (Directory.Exists(applyDirectory))

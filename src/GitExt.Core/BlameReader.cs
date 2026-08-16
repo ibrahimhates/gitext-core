@@ -5,20 +5,20 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Blame'de bir satırın kaynağı (P07-T16).
+/// The origin of a line in blame (P07-T16).
 /// </summary>
 public sealed record BlameLine
 {
-    /// <summary>Satırı en son değiştiren commit.</summary>
+    /// <summary>The commit that last changed the line.</summary>
     public required string ObjectId { get; init; }
 
-    /// <summary>Şu anki dosyadaki satır numarası (1 tabanlı).</summary>
+    /// <summary>The line number in the current file (1-based).</summary>
     public required int LineNumber { get; init; }
 
-    /// <summary>O commit'teki satır numarası.</summary>
+    /// <summary>The line number in that commit.</summary>
     public int OriginalLineNumber { get; init; }
 
-    /// <summary>Satırın içeriği.</summary>
+    /// <summary>The line's content.</summary>
     public string Content { get; init; } = string.Empty;
 
     public string AuthorName { get; init; } = string.Empty;
@@ -31,20 +31,20 @@ public sealed record BlameLine
     public string Summary { get; init; } = string.Empty;
 
     /// <summary>
-    /// Satırın o commit'teki dosya adı.
+    /// The line's file name in that commit.
     /// </summary>
     /// <remarks>
-    /// Yeniden adlandırmalarda şu ankinden farklı olur; "önceki sürüme git" bunu kullanıyor.
+    /// It differs from the current one across renames; "go to the previous version" uses this.
     /// </remarks>
     public string FileName { get; init; } = string.Empty;
 
     public string ShortId => ObjectId.Length >= 7 ? ObjectId[..7] : ObjectId;
 
     /// <summary>
-    /// Bu satır blame'in kapsadığı en eski commit'ten mi geliyor?
+    /// Does this line come from the oldest commit the blame covers?
     /// </summary>
     /// <remarks>
-    /// git bunu <c>boundary</c> ile işaretliyor; daha geriye gidilemez.
+    /// git marks this with <c>boundary</c>; there is no going back further.
     /// </remarks>
     public bool IsBoundary { get; init; }
 }
@@ -52,12 +52,12 @@ public sealed record BlameLine
 /// <summary>Blame okuma (P07-T16).</summary>
 public interface IBlameReader
 {
-    /// <param name="workingDirectory">Deponun çalışma dizini.</param>
-    /// <param name="path">Blame'i alınacak dosya.</param>
+    /// <param name="workingDirectory">The repository's working directory.</param>
+    /// <param name="path">The file to blame.</param>
     /// <param name="revision">
-    /// Hangi sürümden bakılacağı; <see langword="null"/> ise <c>HEAD</c>.
+    /// Which version to look from; <c>HEAD</c> when <see langword="null"/>.
     /// </param>
-    /// <param name="cancellationToken">İptal belirteci.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<IReadOnlyList<BlameLine>> ReadAsync(
         string workingDirectory,
         RepositoryPath path,
@@ -66,19 +66,19 @@ public interface IBlameReader
 }
 
 /// <summary>
-/// <c>git blame --porcelain</c> okuyucusu (P07-T16).
+/// The <c>git blame --porcelain</c> reader (P07-T16).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>ÖLÇÜLDÜ — <c>--porcelain</c> meta veriyi commit başına BİR KEZ yazıyor.</b>
-/// Aynı commit'ten gelen ikinci satırda yalnızca başlık satırı var; <c>author</c>,
-/// <c>summary</c> ve diğerleri <b>tekrarlanmıyor</b>. Her satırı bağımsız ayrıştıran bir
-/// okuyucu, o satırların yazarını <b>boş</b> gösterirdi — hem de en sık görülen durumda
-/// (aynı commit'ten gelen ardışık satırlar).
+/// 🔴 <b>MEASURED — <c>--porcelain</c> writes the metadata ONCE PER COMMIT.</b>
+/// On the second line coming from the same commit there is only the header line; <c>author</c>,
+/// <c>summary</c> and the rest are <b>not repeated</b>. A reader parsing each line independently
+/// would show those lines' author as <b>empty</b> — and in the most common case at that (consecutive
+/// lines from the same commit).
 /// </para>
 /// <para>
-/// → Meta veri SHA'ya göre önbellekleniyor. <c>--line-porcelain</c> her satırda tekrar
-/// ederdi ama çıktıyı birkaç kat büyütür; büyük dosyalarda bu gereksiz bir maliyet.
+/// → The metadata is cached by SHA. <c>--line-porcelain</c> would repeat it on every line but it
+/// multiplies the output several times over; on large files that is a needless cost.
 /// </para>
 /// </remarks>
 public sealed class BlameReader : IBlameReader
@@ -118,11 +118,11 @@ public sealed class BlameReader : IBlameReader
             GitCommand.Create(workingDirectory, [.. arguments]),
             cancellationToken).ConfigureAwait(false);
 
-        // İkili dosya ya da yok olan yol: blame yok, hata da değil.
+        // A binary file or a path that does not exist: no blame, and not an error either.
         return result.IsSuccess ? Parse(result.GetStandardOutputLossless()) : [];
     }
 
-    /// <summary>Commit başına bir kez gelen meta veri.</summary>
+    /// <summary>The metadata that arrives once per commit.</summary>
     private sealed record CommitInfo
     {
         public string AuthorName { get; set; } = string.Empty;
@@ -138,12 +138,12 @@ public sealed class BlameReader : IBlameReader
         public bool IsBoundary { get; set; }
     }
 
-    /// <summary><c>--porcelain</c> çıktısını ayrıştırır.</summary>
+    /// <summary>Parses the <c>--porcelain</c> output.</summary>
     internal static IReadOnlyList<BlameLine> Parse(string output)
     {
         List<BlameLine> lines = [];
 
-        // 🔴 Önbellek: meta veri commit başına BİR KEZ geliyor.
+        // 🔴 The cache: the metadata arrives ONCE PER COMMIT.
         Dictionary<string, CommitInfo> commits = new(StringComparer.Ordinal);
 
         string currentSha = string.Empty;
@@ -160,7 +160,7 @@ public sealed class BlameReader : IBlameReader
                 continue;
             }
 
-            // İçerik satırı sekmeyle başlıyor — başlıklardan tek ayırt edici işaret bu.
+            // A content line starts with a tab — the only thing that tells it apart from the headers.
             if (line[0] == '\t')
             {
                 if (current is not null)
@@ -185,7 +185,7 @@ public sealed class BlameReader : IBlameReader
 
             string[] parts = line.Split(' ');
 
-            // Başlık: "<sha> <özgün satır> <son satır> [<satır sayısı>]"
+            // The header: "<sha> <original line> <final line> [<line count>]"
             if (parts.Length >= 3 && IsObjectId(parts[0]))
             {
                 currentSha = parts[0];
@@ -213,7 +213,7 @@ public sealed class BlameReader : IBlameReader
                 continue;
             }
 
-            // Anahtar/değer satırları — yalnızca commit'in İLK görülüşünde geliyorlar.
+            // The key/value lines — they only arrive on the commit's FIRST appearance.
             int space = line.IndexOf(' ', StringComparison.Ordinal);
             string key = space < 0 ? line : line[..space];
             string value = space < 0 ? string.Empty : line[(space + 1)..];

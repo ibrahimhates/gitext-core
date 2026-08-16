@@ -3,19 +3,21 @@ using System.Collections.Concurrent;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Aynı depoya yapılan yazma işlemlerini <b>seri</b> hâle getirir (P05-T01).
+/// <b>Serialises</b> write operations against the same repository (P05-T01).
 /// </summary>
 public interface IGitWriteQueue
 {
     /// <summary>
-    /// İşlemi, aynı depoya yazan diğer işlemler bitene kadar bekleterek çalıştırır.
+    /// Runs the operation, making it wait until the other operations writing to the same repository
+    /// have finished.
     /// </summary>
     /// <param name="gitDirectory">
-    /// Deponun <b>git dizini</b> — <c>rev-parse --absolute-git-dir</c> çıktısı. Worktree'ler
-    /// ayrı index'e sahip olduğu için ortak dizin (<c>--git-common-dir</c>) <b>değil</b>.
+    /// The repository's <b>git directory</b> — the output of <c>rev-parse --absolute-git-dir</c>.
+    /// <b>Not</b> the common directory (<c>--git-common-dir</c>), because worktrees have their own
+    /// index.
     /// </param>
-    /// <param name="operation">Sıra geldiğinde çalıştırılacak yazma işlemi.</param>
-    /// <param name="cancellationToken">Beklerken de geçerli olan iptal jetonu.</param>
+    /// <param name="operation">The write operation to run when its turn comes.</param>
+    /// <param name="cancellationToken">The cancellation token, which applies while waiting too.</param>
     Task<T> RunAsync<T>(
         string gitDirectory,
         Func<CancellationToken, Task<T>> operation,
@@ -29,36 +31,36 @@ public interface IGitWriteQueue
 }
 
 /// <summary>
-/// Depo başına tek yazar kuralını uygulayan kuyruk (P05-T01).
+/// The queue that enforces the one-writer-per-repository rule (P05-T01).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ — neden gerekli:</b> git eşzamanlı yazmayı <b>beklemez</b>, anında düşer.
-/// Aynı depoda 8 paralel <c>git add</c> çalıştırıldığında <b>7'si</b>
-/// <c>fatal: Unable to create '…/index.lock': File exists</c> ile başarısız oldu.
+/// <b>MEASURED — why it is needed:</b> git <b>does not wait</b> on a concurrent write, it fails
+/// immediately. Running 8 parallel <c>git add</c> calls in the same repository, <b>7 of them</b>
+/// failed with <c>fatal: Unable to create '…/index.lock': File exists</c>.
 /// </para>
 /// <para>
-/// <b>Kilit kapsamı git dizini, ortak dizin değil.</b> Ölçüldü: iki worktree'de eşzamanlı
-/// <c>git add</c> çalıştırıldığında <b>hiç çakışma olmadı</b> — her worktree'nin kendi
-/// index'i var (<c>.git/worktrees/&lt;ad&gt;/index</c>). Ortak dizinle anahtarlamak,
-/// kullanıcının iki worktree'de paralel çalışmasını gereksiz yere engellerdi.
+/// <b>The lock's scope is the git directory, not the common directory.</b> Measured: running
+/// <c>git add</c> concurrently in two worktrees produced <b>no collision at all</b> — each worktree
+/// has its own index (<c>.git/worktrees/&lt;name&gt;/index</c>). Keying on the common directory would
+/// needlessly stop the user working in two worktrees in parallel.
 /// </para>
 /// <para>
-/// ⚠️ <b>Ref yazmaları farklı kapsamda:</b> dallar ve etiketler ortak dizinde yaşıyor
-/// (Faz 02'de ölçüldü). Faz 06'da ref yazan komutlar gelince o işlemler için ortak dizin
-/// anahtarı gerekecek — bu sınıf anahtarı dışarıdan aldığı için değişiklik gerektirmiyor.
+/// ⚠️ <b>Ref writes have a different scope:</b> branches and tags live in the common directory
+/// (measured in Phase 02). When the ref-writing commands arrive in Phase 06 those operations will need
+/// the common directory as their key — which requires no change here, since this class takes the key
+/// from outside.
 /// </para>
 /// <para>
-/// <b>Okumalar kuyruğa GİRMEZ.</b> Ölçüldü: <c>index.lock</c> dosyası dururken
-/// <c>status</c>, <c>log</c>, <c>diff</c>, <c>diff --cached</c>, <c>show</c> ve
-/// <c>for-each-ref</c> sorunsuz çalışıyor (git opsiyonel kilidi alamayınca sessizce
-/// vazgeçiyor).
+/// <b>Reads DO NOT join the queue.</b> Measured: with an <c>index.lock</c> file present,
+/// <c>status</c>, <c>log</c>, <c>diff</c>, <c>diff --cached</c>, <c>show</c> and <c>for-each-ref</c>
+/// all work fine (when git cannot take an optional lock it silently gives up on it).
 /// </para>
 /// </remarks>
 public sealed class GitWriteQueue : IGitWriteQueue, IDisposable
 {
     /// <summary>
-    /// Yol karşılaştırması: Linux'ta büyük/küçük harf duyarlı, Windows ve macOS'ta değil.
+    /// Path comparison: case-sensitive on Linux, not on Windows and macOS.
     /// </summary>
     private static readonly StringComparer _pathComparer =
         OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
@@ -67,7 +69,7 @@ public sealed class GitWriteQueue : IGitWriteQueue, IDisposable
 
     private bool _disposed;
 
-    /// <summary>O an kuyruk tutulan depo sayısı (teşhis için).</summary>
+    /// <summary>The number of repositories currently holding a queue (for diagnostics).</summary>
     public int TrackedRepositories => _queues.Count;
 
     public async Task<T> RunAsync<T>(
@@ -111,12 +113,12 @@ public sealed class GitWriteQueue : IGitWriteQueue, IDisposable
     }
 
     /// <summary>
-    /// Yolu anahtar olarak kullanılabilecek biçime getirir.
+    /// Brings the path into a form usable as a key.
     /// </summary>
     /// <remarks>
-    /// Aynı depoya iki farklı yazımla (<c>/repo/.git</c> ve <c>/repo/.git/</c>) gelen
-    /// çağrılar aynı kuyruğa düşmeli; aksi hâlde serileştirme <b>sessizce</b> devre dışı
-    /// kalırdı.
+    /// Calls arriving for the same repository in two different spellings (<c>/repo/.git</c> and
+    /// <c>/repo/.git/</c>) must land in the same queue; otherwise the serialisation would be
+    /// <b>silently</b> disabled.
     /// </remarks>
     private static string Normalize(string gitDirectory)
     {

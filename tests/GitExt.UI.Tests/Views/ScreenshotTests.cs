@@ -12,30 +12,30 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// README ve AppStream için ekran görüntüsü üretir (P10-T26).
+/// Produces the screenshots for the README and AppStream (P10-T26).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Ekran görüntüsü bir <b>test</b> olarak üretiliyor, elle alınmıyor. Elle alınan
-/// görüntü ilk arayüz değişikliğinde eskiyor ve kimse fark etmiyor; burada üretilen
-/// her CI koşusunda tazeleniyor ve arayüz kırılırsa test de kırılıyor.
+/// The screenshot is produced as a <b>test</b> rather than taken by hand. A hand-taken image goes
+/// stale at the first UI change and nobody notices; the one produced here is refreshed on every CI
+/// run, and if the UI breaks the test breaks too.
 /// </para>
 /// <para>
-/// Çıktılar <c>docs/assets/</c> altına yazılıyor. Görüntülerin <b>içeriği</b>
-/// doğrulanmıyor — bu bir görsel regresyon testi değil; doğrulanan şey pencerenin
-/// gerçekten çizildiği ve boş olmadığı.
+/// The outputs are written under <c>docs/assets/</c>. The <b>content</b> of the images is not
+/// verified — this is not a visual regression test; what is verified is that the window really was
+/// drawn and is not blank.
 /// </para>
 /// </remarks>
 public class ScreenshotTests
 {
     /// <summary>
-    /// README'ye giren görüntülerin yazıldığı yer. Depo köküne göre sabit.
+    /// Where the images that go into the README are written. Fixed relative to the repository root.
     /// </summary>
     private static string AssetDirectory
     {
         get
         {
-            // Test ikilisi bin/Release/net10.0 altında koşuyor; depo kökü dört üstte.
+            // The test binary runs under bin/Release/net10.0; the repository root is four levels up.
             DirectoryInfo directory = new(AppContext.BaseDirectory);
 
             while (directory.Parent is not null && !Directory.Exists(Path.Combine(directory.FullName, ".git")))
@@ -48,12 +48,12 @@ public class ScreenshotTests
     }
 
     /// <summary>
-    /// Ekran görüntüsü için gerçekçi bir commit listesi.
+    /// A realistic commit list for the screenshot.
     /// </summary>
     /// <remarks>
-    /// Gerçek bir depo klonlamak yerine sabit veri kullanılıyor: ekran görüntüsü
-    /// her koşuda AYNI çıkmalı. Gerçek bir depo kullanılsaydı görüntü commit
-    /// geçmişiyle birlikte değişir ve README'deki resim her sürümde farklı olurdu.
+    /// Fixed data is used rather than cloning a real repository: the screenshot must come out THE SAME
+    /// on every run. With a real repository the image would change along with the commit history and
+    /// the picture in the README would differ on every release.
     /// </remarks>
     private static MainWindowViewModel BuildModel()
     {
@@ -69,8 +69,8 @@ public class ScreenshotTests
             "b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7",
         ];
 
-        // Ebeveyn bağları gerçek: her commit bir sonrakine bağlı, dördüncüsü merge.
-        // Grafiğin ekran görüntüsünde şerit ve birleşme çizgisi görünsün diye.
+        // The parent links are real: every commit is linked to the next and the fourth is a merge.
+        // So the lane and the merge line show up in the graph's screenshot.
         List<CommitInfo> commits =
         [
             Commit(shas[0], [shas[1]], "feat(graph): lane colours for merge commits", "Ada Lovelace", 0, ["HEAD -> main"]),
@@ -101,8 +101,8 @@ public class ScreenshotTests
         int daysAgo,
         string[]? refs = null)
     {
-        // Sabit tarih: görüntü her koşuda aynı çıkmalı. "3 gün önce" biçiminde
-        // gösterilen bir sütun, gerçek zamanla birlikte her gün değişirdi.
+        // A fixed date: the image must come out the same on every run. A column shown as "3 days ago"
+        // would change every day along with real time.
         DateTimeOffset when = new DateTimeOffset(2026, 8, 14, 11, 0, 0, TimeSpan.Zero).AddDays(-daysAgo);
         string email = $"{author.Split(' ')[0].ToLowerInvariant()}@example.com";
         Signature signature = new(author, email, when);
@@ -132,7 +132,7 @@ public class ScreenshotTests
         AppearanceService appearance = new(Application.Current!, settings);
         appearance.SetTheme(theme);
 
-        // Türkçe görüntü, çevirinin GERÇEKTEN arayüze ulaştığının gözle görülür kanıtı.
+        // A Turkish image is visible proof that the translation ACTUALLY reaches the UI.
         Translator translator = new(settings);
         translator.Use(language);
         TranslateExtension.Attach(translator);
@@ -140,21 +140,21 @@ public class ScreenshotTests
 
         MainWindowViewModel model = BuildModel();
 
-        // 🔴 Depo AÇILMADAN ekran görüntüsü alınırsa karşılama ekranı çıkıyor — README'ye
-        // "commit grafiği" diye boş bir başlangıç sayfası konurdu. İlk üretilen görüntü
-        // tam olarak buydu ve gözle bakılmasaydı fark edilmezdi.
+        // 🔴 Taking the screenshot WITHOUT opening a repository gives the welcome screen — an empty
+        // start page would go into the README labelled "the commit graph". That is exactly what the
+        // first generated image was, and it would have gone unnoticed had nobody looked at it.
         //
-        // ⚠️ `await` ŞART, `GetAwaiter().GetResult()` DEĞİL: headless UI thread'inde
-        // senkron bekleme kilitleniyor (ölçüldü — test 5 dakika sonra hâlâ koşuyordu).
+        // ⚠️ `await` is REQUIRED, NOT `GetAwaiter().GetResult()`: waiting synchronously on the
+        // headless UI thread deadlocks (measured — the test was still running after 5 minutes).
         await model.Commits.OpenAsync("/repo");
 
         MainWindow window = new()
         {
             DataContext = model,
 
-            // HiDPI: README'deki görüntü 2x çözünürlükte olmalı, yoksa yüksek yoğunluklu
-            // ekranlarda bulanık görünüyor. Headless render mantıksal boyutu kullandığı
-            // için pencere büyütülüyor.
+            // HiDPI: the image in the README should be at 2x resolution, otherwise it looks blurry on
+            // high-density screens. Because headless rendering uses the logical size, the window is
+            // enlarged.
             Width = 1440,
             Height = 900,
         };
@@ -168,9 +168,9 @@ public class ScreenshotTests
         string path = Path.Combine(AssetDirectory, fileName);
         frame.Save(path, new PngBitmapEncoderOptions());
 
-        // İçerik doğrulanmıyor (bu görsel regresyon testi değil), ama BOŞ bir görüntü
-        // README'ye girmemeli: temanın uygulanmadığı veya pencerenin çizilmediği
-        // durumlar tam olarak böyle görünürdü.
+        // The content is not verified (this is not a visual regression test), but a BLANK image must
+        // not go into the README: a theme that was not applied, or a window that was not drawn, would
+        // look exactly like that.
         new FileInfo(path).Length.ShouldBeGreaterThan(
             5_000,
             $"{fileName} boş görünüyor — pencere çizilmemiş olabilir");

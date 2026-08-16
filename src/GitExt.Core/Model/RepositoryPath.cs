@@ -3,17 +3,17 @@ using System.Diagnostics.CodeAnalysis;
 namespace GitExt.Core.Model;
 
 /// <summary>
-/// Depo köküne göre göreli bir yol; ayraç <b>her zaman</b> <c>/</c>.
+/// A path relative to the repository root; the separator is <b>always</b> <c>/</c>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Git yolları platformdan bağımsız olarak eğik çizgiyle ayırır — Windows'ta bile. Bu tip,
-/// yolun git'e verilirken doğru biçimde, dosya sistemine verilirken platformun biçiminde
-/// olmasını garanti eder.
+/// Git separates paths with a forward slash regardless of platform — even on Windows. This type
+/// guarantees the path is in the right form when handed to git, and in the platform's form when handed
+/// to the file system.
 /// </para>
 /// <para>
-/// Düz <see cref="string"/> kullanmak Windows'ta sessiz hatalara yol açar: <c>Path.Combine</c>
-/// ters eğik çizgi üretir, git onu dosya adının parçası sanar ve dosya "bulunamaz".
+/// Using a plain <see cref="string"/> leads to silent bugs on Windows: <c>Path.Combine</c> produces a
+/// backslash, git takes it for part of the file name, and the file is "not found".
 /// </para>
 /// </remarks>
 public readonly record struct RepositoryPath : IComparable<RepositoryPath>
@@ -25,12 +25,12 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
         _value = value;
     }
 
-    /// <summary>Depo köküne göre göreli yol, <c>/</c> ayraçlı.</summary>
+    /// <summary>The path relative to the repository root, with <c>/</c> separators.</summary>
     public string Value => _value ?? string.Empty;
 
     public bool IsEmpty => string.IsNullOrEmpty(_value);
 
-    /// <summary>Yolun son bileşeni (dosya veya klasör adı).</summary>
+    /// <summary>The last component of the path (the file or folder name).</summary>
     public string Name
     {
         get
@@ -41,7 +41,7 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
         }
     }
 
-    /// <summary>Üst dizin; kökteyse boş.</summary>
+    /// <summary>The parent directory; empty at the root.</summary>
     public RepositoryPath Parent
     {
         get
@@ -52,7 +52,7 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
         }
     }
 
-    /// <summary>Uzantı (nokta dahil); yoksa boş.</summary>
+    /// <summary>The extension (dot included); empty when there is none.</summary>
     public string Extension
     {
         get
@@ -64,9 +64,9 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
     }
 
     /// <summary>
-    /// Git'ten gelen bir yolu ayrıştırır.
+    /// Parses a path coming from git.
     /// </summary>
-    /// <exception cref="ArgumentException">Yol boşsa veya mutlaksa.</exception>
+    /// <exception cref="ArgumentException">When the path is empty or absolute.</exception>
     public static RepositoryPath Parse(string value)
     {
         if (!TryParse(value, out RepositoryPath path))
@@ -79,7 +79,7 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
     }
 
     /// <summary>
-    /// Git'ten gelen bir yolu ayrıştırmayı dener.
+    /// Tries to parse a path coming from git.
     /// </summary>
     public static bool TryParse([NotNullWhen(true)] string? value, out RepositoryPath path)
     {
@@ -90,13 +90,13 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
             return false;
         }
 
-        // Windows'tan gelmiş olabilir; ayracı normalleştir.
+        // It may have come from Windows; normalise the separator.
         //
-        // 🔴 Yalnızca Windows'ta (P05-T08'de ölçüldü): Linux'ta `\` dosya adında GEÇERLİ bir
-        // karakterdir ve git onu olduğu gibi bildirir. Her platformda çevirmek,
-        // `ters\slash.txt` adlı bir dosyayı `ters/slash.txt` yapıp yolu SESSİZCE yanlış
-        // gösteriyordu — `.gitignore`'a eklemek hiçbir işe yaramıyordu çünkü üretilen desen
-        // var olmayan bir alt dizini işaret ediyordu.
+        // 🔴 On Windows only (measured in P05-T08): on Linux `\` is a VALID character in a file name
+        // and git reports it as it is. Converting on every platform turned a file called
+        // `ters\slash.txt` into `ters/slash.txt` and showed the path SILENTLY wrong — adding it to
+        // `.gitignore` did nothing at all, because the pattern produced pointed at a subdirectory that
+        // did not exist.
         string normalized = OperatingSystem.IsWindows()
             ? value.Replace('\\', '/').Trim('/')
             : value.Trim('/');
@@ -106,7 +106,7 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
             return false;
         }
 
-        // Mutlak yollar ve sürücü harfleri depo-göreli değildir.
+        // Absolute paths and drive letters are not repository-relative.
         if (normalized.Length >= 2 && normalized[1] == ':')
         {
             return false;
@@ -117,14 +117,14 @@ public readonly record struct RepositoryPath : IComparable<RepositoryPath>
     }
 
     /// <summary>
-    /// Depo kökü verildiğinde mutlak dosya sistemi yolunu üretir.
+    /// Produces the absolute file system path, given the repository root.
     /// </summary>
     public string ToAbsolutePath(string repositoryRoot)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryRoot);
 
-        // Path.Combine platformun ayracını kullanır; git'in / ayraçlı yolunu
-        // bileşenlerine ayırıp veriyoruz.
+        // Path.Combine uses the platform's separator; we split git's /-separated path into its
+        // components and hand those over.
         return Path.GetFullPath(Path.Combine([repositoryRoot, .. Value.Split('/')]));
     }
 

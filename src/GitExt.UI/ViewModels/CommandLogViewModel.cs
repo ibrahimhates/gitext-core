@@ -8,7 +8,7 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Günlükteki tek bir satır (P06-T16).
+/// A single row in the log (P06-T16).
 /// </summary>
 public sealed class CommandLogRowViewModel
 {
@@ -19,23 +19,24 @@ public sealed class CommandLogRowViewModel
     public string CommandLine => Entry.CommandLine;
 
     /// <summary>
-    /// Süre; milisaniyenin altındakiler de görünsün diye ondalık.
+    /// The duration; with a decimal so sub-millisecond values are visible too.
     /// </summary>
     /// <remarks>
-    /// Süreyi göstermek panelin asıl işlerinden biri: bu projede bir okuma yolunun
-    /// beklenenden yavaş olduğu birkaç kez ölçümle bulundu, ama kullanıcı için tek
-    /// görünür yer burası.
+    /// Showing the duration is one of the panel's main jobs: several times in this project a read path
+    /// turned out to be slower than expected only through measurement, and this is the one place the
+    /// user can see it.
     /// </remarks>
     public string Duration => Entry.Duration.TotalSeconds >= 1
         ? string.Create(CultureInfo.InvariantCulture, $"{Entry.Duration.TotalSeconds:0.00} sn")
         : string.Create(CultureInfo.InvariantCulture, $"{Entry.Duration.TotalMilliseconds:0} ms");
 
     /// <summary>
-    /// Çıkış kodu; süreç hiç tamamlanmadıysa (iptal, zaman aşımı) tire.
+    /// The exit code; a dash when the process never completed (cancelled, timed out).
     /// </summary>
     /// <remarks>
-    /// ⚠️ <see langword="null"/> ile <c>0</c> aynı şey değil: ilki "bitmedi", ikincisi
-    /// "başarıyla bitti". <c>0</c> yazmak iptal edilen bir komutu başarılı gösterirdi.
+    /// ⚠️ <see langword="null"/> and <c>0</c> are not the same thing: the first means "did not
+    /// finish", the second "finished successfully". Writing <c>0</c> would show a cancelled command as
+    /// a success.
     /// </remarks>
     public string ExitCode => Entry.ExitCode?.ToString(CultureInfo.InvariantCulture) ?? "—";
 
@@ -48,22 +49,22 @@ public sealed class CommandLogRowViewModel
 }
 
 /// <summary>
-/// Git komut günlüğü paneli (P06-T16).
+/// The git command log panel (P06-T16).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Planın maddesi: <i>"Kullanıcı ne olduğunu her zaman görebilmeli."</i> Altyapı
-/// P02-T05'te kurulmuştu (<see cref="IGitCommandLog"/>); burada gösterimi ve <b>canlı
-/// akışı</b> geliyor.
+/// From the plan: <i>"The user must always be able to see what happened."</i> The infrastructure was
+/// built in P02-T05 (<see cref="IGitCommandLog"/>); what arrives here is the display and the <b>live
+/// stream</b>.
 /// </para>
 /// <para>
-/// ⚠️ <b>Kayıtlar arayüz iş parçacığında gelmiyor</b> — git süreçleri havuz iş
-/// parçacıklarında çalışıyor. Koleksiyona doğrudan eklemek Avalonia'da çökme ya da sessiz
-/// bozulma üretirdi; bu yüzden her kayıt <see cref="Dispatcher"/> üzerinden geçiyor.
+/// ⚠️ <b>The entries do not arrive on the UI thread</b> — git processes run on pool threads. Adding
+/// to the collection directly would produce a crash or silent corruption in Avalonia; that is why
+/// every entry goes through the <see cref="Dispatcher"/>.
 /// </para>
 /// <para>
-/// 🔒 <b>Gizli değerler günlüğe girmiyor:</b> kimlik bilgisi komut satırına değil ortama
-/// yazılıyor (P06-T09) ve <c>ToDisplayString</c> ortamı hiç yazmıyor.
+/// 🔒 <b>Secrets never enter the log:</b> credentials are written to the environment, not to the
+/// command line (P06-T09), and <c>ToDisplayString</c> never writes the environment.
 /// </para>
 /// </remarks>
 public sealed class CommandLogViewModel : ViewModelBase, IDisposable
@@ -84,8 +85,8 @@ public sealed class CommandLogViewModel : ViewModelBase, IDisposable
 
         if (log is InMemoryGitCommandLog memory)
         {
-            // Panel açılmadan önce çalışmış komutlar da görünsün: açılışta boş bir liste,
-            // "hiçbir şey çalışmadı" gibi okunurdu.
+            // Commands that ran before the panel opened should be visible too: an empty list at startup
+            // would read as "nothing has run".
             foreach (GitCommandLogEntry entry in memory.Entries)
             {
                 All.Add(new CommandLogRowViewModel { Entry = entry });
@@ -99,13 +100,13 @@ public sealed class CommandLogViewModel : ViewModelBase, IDisposable
         Refresh();
     }
 
-    /// <summary>Tüm kayıtlar, en yeniden en eskiye.</summary>
+    /// <summary>All the entries, newest first.</summary>
     private ObservableCollection<CommandLogRowViewModel> All { get; } = [];
 
-    /// <summary>Ekranda gösterilen kayıtlar.</summary>
+    /// <summary>The entries shown on screen.</summary>
     public ObservableCollection<CommandLogRowViewModel> Rows { get; } = [];
 
-    /// <summary>Yalnızca başarısız komutlar gösterilsin mi?</summary>
+    /// <summary>Should only failed commands be shown?</summary>
     public bool OnlyFailures
     {
         get => _onlyFailures;
@@ -131,24 +132,24 @@ public sealed class CommandLogViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Seçili kaydın ayrıntısı.</summary>
+    /// <summary>The detail of the selected entry.</summary>
     public string SelectedDetails => Selected?.Details ?? string.Empty;
 
     public bool HasSelectedDetails => SelectedDetails.Length > 0;
 
     public bool IsEmpty => Rows.Count == 0;
 
-    /// <summary>Başarısız komut sayısı — süzme kutusunun yanında gösteriliyor.</summary>
+    /// <summary>The number of failed commands — shown next to the filter box.</summary>
     public int FailureCount => All.Count(row => !row.IsSuccess);
 
-    /// <summary>Başarısız komut sayısının çevrilmiş metni (P11-T08).</summary>
+    /// <summary>The translated text of the failed command count (P11-T08).</summary>
     public string FailureCountText => Loc.F("command_log.failed_commands", FailureCount);
 
     public IRelayCommand ClearCommand { get; }
 
     private void OnRecorded(object? sender, GitCommandLogEntry entry)
     {
-        // ⚠️ Bu çağrı arayüz iş parçacığında DEĞİL.
+        // ⚠️ This call is NOT on the UI thread.
         Dispatcher.UIThread.Post(() => Append(entry));
     }
 
@@ -156,7 +157,7 @@ public sealed class CommandLogViewModel : ViewModelBase, IDisposable
     {
         All.Insert(0, new CommandLogRowViewModel { Entry = entry });
 
-        // Sınır olmadan uzun bir oturumda bellek şişer; günlüğün kendisi de halka tampon.
+        // Without a limit, memory swells over a long session; the log itself is a ring buffer too.
         while (All.Count > _capacity)
         {
             All.RemoveAt(All.Count - 1);
@@ -183,8 +184,8 @@ public sealed class CommandLogViewModel : ViewModelBase, IDisposable
             }
         }
 
-        // Süzme sonrası seçim listede kalmayabilir; ayrıntı panelinin eski bir kaydı
-        // göstermeye devam etmesi kullanıcıyı yanıltırdı.
+        // After filtering, the selection may no longer be in the list; the detail panel carrying on
+        // showing an old entry would mislead the user.
         if (Selected is { } selected && !Rows.Contains(selected))
         {
             Selected = null;
@@ -207,7 +208,7 @@ public sealed class CommandLogViewModel : ViewModelBase, IDisposable
     }
 }
 
-/// <summary>Komut günlüğü panelini gösteren taraf (P06-T16).</summary>
+/// <summary>The side that shows the command log panel (P06-T16).</summary>
 public interface ICommandLogPrompt
 {
     Task ShowAsync(CommandLogViewModel model);

@@ -14,19 +14,19 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P04-T12 — Diff içinde gezinme, <b>gerçek tuş olaylarıyla</b>.
+/// P04-T12 — Navigating within the diff, with <b>real key events</b>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// ViewModel testleri komutların doğru çalıştığını gösteriyor; bunlar tuşun o komuta
-/// gerçekten bağlandığını ve <c>ListBox</c>'ın kendi davranışıyla çakışmadığını gösteriyor.
-/// Faz 03'te aynı ayrım üç ayrı hata yakalamıştı.
+/// The ViewModel tests show that the commands work correctly; these show that the key really is bound
+/// to that command and does not collide with <c>ListBox</c>'s own behaviour. The same distinction
+/// caught three separate bugs in Phase 03.
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLDÜ (P04-T12):</b> headless Avalonia'da pano <b>çalışıyor</b>
-/// (<c>HeadlessClipboardImplStub</c>), yani kopyalama gerçekten doğrulanabiliyor. Ama
-/// Avalonia 12'de <c>IClipboard.GetTextAsync</c> <b>yok</b> — okuma
-/// <c>TryGetTextAsync()</c> uzantısıyla yapılıyor.
+/// <b>MEASURED (P04-T12):</b> the clipboard <b>works</b> in headless Avalonia
+/// (<c>HeadlessClipboardImplStub</c>), so copying really can be verified. But in Avalonia 12 there is
+/// <b>no</b> <c>IClipboard.GetTextAsync</c> — reading goes through the <c>TryGetTextAsync()</c>
+/// extension.
 /// </para>
 /// </remarks>
 public class DiffKeyboardTests
@@ -44,12 +44,12 @@ public class DiffKeyboardTests
             View.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "LineSearch");
 
         /// <summary>
-        /// Odağı diff listesine taşır.
+        /// Moves focus to the diff list.
         /// </summary>
         /// <remarks>
-        /// <b>ÖLÇÜLDÜ (Faz 03):</b> <c>ListBox.Focusable</c> <see langword="false"/>'tur;
-        /// odaklanan şey <c>ListBoxItem</c>. Odak taşınmazsa tuş olayları görünümün
-        /// ağacından hiç geçmez.
+        /// <b>MEASURED (Phase 03):</b> <c>ListBox.Focusable</c> is <see langword="false"/>; the thing
+        /// that takes focus is the <c>ListBoxItem</c>. Unless focus is moved, key events never pass
+        /// through the view's tree.
         /// </remarks>
         public void FocusList()
         {
@@ -93,8 +93,8 @@ public class DiffKeyboardTests
 
         DiffView view = new() { DataContext = viewModel };
 
-        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
-        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        // P08-T01: the shortcuts now come from the command registry; without binding it the view runs
+        // without shortcuts (which is exactly what these tests verify).
         view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
 
@@ -124,8 +124,8 @@ public class DiffKeyboardTests
     [AvaloniaFact]
     public async Task Son_degisiklikten_sonra_Alt_asagi_tuketilmez()
     {
-        // Tüketilseydi kullanıcıya sessiz bir duvar olurdu; listenin kendi davranışı
-        // devralabilmeli.
+        // Consuming it would be a silent wall to the user; the list's own behaviour must be able to
+        // take over.
         Harness harness = await CreateAsync();
         harness.FocusList();
 
@@ -192,7 +192,7 @@ public class DiffKeyboardTests
     [AvaloniaFact]
     public async Task Arama_kutusundayken_gezinme_tuslari_metne_karismaz()
     {
-        // Kutuda yazarken Ctrl+↓ satır gezdirirse kullanıcı yazdığı yeri kaybeder.
+        // If Ctrl+↓ moved between lines while typing in the box, the user would lose their place.
         Harness harness = await CreateAsync();
         harness.FocusList();
 
@@ -238,7 +238,7 @@ public class DiffKeyboardTests
     [AvaloniaFact]
     public async Task Yan_yana_modda_da_gezinme_calisir()
     {
-        // İki listenin indeksleri farklı; gezinme aktif moda bakmalı.
+        // The two lists have different indices; navigation has to look at the active mode.
         Harness harness = await CreateAsync();
         harness.ViewModel.ShowSideBySide = true;
         Dispatcher.UIThread.RunJobs();
@@ -258,10 +258,10 @@ public class DiffKeyboardTests
     [AvaloniaFact]
     public async Task Diff_paneli_odagi_KENDILIGINDEN_almaz()
     {
-        // BİLİNÇLİ: commit listesi her seçimde diff'i yeniliyor. Panel odağı kendiliğinden
-        // alsaydı kullanıcı commit listesinde ok tuşlarıyla gezerken odak diff'e kaçar ve
-        // liste gezinmesi sessizce ölürdü. Odak yalnızca kullanıcı tıklayınca/Tab'layınca
-        // gelir — bu yüzden yukarıdaki testler önce `FocusList()` çağırıyor.
+        // DELIBERATE: the commit list refreshes the diff on every selection. Were the panel to take
+        // focus by itself, focus would slip to the diff while the user moved through the commit list
+        // with the arrow keys, and list navigation would silently die. Focus arrives only when the user
+        // clicks or tabs — which is why the tests above call `FocusList()` first.
         Harness harness = await CreateAsync();
 
         harness.Press(PhysicalKey.ArrowDown, RawInputModifiers.Alt);
@@ -271,14 +271,14 @@ public class DiffKeyboardTests
         harness.Window.Close();
     }
 
-    // ---- P05-T11: klavyeyle aralık seçimi ----
+    // ---- P05-T11: selecting a range with the keyboard ----
 
     [AvaloniaFact]
     public async Task Shift_ok_ile_satir_ARALIGI_secilir()
     {
-        // Kısmi staging seçime dayanıyor; fareye zorunlu kalmak akışı kesiyor.
-        // `Shift+↑↓` `ListBox`'ın kendi davranışı — ama `SelectionMode="Multiple"`
-        // tek başına yetmiyor, `Toggle` modunda Shift aralık seçmez. Bu test onu sabitliyor.
+        // Partial staging rests on the selection; being forced onto the mouse interrupts the flow.
+        // `Shift+↑↓` is `ListBox`'s own behaviour — but `SelectionMode="Multiple"` alone is not enough,
+        // as Shift does not select a range in `Toggle` mode. This test pins that down.
         Harness harness = await CreateAsync();
 
         ListBox lines = harness.View.GetControl<ListBox>("DiffLines");
@@ -299,8 +299,8 @@ public class DiffKeyboardTests
     [AvaloniaFact]
     public async Task Secilen_aralik_kismi_stagingde_KULLANILIR()
     {
-        // Ekrandaki seçim ile stage'lenecek satırlar aynı olmalı; ayrışırsa kullanıcı
-        // gördüğünden başka bir şeyi stage'ler ve git bunu kabul eder.
+        // The selection on screen and the lines to be staged must be the same; if they diverge, the
+        // user stages something other than what they see and git accepts it.
         Harness harness = await CreateAsync();
 
         ListBox lines = harness.View.GetControl<ListBox>("DiffLines");

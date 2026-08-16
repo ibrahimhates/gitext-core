@@ -217,7 +217,7 @@ public sealed class PullWriter : IPullWriter
         string? branch = await CurrentBranchAsync(workingDirectory, cancellationToken)
             .ConfigureAwait(false);
 
-        // Sıra ölçümle sabit: dal ayarı en güçlüsü.
+        // The order is fixed by measurement: the branch setting is the strongest.
         if (branch is { Length: > 0 })
         {
             string? branchSetting = await _config
@@ -251,9 +251,9 @@ public sealed class PullWriter : IPullWriter
                 PullStrategy.FastForwardOnly, PullStrategySource.PullFfSetting, pullFf);
         }
 
-        // git'in bu noktadaki davranışı "reddet"; bizimki git'in belgelediği tarihsel
-        // varsayılan olan birleştirme. Kullanıcı ekranda ne olacağını görüyor ve
-        // değiştirebiliyor, yani sessiz bir tercih değil.
+        // git's behaviour at this point is "refuse"; ours is the historical default git documents,
+        // which is merging. The user sees on screen what will happen and can change it, so it is not a
+        // silent choice.
         return new ResolvedPullStrategy(
             PullStrategy.Merge, PullStrategySource.ApplicationDefault, null);
     }
@@ -297,15 +297,15 @@ public sealed class PullWriter : IPullWriter
         }
         catch (GitException error)
         {
-            // Çakışma bir "hata" değil, bir sonuç: kullanıcı dosyaları çözecek. İstisna
-            // olarak yükselirse arayüz ne olduğunu anlatamaz, yalnızca kırmızı bir kutu
-            // gösterir — oysa depo şu an çakışma durumunda ve yapılacak iş belli.
+            // A conflict is not an "error" but an outcome: the user will resolve the files. Raised as
+            // an exception, the UI cannot explain what happened and just shows a red box — whereas the
+            // repository is in a conflict state right now and the work to do is clear.
             //
-            // 🔴 Ayrım `Kind`'a göre YAPILAMIYOR: ÖLÇÜLDÜ, pull'un çakışma metni
-            // (`Auto-merging…`, `CONFLICT (content):`, `Automatic merge failed`) **stdout'a**
-            // yazılıyor; sınıflandırıcı yalnızca stderr'i gördüğü için `Unknown` diyor.
-            // Bu yüzden karar metne değil **duruma** bakılarak veriliyor: birleşmemiş dosya
-            // var mı? Kanal değişse bile bu doğru kalır.
+            // 🔴 The distinction CANNOT be made from `Kind`: MEASURED, pull's conflict text
+            // (`Auto-merging…`, `CONFLICT (content):`, `Automatic merge failed`) is written to
+            // **stdout**; because the classifier only sees stderr it says `Unknown`.
+            // So the decision is made by looking at the **state**, not at the text: are there unmerged
+            // files? That stays right even if the channel changes.
             if (!await HasUnmergedAsync(workingDirectory, cancellationToken).ConfigureAwait(false))
             {
                 throw;
@@ -332,10 +332,10 @@ public sealed class PullWriter : IPullWriter
             Changes = RefSnapshot.Diff(refsBefore, refsAfter),
             HasConflicts = conflicts,
 
-            // 🔴 Ayrım git'in kendi metninden: geri koyma çakışmasında çıkış kodu 0 ve
-            // özel bir açıklama yazılıyor. Bunu ayırmazsak kullanıcıya "birleştirme
-            // çakıştı" derdik — oysa birleştirme başarılı, çakışan onun kendi
-            // kaydedilmemiş değişikliği.
+            // 🔴 The distinction comes from git's own text: on a restore conflict the exit code is 0
+            // and a specific explanation is written. Without separating it we would tell the user
+            // "the merge conflicted" — whereas the merge succeeded and what conflicted is their own
+            // uncommitted change.
             AutoStashConflict = conflicts
                 && standardError.Contains("applying them", StringComparison.Ordinal)
                 && standardError.Contains("stash", StringComparison.OrdinalIgnoreCase),
@@ -351,8 +351,8 @@ public sealed class PullWriter : IPullWriter
             PullStrategy.Rebase => "--rebase",
             PullStrategy.FastForwardOnly => "--ff-only",
 
-            // ⚠️ `--no-rebase` AÇIKÇA yazılıyor. Bayraksız çağrı, ayarsız ve iraksayan
-            // depoda git'i "reddet" moduna sokuyor (ölçüldü, rc=128).
+            // ⚠️ `--no-rebase` is written EXPLICITLY. Called without the flag, git goes into "refuse"
+            // mode in an unconfigured and diverged repository (measured, rc=128).
             _ => "--no-rebase",
         });
 
@@ -394,13 +394,13 @@ public sealed class PullWriter : IPullWriter
     }
 
     /// <summary>
-    /// <c>branch.&lt;dal&gt;.rebase</c> / <c>pull.rebase</c> değerini stratejiye çevirir.
+    /// Turns the <c>branch.&lt;branch&gt;.rebase</c> / <c>pull.rebase</c> value into a strategy.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: git <c>true</c>, <c>false</c>, <c>only</c>, <c>interactive</c>,
-    /// <c>merges</c> değerlerini kabul ediyor. <c>interactive</c> ve <c>merges</c> bizde
-    /// düz rebase'e düşüyor — etkileşimli rebase P07-T10'un konusu ve <b>burada</b>
-    /// açılacak bir editör kullanıcıyı şaşırtırdı.
+    /// MEASURED: git accepts the values <c>true</c>, <c>false</c>, <c>only</c>, <c>interactive</c> and
+    /// <c>merges</c>. <c>interactive</c> and <c>merges</c> fall back to a plain rebase here —
+    /// interactive rebase is P07-T10's subject, and an editor opening <b>here</b> would surprise the
+    /// user.
     /// </remarks>
     private static PullStrategy? ParseRebase(string? value) => value?.ToLowerInvariant() switch
     {
@@ -419,7 +419,7 @@ public sealed class PullWriter : IPullWriter
                 WorkingDirectory = workingDirectory,
                 Arguments = ["symbolic-ref", "-q", "--short", "HEAD"],
 
-                // Ayrık HEAD'de çıkış kodu 1; bu bir hata değil, "dal yok" cevabı (P02-T09).
+                // On a detached HEAD the exit code is 1; that is not an error but the answer "no branch" (P02-T09).
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);
@@ -440,7 +440,7 @@ public sealed class PullWriter : IPullWriter
                 WorkingDirectory = workingDirectory,
                 Arguments = ["rev-parse", "--verify", "--quiet", revision],
 
-                // Doğmamış HEAD: çıkış kodu 1, çıktı boş.
+                // An unborn HEAD: exit code 1, empty output.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);

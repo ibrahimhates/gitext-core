@@ -3,14 +3,14 @@ using System.Globalization;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Uzun süren bir git işleminin ilerleme durumu (P06-T10).
+/// The progress of a long-running git operation (P06-T10).
 /// </summary>
-/// <param name="Phase">Aşama adı (<c>Counting objects</c>, <c>Receiving objects</c>…).</param>
-/// <param name="Percent">Yüzde; git yüzde vermiyorsa <see langword="null"/>.</param>
-/// <param name="Current">İşlenen nesne sayısı.</param>
-/// <param name="Total">Toplam nesne sayısı.</param>
-/// <param name="IsRemote">Aşama uzak sunucuda mı çalışıyor (<c>remote:</c> öneki)?</param>
-/// <param name="IsDone">Aşama tamamlandı mı (<c>, done.</c>)?</param>
+/// <param name="Phase">The phase name (<c>Counting objects</c>, <c>Receiving objects</c>…).</param>
+/// <param name="Percent">The percentage; <see langword="null"/> when git gives none.</param>
+/// <param name="Current">The number of objects processed.</param>
+/// <param name="Total">The total number of objects.</param>
+/// <param name="IsRemote">Is the phase running on the remote server (the <c>remote:</c> prefix)?</param>
+/// <param name="IsDone">Has the phase completed (<c>, done.</c>)?</param>
 public sealed record GitProgress(
     string Phase,
     double? Percent,
@@ -19,7 +19,7 @@ public sealed record GitProgress(
     bool IsRemote = false,
     bool IsDone = false)
 {
-    /// <summary>Kullanıcıya gösterilecek tek satır.</summary>
+    /// <summary>The single line to show the user.</summary>
     public string Describe()
     {
         string prefix = IsRemote ? "Sunucu: " : string.Empty;
@@ -36,25 +36,25 @@ public sealed record GitProgress(
 }
 
 /// <summary>
-/// <c>git --progress</c> satırlarını ayrıştırır (P06-T10).
+/// Parses <c>git --progress</c> lines (P06-T10).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>ÖLÇÜLDÜ — ilerleme satırları <c>\n</c> ile DEĞİL <c>\r</c> ile ayrılıyor.</b>
-/// Gerçek bir klonda 404 taşıma dönüşü (<c>\r</c>) karşılık 7 satır sonu (<c>\n</c>) sayıldı:
-/// git aynı satırın üstüne yazıyor. <c>ReadLineAsync</c> ya da <c>Split('\n')</c> kullanan
-/// bir okuyucu, işlem bitene kadar kullanıcıya <b>hiçbir şey</b> göstermezdi — yani
-/// "ilerleme çubuğu" tam da gerektiği anda boş kalırdı.
+/// 🔴 <b>MEASURED — progress lines are separated by <c>\r</c>, NOT by <c>\n</c>.</b>
+/// In a real clone, 404 carriage returns (<c>\r</c>) were counted against 7 line endings (<c>\n</c>):
+/// git writes over the same line. A reader using <c>ReadLineAsync</c> or <c>Split('\n')</c> would show
+/// the user <b>nothing at all</b> until the operation finished — meaning the "progress bar" would stay
+/// empty at exactly the moment it is needed.
 /// </para>
 /// <para>
-/// Ölçülen biçimler:
+/// The measured formats:
 /// <code>
 /// remote: Counting objects:   5% (207/4125)
 /// remote: Enumerating objects: 16201, done.
 /// Receiving objects:  47% (7615/16201), 4.10 MiB | 8.20 MiB/s
 /// Resolving deltas: 100% (11603/11603), done.
 /// </code>
-/// Satır sonundaki boşluk dolgusu da git'ten geliyor (eski, daha uzun satırı silmek için).
+/// The space padding at the end of a line comes from git too (to erase the older, longer line).
 /// </para>
 /// </remarks>
 public static class GitProgressParser
@@ -62,7 +62,7 @@ public static class GitProgressParser
     private const string RemotePrefix = "remote: ";
 
     /// <summary>
-    /// Tek bir satırı ayrıştırır; ilerleme satırı değilse <see langword="null"/>.
+    /// Parses a single line; <see langword="null"/> when it is not a progress line.
     /// </summary>
     public static GitProgress? Parse(string line)
     {
@@ -97,8 +97,8 @@ public static class GitProgressParser
             return null;
         }
 
-        // `Cloning into 'x'...` gibi satırlar da iki nokta içerebiliyor; ilerleme satırının
-        // ayırt edici işareti sayıyla başlaması.
+        // Lines such as `Cloning into 'x'...` can contain a colon too; what marks a progress line out
+        // is that it starts with a number.
         if (!char.IsAsciiDigit(rest[0]))
         {
             return null;
@@ -144,7 +144,7 @@ public static class GitProgressParser
         }
         else if (percent is null)
         {
-            // `Enumerating objects: 16201, done.` — yüzde yok, yalnızca sayaç.
+            // `Enumerating objects: 16201, done.` — no percentage, only a counter.
             int comma = rest.IndexOf(',');
             ReadOnlySpan<char> number = comma > 0 ? rest[..comma] : rest;
 
@@ -158,11 +158,11 @@ public static class GitProgressParser
     }
 
     /// <summary>
-    /// Bir metin parçasını <b>hem <c>\r</c> hem <c>\n</c></b> ile satırlara böler.
+    /// Splits a chunk of text into lines on <b>both <c>\r</c> and <c>\n</c></b>.
     /// </summary>
     /// <remarks>
-    /// Son parça satır sonu görmediyse geri veriliyor: akış hâlinde okurken bir satır iki
-    /// parçaya bölünebilir ve yarısını ayrıştırmak yanlış yüzde üretirdi.
+    /// The last piece is handed back when it saw no line ending: while reading a stream, a line can be
+    /// split across two chunks, and parsing half of it would produce a wrong percentage.
     /// </remarks>
     public static (IReadOnlyList<string> Lines, string Remainder) SplitLines(string text)
     {
