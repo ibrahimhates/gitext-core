@@ -209,10 +209,31 @@ public class PullWriterTests
         harness.MergeCommitCount.ShouldBe(1);
     }
 
+    /// <summary>
+    /// Counter-evidence: with no configuration, what a bare <c>git pull</c> does on a divergent
+    /// repository is <b>the git version's decision, not ours</b> — which is why
+    /// <see cref="PullWriter"/> always writes an explicit flag.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 MEASURED ON TWO VERSIONS — the behaviour splits at git <b>2.34</b>, and BOTH halves make
+    /// the same case:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <b>2.34 and up</b>: refuses, rc≠0, nine lines of <c>hint:</c>. The insidious part is that
+    ///     the FETCH HAS ALREADY COMPLETED — the repository changed while the user sees "failed".
+    ///   </item>
+    ///   <item>
+    ///     <b>Below 2.34</b> (2.30.2, the ADR-0002 minimum, measured): it only WARNS and merges
+    ///     anyway, rc=0. Worse still: the same command silently produces a merge commit the user
+    ///     never asked for.
+    ///   </item>
+    /// </list>
+    /// The test used to assert the refusal unconditionally and so was red on the <c>min-git</c> CI
+    /// job — the assertion was written against one git, not against git.
+    /// </remarks>
     [Fact]
-    public async Task KARSI_KANIT_ciplak_git_pull_ayarsiz_iraksayan_depoda_REDDEDIYOR()
+    public async Task KARSI_KANIT_ciplak_git_pull_ayarsiz_iraksayan_depoda_KONTROLU_ELDEN_ALIYOR()
     {
-        // This test proves why `PullWriter` always passes an explicit flag.
         // ⚠️ In a separate repository: if the bare command did run it would change the repository
         // and break the setup of the actual test.
         using Harness harness = await CreateAsync();
@@ -220,12 +241,23 @@ public class PullWriterTests
         harness.LocalCommit("a");
         harness.RemoteCommit("s2\n");
 
+        GitExecutable executable = await GitExecutable.LocateAsync(cancellationToken: Ct);
+
         (int exitCode, string error) = harness.Local.TryGit("pull");
 
-        exitCode.ShouldNotBe(0);
-        error.ShouldContain("divergent branches");
+        if (executable.Version >= new GitVersion(2, 34, 0))
+        {
+            exitCode.ShouldNotBe(0);
+            error.ShouldContain("divergent branches");
+        }
+        else
+        {
+            exitCode.ShouldBe(0);
+            error.ShouldContain("hint:");
+            harness.MergeCommitCount.ShouldBe(1, "eski git uyarıp yine de birleştiriyor");
+        }
 
-        // And the truly insidious part of the measurement: despite refusing, the FETCH has
+        // And the truly insidious part of the measurement: whichever branch was taken, the FETCH has
         // completed.
         harness.Local.Git("rev-parse", "origin/main").Trim()
             .ShouldBe(harness.Other.Git("rev-parse", "HEAD").Trim());
@@ -307,6 +339,40 @@ public class PullWriterTests
 
         harness.Local.Git("reset", "--hard", "-q");
         harness.Local.Git("stash", "drop");
+    }
+
+    /// <summary>
+    /// 🔴 Regression: an OLDER stash of the user's must not be mistaken for an autostash conflict.
+    /// </summary>
+    /// <remarks>
+    /// The detection reads the state, not git's message ("does a stash exist after the pull?"), and
+    /// the trap that comes with that is exactly this: someone with a stash already sitting there
+    /// runs into an ordinary merge conflict and gets told "your stashed changes conflicted" — sent
+    /// after the wrong files. What is compared is therefore the stash ref taken BEFORE the pull.
+    /// </remarks>
+    [Fact]
+    public async Task Onceden_var_olan_stash_AUTOSTASH_cakismasi_sanilmaz()
+    {
+        using Harness harness = await CreateAsync();
+
+        // A stash from earlier that has nothing to do with this pull.
+        harness.Local.WriteFile("baska.txt", "eski is\n");
+        harness.Local.Git("add", "-A");
+        harness.Local.Git("stash", "push", "-m", "eski");
+
+        harness.Local.WriteFile("f.txt", "YEREL\n");
+        harness.Local.Git("commit", "-am", "yerel-cakisma");
+        harness.RemoteCommit("UZAK\n");
+
+        PullResult result = await harness.Writer.PullAsync(
+            harness.Path,
+            new PullOptions { AutoStash = true },
+            Ct);
+
+        result.HasConflicts.ShouldBeTrue();
+        result.AutoStashConflict.ShouldBeFalse("çakışan kullanıcının stash'i değil, birleştirmenin kendisi");
+
+        harness.Local.Git("merge", "--abort");
     }
 
     [Fact]

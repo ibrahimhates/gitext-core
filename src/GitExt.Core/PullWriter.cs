@@ -276,7 +276,12 @@ public sealed class PullWriter : IPullWriter
             await RefSnapshot.ReadAsync(_runner, workingDirectory, cancellationToken)
                 .ConfigureAwait(false);
 
-        string standardError;
+        // Only asked for when autostash is actually in play — an extra process on every pull would
+        // cost more than the answer is worth. See AutoStashRemainsAsync for what it is compared to.
+        string stashBefore = options.AutoStash
+            ? await RevisionAsync(workingDirectory, "refs/stash", cancellationToken)
+                .ConfigureAwait(false)
+            : string.Empty;
 
         try
         {
@@ -284,7 +289,7 @@ public sealed class PullWriter : IPullWriter
                 ? AskPassSession.Create(credentials)
                 : null;
 
-            GitResult result = await _writer
+            await _writer
                 .RunWithEnvironmentAsync(
                     workingDirectory,
                     BuildArguments(options, strategy.Strategy),
@@ -292,10 +297,8 @@ public sealed class PullWriter : IPullWriter
                     options.Progress,
                     cancellationToken)
                 .ConfigureAwait(false);
-
-            standardError = result.StandardError;
         }
-        catch (GitException error)
+        catch (GitException)
         {
             // A conflict is not an "error" but an outcome: the user will resolve the files. Raised as
             // an exception, the UI cannot explain what happened and just shows a red box — whereas the
@@ -310,8 +313,6 @@ public sealed class PullWriter : IPullWriter
             {
                 throw;
             }
-
-            standardError = error.StandardError;
         }
 
         string after = await RevisionAsync(workingDirectory, "HEAD", cancellationToken)
@@ -332,13 +333,13 @@ public sealed class PullWriter : IPullWriter
             Changes = RefSnapshot.Diff(refsBefore, refsAfter),
             HasConflicts = conflicts,
 
-            // 🔴 The distinction comes from git's own text: on a restore conflict the exit code is 0
-            // and a specific explanation is written. Without separating it we would tell the user
-            // "the merge conflicted" — whereas the merge succeeded and what conflicted is their own
-            // uncommitted change.
+            // The distinction has to be made: what the user must do differs. The pull itself
+            // succeeded; what needs resolving is their own uncommitted change, and it is still in
+            // the stash.
             AutoStashConflict = conflicts
-                && standardError.Contains("applying them", StringComparison.Ordinal)
-                && standardError.Contains("stash", StringComparison.OrdinalIgnoreCase),
+                && options.AutoStash
+                && await AutoStashRemainsAsync(workingDirectory, stashBefore, cancellationToken)
+                    .ConfigureAwait(false),
         };
     }
 
@@ -446,6 +447,41 @@ public sealed class PullWriter : IPullWriter
             cancellationToken).ConfigureAwait(false);
 
         return result.GetStandardOutputText().Trim();
+    }
+
+    /// <summary>
+    /// Did the autostash entry survive the pull — i.e. did putting it back conflict?
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 MEASURED — <c>--autostash</c> DROPS the entry it created once it has been put back
+    /// cleanly (<c>refs/stash</c> goes back to what it was), and LEAVES IT IN PLACE when putting it
+    /// back conflicts. So the state answers the question exactly: the stash ref moved and still
+    /// exists.
+    /// </para>
+    /// <para>
+    /// 🔴 This used to be read out of git's message ("…however applying them resulted in
+    /// conflicts…"), and that WORDING CHANGES BETWEEN GIT VERSIONS: older builds write "Applying
+    /// autostash resulted in conflicts." instead, so on a CI runner with an older git the flag came
+    /// back false and the user would have been told "the merge conflicted" — pointed at the wrong
+    /// files entirely. It is also unusable under a non-English locale. The state is version- and
+    /// language-independent.
+    /// </para>
+    /// <para>
+    /// A stash entry left behind by an EARLIER pull does not produce a false positive: what is
+    /// compared is the ref read before this pull, not merely whether a stash exists.
+    /// </para>
+    /// </remarks>
+    private async Task<bool> AutoStashRemainsAsync(
+        string workingDirectory,
+        string stashBefore,
+        CancellationToken cancellationToken)
+    {
+        string stashAfter = await RevisionAsync(workingDirectory, "refs/stash", cancellationToken)
+            .ConfigureAwait(false);
+
+        return stashAfter.Length > 0
+               && !string.Equals(stashAfter, stashBefore, StringComparison.Ordinal);
     }
 
     private async Task<bool> HasUnmergedAsync(
