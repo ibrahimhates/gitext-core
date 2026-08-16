@@ -4,47 +4,47 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Harici bir birleştirme aracı (P07-T04).
+/// An external merge tool (P07-T04).
 /// </summary>
 public sealed record MergeTool
 {
-    /// <summary>git'in tanıdığı ad — <c>meld</c>, <c>kdiff3</c>, <c>vscode</c>…</summary>
+    /// <summary>The name git knows it by — <c>meld</c>, <c>kdiff3</c>, <c>vscode</c>…</summary>
     public required string Name { get; init; }
 
-    /// <summary>git'in yazdığı açıklama.</summary>
+    /// <summary>The description git prints.</summary>
     public string Description { get; init; } = string.Empty;
 
     /// <summary>
-    /// Araç bu makinede <b>kurulu</b> mu?
+    /// Is the tool <b>installed</b> on this machine?
     /// </summary>
     /// <remarks>
-    /// <c>git mergetool --tool-help</c> iki liste basıyor: kullanılabilecekler ve
-    /// <i>"valid, but not currently available"</i> olanlar. Kurulu olmayanı seçtirmek
-    /// kullanıcıyı çalışmayan bir düğmeye tıklatırdı.
+    /// <c>git mergetool --tool-help</c> prints two lists: the ones that can be used and the ones that
+    /// are <i>"valid, but not currently available"</i>. Letting the user pick one that is not
+    /// installed would have them clicking a button that does not work.
     /// </remarks>
     public bool IsAvailable { get; init; }
 }
 
-/// <summary>Harici birleştirme aracı entegrasyonu (P07-T04).</summary>
+/// <summary>External merge tool integration (P07-T04).</summary>
 public interface IMergeToolRunner
 {
-    /// <summary>Kullanıcının <c>merge.tool</c> ayarı; yoksa <see langword="null"/>.</summary>
+    /// <summary>The user's <c>merge.tool</c> setting; <see langword="null"/> when absent.</summary>
     Task<string?> GetConfiguredToolAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
-    /// <summary>git'in tanıdığı araçları listeler.</summary>
+    /// <summary>Lists the tools git knows about.</summary>
     Task<IReadOnlyList<MergeTool>> ListToolsAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Çakışan bir dosya için harici aracı çalıştırır.
+    /// Runs the external tool for a conflicting file.
     /// </summary>
-    /// <param name="workingDirectory">Deponun çalışma dizini.</param>
-    /// <param name="path">Çakışan dosya; <see langword="null"/> ise tüm çakışanlar.</param>
-    /// <param name="tool">Kullanılacak araç; <see langword="null"/> ise yapılandırılmış olan.</param>
-    /// <param name="cancellationToken">İptal belirteci.</param>
+    /// <param name="workingDirectory">The repository's working directory.</param>
+    /// <param name="path">The conflicting file; when <see langword="null"/>, all conflicting ones.</param>
+    /// <param name="tool">The tool to use; when <see langword="null"/>, the configured one.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<MergeToolResult> RunAsync(
         string workingDirectory,
         RepositoryPath? path = null,
@@ -52,43 +52,43 @@ public interface IMergeToolRunner
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>Harici aracın sonucu (P07-T04).</summary>
+/// <summary>The external tool's result (P07-T04).</summary>
 public sealed record MergeToolResult
 {
-    /// <summary>Araç çalıştıktan sonra dosya çözülmüş sayıldı mı?</summary>
+    /// <summary>Did the file count as resolved after the tool ran?</summary>
     public required bool IsResolved { get; init; }
 
-    /// <summary>Aracın bıraktığı çıktı (kullanıcıya gösterilecek).</summary>
+    /// <summary>The output the tool left behind (to be shown to the user).</summary>
     public string Output { get; init; } = string.Empty;
 
     /// <summary>
-    /// Aracın geride bıraktığı <c>.orig</c> yedekleri.
+    /// The <c>.orig</c> backups the tool left behind.
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>ÖLÇÜLDÜ — <c>git mergetool</c> her dosya için bir <c>&lt;ad&gt;.orig</c>
-    /// bırakıyor</b> ve bunlar takip edilmeyen dosya olarak çalışma ağacında kalıyor.
-    /// Kullanıcı bunu beklemiyorsa "nereden çıktı bu dosyalar" diye sorar; listelenip
-    /// silinmesi teklif ediliyor. (<c>mergetool.keepBackup=false</c> ayarı da bunu kapatır
-    /// ama kullanıcının yapılandırmasını <b>biz</b> değiştirmiyoruz.)
+    /// ⚠️ <b>MEASURED — <c>git mergetool</c> leaves a <c>&lt;name&gt;.orig</c> for every file</b> and
+    /// they stay in the working tree as untracked files. A user not expecting this asks "where did
+    /// these files come from"; they are listed and their deletion is offered.
+    /// (The <c>mergetool.keepBackup=false</c> setting also turns this off, but <b>we</b> do not change
+    /// the user's configuration.)
     /// </remarks>
     public IReadOnlyList<RepositoryPath> BackupFiles { get; init; } = [];
 }
 
 /// <summary>
-/// <c>git mergetool</c> sarmalayıcısı (P07-T04).
+/// The <c>git mergetool</c> wrapper (P07-T04).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Plandaki gerekçe: <i>"Yerleşik görünümü mükemmelleştirmeye çalışmak yerine, kullanıcının
-/// zaten kurduğu aracı desteklemek daha yüksek getirili."</i> Yerleşik üç yollu görünüm
-/// (P07-T03) basit çakışmalar için, harici araç karmaşık olanlar için.
+/// The reasoning from the plan: <i>"Supporting the tool the user has already installed pays off more
+/// than trying to perfect the built-in view."</i> The built-in three-way view (P07-T03) is for simple
+/// conflicts, the external tool for complex ones.
 /// </para>
 /// <para>
-/// <c>--no-prompt</c> veriliyor: <c>git mergetool</c> normalde her dosya için
-/// <i>"Hit return to start merge resolution tool"</i> diye stdin'den okuyor.
-/// ℹ️ <b>ÖLÇÜLDÜ — bu bizim durumumuzda kilitlenmeye yol açmıyor:</b> stdin kapalıyken
-/// git EOF okuyup devam ediyor (rc=0, 0 sn). Yani bayrak bir <i>düzeltme</i> değil,
-/// bu davranışa bağımlı kalmama tercihi — ve gereksiz istemi çıktıdan uzak tutuyor.
+/// <c>--no-prompt</c> is passed: <c>git mergetool</c> normally reads from stdin for every file with
+/// <i>"Hit return to start merge resolution tool"</i>.
+/// ℹ️ <b>MEASURED — this does not deadlock in our case:</b> with stdin closed, git reads EOF and
+/// carries on (rc=0, 0 s). So the flag is not a <i>fix</i> but a choice not to depend on that
+/// behaviour — and it keeps the needless prompt out of the output.
 /// </para>
 /// </remarks>
 public sealed class MergeToolRunner : IMergeToolRunner
@@ -119,7 +119,7 @@ public sealed class MergeToolRunner : IMergeToolRunner
                 WorkingDirectory = workingDirectory,
                 Arguments = ["config", "--get", "merge.tool"],
 
-                // Ayar yoksa `git config --get` çıkış kodu 1 veriyor; bu bir hata değil.
+                // With the setting absent, `git config --get` gives exit code 1; that is not an error.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);
@@ -142,12 +142,12 @@ public sealed class MergeToolRunner : IMergeToolRunner
     }
 
     /// <summary>
-    /// <c>git mergetool --tool-help</c> çıktısını ayrıştırır.
+    /// Parses the <c>git mergetool --tool-help</c> output.
     /// </summary>
     /// <remarks>
-    /// Çıktı iki bölüm: önce kullanılabilecekler, sonra <i>"valid, but not currently
-    /// available"</i> başlığından sonrakiler. Araç satırları sekmeyle girintili ve
-    /// <c>&lt;ad&gt;&lt;boşluklar&gt;&lt;açıklama&gt;</c> biçiminde.
+    /// The output has two sections: first the usable ones, then whatever follows the
+    /// <i>"valid, but not currently available"</i> heading. Tool lines are indented with a tab and
+    /// take the form <c>&lt;name&gt;&lt;spaces&gt;&lt;description&gt;</c>.
     /// </remarks>
     internal static IReadOnlyList<MergeTool> ParseToolHelp(string output)
     {
@@ -164,7 +164,7 @@ public sealed class MergeToolRunner : IMergeToolRunner
                 continue;
             }
 
-            // Araç satırları girintili; başlıklar değil.
+            // Tool lines are indented; headings are not.
             if (line.Length == 0 || (line[0] != '\t' && line[0] != ' '))
             {
                 continue;
@@ -220,8 +220,8 @@ public sealed class MergeToolRunner : IMergeToolRunner
             GitCommand.Create(workingDirectory, "diff", "--name-only", "--diff-filter=U", "-z"),
             cancellationToken).ConfigureAwait(false);
 
-        // Aracın çıkış kodu değil, INDEX'in durumu karar veriyor: bazı araçlar kullanıcı
-        // kaydetmeden kapatsa da 0 dönüyor (`trustExitCode` varsayılan olarak kapalı).
+        // The INDEX's state decides, not the tool's exit code: some tools return 0 even when the user
+        // closes them without saving (`trustExitCode` is off by default).
         bool resolved = conflicts.IsSuccess
             && conflicts.GetStandardOutputText().Split('\0', StringSplitOptions.RemoveEmptyEntries).Length == 0;
 
@@ -233,7 +233,7 @@ public sealed class MergeToolRunner : IMergeToolRunner
         };
     }
 
-    /// <summary>Aracın bıraktığı <c>.orig</c> dosyalarını bulur.</summary>
+    /// <summary>Finds the <c>.orig</c> files the tool left behind.</summary>
     private async Task<IReadOnlyList<RepositoryPath>> FindBackupsAsync(
         string workingDirectory,
         CancellationToken cancellationToken)

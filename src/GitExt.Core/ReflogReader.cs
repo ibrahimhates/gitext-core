@@ -4,16 +4,16 @@ using GitExt.Core.Git;
 namespace GitExt.Core;
 
 /// <summary>
-/// Reflog girdisinin ne yüzünden oluştuğu (P07-T14).
+/// What caused a reflog entry to be created (P07-T14).
 /// </summary>
 /// <remarks>
-/// git bunu ayrı bir alan olarak vermiyor; <c>%gs</c> metninin <b>ilk kelimesinden</b>
-/// çıkarılıyor (<c>commit:</c>, <c>reset:</c>, <c>rebase (finish):</c> …). Metin
-/// yerelleştirilmiyor — git reflog eylem adlarını çevirmiyor (ölçüldü).
+/// git does not provide this as a separate field; it is derived from the <b>first word</b> of the
+/// <c>%gs</c> text (<c>commit:</c>, <c>reset:</c>, <c>rebase (finish):</c> …). The text is not
+/// localised — git does not translate reflog action names (measured).
 /// </remarks>
 public enum ReflogAction
 {
-    /// <summary>Tanınmayan ya da yeni bir eylem.</summary>
+    /// <summary>An unrecognised or new action.</summary>
     Other,
 
     Commit,
@@ -35,16 +35,16 @@ public enum ReflogAction
 /// </summary>
 public sealed record ReflogEntry
 {
-    /// <summary>Girdinin işaret ettiği commit (tam SHA).</summary>
+    /// <summary>The commit the entry points at (full SHA).</summary>
     public required string ObjectId { get; init; }
 
-    /// <summary>Seçici — <c>HEAD@{3}</c> ya da <c>refs/heads/main@{2}</c>.</summary>
+    /// <summary>The selector — <c>HEAD@{3}</c> or <c>refs/heads/main@{2}</c>.</summary>
     public required string Selector { get; init; }
 
-    /// <summary>Ham eylem metni (<c>%gs</c>), örn. <c>reset: moving to HEAD~1</c>.</summary>
+    /// <summary>The raw action text (<c>%gs</c>), e.g. <c>reset: moving to HEAD~1</c>.</summary>
     public required string Message { get; init; }
 
-    /// <summary>Girdinin ait olduğu commit'in konusu (<c>%s</c>).</summary>
+    /// <summary>The subject of the commit the entry belongs to (<c>%s</c>).</summary>
     public string Subject { get; init; } = string.Empty;
 
     public DateTimeOffset Timestamp { get; init; }
@@ -54,25 +54,26 @@ public sealed record ReflogEntry
     public ReflogAction Action { get; init; }
 
     /// <summary>
-    /// Bu girdi <b>şu anki</b> HEAD'den erişilemeyen bir commit'i mi gösteriyor?
+    /// Does this entry point at a commit unreachable from the <b>current</b> HEAD?
     /// </summary>
     /// <remarks>
-    /// Reflog tarayıcısının asıl işi bu: "kaybolmuş" commit'i bulmak. Değer okuyucu
-    /// tarafından doldurulur; <see cref="ReflogReader"/> bunu ayrı bir sorguyla hesaplar.
+    /// This is what the reflog browser is actually for: finding the "lost" commit. The value is
+    /// filled in by the reader; <see cref="ReflogReader"/> computes it with a separate query.
     /// </remarks>
     public bool IsUnreachable { get; init; }
 
-    /// <summary>Kısaltılmış SHA — listede gösterilen.</summary>
+    /// <summary>The abbreviated SHA — the one shown in the list.</summary>
     public string ShortId => ObjectId.Length >= 7 ? ObjectId[..7] : ObjectId;
 
     /// <summary>
-    /// Bu girdiye dönmek için çalıştırılacak komut.
+    /// The command to run in order to return to this entry.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Seçici (<c>HEAD@{3}</c>) <b>değil</b> SHA yazılıyor. Seçici <b>kayan</b> bir
-    /// referans: yeni bir işlem reflog'a girdi eklediğinde <c>HEAD@{3}</c> bambaşka bir
-    /// commit'i gösterir. Kullanıcı komutu kopyalayıp beş dakika sonra çalıştırırsa
-    /// yanlış yere dönerdi. (P06-T07'de <c>ORIG_HEAD</c> ile aynı ders.)
+    /// ⚠️ The SHA is written, <b>not</b> the selector (<c>HEAD@{3}</c>). The selector is a
+    /// <b>sliding</b> reference: as soon as another operation adds an entry to the reflog,
+    /// <c>HEAD@{3}</c> points at an entirely different commit. If the user copied the command and
+    /// ran it five minutes later they would go back to the wrong place. (The same lesson as
+    /// <c>ORIG_HEAD</c> in P06-T07.)
     /// </remarks>
     public string RecoveryCommand => $"git reset --hard {ObjectId}";
 }
@@ -81,14 +82,14 @@ public sealed record ReflogEntry
 public interface IReflogReader
 {
     /// <summary>
-    /// Reflog girdilerini okur.
+    /// Reads the reflog entries.
     /// </summary>
-    /// <param name="workingDirectory">Deponun çalışma dizini.</param>
+    /// <param name="workingDirectory">The repository's working directory.</param>
     /// <param name="reference">
-    /// <c>HEAD</c>, bir dal adı, ya da tümü için <see langword="null"/>.
+    /// <c>HEAD</c>, a branch name, or <see langword="null"/> for all of them.
     /// </param>
-    /// <param name="limit">En fazla kaç girdi okunacağı.</param>
-    /// <param name="cancellationToken">İptal belirteci.</param>
+    /// <param name="limit">How many entries to read at most.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<IReadOnlyList<ReflogEntry>> ReadAsync(
         string workingDirectory,
         string? reference = null,
@@ -97,38 +98,38 @@ public interface IReflogReader
 }
 
 /// <summary>
-/// <c>git reflog</c> okuyucusu (P07-T14).
+/// The <c>git reflog</c> reader (P07-T14).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Bu sınıf fazın sigortası.</b> Faz 07'deki her işlem geçmişi yeniden yazıyor;
-/// kullanıcı bir şeyi kaybettiğinde onu buradan geri alacak. Plan bu yüzden "faz içinde
-/// erken yapılmalı, sonuna bırakılmamalı" diyor.
+/// <b>This class is the phase's insurance policy.</b> Every operation in Phase 07 rewrites
+/// history; when the user loses something, this is where they will get it back. That is why the
+/// plan says it "must be done early in the phase, not left to the end".
 /// </para>
 /// <para>
-/// 🔴 <b>ÖLÇÜLDÜ — TAB ayırıcı güvenli değil.</b> Commit mesajı sekme içerebiliyor ve
-/// <c>%s</c> onu <b>olduğu gibi</b> basıyor; sekmeyle bölen bir ayrıştırıcı fazladan alan
-/// görür ve satırı kaydırır. (İlginç biçimde <c>%gs</c> sekmeyi boşluğa çeviriyor, <c>%s</c>
-/// çevirmiyor — yani "bir alan güvenli" diğerini garanti etmiyor.) Bu yüzden alanlar
-/// <b>NUL</b> ile ayrılıyor; NUL bir commit mesajında bulunamaz.
+/// 🔴 <b>MEASURED — a TAB separator is not safe.</b> A commit message can contain a tab and
+/// <c>%s</c> prints it <b>as is</b>; a parser splitting on tabs sees an extra field and shifts the
+/// row. (Curiously <c>%gs</c> turns a tab into a space while <c>%s</c> does not — so "one field is
+/// safe" guarantees nothing about the other.) The fields are therefore separated by <b>NUL</b>,
+/// which cannot occur in a commit message.
 /// </para>
 /// <para>
-/// ℹ️ <b>ÖLÇÜLDÜ — <c>git fsck</c> gerekmiyor.</b> <c>reset --hard</c> ile "kaybolan"
-/// commit reflog'da duruyor; erişilemeyen nesneleri taramaya gerek yok.
+/// ℹ️ <b>MEASURED — <c>git fsck</c> is not needed.</b> A commit "lost" to <c>reset --hard</c> is
+/// still in the reflog; there is no need to scan for unreachable objects.
 /// </para>
 /// </remarks>
 public sealed class ReflogReader : IReflogReader
 {
-    /// <summary>Alan ayırıcı — NUL.</summary>
+    /// <summary>The field separator — NUL.</summary>
     private const char FieldSeparator = '\0';
 
-    /// <summary>Kayıt ayırıcı — ASCII Record Separator (0x1e).</summary>
+    /// <summary>The record separator — ASCII Record Separator (0x1e).</summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — NUL ÇİFTİ kayıt ayracı olarak GÜVENLİ DEĞİL.</b> Bir alan boş
-    /// olduğunda (boş commit mesajı, boş etiketleyici) iki NUL yan yana geliyor ve ayraçtan
-    /// ayırt edilemiyor; kayıt ortadan ikiye bölünüyordu. Ayraç <c>%x1e</c> (ASCII Record
-    /// Separator) — git bunu <c>log</c> tabanlı komutlarda destekliyor ve alanların
-    /// içinde bulunamaz.
+    /// 🔴 <b>MEASURED — a NUL PAIR is NOT SAFE as a record separator.</b> When a field is empty (an
+    /// empty commit message, an empty tagger) two NULs end up side by side and cannot be told from
+    /// the separator; the record was being split in two. The separator is <c>%x1e</c> (ASCII Record
+    /// Separator) — git supports it in <c>log</c>-based commands and it cannot occur inside the
+    /// fields.
     /// </remarks>
     private const char RecordSeparator = '\u001e';
 
@@ -161,8 +162,8 @@ public sealed class ReflogReader : IReflogReader
 
         if (reference is { Length: > 0 } target)
         {
-            // `--` ayracı yok: `reflog show` yol almıyor, ama `-` ile başlayan bir dal adı
-            // bayrak sanılırdı. `--all` ise ayrı bir bayrak, ref olarak geçemez.
+            // No `--` separator: `reflog show` takes no path, but a branch name starting with `-`
+            // would be taken for a flag. `--all` is a flag in its own right and cannot pass as a ref.
             arguments.Add(target);
         }
         else
@@ -174,7 +175,7 @@ public sealed class ReflogReader : IReflogReader
             GitCommand.Create(workingDirectory, [.. arguments]),
             cancellationToken).ConfigureAwait(false);
 
-        // Reflog'u olmayan bir depo (henüz commit yok) hata veriyor; bu boş liste demek.
+        // A repository with no reflog (no commits yet) returns an error; that means an empty list.
         if (!result.IsSuccess)
         {
             return [];
@@ -186,15 +187,15 @@ public sealed class ReflogReader : IReflogReader
             .ConfigureAwait(false);
     }
 
-    /// <summary>NUL ayrılmış reflog çıktısını ayrıştırır.</summary>
+    /// <summary>Parses the NUL-separated reflog output.</summary>
     internal static IReadOnlyList<ReflogEntry> Parse(string output)
     {
         List<ReflogEntry> entries = [];
 
         foreach (string record in output.Split(RecordSeparator, StringSplitOptions.RemoveEmptyEntries))
         {
-            // git her kaydın sonuna bir satır sonu ekliyor; kırpılmazsa SON alana
-            // (yazar adına) yapışır.
+            // git appends a line ending to every record; unless it is trimmed it sticks to the
+            // LAST field (the author name).
             string trimmed = record.Trim('\n', '\r');
 
             if (trimmed.Length == 0)
@@ -204,7 +205,7 @@ public sealed class ReflogReader : IReflogReader
 
             string[] fields = trimmed.Split(FieldSeparator);
 
-            // Alan sayısı tutmuyorsa satır bizim değil; uydurmak yerine atlanıyor.
+            // If the field count does not match, the line is not ours; rather than invent one, it is skipped.
             if (fields.Length < 6 || fields[0].Length == 0)
             {
                 continue;
@@ -231,19 +232,19 @@ public sealed class ReflogReader : IReflogReader
             : default;
 
     /// <summary>
-    /// <c>%gs</c> metninden eylemi çıkarır.
+    /// Extracts the action from the <c>%gs</c> text.
     /// </summary>
     /// <remarks>
-    /// Metin <c>commit: …</c>, <c>commit (amend): …</c>, <c>rebase (finish): …</c> gibi
-    /// biçimlerde geliyor. İlk iki nokta üst üsteye kadarki kısım alınıp içindeki parantezli
-    /// ek de dikkate alınıyor.
+    /// The text arrives in forms like <c>commit: …</c>, <c>commit (amend): …</c>,
+    /// <c>rebase (finish): …</c>. The part up to the first colon is taken, and the parenthesised
+    /// suffix inside it is taken into account as well.
     /// </remarks>
     internal static ReflogAction ClassifyAction(string message)
     {
         int colon = message.IndexOf(':', StringComparison.Ordinal);
         ReadOnlySpan<char> head = colon < 0 ? message : message.AsSpan(0, colon);
 
-        // `commit (amend)` ve `commit (initial)` ayrımı: amend geçmişi değiştiriyor.
+        // Telling `commit (amend)` from `commit (initial)`: amend rewrites history.
         if (head.Contains("amend", StringComparison.OrdinalIgnoreCase))
         {
             return ReflogAction.Amend;
@@ -275,20 +276,20 @@ public sealed class ReflogReader : IReflogReader
     }
 
     /// <summary>
-    /// Hangi girdilerin <b>şu anki</b> geçmişten erişilemez olduğunu işaretler.
+    /// Marks which entries are unreachable from the <b>current</b> history.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Adaylar <b>stdin</b> ile veriliyor ve <c>--not --all</c> ile eleniyor: git yalnızca
-    /// hiçbir ref'ten erişilemeyen commit'leri geri yazıyor. Girdi başına bir
-    /// <c>merge-base --is-ancestor</c> çalıştırmak yüzlerce süreç açardı.
+    /// The candidates are given on <b>stdin</b> and filtered with <c>--not --all</c>: git writes
+    /// back only the commits unreachable from any ref. Running one
+    /// <c>merge-base --is-ancestor</c> per entry would open hundreds of processes.
     /// </para>
     /// <para>
-    /// 🔴 <b>İlk yazımda <c>rev-list --all --no-walk=unsorted HEAD</c> kullanılmıştı ve
-    /// YANLIŞTI:</b> <c>--no-walk</c> geçmişi <b>gezmiyor</b>, yalnızca uçları basıyor.
-    /// Üç commit'lik bir depoda tek satır döndü; sonuçta ilk commit'ten sonraki <b>her</b>
-    /// eski reflog girdisi "kayıp commit" diye işaretlenirdi. Ölçümle yakalandı, testle
-    /// sabitlendi.
+    /// 🔴 <b>The first version used <c>rev-list --all --no-walk=unsorted HEAD</c> and it was
+    /// WRONG:</b> <c>--no-walk</c> <b>does not walk</b> the history, it only prints the tips. In a
+    /// three-commit repository it returned a single line; the upshot was that <b>every</b> older
+    /// reflog entry after the first commit would be marked "lost commit". Caught by measurement,
+    /// pinned down by a test.
     /// </para>
     /// </remarks>
     private async Task<IReadOnlyList<ReflogEntry>> MarkUnreachableAsync(
@@ -316,8 +317,8 @@ public sealed class ReflogReader : IReflogReader
 
         if (!result.IsSuccess)
         {
-            // Belirleyemiyorsak "kayıp" DEMİYORUZ: yanlış bir kayıp uyarısı, kullanıcıyı
-            // olmayan bir sorunu kovalamaya iter.
+            // If we cannot determine it, we DO NOT SAY "lost": a false lost-commit warning sends the
+            // user chasing a problem that does not exist.
             return entries;
         }
 

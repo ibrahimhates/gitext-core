@@ -4,22 +4,22 @@ using GitExt.Core.Git;
 
 namespace GitExt.Core;
 
-/// <summary>Kutuya yüklenen mesajın nereden geldiği (P05-T13).</summary>
+/// <summary>Where the message loaded into the box came from (P05-T13).</summary>
 public enum CommitMessageSource
 {
-    /// <summary>Yüklenecek bir şey yok.</summary>
+    /// <summary>There is nothing to load.</summary>
     None,
 
-    /// <summary>Kullanıcının yarım bıraktığı taslak.</summary>
+    /// <summary>A draft the user left half-finished.</summary>
     Draft,
 
     /// <summary>
-    /// git'in hazırladığı mesaj (<c>.git/MERGE_MSG</c>): merge, cherry-pick, revert.
+    /// The message git prepared (<c>.git/MERGE_MSG</c>): merge, cherry-pick, revert.
     /// </summary>
     Pending,
 }
 
-/// <summary>Kutuya yüklenecek mesaj ve kaynağı.</summary>
+/// <summary>The message to load into the box, and where it came from.</summary>
 public sealed record PendingCommitMessage(string Text, CommitMessageSource Source)
 {
     public static PendingCommitMessage None { get; } = new(string.Empty, CommitMessageSource.None);
@@ -28,41 +28,43 @@ public sealed record PendingCommitMessage(string Text, CommitMessageSource Sourc
 }
 
 /// <summary>
-/// Yarım kalmış commit mesajını uygulama kapansa bile saklar (P05-T13).
+/// Keeps a half-finished commit message even if the application is closed (P05-T13).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Taslak <b>depo dizininde</b> tutuluyor (<c>.git/GITEXT_COMMITMESSAGE</c>), uygulamanın
-/// ayar dosyasında değil: mesaj o deponun o an yapılmakta olan işine ait. Ayarlarda tutmak,
-/// depo silindiğinde arkada yetim bir metin bırakır ve iki worktree'yi birbirine karıştırırdı.
+/// The draft is kept <b>in the repository directory</b> (<c>.git/GITEXT_COMMITMESSAGE</c>), not in
+/// the application's settings file: the message belongs to the work being done in that repository at
+/// that moment. Keeping it in the settings would leave an orphaned text behind when the repository
+/// is deleted, and would mix up two worktrees.
 /// </para>
 /// <para>
-/// ⚠️ <b>Git dizini, ortak dizin DEĞİL</b> (P02-T06'daki ayrım): <c>MERGE_MSG</c> ve index
-/// worktree başına ayrı, ref'ler ve config ortak. Taslağı ortak dizine koymak, iki worktree'de
-/// aynı anda çalışan kullanıcının mesajlarını birbirine karıştırırdı.
+/// ⚠️ <b>The git directory, NOT the common directory</b> (the P02-T06 distinction):
+/// <c>MERGE_MSG</c> and the index are per worktree, while refs and config are shared. Putting the
+/// draft in the common directory would mix up the messages of a user working in two worktrees at
+/// once.
 /// </para>
 /// <para>
-/// <c>COMMIT_EDITMSG</c> <b>kullanılmıyor</b>: git onu her commit'te kendi üzerine yazıyor
-/// (ölçüldü), yani oraya yazılan taslak sessizce kaybolurdu. GitExtensions da aynı sebeple
-/// kendi dosyasını (<c>COMMITMESSAGE</c>) kullanıyor.
+/// <c>COMMIT_EDITMSG</c> is <b>not used</b>: git overwrites it on every commit (measured), so a
+/// draft written there would silently be lost. GitExtensions uses its own file
+/// (<c>COMMITMESSAGE</c>) for the same reason.
 /// </para>
 /// </remarks>
 public interface ICommitMessageStore
 {
     /// <summary>
-    /// Kutuya yüklenecek mesajı okur: önce git'in hazırladığı, sonra taslak.
+    /// Reads the message to load into the box: first git's prepared one, then the draft.
     /// </summary>
     Task<PendingCommitMessage> ReadAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Taslağı diske yazar; metin boşsa taslak silinir.</summary>
+    /// <summary>Writes the draft to disk; when the text is empty the draft is deleted.</summary>
     Task SaveDraftAsync(
         string workingDirectory,
         string message,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Taslağı siler (başarılı commit'ten sonra).</summary>
+    /// <summary>Deletes the draft (after a successful commit).</summary>
     Task ClearDraftAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
@@ -71,15 +73,15 @@ public interface ICommitMessageStore
 /// <inheritdoc cref="ICommitMessageStore"/>
 public sealed class CommitMessageStore : ICommitMessageStore
 {
-    /// <summary>Taslak dosyasının adı.</summary>
+    /// <summary>The name of the draft file.</summary>
     /// <remarks>
-    /// Ön ek bilinçli: <c>.git</c> içindeki dosyalar git'in ad alanı, bizim dosyamızın
-    /// kimin olduğu adından anlaşılmalı. Ölçüldü — <c>.git</c> altındaki yabancı bir dosya
-    /// <c>git status</c> ve <c>git fsck</c> çıktısını etkilemiyor.
+    /// The prefix is deliberate: files under <c>.git</c> are git's namespace, and whose file ours is
+    /// should be readable from its name. Measured — a foreign file under <c>.git</c> does not affect
+    /// the output of <c>git status</c> or <c>git fsck</c>.
     /// </remarks>
     public const string DraftFileName = "GITEXT_COMMITMESSAGE";
 
-    /// <summary>git'in merge/cherry-pick/revert için hazırladığı mesaj dosyası.</summary>
+    /// <summary>The message file git prepares for merge/cherry-pick/revert.</summary>
     public const string PendingFileName = "MERGE_MSG";
 
     private readonly IGitProcessRunner _runner;
@@ -110,10 +112,10 @@ public sealed class CommitMessageStore : ICommitMessageStore
             return PendingCommitMessage.None;
         }
 
-        // Sıra önemli: git bir merge'in ortasındaysa onun hazırladığı mesaj kazanır.
-        // ÖLÇÜLDÜ: MERGE_MSG yalnızca çakışmada değil, çakışmasız `--no-ff` merge'de de
-        // yazılıyor ve cherry-pick çakışmasında da (commit'in kendi mesajıyla) oluşuyor;
-        // git commit başarılı olunca git onu KENDİSİ siliyor.
+        // The order matters: when git is in the middle of a merge, the message it prepared wins.
+        // MEASURED: MERGE_MSG is written not only on a conflict but also on a conflict-free `--no-ff`
+        // merge, and it appears on a cherry-pick conflict too (with the commit's own message); once
+        // git commit succeeds, git deletes it ITSELF.
         string pendingPath = Path.Combine(gitDirectory, PendingFileName);
 
         if (File.Exists(pendingPath))
@@ -136,9 +138,9 @@ public sealed class CommitMessageStore : ICommitMessageStore
 
         try
         {
-            // Taslak BİZİM dosyamız ve her zaman UTF-8 yazılıyor; burada tahmin yok.
-            // Yorum satırları da temizlenmiyor: kullanıcının kendi yazdığı `#123` satırı
-            // onun metnidir (P05-T06'da `--cleanup=whitespace` seçilme gerekçesiyle aynı).
+            // The draft is OUR file and is always written as UTF-8; there is no guessing here.
+            // Comment lines are not stripped either: a `#123` line the user wrote themselves is their
+            // text (the same reasoning as choosing `--cleanup=whitespace` in P05-T06).
             string draft = await File.ReadAllTextAsync(draftPath, Encoding.UTF8, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -148,7 +150,7 @@ public sealed class CommitMessageStore : ICommitMessageStore
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // Taslağın okunamaması commit ekranını açılmaz yapmamalı.
+            // A draft that cannot be read must not make the commit screen fail to open.
             return PendingCommitMessage.None;
         }
     }
@@ -186,8 +188,8 @@ public sealed class CommitMessageStore : ICommitMessageStore
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // Salt okunur bir depoda taslak kaydedilemez; bu, kullanıcıya gösterilecek bir
-            // hata değil — mesaj kutusu ekranda duruyor ve commit hâlâ atılabiliyor.
+            // In a read-only repository the draft cannot be saved; this is not an error to show the
+            // user — the message box is on screen and a commit can still be made.
         }
     }
 
@@ -215,19 +217,19 @@ public sealed class CommitMessageStore : ICommitMessageStore
     }
 
     /// <summary>
-    /// git'in hazırladığı mesajı okur ve yorum satırlarını temizler.
+    /// Reads the message git prepared and strips the comment lines.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 🔴 <b>Yorumlar burada siliniyor</b> (bkz. <see cref="CommitMessageText"/>): git'in
-    /// editör yolu <c># Conflicts:</c> satırlarını commit'e sokmuyor, bizim
-    /// <c>--cleanup=whitespace</c> yolumuz ise sokardı.
+    /// 🔴 <b>Comments are stripped here</b> (see <see cref="CommitMessageText"/>): git's editor path
+    /// keeps <c># Conflicts:</c> lines out of the commit, whereas our
+    /// <c>--cleanup=whitespace</c> path would let them in.
     /// </para>
     /// <para>
-    /// <b>ÖLÇÜLDÜ — kodlama:</b> git bu dosyayı <b>ham baytlarla</b> yazıyor;
-    /// <c>i18n.commitEncoding=ISO-8859-9</c> olan bir depoda cherry-pick edilen commit'in
-    /// mesajı dosyaya Latin-5 baytlarıyla düştü. UTF-8 varsayılsaydı Türkçe mesajlar
-    /// değiştirme karakterine dönerdi (P04-T07'deki diff kodlama hatasının aynısı).
+    /// <b>MEASURED — encoding:</b> git writes this file with <b>raw bytes</b>; in a repository with
+    /// <c>i18n.commitEncoding=ISO-8859-9</c>, the message of a cherry-picked commit landed in the
+    /// file as Latin-5 bytes. Had UTF-8 been assumed, Turkish messages would have turned into
+    /// replacement characters (the same as the diff encoding bug in P04-T07).
     /// </para>
     /// </remarks>
     private async Task<string?> ReadPendingAsync(
@@ -258,14 +260,14 @@ public sealed class CommitMessageStore : ICommitMessageStore
     }
 
     /// <summary>
-    /// Deponun git dizinini çözer ve depo başına önbelleğe alır.
+    /// Resolves the repository's git directory and caches it per repository.
     /// </summary>
     /// <remarks>
-    /// <c>rev-parse --git-path</c> <b>kullanılmıyor</b>: ölçüldü, normal depoda
-    /// <c>.git/MERGE_MSG</c> gibi <b>göreli</b> bir yol döndürüyor ve bu yol komutun
-    /// çalıştığı dizine göre çözülüyor (<c>--git-common-dir</c>'deki P02-T06 tuzağının
-    /// aynısı). <c>--absolute-git-dir</c> her durumda mutlak; worktree'de de doğru olanı,
-    /// yani o worktree'nin kendi dizinini veriyor.
+    /// <c>rev-parse --git-path</c> is <b>not used</b>: measured, in a normal repository it returns a
+    /// <b>relative</b> path such as <c>.git/MERGE_MSG</c>, and that path is resolved against the
+    /// directory the command runs in (the same trap as <c>--git-common-dir</c> in P02-T06).
+    /// <c>--absolute-git-dir</c> is absolute in every case; in a worktree it also gives the right
+    /// thing, namely that worktree's own directory.
     /// </remarks>
     private async Task<string?> ResolveGitDirectoryAsync(
         string workingDirectory,

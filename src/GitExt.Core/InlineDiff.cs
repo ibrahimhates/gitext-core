@@ -3,79 +3,80 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// İki satır arasındaki <b>satır içi</b> farkı hesaplar (P04-T05).
+/// Computes the <b>intra-line</b> difference between two lines (P04-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden git'in <c>--word-diff</c>'i kullanılmıyor?</b> Plan onunla başlamayı öneriyordu
-/// ("bedava ve doğru"). Ölçüldü ve <b>doğru olmadığı</b> görüldü:
+/// <b>Why is git's <c>--word-diff</c> not used?</b> The plan suggested starting with it
+/// ("free and correct"). It was measured, and it turned out <b>not to be correct</b>:
 /// </para>
 /// <list type="number">
-/// <item>Varsayılan kelime ayracıyla satır parçalardan geri kurulduğunda eski tarafın sonuna
-/// <b>sahte bir boşluk</b> ekleniyor.</item>
-/// <item>Karakter seviyeli ayraç bunu düzeltiyor ama daha büyük bir sorun kalıyor:
-/// <b>eklenen/silinen boş satır için git yalnızca çıplak bir <c>~</c> üretiyor</b> ve satırın
-/// hangi tarafa ait olduğu çıktıda <b>hiç yok</b>. Gerçek depoda 150 commit tarandığında
-/// bu yüzden 5.701 satır yanlış tarafa düşüyordu.</item>
-/// <item>Ayrıca kelime diff'i satır tabanlı çıktının <b>yerine geçiyor</b>, yani ek bir
-/// <c>git</c> çalıştırması gerektiriyor.</item>
+/// <item>With the default word separator, reassembling the line from the pieces adds a
+/// <b>phantom space</b> to the end of the old side.</item>
+/// <item>A character-level separator fixes that, but a bigger problem remains:
+/// <b>for an added/removed blank line git emits nothing but a bare <c>~</c></b>, and which side
+/// the line belongs to is <b>not in the output at all</b>. Scanning 150 commits in a real
+/// repository, this put 5,701 lines on the wrong side.</item>
+/// <item>On top of that, word diff <b>replaces</b> the line-based output, meaning it needs an
+/// extra <c>git</c> invocation.</item>
 /// </list>
 /// <para>
-/// Bu yüzden satır içi fark <b>yerel olarak</b>, ayrıştırıcının zaten ürettiği <b>kesin</b>
-/// satır metinleri üzerinde hesaplanıyor. Sadakat riski yok: girdi zaten doğru satırlar.
+/// So the intra-line difference is computed <b>locally</b>, over the <b>exact</b> line texts the
+/// parser already produces. There is no fidelity risk: the input is already the correct lines.
 /// </para>
 /// </remarks>
 public static class InlineDiff
 {
     /// <summary>
-    /// Bu uzunluğun üstündeki satırlarda satır içi fark hesaplanmaz.
+    /// No intra-line difference is computed for lines longer than this.
     /// </summary>
     /// <remarks>
-    /// Küçültülmüş (minified) JS, tek satırlık JSON gibi dosyalarda satırlar on binlerce
-    /// karakter olabiliyor. Böyle bir satırda vurgulama zaten okunmaz; hesaplamak da boşuna.
+    /// In minified JS or single-line JSON, lines can run to tens of thousands of characters.
+    /// Highlighting inside such a line is unreadable anyway, and computing it is wasted work.
     /// </remarks>
     public const int MaximumLineLength = 4000;
 
     /// <summary>
-    /// Ortadaki farkın kelime bazında çözümleneceği en büyük parça uzunluğu.
+    /// The largest middle segment that will still be resolved word by word.
     /// </summary>
     /// <remarks>
-    /// Bunun üstünde ortak önek/sonek kırpması yeterli sayılır. Sınır olmadan uzun satırlarda
-    /// kareselleşen bir çalışma süresi oluşurdu.
+    /// Above this, trimming the common prefix/suffix is considered enough. Without a limit, long
+    /// lines would produce a quadratic running time.
     /// </remarks>
     private const int MaximumMiddleLength = 400;
 
     /// <summary>
-    /// Bu sayıdan fazla olası satır çifti varsa en iyi eşleme aranmaz.
+    /// Above this many candidate line pairs, the best matching is not searched for.
     /// </summary>
     /// <remarks>
-    /// Eşleme arama O(n·m); sınırsız bırakılırsa büyük hunk'larda karesel maliyet oluşur.
-    /// Sınır ve aşıldığında sıraya göre eşleme, <b>GitExtensions</b>'ın aynı problemdeki
-    /// çözümüyle aynı (<c>GitUI/Editor/Diff/LinesMatcher.cs</c>).
+    /// Searching for a matching is O(n·m); left unbounded it costs quadratic time on large hunks.
+    /// The limit, and falling back to positional matching once it is exceeded, is the same as
+    /// <b>GitExtensions</b>' solution to the same problem
+    /// (<c>GitUI/Editor/Diff/LinesMatcher.cs</c>).
     /// </remarks>
     private const int MaximumPairCombinations = 100 * 100;
 
     /// <summary>
-    /// Bir eşleşmenin anlamlı sayılması için gereken en düşük benzerlik.
+    /// The lowest similarity at which a match still counts as meaningful.
     /// </summary>
-    /// <remarks>Bunun altındaki skorlar gürültü; GitExtensions da aynı eşiği kullanıyor.</remarks>
+    /// <remarks>Scores below this are noise; GitExtensions uses the same threshold.</remarks>
     private const double InsignificantScore = 0.1;
 
     /// <summary>
-    /// Bir hunk'ın satırlarına satır içi parçaları ekler.
+    /// Adds intra-line segments to a hunk's lines.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Eşleme:</b> art arda gelen silinen ve eklenen satır dizileri, <b>en çok kelime
-    /// paylaşan çift</b> çapa alınarak özyinelemeli eşlenir; çapadan öncesi ve sonrası aynı
-    /// yöntemle bölünür. Sırayla eşlemek (i'inci ↔ i'inci) tek satır eklenip silindiğinde
-    /// doğru ama satır sayıları farklı olduğunda <b>yanlış satırları</b> karşılaştırır.
+    /// <b>Matching:</b> consecutive runs of removed and added lines are matched recursively,
+    /// anchored on the <b>pair sharing the most words</b>; what comes before and after the anchor
+    /// is split the same way. Matching positionally (i-th ↔ i-th) is right when one line is added
+    /// and one removed, but compares the <b>wrong lines</b> when the counts differ.
     /// </para>
     /// <para>
-    /// Bu yaklaşım <b>GitExtensions</b>'ın çözümünden alındı
-    /// (<c>GitUI/Editor/Diff/LinesMatcher.cs</c>): skor
-    /// <i>ortak kelimelerin toplam uzunluğu ÷ iki satırın kelime uzunluğunun büyüğü</i>,
-    /// eşik altındaki eşleşmeler yok sayılıp sıraya düşülüyor.
+    /// This approach was taken from <b>GitExtensions</b>' solution
+    /// (<c>GitUI/Editor/Diff/LinesMatcher.cs</c>): the score is
+    /// <i>total length of shared words ÷ the greater of the two lines' word length</i>, and
+    /// matches below the threshold are ignored and fall back to positional matching.
     /// </para>
     /// </remarks>
     public static IReadOnlyList<DiffLine> Annotate(IReadOnlyList<DiffLine> lines)
@@ -128,18 +129,18 @@ public static class InlineDiff
     }
 
     /// <summary>
-    /// Silinen ve eklenen satır metinlerini birbirine eşler.
+    /// Matches removed and added line texts to one another.
     /// </summary>
     /// <returns>
-    /// <paramref name="removed"/> ve <paramref name="added"/> içindeki indeks çiftleri,
-    /// sol indekse göre artan sırada. Eşlenmeyen satırlar sonuçta <b>hiç yer almaz</b>.
+    /// Index pairs into <paramref name="removed"/> and <paramref name="added"/>, in increasing
+    /// order of the left index. Unmatched lines <b>do not appear at all</b> in the result.
     /// </returns>
     /// <remarks>
     /// <para>
-    /// <b>Bu, satır içi vurgulamanın kullandığı eşlemenin ta kendisidir</b> ve dışarı
-    /// bilinçli olarak açıldı: yan yana görünüm (P04-T10) hizalamayı buradan alıyor. İkinci
-    /// bir eşleme yazılsaydı, vurgulanan çift ile yan yana gösterilen çift <b>farklı
-    /// olabilirdi</b> — kullanıcıya aynı ekranda iki çelişkili cevap.
+    /// <b>This is the very matching the intra-line highlighting uses</b>, and it is exposed
+    /// deliberately: the side-by-side view (P04-T10) takes its alignment from here. Had a second
+    /// matching been written, the highlighted pair and the pair shown side by side <b>could
+    /// differ</b> — two contradictory answers to the user on the same screen.
     /// </para>
     /// </remarks>
     public static IReadOnlyList<(int Removed, int Added)> MatchLines(
@@ -159,7 +160,7 @@ public static class InlineDiff
     }
 
     /// <summary>
-    /// Bir hunk içindeki silinen/eklenen dizileri eşler (mutlak indekslerle).
+    /// Matches the removed/added runs within a hunk (with absolute indices).
     /// </summary>
     private static List<(int Removed, int Added)> FindPairs(
         DiffLine[] lines,
@@ -190,7 +191,7 @@ public static class InlineDiff
             return pairs;
         }
 
-        // Tek satırlık taraf ya da çok büyük hunk: sıraya göre eşle.
+        // A single-line side, or a very large hunk: match positionally.
         if (removedCount == 1 || addedCount == 1
             || removedCount * addedCount > MaximumPairCombinations)
         {
@@ -235,7 +236,7 @@ public static class InlineDiff
 
             if (score <= InsignificantScore)
             {
-                // Anlamlı bir çapa yok: kalanı sırayla eşle.
+                // No meaningful anchor: match the rest positionally.
                 int count = Math.Min(removedTo - removedFrom, addedTo - addedFrom);
 
                 for (int i = 0; i < count; i++)
@@ -255,11 +256,11 @@ public static class InlineDiff
     }
 
     /// <summary>
-    /// En çok kelime paylaşan satır çiftini bulur.
+    /// Finds the pair of lines sharing the most words.
     /// </summary>
     /// <remarks>
-    /// Skor: <i>ortak kelimelerin toplam uzunluğu ÷ iki satırın kelime uzunluğunun büyüğü</i>.
-    /// GitExtensions'ın <c>LinesMatcher.GetWordMatchScore</c>'uyla aynı ölçüt.
+    /// Score: <i>total length of shared words ÷ the greater of the two lines' word length</i>.
+    /// The same measure as GitExtensions' <c>LinesMatcher.GetWordMatchScore</c>.
     /// </remarks>
     private static (int Removed, int Added, double Score) FindBestMatch(
         string[][] removedWords,
@@ -316,14 +317,14 @@ public static class InlineDiff
         return (double)common / Math.Max(leftLength, rightLength);
     }
 
-    /// <summary>Skorlamada kullanılan kelimeler: yalnızca harf/rakam dizileri.</summary>
+    /// <summary>The words used in scoring: runs of letters and digits only.</summary>
     private static string[] Words(string text) =>
         [.. Tokenize(text).Where(t => t.Length > 0 && char.IsLetterOrDigit(t[0]))];
 
     /// <summary>
-    /// İki satırın parçalarını hesaplar.
+    /// Computes the segments of two lines.
     /// </summary>
-    /// <returns>Eski ve yeni satırın parça listeleri; birleştirildiklerinde girdiyi verirler.</returns>
+    /// <returns>The old and new line's segment lists; joined, they give back the input.</returns>
     public static (IReadOnlyList<DiffSegment> Old, IReadOnlyList<DiffSegment> New) Compute(
         string oldLine,
         string newLine)
@@ -341,8 +342,8 @@ public static class InlineDiff
             return (Whole(oldLine, DiffLineKind.Context), Whole(newLine, DiffLineKind.Context));
         }
 
-        // Ortak önek ve sonek kırpılır: tipik düzenlemede iş burada biter ve kalan orta
-        // parça kısadır.
+        // The common prefix and suffix are trimmed: in a typical edit the work ends here and the
+        // remaining middle segment is short.
         int prefix = CommonPrefixLength(oldLine, newLine);
         int suffix = CommonSuffixLength(oldLine, newLine, prefix);
 
@@ -363,8 +364,8 @@ public static class InlineDiff
         }
         else
         {
-            // Orta parça çok uzun: tamamı değişmiş sayılır. Kaba ama doğru — yanlış yeri
-            // vurgulamaktansa geniş vurgulamak yeğ.
+            // The middle segment is very long: the whole of it counts as changed. Crude but
+            // correct — highlighting broadly beats highlighting the wrong place.
             Append(oldSegments, DiffLineKind.Removed, oldMiddle);
             Append(newSegments, DiffLineKind.Added, newMiddle);
         }
@@ -376,7 +377,8 @@ public static class InlineDiff
     }
 
     /// <summary>
-    /// Ortadaki jetonları en uzun ortak alt dizi (LCS) ile eşleyip parçalara böler.
+    /// Matches the middle tokens with a longest common subsequence (LCS) and splits them into
+    /// segments.
     /// </summary>
     private static void AppendTokenDiff(
         List<DiffSegment> oldSegments,
@@ -430,11 +432,12 @@ public static class InlineDiff
     }
 
     /// <summary>
-    /// Satırı jetonlara böler: harf/rakam dizileri bir jeton, diğer her karakter tek başına.
+    /// Splits the line into tokens: runs of letters/digits are one token, every other character
+    /// stands alone.
     /// </summary>
     /// <remarks>
-    /// Karakter karakter bölmek gürültülü vurgulama üretiyor; kelime bütünlüğünü korumak
-    /// okunabilirliği belirgin biçimde artırıyor. Noktalama ayrı jeton olduğu için
+    /// Splitting character by character produces noisy highlighting; keeping words whole improves
+    /// readability markedly. Because punctuation is a separate token,
     /// <c>foo(bar)</c> → <c>foo</c> <c>(</c> <c>bar</c> <c>)</c>.
     /// </remarks>
     private static string[] Tokenize(string text)
@@ -472,11 +475,11 @@ public static class InlineDiff
     }
 
     /// <summary>
-    /// Parçayı listeye ekler; aynı türdeki ardışık parçalar <b>birleştirilir</b>.
+    /// Appends the segment to the list; consecutive segments of the same kind are <b>merged</b>.
     /// </summary>
     /// <remarks>
-    /// Birleştirmeden her jeton ayrı parça olurdu; arayüz tarafında yüzlerce gereksiz
-    /// çizim öğesi demek.
+    /// Without merging, every token would be its own segment — meaning hundreds of needless
+    /// drawing elements on the UI side.
     /// </remarks>
     private static void Append(List<DiffSegment> segments, DiffLineKind kind, string text)
     {

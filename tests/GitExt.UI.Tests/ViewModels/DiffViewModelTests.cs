@@ -8,12 +8,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P04-T08 — Değişen dosyalar listesi.
+/// P04-T08 — The changed files list.
 /// </summary>
 /// <remarks>
-/// Bu bileşen <b>bağımsız</b>: ana pencereyi veya commit listesini tanımıyor. Aynı bileşen
-/// <c>P04-T16</c>'daki karşılaştırma penceresinde de kullanılacak, bu yüzden testleri de
-/// yalnızca kendi API'sine karşı yazılıyor.
+/// This component is <b>standalone</b>: it knows nothing about the main window or the commit list.
+/// The same component will be used in the comparison window of <c>P04-T16</c>, so its tests too are
+/// written only against its own API.
 /// </remarks>
 public class DiffViewModelTests
 {
@@ -44,7 +44,7 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Durum_harfleri_gitin_harfleriyle_ayni()
     {
-        // Kullanıcı komut satırında gördüğü gösterimi burada da tanımalı.
+        // The user must recognise here the same presentation they see on the command line.
         DiffViewModel viewModel = await LoadedAsync(
             FakeGitData.Diff("a", FileChangeKind.Added),
             FakeGitData.Diff("m", FileChangeKind.Modified),
@@ -57,8 +57,8 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Binary_dosyada_satir_sayisi_gosterilmez()
     {
-        // ÖLÇÜLDÜ: binary dosyada --numstat sayı vermiyor. "0 / 0" göstermek
-        // "hiç değişmedi" demek olurdu.
+        // MEASURED: --numstat gives no counts for a binary file. Showing "0 / 0" would mean
+        // "nothing changed".
         DiffViewModel viewModel = await LoadedAsync(
             FakeGitData.Diff("resim.png", binary: true),
             FakeGitData.Diff("kod.cs", added: 3, removed: 1));
@@ -81,7 +81,7 @@ public class DiffViewModelTests
 
         row.IsTooLarge.ShouldBeTrue();
 
-        // İçerik okunmamış olsa da sayılar doğru: --numstat'tan geliyor.
+        // Even though the content has not been read, the counts are right: they come from --numstat.
         row.AddedLines.ShouldBe(500_000);
     }
 
@@ -106,7 +106,7 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Filtre_secili_dosyayi_elerse_secim_basa_doner()
     {
-        // Seçimi elenen bir satırda bırakmak kullanıcıyı beklemediği bir dosyada tutardı.
+        // Leaving the selection on a filtered-out row would keep the user in a file they did not expect.
         DiffViewModel viewModel = await LoadedAsync(
             FakeGitData.Diff("bir.cs"),
             FakeGitData.Diff("iki.cs"),
@@ -141,7 +141,7 @@ public class DiffViewModelTests
             FakeGitData.Diff("src/app/digeri.cs"),
             FakeGitData.Diff("README.md"));
 
-        // Kökte: "src" klasörü + README.md
+        // At the root: the "src" folder plus README.md
         viewModel.Tree.Count.ShouldBe(2);
 
         FileTreeNode src = viewModel.Tree.Single(n => n.Name == "src");
@@ -205,8 +205,8 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Hizli_gezinmede_onceki_okuma_iptal_edilir()
     {
-        // Kullanıcı commit listesinde ↓ tuşuna basılı tutabilir; her satır için bir git
-        // süreci başlatmamak adına okuma gecikmeli ve seçim değişince iptal ediliyor.
+        // The user can hold ↓ down on the commit list; to avoid starting a git process for every row,
+        // the read is delayed and cancelled when the selection changes.
         FakeDiffReader reader = new([FakeGitData.Diff("a.cs")]);
         DiffViewModel viewModel = new(reader);
 
@@ -217,13 +217,13 @@ public class DiffViewModelTests
 
         await viewModel.ShowCommitAsync("/tmp/depo", _someCommit);
 
-        // Anlamlı özellik: 21 hızlı seçim tek bir okuma üretmeli.
-        // ("Şu anda tam olarak 0 okuma var" demek zamanlamaya bağlı ve kırılgan olurdu —
-        // yük altında bir gecikme tamamlanmış olabilir.)
+        // The meaningful property: 21 rapid selections must produce a single read.
+        // (Saying "there are exactly 0 reads right now" would depend on timing and be fragile — under
+        // load a delay may already have elapsed.)
         reader.ReadCallCount.ShouldBe(1);
     }
 
-    // ---- P04-T09: unified diff görünümü ----
+    // ---- P04-T09: the unified diff view ----
 
     private static FileDiff WithHunk(string path, params DiffLine[] lines) =>
         FakeGitData.Diff(path) with
@@ -245,7 +245,7 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Secili_dosyanin_satirlari_hunk_basligiyla_akar()
     {
-        // Hunk başlıkları ve içerik satırları TEK düz listede: sanallaştırma böyle çalışıyor.
+        // Hunk headers and content lines in ONE flat list: that is how virtualisation works.
         DiffViewModel viewModel = await LoadedAsync(WithHunk(
             "a.cs",
             new DiffLine(DiffLineKind.Context, "bir") { OldLineNumber = 1, NewLineNumber = 1 },
@@ -271,8 +271,8 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Hunk_basligi_da_parca_olarak_gelir()
     {
-        // Gerçek depo render'ında yakalandı: görünüm satırı HER ZAMAN parçalar üzerinden
-        // çiziyor, dolayısıyla parçasız bir hunk başlığı ekranda boş gri şerit oluyordu.
+        // Caught in a render of a real repository: the view ALWAYS draws a line from segments, so a
+        // hunk header with no segments came out as an empty grey strip on screen.
         DiffViewModel viewModel = await LoadedAsync(WithHunk(
             "a.cs",
             new DiffLine(DiffLineKind.Added, "kod") { NewLineNumber = 1 }));
@@ -284,12 +284,12 @@ public class DiffViewModelTests
         header.Segments[0].Text.ShouldBe("@@ -1,2 +1,2 @@");
     }
 
-    // ---- P04-T10: yan yana görünüm ----
+    // ---- P04-T10: the side-by-side view ----
 
     [AvaloniaFact]
     public async Task Yan_yana_moda_gecince_ayni_diff_yeniden_yerlesir()
     {
-        // Mod değişimi `git`'i YENİDEN ÇALIŞTIRMAMALI: iki liste de aynı FileDiff'ten üretiliyor.
+        // Switching mode MUST NOT RUN `git` AGAIN: both lists are produced from the same FileDiff.
         FakeDiffReader reader = new([WithHunk(
             "a.cs",
             new DiffLine(DiffLineKind.Context, "bir") { OldLineNumber = 1, NewLineNumber = 1 },
@@ -308,7 +308,7 @@ public class DiffViewModelTests
         viewModel.ShowSideLines.ShouldBeTrue();
         viewModel.Lines.ShouldBeEmpty();
 
-        // Başlık + bağlam + değişiklik çifti.
+        // Header + context + a change pair.
         viewModel.SideLines.Count.ShouldBe(3);
         viewModel.SideLines[0].IsHunkHeader.ShouldBeTrue();
         viewModel.SideLines[2].Left.Text.ShouldBe("iki eski");
@@ -320,8 +320,8 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Karsiligi_olmayan_tarafa_dolgu_konur()
     {
-        // Dolgu BOŞ SATIR DEĞİL: "burada satır yok" demek ve ayrı boyanıyor. Boş bir bağlam
-        // satırıyla karıştırılırsa kullanıcı olmayan bir satırı var sanar.
+        // A filler IS NOT A BLANK LINE: it means "there is no line here" and is painted differently.
+        // Confused with an empty context line, the user takes a line that does not exist for one that does.
         DiffViewModel viewModel = Create(WithHunk(
             "a.cs",
             new DiffLine(DiffLineKind.Added, "yeni satir") { NewLineNumber = 1 }));
@@ -388,22 +388,22 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Gosterimde_sondaki_CR_kirpilir()
     {
-        // ÖLÇÜLDÜ (P04-T07): CRLF dosyada içerik `\r` ile bitiyor ve model bunu BİLEREK
-        // koruyor (Faz 05'te `git apply` için gerekli). Ekranda kutu karakteri görünürdü.
+        // MEASURED (P04-T07): in a CRLF file the content ends with `\r` and the model preserves that
+        // DELIBERATELY (it is needed for `git apply` in Phase 05). On screen it showed as a box character.
         DiffViewModel viewModel = await LoadedAsync(WithHunk(
             "a.cs",
             new DiffLine(DiffLineKind.Added, "kod\r") { NewLineNumber = 1 }));
 
         viewModel.Lines[1].Text.ShouldBe("kod");
 
-        // Modeldeki içerik değişmemeli.
+        // The content in the model must not change.
         viewModel.Files.Single().Diff.Hunks.Single().Lines.Single().Content.ShouldBe("kod\r");
     }
 
     [AvaloniaFact]
     public async Task Parcasiz_satir_da_tek_parcayla_gelir()
     {
-        // Görünüm her zaman parçalar üzerinden çiziyor; iki ayrı şablon bakımı olmasın diye.
+        // The view always draws from segments, so there is not a second template to maintain.
         DiffViewModel viewModel = await LoadedAsync(WithHunk(
             "a.cs",
             new DiffLine(DiffLineKind.Added, "kod") { NewLineNumber = 1 }));
@@ -437,8 +437,8 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Icerik_yoksa_NEDEN_oldugu_soylenir()
     {
-        // Hunk'sız diff türleri normaldir (P04-T02'de ölçüldü); boş alan bırakmak
-        // kullanıcıya hata gibi görünürdü.
+        // Diff kinds without hunks are normal (measured in P04-T02); leaving a blank area would look
+        // like an error to the user.
         DiffViewModel binary = await LoadedAsync(FakeGitData.Diff("resim.png", binary: true));
         binary.HasLines.ShouldBeFalse();
         binary.ContentNotice!.ShouldContain("Binary");
@@ -465,7 +465,7 @@ public class DiffViewModelTests
         viewModel.Lines[1].Text.ShouldBe("b");
     }
 
-    // ---- P04-T12: diff içinde gezinme ----
+    // ---- P04-T12: navigating within the diff ----
 
     private static FileDiff Sample() => WithHunk(
         "a.cs",
@@ -479,14 +479,14 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Sonraki_degisiklik_blok_basina_gider_baslığa_degil()
     {
-        // GitExtensions'ın `GoToNextChange`'i de böyle: kullanıcı "sonraki değişiklik"
-        // derken bir sonraki FARKI kastediyor. Ardışık değişiklikler tek blok.
+        // GitExtensions' `GoToNextChange` works this way too: when the user says "next change" they
+        // mean the next DIFFERENCE. Consecutive changes are one block.
         DiffViewModel viewModel = await LoadedAsync(Sample());
 
         viewModel.GoToNextChange().ShouldBeTrue();
         viewModel.Lines[viewModel.CurrentLineIndex].Text.ShouldBe("iki eski");
 
-        // "uc eski" ve "iki yeni" AYNI bloğun devamı — atlanmalı.
+        // "uc eski" and "iki yeni" are the continuation of the SAME block — they must be skipped.
         viewModel.GoToNextChange().ShouldBeTrue();
         viewModel.Lines[viewModel.CurrentLineIndex].Text.ShouldBe("bes yeni");
 
@@ -547,7 +547,8 @@ public class DiffViewModelTests
         viewModel.FindNext().ShouldBeTrue();
         viewModel.Lines[viewModel.CurrentLineIndex].Text.ShouldBe("bes yeni");
 
-        // Sona gelince başa sarmalı: aranan şey imlecin üstündeyse "not found" yanıltıcı olur.
+        // On reaching the end it must wrap around: if what is being looked for is above the cursor,
+        // "not found" is misleading.
         viewModel.FindNext().ShouldBeTrue();
         viewModel.Lines[viewModel.CurrentLineIndex].Text.ShouldBe("iki yeni");
 
@@ -580,8 +581,8 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Kopyalama_varsayilan_olarak_ONEKSIZ_koddur()
     {
-        // Kullanıcı diff'ten kopyalarken çoğunlukla kodu başka yere yapıştırıyor;
-        // +/- önekleri orada gürültü. GitExtensions'ın varsayılan "Copy"si de böyle.
+        // When copying from a diff the user is mostly pasting the code somewhere else; the +/- prefixes
+        // are noise there. GitExtensions' default "Copy" behaves the same way.
         DiffViewModel viewModel = await LoadedAsync(Sample());
 
         string text = viewModel.CopyText();
@@ -637,7 +638,7 @@ public class DiffViewModelTests
 
         string text = viewModel.CopyText(DiffCopyMode.Patch);
 
-        // Bağlam satırı iki tarafta da var; yamada tek kez görünmeli.
+        // A context line exists on both sides; it must appear only once in the patch.
         text.Split('\n').Count(l => l == " bir").ShouldBe(1);
         text.ShouldContain("-iki eski");
         text.ShouldContain("+iki yeni");
@@ -646,7 +647,7 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Dosya_degisince_duraklanan_satir_sifirlanir()
     {
-        // İki listenin indeksleri farklı; eski indeks başka dosyada başka satırı gösterirdi.
+        // The two lists have different indices; the old index would point at another line in another file.
         DiffViewModel viewModel = await LoadedAsync(
             WithHunk("a.cs", new DiffLine(DiffLineKind.Added, "a") { NewLineNumber = 1 }),
             WithHunk("b.cs", new DiffLine(DiffLineKind.Added, "b") { NewLineNumber = 1 }));
@@ -658,7 +659,7 @@ public class DiffViewModelTests
         viewModel.CurrentLineIndex.ShouldBe(-1);
     }
 
-    // ---- P04-T13: görsel ayarlar ----
+    // ---- P04-T13: display settings ----
 
     private static FileDiff Tabbed() => WithHunk(
         "a.cs",
@@ -668,8 +669,8 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Sekmeler_tab_stop_a_acilir()
     {
-        // ÖLÇÜLDÜ: Avalonia sekmeyi tab-stop olarak değil sabit dört boşluk genişliğinde
-        // çiziyor ve ayarlanamıyor; dönüşüm bizde yapılıyor.
+        // MEASURED: Avalonia draws a tab not as a tab stop but at a fixed width of four spaces, and it
+        // cannot be configured; the conversion is done on our side.
         DiffViewModel viewModel = await LoadedAsync(Tabbed());
 
         viewModel.Lines[1].Text.ShouldBe("ab  c");
@@ -695,7 +696,7 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Gosterim_ayarlari_MODELI_degistirmez()
     {
-        // Faz 05'te yamayı `git apply`'a birebir geri vereceğiz; model içeriği dokunulmaz.
+        // In Phase 05 we will hand the patch back to `git apply` verbatim; the model content is untouchable.
         DiffViewModel viewModel = await LoadedAsync(Tabbed());
 
         viewModel.ShowWhitespace = true;
@@ -707,8 +708,8 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Kopyalama_gosterim_karakterlerini_ICERMEZ()
     {
-        // ⚠️ Gerçek tuzak: gösterim metni · ve » içeriyor ve sekmeler boşluğa açılmış.
-        // Kopyalama onu kullansaydı kullanıcı panoya BOZUK KOD alırdı.
+        // ⚠️ The real trap: the display text contains · and » and the tabs have been expanded to spaces.
+        // Had copying used it, the user would get BROKEN CODE on the clipboard.
         DiffViewModel viewModel = await LoadedAsync(Tabbed());
 
         viewModel.ShowWhitespace = true;
@@ -723,7 +724,7 @@ public class DiffViewModelTests
     [AvaloniaFact]
     public async Task Arama_ham_metinde_yapilir()
     {
-        // Kullanıcı "ab\tc" içindeki sekmeyi göstergeyle aramaz.
+        // The user does not search for the tab inside "ab\tc" using its display marker.
         DiffViewModel viewModel = await LoadedAsync(Tabbed());
 
         viewModel.ShowWhitespace = true;

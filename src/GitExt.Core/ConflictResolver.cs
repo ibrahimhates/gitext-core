@@ -3,113 +3,113 @@ using GitExt.Core.Model;
 
 namespace GitExt.Core;
 
-/// <summary>Çakışmada hangi tarafın alınacağı (P07-T05).</summary>
+/// <summary>Which side to take on a conflict (P07-T05).</summary>
 public enum ResolutionSide
 {
-    /// <summary>Bizim sürümümüz — <c>HEAD</c>.</summary>
+    /// <summary>Our version — <c>HEAD</c>.</summary>
     Ours,
 
-    /// <summary>Karşı tarafın sürümü.</summary>
+    /// <summary>The other side's version.</summary>
     Theirs,
 }
 
 /// <summary>
-/// Çakışma çözümünün o anki durumu (P07-T05).
+/// The current state of conflict resolution (P07-T05).
 /// </summary>
 public sealed record ConflictProgress
 {
-    /// <summary>Hangi işlemin ortasındayız?</summary>
+    /// <summary>Which operation are we in the middle of?</summary>
     public required InProgressOperation Operation { get; init; }
 
-    /// <summary>Hâlâ çözülmemiş dosyalar.</summary>
+    /// <summary>The files still unresolved.</summary>
     public IReadOnlyList<RepositoryPath> Remaining { get; init; } = [];
 
     public int RemainingCount => Remaining.Count;
 
-    /// <summary>Hepsi çözüldü mü?</summary>
+    /// <summary>Have all of them been resolved?</summary>
     public bool IsResolved => Remaining.Count == 0;
 
     /// <summary>
-    /// <c>--continue</c> sunulabilir mi?
+    /// Can <c>--continue</c> be offered?
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — çözülmeden <c>--continue</c> çalıştırmak rc=128 veriyor</b>
-    /// (<c>Committing is not possible because you have unmerged files</c>). Düğmeyi erken
-    /// etkinleştirmek kullanıcıyı anlamsız bir hataya sokardı.
+    /// 🔴 <b>MEASURED — running <c>--continue</c> before resolving gives rc=128</b>
+    /// (<c>Committing is not possible because you have unmerged files</c>). Enabling the button early
+    /// would drop the user into a pointless error.
     /// </remarks>
     public bool CanContinue => IsResolved && Operation != InProgressOperation.None;
 
-    /// <summary>İşlemi sürdüren komut — ekranda gösteriliyor.</summary>
+    /// <summary>The command that continues the operation — shown on screen.</summary>
     public string? ContinueCommand => ConflictResolver.ContinueVerb(Operation) is { } verb
         ? $"git {verb} --continue"
         : null;
 
-    /// <summary>İşlemi iptal eden komut.</summary>
+    /// <summary>The command that aborts the operation.</summary>
     public string? AbortCommand => ConflictResolver.ContinueVerb(Operation) is { } verb
         ? $"git {verb} --abort"
         : null;
 }
 
-/// <summary>Çakışma çözüm akışı (P07-T05).</summary>
+/// <summary>The conflict resolution flow (P07-T05).</summary>
 public interface IConflictResolver
 {
-    /// <summary>Kalan çakışmaları ve sunulabilecek eylemleri okur.</summary>
+    /// <summary>Reads the remaining conflicts and the actions that can be offered.</summary>
     Task<ConflictProgress> GetProgressAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Dosyayı çözülmüş olarak işaretler (<c>git add</c>).</summary>
+    /// <summary>Marks the file as resolved (<c>git add</c>).</summary>
     Task MarkResolvedAsync(
         string workingDirectory,
         RepositoryPath path,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Çakışmayı dosyayı <b>silerek</b> çözer (<c>git rm</c>).</summary>
+    /// <summary>Resolves the conflict by <b>deleting</b> the file (<c>git rm</c>).</summary>
     Task RemoveAsync(
         string workingDirectory,
         RepositoryPath path,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Bir tarafı bütünüyle alır ve çözülmüş işaretler.</summary>
+    /// <summary>Takes one side wholesale and marks it resolved.</summary>
     Task TakeSideAsync(
         string workingDirectory,
         RepositoryPath path,
         ResolutionSide side,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Elle düzenlenmiş içeriği yazar ve çözülmüş işaretler.</summary>
+    /// <summary>Writes the hand-edited content and marks it resolved.</summary>
     Task WriteResolvedAsync(
         string workingDirectory,
         RepositoryPath path,
         byte[] content,
         CancellationToken cancellationToken = default);
 
-    /// <summary>İşlemi sürdürür (<c>--continue</c>).</summary>
+    /// <summary>Continues the operation (<c>--continue</c>).</summary>
     Task ContinueAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
-    /// <summary>İşlemi iptal eder (<c>--abort</c>).</summary>
+    /// <summary>Aborts the operation (<c>--abort</c>).</summary>
     Task AbortAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// Çakışmaları çözüp süren işlemi sürdürür (P07-T05).
+/// Resolves conflicts and continues the operation in progress (P07-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Devam/iptal komutu işleme göre değişiyor</b> — merge, rebase, cherry-pick, revert ve
-/// <c>am</c> için ayrı fiiller. Hangi işlemin sürdüğü <see cref="IInProgressOperationReader"/>
-/// ile <b>durum dosyalarından</b> okunuyor; git'in metnine bakılmıyor.
+/// <b>The continue/abort command differs by operation</b> — separate verbs for merge, rebase,
+/// cherry-pick, revert and <c>am</c>. Which operation is in progress is read <b>from the state
+/// files</b> via <see cref="IInProgressOperationReader"/>; git's text is not consulted.
 /// </para>
 /// <para>
-/// ℹ️ <b>ÖLÇÜLDÜ — <c>--continue</c> editör açmıyor.</b> Etkileşimli bir <c>core.editor</c>
-/// ayarlıyken bile (60 sn uyuyan bir betikle denendi) merge/rebase/cherry-pick/revert
-/// <c>--continue</c> editörü <b>hiç çağırmadı</b>: hazırlanmış mesajı yeniden kullanıyorlar.
-/// Yine de <c>GIT_EDITOR</c> sabitleniyor — arayüzün bir editör beklerken donması, önlenmesi
-/// ucuz ama yaşanırsa teşhisi pahalı bir hata.
+/// ℹ️ <b>MEASURED — <c>--continue</c> does not open an editor.</b> Even with an interactive
+/// <c>core.editor</c> configured (tried with a script sleeping for 60 s),
+/// merge/rebase/cherry-pick/revert <c>--continue</c> <b>never invoked</b> the editor: they reuse the
+/// prepared message. <c>GIT_EDITOR</c> is pinned down anyway — the UI freezing while an editor waits
+/// is a bug that is cheap to prevent and expensive to diagnose if it happens.
 /// </para>
 /// </remarks>
 public sealed class ConflictResolver : IConflictResolver
@@ -132,7 +132,7 @@ public sealed class ConflictResolver : IConflictResolver
         _operations = operations;
     }
 
-    /// <summary>Süren işlemin <c>--continue</c>/<c>--abort</c> aldığı git alt komutu.</summary>
+    /// <summary>The git subcommand the in-progress operation takes <c>--continue</c>/<c>--abort</c> on.</summary>
     internal static string? ContinueVerb(InProgressOperation operation) => operation switch
     {
         InProgressOperation.Merge => "merge",
@@ -141,7 +141,7 @@ public sealed class ConflictResolver : IConflictResolver
         InProgressOperation.Revert => "revert",
         InProgressOperation.ApplyMailbox => "am",
 
-        // Bisect'in `--continue`si yok; `git bisect reset` bambaşka bir şey.
+        // Bisect has no `--continue`; `git bisect reset` is a different thing entirely.
         _ => null,
     };
 
@@ -189,9 +189,9 @@ public sealed class ConflictResolver : IConflictResolver
         _writer.RunAsync(workingDirectory, ["rm", "-q", "--", path.Value], cancellationToken);
 
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — <c>checkout --ours</c> çakışmayı TEMİZLEMİYOR.</b> İçeriği yazıyor
-    /// ama dosya index'te hâlâ <c>U</c>; ardından <c>git add</c> gelmezse kullanıcı
-    /// "çözdüm" sanır ve <c>--continue</c> reddedilir. İki adım burada birleştirildi.
+    /// 🔴 <b>MEASURED — <c>checkout --ours</c> DOES NOT CLEAR the conflict.</b> It writes the content
+    /// but the file is still <c>U</c> in the index; unless a <c>git add</c> follows, the user thinks
+    /// "I resolved it" and <c>--continue</c> is refused. The two steps are combined here.
     /// </remarks>
     public async Task TakeSideAsync(
         string workingDirectory,
@@ -250,12 +250,12 @@ public sealed class ConflictResolver : IConflictResolver
     }
 
     /// <summary>
-    /// Arayüzün bir editör beklerken donmasını imkânsız kılan ortam.
+    /// The environment that makes it impossible for the UI to freeze waiting on an editor.
     /// </summary>
     /// <remarks>
-    /// <c>true</c> her zaman başarıyla ve hiçbir şey yazmadan çıkar; git bunu "kullanıcı
-    /// mesajı değiştirmedi" diye yorumlar. Windows'ta <c>true</c> yok, bu yüzden
-    /// <c>cmd /c exit 0</c> eşdeğeri kullanılıyor.
+    /// <c>true</c> always exits successfully having written nothing; git reads that as "the user did
+    /// not change the message". There is no <c>true</c> on Windows, so the equivalent
+    /// <c>cmd /c exit 0</c> is used.
     /// </remarks>
     private static IReadOnlyDictionary<string, string> NonInteractiveEditor =>
         new Dictionary<string, string>(StringComparer.Ordinal)

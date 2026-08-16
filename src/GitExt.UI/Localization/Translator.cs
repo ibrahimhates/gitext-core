@@ -8,51 +8,51 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Localization;
 
 /// <summary>
-/// Arayüz metinlerini dil dosyalarından sağlar ve çalışma anında dil değiştirir (P11-T01).
+/// Supplies the UI texts from the language files and switches language at runtime (P11-T01).
 /// </summary>
 public interface ITranslator : INotifyPropertyChanged
 {
-    /// <summary>Anahtara karşılık gelen metin. Anahtar yoksa asla çökmez.</summary>
+    /// <summary>The text for the key. Never crashes when the key is missing.</summary>
     string this[string key] { get; }
 
     /// <summary>Yer tutuculu metni doldurur: <c>"{0} commits loaded"</c>.</summary>
     string Format(string key, params object?[] arguments);
 
-    /// <summary>Gömülü dil dosyalarından bulunan diller; ada göre sıralı.</summary>
+    /// <summary>The languages found in the embedded language files; sorted by name.</summary>
     IReadOnlyList<LanguageInfo> Available { get; }
 
     /// <summary>Etkin dilin kodu.</summary>
     string Current { get; }
 
-    /// <summary>Dili değiştirir ve tercihi kalıcılaştırır.</summary>
+    /// <summary>Switches the language and persists the preference.</summary>
     void Use(string code);
 
-    /// <summary>Kayıtlı tercihi uygular; yoksa sistem dilini, o da tanınmıyorsa İngilizceyi.</summary>
+    /// <summary>Applies the stored preference; failing that the system language, and failing that English.</summary>
     void ApplyStored();
 }
 
 /// <inheritdoc cref="ITranslator"/>
 /// <remarks>
 /// <para>
-/// Diller <b>gömülü kaynaklardan keşfediliyor</b>, koda yazılmış bir listeden değil.
-/// <c>Locales/*.json</c> joker girdisi sayesinde klasöre <c>fr.json</c> eklemek, o dilin
-/// listede belirmesi için yeterli — hiçbir C# dosyasına dokunulmuyor (ölçüldü, P11-T00).
+/// The languages are <b>discovered from the embedded resources</b>, not from a list written into the
+/// code. Thanks to the <c>Locales/*.json</c> wildcard entry, dropping <c>fr.json</c> into the folder
+/// is enough for that language to appear in the list — no C# file is touched (measured, P11-T00).
 /// </para>
 /// <para>
-/// <b>Dil geçişi pencereleri yeniden açmıyor.</b> Sınıf <see cref="INotifyPropertyChanged"/>
-/// uyguluyor ve dil değişiminde <c>PropertyChanged(null)</c> yayınlıyor; Avalonia bunu
-/// "bu nesnedeki her şey değişti" olarak okuyup indeksleyici üzerinden kurulmuş tüm
-/// bağlamaları tazeliyor.
+/// <b>Switching language does not reopen the windows.</b> The class implements
+/// <see cref="INotifyPropertyChanged"/> and raises <c>PropertyChanged(null)</c> on a language change;
+/// Avalonia reads that as "everything on this object changed" and refreshes every binding set up
+/// through the indexer.
 /// </para>
 /// </remarks>
 public sealed class Translator : ITranslator
 {
     /// <summary>
-    /// Gömülü kaynak adlarının ortak öneki: <c>GitExt.UI.Locales.</c>
+    /// The common prefix of the embedded resource names: <c>GitExt.UI.Locales.</c>
     /// </summary>
     private const string ResourcePrefix = "GitExt.UI.Locales.";
 
-    /// <summary>Kaynak dil. Bir anahtar başka dilde eksikse buraya düşülüyor.</summary>
+    /// <summary>The source language. A key missing in another language falls back to this one.</summary>
     internal const string FallbackLanguage = "en";
 
     private readonly ISettingsStore _settings;
@@ -75,19 +75,19 @@ public sealed class Translator : ITranslator
         _settings = settings;
         _catalogs = LoadCatalogs(resources, out List<LanguageInfo> languages);
 
-        // 🔴 Yedek dil dosyadan DEĞİL koddan geliyor (P11-T10). Önceden
-        // `_catalogs["en"]` kullanılıyordu ve `en.json` silinir/bozulursa yedek BOŞ
-        // sözlük oluyordu: Türkçede olmayan her anahtar arayüzde ham anahtar olarak
-        // görünürdü ("settings.language"). Ölçüldü ve doğrulandı.
+        // 🔴 The fallback language comes from the CODE, NOT from a file (P11-T10). It used to use
+        // `_catalogs["en"]`, and if `en.json` were deleted or corrupted the fallback became an EMPTY
+        // dictionary: every key not present in Turkish would show in the UI as the raw key
+        // ("settings.language"). Measured and confirmed.
         //
-        // BuiltInEnglish aynı dosyadan ÜRETİLİYOR (tools/i18n/generate-fallback.py) ve
-        // CI ikisinin ayrışmadığını doğruluyor — elle yazılmış ikinci bir İngilizce
-        // kaynağı olsaydı er ya da geç farklılaşırdı.
+        // BuiltInEnglish is GENERATED from the same file (tools/i18n/generate-fallback.py) and CI
+        // verifies the two have not diverged — a second, hand-written English source would sooner or
+        // later drift apart.
         _fallback = BuiltInEnglish.Entries;
         _active = _fallback;
         Current = FallbackLanguage;
 
-        // `en.json` yoksa bile İngilizce seçilebilir olmalı: gömülü kopya zaten tam.
+        // English must be selectable even without `en.json`: the embedded copy is already complete.
         if (!languages.Any(l => l.Code == FallbackLanguage))
         {
             languages.Add(new LanguageInfo(FallbackLanguage, "English"));
@@ -98,18 +98,19 @@ public sealed class Translator : ITranslator
     }
 
     /// <summary>
-    /// Dil dosyalarını dışarıdan veren test kurucusu.
+    /// The test constructor that supplies the language files from outside.
     /// </summary>
     /// <remarks>
-    /// Keşif mantığı (kaynak adı → dil kodu → katalog) aynen çalışıyor; değişen yalnızca
-    /// kaynakların nereden okunduğu. Bu kanca olmadan "klasöre yeni dil eklenince listede
-    /// beliriyor" gereksinimi ancak çalışma anında derleme üreterek test edilebilirdi.
+    /// The discovery logic (resource name → language code → catalog) runs exactly as before; the only
+    /// thing that changes is where the resources are read from. Without this hook, the requirement
+    /// "a new language dropped into the folder appears in the list" could only be tested by
+    /// generating an assembly at runtime.
     /// </remarks>
     internal static Translator ForTesting(
         ISettingsStore settings,
         IReadOnlyDictionary<string, Func<Stream>> resources) => new(settings, resources);
 
-    /// <summary>Derlemeye gömülü <c>Locales/*.json</c> kaynaklarını adlarıyla verir.</summary>
+    /// <summary>Supplies the <c>Locales/*.json</c> resources embedded in the assembly, with their names.</summary>
     private static Dictionary<string, Func<Stream>> ReadEmbeddedResources(Assembly assembly)
     {
         Dictionary<string, Func<Stream>> resources = new(StringComparer.Ordinal);
@@ -133,13 +134,13 @@ public sealed class Translator : ITranslator
     public string Current { get; private set; }
 
     /// <summary>
-    /// Anahtarın karşılığı; sırasıyla etkin dil → İngilizce → <b>anahtarın kendisi</b>.
+    /// The text for the key; in order, the active language → English → <b>the key itself</b>.
     /// </summary>
     /// <remarks>
-    /// Eksik anahtarda boş string döndürmek en kötü seçenek olurdu: arayüzde boş bir etiket
-    /// belirir ve eksikliğin nereden geldiği anlaşılmaz. Anahtarın kendisi gösterilince
-    /// (<c>settings.title</c>) hem eksik olduğu <b>gözle</b> görülüyor hem de hangi anahtarın
-    /// eklenmesi gerektiği doğrudan okunuyor.
+    /// Returning an empty string for a missing key would be the worst option: an empty label appears
+    /// in the UI and there is no telling where the gap came from. Showing the key itself
+    /// (<c>settings.title</c>) makes the omission visible <b>by eye</b> and says directly which key
+    /// needs adding.
     /// </remarks>
     public string this[string key]
     {
@@ -170,14 +171,14 @@ public sealed class Translator : ITranslator
 
         try
         {
-            // InvariantCulture bilinçli: InvariantGlobalization=true açık, başka bir kültür
-            // istemek CultureNotFoundException fırlatıyor (ölçüldü, P11-T00).
+            // InvariantCulture is deliberate: InvariantGlobalization=true is on, and asking for any
+            // other culture throws CultureNotFoundException (measured, P11-T00).
             return string.Format(CultureInfo.InvariantCulture, template, arguments);
         }
         catch (FormatException)
         {
-            // Çeviride bozuk bir yer tutucu ("{0" gibi) uygulamayı çökertmemeli.
-            // Ham şablon gösteriliyor: hata görünür kalıyor ama arayüz ayakta.
+            // A broken placeholder in a translation (something like "{0") must not crash the app.
+            // The raw template is shown: the error stays visible but the UI stays up.
             return template;
         }
     }
@@ -201,8 +202,8 @@ public sealed class Translator : ITranslator
             return;
         }
 
-        // Tercih yoksa sistem dili deneniyor. InvariantGlobalization altında
-        // CurrentUICulture boş geliyor; o durumda sessizce İngilizce kalıyoruz.
+        // With no preference the system language is tried. Under InvariantGlobalization
+        // CurrentUICulture comes back empty; in that case we silently stay on English.
         string system = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
 
         if (!string.IsNullOrWhiteSpace(system) && TrySelect(system))
@@ -224,8 +225,8 @@ public sealed class Translator : ITranslator
 
         if (!_catalogs.TryGetValue(normalized, out IReadOnlyDictionary<string, string>? catalog))
         {
-            // İngilizce her zaman seçilebilir: dosyası olmasa bile gömülü kopya tam
-            // (P11-T10). Başka bir dil için dosya yoksa gerçekten seçilemez.
+            // English is always selectable: even without its file the embedded copy is complete
+            // (P11-T10). For any other language, no file really does mean not selectable.
             if (!string.Equals(normalized, FallbackLanguage, StringComparison.Ordinal))
             {
                 return false;
@@ -242,13 +243,13 @@ public sealed class Translator : ITranslator
         _active = catalog;
         Current = normalized;
 
-        // null: "bu nesnedeki HER ŞEY değişti". İndeksleyici bağlamalarının tamamı tazeleniyor.
+        // null: "EVERYTHING on this object changed". Every indexer binding is refreshed.
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
         return true;
     }
 
     /// <summary>
-    /// Dil kataloglarını kaynak akışlarından kurar.
+    /// Builds the language catalogs from the resource streams.
     /// </summary>
     [SuppressMessage(
         "Design",
@@ -299,13 +300,13 @@ public sealed class Translator : ITranslator
 
                 catalogs[code] = entries;
 
-                // Ad yoksa kodun kendisi gösteriliyor — dil listede kaybolmuyor.
+                // With no name, the code itself is shown — the language does not vanish from the list.
                 string name = file.Meta?.Name is { Length: > 0 } declared ? declared : code;
                 found.Add(new LanguageInfo(code, name));
             }
             catch (Exception)
             {
-                // Bozuk JSON: bu dil atlanıyor, diğerleri yükleniyor.
+                // Broken JSON: this language is skipped, the others load.
             }
         }
 

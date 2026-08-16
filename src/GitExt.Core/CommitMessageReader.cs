@@ -4,40 +4,41 @@ using GitExt.Core.Git;
 namespace GitExt.Core;
 
 /// <summary>
-/// <c>commit.template</c> ayarının sonucu (P05-T13).
+/// The result of the <c>commit.template</c> setting (P05-T13).
 /// </summary>
 /// <remarks>
-/// Ayar var ama dosya yok durumu <b>sessizce yutulmuyor</b>: git'in kendisi bu durumda
-/// <c>fatal: could not read '…': No such file or directory</c> ile <b>çıkış 128</b> veriyor
-/// (ölçüldü), yani kullanıcının terminaldeki commit'i de çalışmıyor. Ekranda "şablon boş"
-/// göstermek, bozuk yapılandırmayı gizlemek olurdu.
+/// The case of "setting present but file missing" is <b>not swallowed silently</b>: git itself
+/// gives <b>exit 128</b> in that situation with
+/// <c>fatal: could not read '…': No such file or directory</c> (measured), which means the user's
+/// commit in the terminal does not work either. Showing "empty template" on screen would be hiding
+/// a broken configuration.
 /// </remarks>
 public sealed record CommitTemplate
 {
-    /// <summary>Çözülmüş tam yol.</summary>
+    /// <summary>The resolved full path.</summary>
     public required string Path { get; init; }
 
-    /// <summary>Şablon metni; dosya okunamadıysa <see langword="null"/>.</summary>
+    /// <summary>The template text; <see langword="null"/> when the file could not be read.</summary>
     public string? Text { get; init; }
 
-    /// <summary>Dosya bulunamadı ya da okunamadı.</summary>
+    /// <summary>The file was not found or could not be read.</summary>
     public bool IsMissing => Text is null;
 }
 
 /// <summary>
-/// Commit mesajı kaynaklarını okur: geçmiş, <c>HEAD</c> mesajı, şablon (P05-T13).
+/// Reads the commit message sources: history, the <c>HEAD</c> message, the template (P05-T13).
 /// </summary>
 public interface ICommitMessageReader
 {
     /// <summary>
-    /// Son commit mesajlarını en yeniden eskiye döndürür.
+    /// Returns the recent commit messages, newest first.
     /// </summary>
-    /// <param name="workingDirectory">Depo çalışma dizini.</param>
-    /// <param name="count">En fazla kaç mesaj.</param>
+    /// <param name="workingDirectory">The repository working directory.</param>
+    /// <param name="count">How many messages at most.</param>
     /// <param name="onlyCurrentUser">
-    /// Yalnızca yapılandırılmış kullanıcının (<c>user.name</c>/<c>user.email</c>) commit'leri.
+    /// Only the configured user's commits (<c>user.name</c>/<c>user.email</c>).
     /// </param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<IReadOnlyList<string>> ReadRecentAsync(
         string workingDirectory,
         int count,
@@ -45,24 +46,25 @@ public interface ICommitMessageReader
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// <c>HEAD</c>'in mesajı; commit'siz depoda <see langword="null"/>.
+    /// <c>HEAD</c>'s message; <see langword="null"/> in a repository with no commits.
     /// </summary>
     /// <remarks>
-    /// <c>--amend</c> kutusu işaretlendiğinde yüklenen metin budur.
+    /// This is the text loaded when the <c>--amend</c> box is ticked.
     /// </remarks>
     Task<string?> ReadHeadMessageAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// <c>commit.template</c> ile yapılandırılmış şablon; ayar yoksa <see langword="null"/>.
+    /// The template configured with <c>commit.template</c>; <see langword="null"/> when the setting
+    /// is absent.
     /// </summary>
     Task<CommitTemplate?> ReadTemplateAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Bu depoda geçerli yorum ön eki (<c>core.commentChar</c>).
+    /// The comment prefix in force in this repository (<c>core.commentChar</c>).
     /// </summary>
     Task<string> ReadCommentCharacterAsync(
         string workingDirectory,
@@ -93,17 +95,17 @@ public sealed class CommitMessageReader : ICommitMessageReader
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
-        // Commit'siz depoda `git log` çıkış 128 veriyor (ölçüldü). "Henüz commit yok" bir
-        // hata değil; ilk commit'ini atan kullanıcıya istisna göstermek olurdu.
+        // In a repository with no commits `git log` gives exit 128 (measured). "No commits yet" is
+        // not an error; it would mean showing an exception to a user making their first commit.
         if (!await HasHeadAsync(workingDirectory, cancellationToken).ConfigureAwait(false))
         {
             return [];
         }
 
-        // ⚠️ `-z` ŞART: `%B` çok satırlı ve mesajlar arasında ayraç olarak satır sonu
-        // kullanılsaydı bir mesajın nerede bittiği belirlenemezdi (ölçüldü: `-z` olmadan
-        // çıktı düz bir satır yığını). `-z` her kaydın sonuna NUL koyuyor, commit mesajı
-        // ise NUL içeremiyor (P02-T04).
+        // ⚠️ `-z` is REQUIRED: `%B` is multi-line, and had a line ending been used as the separator
+        // between messages there would be no way to tell where a message ends (measured: without
+        // `-z` the output is a flat pile of lines). `-z` puts a NUL at the end of every record, and
+        // a commit message cannot contain a NUL (P02-T04).
         List<string> arguments = ["log", "-z", "-n", count.ToString(), "--format=%B"];
 
         if (onlyCurrentUser)
@@ -121,9 +123,9 @@ public sealed class CommitMessageReader : ICommitMessageReader
             new GitCommand { WorkingDirectory = workingDirectory, Arguments = arguments },
             cancellationToken).ConfigureAwait(false);
 
-        // NUL bir SONLANDIRICI: n kayıt için n NUL geliyor, son alan boş kalıyor. Boş alanları
-        // koruyan bölme kullanılıyor (proje kuralı) — boş mesajlı commit'ler gerçek
-        // (P02-T04'te ölçüldü) ve "boşları at" diyen bir bölme onları sessizce yutar.
+        // NUL is a TERMINATOR: for n records n NULs arrive and the last field is left empty. A
+        // split that keeps empty entries is used (a project rule) — commits with an empty message
+        // are real (measured in P02-T04), and a split that drops empties swallows them silently.
         string[] records = result.SplitStandardOutputAtNulPreservingEmpty();
 
         return
@@ -131,8 +133,9 @@ public sealed class CommitMessageReader : ICommitMessageReader
             .. records
                 .Select(record => record.TrimEnd('\n', '\r'))
 
-                // Boş mesajlar listede gösterilmiyor: seçilecek bir şey değiller.
-                // Ama bu bir GÖSTERİM kararı; bölme aşamasında atılsalardı sıra bozulurdu.
+                // Empty messages are not shown in the list: they are nothing to pick.
+                // But that is a DISPLAY decision; dropping them at the split stage would break the
+                // ordering.
                 .Where(message => message.Trim().Length > 0),
         ];
     }
@@ -165,7 +168,7 @@ public sealed class CommitMessageReader : ICommitMessageReader
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
 
-        // `--path` olmadan `~/…` ham geliyor ve dosya hiç bulunamıyordu (ölçüldü).
+        // Without `--path`, `~/…` comes back raw and the file was never found (measured).
         string? configured = await _config
             .GetPathAsync(workingDirectory, "commit.template", cancellationToken)
             .ConfigureAwait(false);
@@ -184,16 +187,17 @@ public sealed class CommitMessageReader : ICommitMessageReader
         {
             if (File.Exists(path))
             {
-                // Şablon dosyası kullanıcının kendi dosyası; kodlaması bilinmiyor. UTF-8
-                // varsayılıyor, geçersiz baytlar değiştirme karakterine düşüyor — yamalarda
-                // (P04-T07) yapılan gibi burada tahmin edilmiyor, ama şablon commit'e
-                // gitmeden önce kullanıcının GÖZÜNÜN ÖNÜNDE kutuda duruyor.
+                // The template file is the user's own file; its encoding is unknown. UTF-8 is
+                // assumed and invalid bytes fall back to the replacement character — no guessing
+                // here, unlike what is done for patches (P04-T07), but the template sits in the box
+                // IN FRONT OF THE USER before it goes into the commit.
                 text = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (IOException)
         {
-            // Okunamayan şablon = bulunamayan şablon: ikisinde de kullanıcıya yol gösteriliyor.
+            // A template that cannot be read = a template that cannot be found: in both cases the
+            // user is pointed at a way forward.
         }
         catch (UnauthorizedAccessException)
         {
@@ -214,15 +218,15 @@ public sealed class CommitMessageReader : ICommitMessageReader
     }
 
     /// <summary>
-    /// Göreli şablon yolunu çözer.
+    /// Resolves a relative template path.
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> git göreli <c>commit.template</c> yolunu <b>çalışma ağacının köküne</b>
-    /// göre çözüyor, komutun çalıştığı dizine göre değil — alt dizinde aynı adlı bir dosya
-    /// varken bile kökteki okundu, yalnızca alt dizinde olan dosya ise
-    /// <c>could not read</c> ile bulunamadı. Bu yüzden kök ayrıca soruluyor: çağıran bir alt
-    /// dizin verirse git'ten farklı bir dosya açmak, kullanıcıya terminalde gördüğünden
-    /// başka bir şablon göstermek olurdu.
+    /// <b>MEASURED:</b> git resolves a relative <c>commit.template</c> path against the <b>root of
+    /// the working tree</b>, not against the directory the command runs in — even with a file of
+    /// the same name in a subdirectory, the one at the root was read, and a file that existed only
+    /// in the subdirectory was not found, with <c>could not read</c>. That is why the root is asked
+    /// for separately: opening a different file from git's when the caller passes a subdirectory
+    /// would mean showing the user a different template from the one they see in the terminal.
     /// </remarks>
     private async Task<string> ResolveTemplatePathAsync(
         string workingDirectory,
@@ -240,8 +244,8 @@ public sealed class CommitMessageReader : ICommitMessageReader
                 WorkingDirectory = workingDirectory,
                 Arguments = ["rev-parse", "--show-toplevel"],
 
-                // Bare depoda 128 veriyor (P02-T06'da ölçüldü). Orada commit ekranı zaten
-                // yok; çağıranın dizini yedek olarak kullanılıyor.
+                // It gives 128 in a bare repository (measured in P02-T06). There is no commit
+                // screen there anyway; the caller's directory is used as the fallback.
                 SuccessExitCodes = [0, 128],
             },
             cancellationToken).ConfigureAwait(false);
@@ -255,13 +259,13 @@ public sealed class CommitMessageReader : ICommitMessageReader
     }
 
     /// <summary>
-    /// "Yalnızca benim mesajlarım" için <c>--author</c> deseni.
+    /// The <c>--author</c> pattern for "only my messages".
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> <c>--author</c> düz alt dize değil <b>düzenli ifade</b> olarak
-    /// eşleşiyor (<c>lcum</c> deseni <c>Ölçüm</c>'ü buluyor, <c>^…$</c> çapaları çalışıyor).
-    /// Ad ve e-posta bu yüzden hem kaçırılıyor hem çapalanıyor: aksi hâlde adı başka bir adın
-    /// içinde geçen herkesin commit'i "benim" sayılırdı.
+    /// <b>MEASURED:</b> <c>--author</c> matches as a <b>regular expression</b>, not as a plain
+    /// substring (the pattern <c>lcum</c> finds <c>Ölçüm</c>, and the <c>^…$</c> anchors work). The
+    /// name and the e-mail are therefore both escaped and anchored: otherwise every commit by
+    /// anyone whose name contains this name as a substring would count as "mine".
     /// </remarks>
     private async Task<string?> BuildAuthorPatternAsync(
         string workingDirectory,
@@ -282,11 +286,11 @@ public sealed class CommitMessageReader : ICommitMessageReader
     }
 
     /// <summary>
-    /// Depoda commit var mı?
+    /// Does the repository have any commits?
     /// </summary>
     /// <remarks>
-    /// Mesaja değil <c>rev-parse --verify --quiet</c>'e bakılıyor (P05-T03'teki karar):
-    /// git'in hata metni yerelleştirilebilir ve sürümle değişebilir.
+    /// <c>rev-parse --verify --quiet</c> is consulted rather than the message (the P05-T03
+    /// decision): git's error text can be localised and can change between versions.
     /// </remarks>
     private async Task<bool> HasHeadAsync(string workingDirectory, CancellationToken cancellationToken)
     {

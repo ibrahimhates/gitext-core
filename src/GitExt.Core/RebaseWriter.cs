@@ -4,18 +4,18 @@ using GitExt.Core.Model;
 
 namespace GitExt.Core;
 
-/// <summary>Rebase seçenekleri (P07-T09, P07-T10).</summary>
+/// <summary>Rebase options (P07-T09, P07-T10).</summary>
 public sealed record RebaseOptions
 {
-    /// <summary>Üzerine yeniden oynatılacak dal ya da commit.</summary>
+    /// <summary>The branch or commit to replay onto.</summary>
     public required string Upstream { get; init; }
 
     /// <summary>
-    /// <c>--onto</c>: commit'lerin taşınacağı yeni taban.
+    /// <c>--onto</c>: the new base the commits will be moved to.
     /// </summary>
     /// <remarks>
-    /// <c>upstream</c> "hangi commit'ler taşınacak"ı, <c>--onto</c> "nereye"yi belirliyor.
-    /// İkisi ayrı olduğunda dalın tabanı değiştirilmiş oluyor.
+    /// <c>upstream</c> decides "which commits move", <c>--onto</c> decides "where to". When the two
+    /// differ, the branch's base has been changed.
     /// </remarks>
     public string? Onto { get; init; }
 
@@ -23,36 +23,36 @@ public sealed record RebaseOptions
     public string? Branch { get; init; }
 
     /// <summary>
-    /// Interactive rebase adımları; <see langword="null"/> ise düz rebase.
+    /// The interactive rebase steps; a plain rebase when <see langword="null"/>.
     /// </summary>
     public IReadOnlyList<RebaseStep>? Steps { get; init; }
 
-    /// <summary><c>reword</c> için kullanıcının yazdığı mesaj.</summary>
+    /// <summary>The message the user typed for <c>reword</c>.</summary>
     public string? NewMessage { get; init; }
 
-    /// <summary><c>--autostash</c>: kirli ağacı geçici olarak kenara koy.</summary>
+    /// <summary><c>--autostash</c>: set a dirty tree aside temporarily.</summary>
     /// <remarks>
-    /// Rebase kirli bir ağaçta çalışmıyor. Autostash, kullanıcıyı "önce stash'le" diye
-    /// geri göndermek yerine bunu kendisi yapıp sonunda geri koyuyor.
+    /// A rebase does not run on a dirty tree. Rather than sending the user back with "stash first",
+    /// autostash does it itself and puts it back at the end.
     /// </remarks>
     public bool AutoStash { get; init; }
 
     public bool IsInteractive => Steps is { Count: > 0 };
 }
 
-/// <summary>Rebase'in nasıl sonuçlandığı (P07-T09).</summary>
+/// <summary>How the rebase ended up (P07-T09).</summary>
 public enum RebaseOutcome
 {
-    /// <summary>Yapacak bir şey yoktu.</summary>
+    /// <summary>There was nothing to do.</summary>
     AlreadyUpToDate,
 
-    /// <summary>Tamamlandı.</summary>
+    /// <summary>It completed.</summary>
     Completed,
 
-    /// <summary>Çakışmayla durdu.</summary>
+    /// <summary>It stopped on a conflict.</summary>
     Conflicted,
 
-    /// <summary><c>edit</c> adımında kullanıcı için durdu.</summary>
+    /// <summary>It stopped for the user at an <c>edit</c> step.</summary>
     StoppedForEdit,
 }
 
@@ -65,16 +65,16 @@ public sealed record RebaseResult
 
     public IReadOnlyList<RepositoryPath> ConflictedPaths { get; init; } = [];
 
-    /// <summary>Kaçıncı adımdayız (<c>.git/rebase-merge/msgnum</c>).</summary>
+    /// <summary>Which step we are on (<c>.git/rebase-merge/msgnum</c>).</summary>
     public int CurrentStep { get; init; }
 
-    /// <summary>Toplam adım (<c>.git/rebase-merge/end</c>).</summary>
+    /// <summary>The total number of steps (<c>.git/rebase-merge/end</c>).</summary>
     public int TotalSteps { get; init; }
 
     public bool IsStopped => Outcome is RebaseOutcome.Conflicted or RebaseOutcome.StoppedForEdit;
 }
 
-/// <summary>Rebase işlemleri (P07-T09, P07-T10).</summary>
+/// <summary>Rebase operations (P07-T09, P07-T10).</summary>
 public interface IRebaseWriter
 {
     Task<RebaseResult> RebaseAsync(
@@ -83,7 +83,7 @@ public interface IRebaseWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Interactive rebase ekranını doldurmak için taşınacak commit'leri okur.
+    /// Reads the commits to be moved, for populating the interactive rebase screen.
     /// </summary>
     Task<IReadOnlyList<RebaseStep>> ReadStepsAsync(
         string workingDirectory,
@@ -91,26 +91,26 @@ public interface IRebaseWriter
         string? branch = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Süren rebase'i atlar (<c>--skip</c>).</summary>
+    /// <summary>Skips the in-progress rebase (<c>--skip</c>).</summary>
     Task SkipAsync(string workingDirectory, CancellationToken cancellationToken = default);
 
     string DescribeCommand(RebaseOptions options);
 }
 
 /// <summary>
-/// <c>git rebase</c> sarmalayıcısı (P07-T09, P07-T10).
+/// The <c>git rebase</c> wrapper (P07-T09, P07-T10).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Interactive rebase, <c>GIT_SEQUENCE_EDITOR</c> üzerinden todo listesi yazılarak
-/// yapılıyor — bkz. <see cref="RebaseTodoSession"/>. Plan bu mekanizmayı "faz başında
-/// prototiple" diye işaretlemişti; ölçüldü ve çalışıyor.
+/// An interactive rebase is done by writing the todo list through <c>GIT_SEQUENCE_EDITOR</c> — see
+/// <see cref="RebaseTodoSession"/>. The plan had marked this mechanism "prototype it at the start of
+/// the phase"; it was measured and it works.
 /// </para>
 /// <para>
-/// ÖLÇÜLDÜ — çakışmada bırakılan durum <c>.git/rebase-merge/</c>: <c>head-name</c>
-/// (özgün dal), <c>onto</c>, <c>msgnum</c>/<c>end</c> (ilerleme), <c>orig-head</c>.
-/// <c>edit</c> adımında ayrıca <c>amend</c> dosyası oluşuyor ve <c>HEAD</c> <b>ayrık</b>
-/// kalıyor — bu yüzden "hangi daldayız" sorusuna <c>head-name</c> cevap veriyor.
+/// MEASURED — the state left behind on a conflict is <c>.git/rebase-merge/</c>: <c>head-name</c>
+/// (the original branch), <c>onto</c>, <c>msgnum</c>/<c>end</c> (progress), <c>orig-head</c>. At an
+/// <c>edit</c> step an <c>amend</c> file also appears and <c>HEAD</c> stays <b>detached</b> — which
+/// is why <c>head-name</c> is what answers "which branch are we on".
 /// </para>
 /// </remarks>
 public sealed class RebaseWriter : IRebaseWriter
@@ -162,8 +162,9 @@ public sealed class RebaseWriter : IRebaseWriter
         }
         catch (GitException)
         {
-            // Çakışma ve `edit` duruşu birer DURUM; gerçek hatalar (kirli ağaç, bilinmeyen
-            // upstream) olduğu gibi yukarı gitmeli. Ayrım rebase dizininin varlığından.
+            // A conflict and an `edit` stop are both STATES; real errors (a dirty tree, an unknown
+            // upstream) must propagate as they are. The distinction comes from whether the rebase
+            // directory exists.
             RebaseState? state =
                 await ReadStateAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
 
@@ -187,8 +188,8 @@ public sealed class RebaseWriter : IRebaseWriter
             };
         }
 
-        // Çıkış kodu 0 olsa bile `edit` adımında durmuş olabiliriz: git bu durumda
-        // "Stopped at …" yazıp BAŞARIYLA çıkıyor. Karar yine duruma bakarak veriliyor.
+        // Even with exit code 0 we may have stopped at an `edit` step: git prints "Stopped at …" and
+        // exits SUCCESSFULLY in that case. The decision is again made by looking at the state.
         RebaseState? after = await ReadStateAsync(workingDirectory, cancellationToken)
             .ConfigureAwait(false);
 
@@ -266,7 +267,7 @@ public sealed class RebaseWriter : IRebaseWriter
 
     public string DescribeCommand(RebaseOptions options) => Describe(options);
 
-    /// <summary>Çalıştırılacak komutu üretir ("komutu göster" ilkesi).</summary>
+    /// <summary>Produces the command that will run (the "show the command" principle).</summary>
     public static string Describe(RebaseOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -303,7 +304,7 @@ public sealed class RebaseWriter : IRebaseWriter
         return arguments;
     }
 
-    /// <summary>Editörün arayüzü kilitlemesini imkânsız kılan ortam.</summary>
+    /// <summary>The environment that makes it impossible for an editor to lock up the UI.</summary>
     private static IReadOnlyDictionary<string, string> NonInteractiveEditor =>
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -313,11 +314,11 @@ public sealed class RebaseWriter : IRebaseWriter
     private sealed record RebaseState(int Current, int Total, string BranchName);
 
     /// <summary>
-    /// Süren rebase'in durumunu <c>.git</c> altındaki dosyalardan okur.
+    /// Reads the in-progress rebase's state from the files under <c>.git</c>.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Yol <c>--absolute-git-dir</c> ile alınıyor: <c>--git-path</c> göreli dönüyor ve
-    /// çalışma dizinine bağlı (P05-T13'ün dersi).
+    /// ⚠️ The path is obtained with <c>--absolute-git-dir</c>: <c>--git-path</c> returns a relative
+    /// path that depends on the working directory (the lesson of P05-T13).
     /// </remarks>
     private async Task<RebaseState?> ReadStateAsync(
         string workingDirectory,
@@ -367,7 +368,7 @@ public sealed class RebaseWriter : IRebaseWriter
         }
         catch (IOException)
         {
-            // Rebase tam o anda ilerliyor olabilir; okunamaması bir hata değil.
+            // The rebase may be advancing at that very moment; failing to read it is not an error.
             return string.Empty;
         }
     }

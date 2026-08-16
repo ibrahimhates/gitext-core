@@ -14,7 +14,8 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Ana pencere. Sürükle-bırak ile depo açma (P03-T16) ve ana menü (P08-T26) burada bağlanır.
+/// The main window. Opening a repository by drag and drop (P03-T16) and the main menu
+/// (P08-T26) are wired up here.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -27,11 +28,11 @@ public partial class MainWindow : Window
     private GlobalShortcuts? _shortcuts;
 
     /// <summary>
-    /// Panel gezinme sırası (P08-T05).
+    /// Panel navigation order (P08-T05).
     /// </summary>
     /// <remarks>
-    /// Sıra ekrandaki yerleşimi izliyor: soldan sağa, üstten aşağı. Klavye gezinmesinin
-    /// göz gezinmesiyle aynı yolu takip etmesi, sırayı ezberlemeyi gereksiz kılıyor.
+    /// The order follows the layout on screen: left to right, top to bottom. Keyboard navigation
+    /// taking the same path as the eye makes memorising the order unnecessary.
     /// </remarks>
     private readonly PanelNavigator _panels = new();
 
@@ -40,11 +41,12 @@ public partial class MainWindow : Window
     private IGitConfigWriter? _configWriter;
 
     /// <summary>
-    /// Ayarlar ekranının bağımlılıklarını verir (P08-T15).
+    /// Supplies the settings screen's dependencies (P08-T15).
     /// </summary>
     /// <remarks>
-    /// Yapıcıya geçirilemiyor: <see cref="MainWindow"/>'un parametresiz yapıcısı XAML
-    /// tasarımcısının şartı. Bağlantı yine composition root'ta kuruluyor (ADR-0004).
+    /// They cannot be passed to the constructor: <see cref="MainWindow"/>'s parameterless
+    /// constructor is a requirement of the XAML designer. The wiring is still set up in the
+    /// composition root (ADR-0004).
     /// </remarks>
     public void AttachSettings(IAppearanceService appearance, IGitConfigWriter configWriter)
     {
@@ -59,16 +61,16 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
 
-        // 🔴 Görünmeyen panel atlanıyor: gizli bir panele odak vermek, odağın kaybolması
-        // demektir — tuşlar hiçbir yere gitmez ve ekranda hiçbir şey değişmez.
+        // 🔴 An invisible panel is skipped: giving focus to a hidden panel means losing focus —
+        // the keys go nowhere and nothing on screen changes.
         _panels
             .Add(PanelBranches, () => BranchPanel.IsEffectivelyVisible, () => BranchPanel.FocusPanel())
             .Add(PanelCommits, () => CommitList.IsEffectivelyVisible, () => CommitList.FocusPanel())
             .Add(PanelDetails, () => Details.IsEffectivelyVisible, () => Details.FocusPanel())
             .Add(PanelDiff, () => ChangesDiff.IsEffectivelyVisible, () => ChangesDiff.FocusPanel());
 
-        // Diyalog bir sahip pencere istiyor; ViewModel'ın `Window` tanıması katman kuralını
-        // bozardı (P05-T15'teki onay diyaloğuyla aynı desen).
+        // The dialog needs an owner window; the ViewModel knowing about `Window` would break the
+        // layering rule (the same pattern as the confirmation dialog in P05-T15).
         DataContextChanged += (_, _) =>
         {
             if (DataContext is MainWindowViewModel model)
@@ -82,8 +84,8 @@ public partial class MainWindow : Window
                 model.AuthenticationPrompt = new DialogAuthenticationPrompt(this);
                 model.MergePrompt = new DialogMergePrompt(this);
 
-                // Panelden çift tıklama, menüdeki checkout ile AYNI akışı çağırıyor
-                // (P06-T13): ikinci bir geçiş yolu, birinin korumasız kalması demekti.
+                // A double-click in the panel calls the SAME flow as checkout in the menu
+                // (P06-T13): a second path meant one of them ending up unguarded.
                 BranchPanel.Checkout = model.CheckoutRefAsync;
                 BranchPanel.Commands = model;
                 BranchPanel.MergeDropped = model.MergeDroppedAsync;
@@ -92,7 +94,7 @@ public partial class MainWindow : Window
                 model.DiagnosticsPrompt = new DialogDiagnosticsPrompt(this);
                 model.MergeAbortConfirmer = new DialogMergeAbortConfirmer(this);
 
-                // Faz 07 ekranları.
+                // Phase 07 screens.
                 model.ConflictPrompt = new DialogConflictPrompt(this);
                 model.StashPrompt = new DialogStashPrompt(this);
                 model.ReflogPrompt = new DialogReflogPrompt(this);
@@ -106,12 +108,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Küresel kısayolları kurar (P08-T01).
+    /// Sets up the global shortcuts (P08-T01).
     /// </summary>
     /// <remarks>
-    /// Kayıt yapıcıya değil buraya geliyor: <see cref="MainWindow"/>'un parametresiz yapıcısı
-    /// XAML tasarımcısının şartı. DI bunu açıkça çağırıyor, dolayısıyla bağlantı hâlâ
-    /// composition root'ta ve Service Locator kullanılmıyor (ADR-0004).
+    /// Registration comes here rather than to the constructor: <see cref="MainWindow"/>'s
+    /// parameterless constructor is a requirement of the XAML designer. DI calls this explicitly,
+    /// so the wiring is still in the composition root and no Service Locator is used (ADR-0004).
     /// </remarks>
     public void AttachShortcuts(ICommandRegistry registry)
     {
@@ -165,9 +167,9 @@ public partial class MainWindow : Window
             .Bind(CommandIds.HelpAbout, new RelayCommand(ShowAbout))
             .Bind(CommandIds.AppExit, new RelayCommand(Close));
 
-        // Menü etiketleri de kayıttan besleniyor: P08-T00/M03'te ölçüldü, `InputGesture`
-        // komutu ÇALIŞTIRMIYOR — yalnızca yazı. Aynı kaynaktan gelmezlerse menüde yazan
-        // kısayol ile çalışan kısayol sessizce ayrışır.
+        // The menu labels are fed from the registry too: measured in P08-T00/M03, `InputGesture`
+        // DOES NOT RUN the command — it is only text. Unless they come from the same source, the
+        // shortcut written in the menu and the shortcut that works silently diverge.
         shortcuts
             .BindMenu(CommandIds.RepositoryOpen, MenuOpen)
             .BindMenu(CommandIds.RepositoryClose, MenuCloseRepository)
@@ -196,15 +198,15 @@ public partial class MainWindow : Window
 
         _shortcuts = shortcuts;
 
-        // Panel kısayolları pencereye DEĞİL, panelin kendisine bağlanıyor (P08-T00/M11:
-        // pencere bağlaması tuşu odaklı kontrolden koşulsuz çalar). Panellerin dağıtıcıları
-        // yönlendiriciye de kaydediliyor: komut paleti onları da çalıştırabilmeli.
+        // Panel shortcuts are bound to the panel itself, NOT to the window (P08-T00/M11: a window
+        // binding steals the key from the focused control unconditionally). The panels' dispatchers
+        // are registered with the router as well: the command palette must be able to run them too.
         shortcuts.Router.Register(CommitList.AttachShortcuts(registry));
         shortcuts.Router.Register(ChangesDiff.AttachShortcuts(registry));
         shortcuts.Router.Register(BranchPanel.AttachShortcuts(registry));
     }
 
-    /// <summary>Panelin şu an odağı taşıyıp taşımadığı.</summary>
+    /// <summary>Whether the panel currently holds focus.</summary>
     private bool HasPanelFocus(string id) => id switch
     {
         PanelBranches => PanelNavigator.ContainsFocus(BranchPanel),
@@ -227,11 +229,11 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Ayarlar ekranını açar (P08-T15).
+    /// Opens the settings screen (P08-T15).
     /// </summary>
     /// <remarks>
-    /// Açık deponun yolu geçiriliyor: yerel git ayarları ancak bir depo içinde yazılabiliyor
-    /// (ölçüldü — `--local` depo dışında `fatal` veriyor).
+    /// The open repository's path is passed in: local git settings can only be written inside a
+    /// repository (measured — `--local` is `fatal` outside one).
     /// </remarks>
     private Task ShowSettingsAsync()
     {
@@ -254,7 +256,7 @@ public partial class MainWindow : Window
             ? ShortcutReferenceWindow.ShowAsync(new ShortcutReferenceViewModel(registry), this)
             : Task.CompletedTask;
 
-    /// <summary>Çakışma çözüm ekranını gerçek bir pencereyle gösterir (P07-T03).</summary>
+    /// <summary>Shows the conflict resolution screen in a real window (P07-T03).</summary>
     private sealed class DialogConflictPrompt : IConflictPrompt
     {
         private readonly Window _owner;
@@ -264,7 +266,7 @@ public partial class MainWindow : Window
         public Task ShowAsync(ConflictViewModel model) => ConflictWindow.ShowAsync(model, _owner);
     }
 
-    /// <summary>Stash ekranını gerçek bir pencereyle gösterir (P07-T13).</summary>
+    /// <summary>Shows the stash screen in a real window (P07-T13).</summary>
     private sealed class DialogStashPrompt : IStashPrompt
     {
         private readonly Window _owner;
@@ -274,7 +276,7 @@ public partial class MainWindow : Window
         public Task ShowAsync(StashViewModel model) => StashWindow.ShowAsync(model, _owner);
     }
 
-    /// <summary>Reflog tarayıcısını gerçek bir pencereyle gösterir (P07-T14).</summary>
+    /// <summary>Shows the reflog browser in a real window (P07-T14).</summary>
     private sealed class DialogReflogPrompt : IReflogPrompt
     {
         private readonly Window _owner;
@@ -284,7 +286,7 @@ public partial class MainWindow : Window
         public Task ShowAsync(ReflogViewModel model) => ReflogWindow.ShowAsync(model, _owner);
     }
 
-    /// <summary>Reset diyaloğunu gerçek bir pencereyle gösterir (P07-T06).</summary>
+    /// <summary>Shows the reset dialog in a real window (P07-T06).</summary>
     private sealed class DialogResetPrompt : IResetPrompt
     {
         private readonly Window _owner;
@@ -294,7 +296,7 @@ public partial class MainWindow : Window
         public Task ShowAsync(ResetViewModel model) => ResetDialog.ShowAsync(model, _owner);
     }
 
-    /// <summary>Cherry-pick / revert diyaloğunu gösterir (P07-T07, P07-T08).</summary>
+    /// <summary>Shows the cherry-pick / revert dialog (P07-T07, P07-T08).</summary>
     private sealed class DialogSequencerPrompt : ISequencerPrompt
     {
         private readonly Window _owner;
@@ -304,7 +306,7 @@ public partial class MainWindow : Window
         public Task ShowAsync(SequencerViewModel model) => SequencerDialog.ShowAsync(model, _owner);
     }
 
-    /// <summary>Rebase ekranını gerçek bir pencereyle gösterir (P07-T09, P07-T10).</summary>
+    /// <summary>Shows the rebase screen in a real window (P07-T09, P07-T10).</summary>
     private sealed class DialogRebasePrompt : IRebasePrompt
     {
         private readonly Window _owner;
@@ -314,7 +316,7 @@ public partial class MainWindow : Window
         public Task ShowAsync(RebaseViewModel model) => RebaseWindow.ShowAsync(model, _owner);
     }
 
-    /// <summary>Pull/Fetch ekranını gerçek bir pencereyle gösterir (P06-T06, T07).</summary>
+    /// <summary>Shows the pull/fetch screen in a real window (P06-T06, T07).</summary>
     private sealed class DialogPullPrompt : IPullPrompt
     {
         private readonly Window _owner;
@@ -326,8 +328,8 @@ public partial class MainWindow : Window
             _model = model;
         }
 
-        // "Yönet…" düğmesi uzak depo ekranını açıyor — GitExtensions'ta da `FormPull`'da
-        // `AddRemote` düğmesi var (§ 9). İkinci bir yol değil, aynı komutun kısayolu.
+        // The "Manage…" button opens the remotes screen — GitExtensions has an `AddRemote` button
+        // in `FormPull` as well (§ 9). Not a second path, a shortcut to the same command.
         public Task ShowAsync(PullViewModel model) =>
             PullWindow.ShowAsync(
                 model,
@@ -335,7 +337,7 @@ public partial class MainWindow : Window
                 () => _model.ManageRemotesCommand.ExecuteAsync(null));
     }
 
-    /// <summary>Merge ekranını gerçek bir pencereyle gösterir (P06-T11).</summary>
+    /// <summary>Shows the merge screen in a real window (P06-T11).</summary>
     private sealed class DialogMergePrompt : IMergePrompt
     {
         private readonly Window _owner;
@@ -345,7 +347,7 @@ public partial class MainWindow : Window
         public Task ShowAsync(MergeViewModel model) => MergeWindow.ShowAsync(model, _owner);
     }
 
-    /// <summary>Komut günlüğünü gerçek bir pencereyle gösterir (P06-T16).</summary>
+    /// <summary>Shows the command log in a real window (P06-T16).</summary>
     private sealed class DialogCommandLogPrompt : ICommandLogPrompt
     {
         private readonly Window _owner;
@@ -355,10 +357,10 @@ public partial class MainWindow : Window
         public Task ShowAsync(CommandLogViewModel model) => CommandLogWindow.ShowAsync(model, _owner);
     }
 
-    /// <summary>Teşhis panelini gerçek bir pencereyle gösterir (P09-T03).</summary>
+    /// <summary>Shows the diagnostics panel in a real window (P09-T03).</summary>
     /// <remarks>
-    /// Sahip olarak ana pencere veriliyor; kare ölçümü ona bağlanıyor — ölçülmek istenen
-    /// şey grafiğin kaydırılması, teşhis panelinin kendi çizimi değil.
+    /// The main window is given as the owner; the frame measurement attaches to it — what is meant
+    /// to be measured is scrolling the graph, not the diagnostics panel drawing itself.
     /// </remarks>
     private sealed class DialogDiagnosticsPrompt : IDiagnosticsPrompt
     {
@@ -370,7 +372,7 @@ public partial class MainWindow : Window
             DiagnosticsWindow.ShowAsync(diagnostics, _owner);
     }
 
-    /// <summary>Sürükle-bırak birleştirme onayını sorar (P06-T15).</summary>
+    /// <summary>Asks for confirmation of a drag-and-drop merge (P06-T15).</summary>
     private sealed class DialogMergeDropConfirmer : IMergeDropConfirmer
     {
         private readonly Window _owner;
@@ -381,7 +383,7 @@ public partial class MainWindow : Window
             MergeDropDialog.ShowAsync(request, _owner);
     }
 
-    /// <summary>Merge iptal onayını gerçek bir pencereyle sorar (P06-T12).</summary>
+    /// <summary>Asks for merge abort confirmation in a real window (P06-T12).</summary>
     private sealed class DialogMergeAbortConfirmer : IMergeAbortConfirmer
     {
         private readonly Window _owner;
@@ -392,7 +394,7 @@ public partial class MainWindow : Window
             AbortMergeDialog.ShowAsync(conflicted, _owner);
     }
 
-    /// <summary>Kimlik doğrulama ekranını gerçek bir pencereyle gösterir (P06-T09).</summary>
+    /// <summary>Shows the authentication screen in a real window (P06-T09).</summary>
     private sealed class DialogAuthenticationPrompt : IAuthenticationPrompt
     {
         private readonly Window _owner;
@@ -403,7 +405,7 @@ public partial class MainWindow : Window
             AuthenticationWindow.ShowAsync(model, _owner);
     }
 
-    /// <summary>Push ekranını gerçek bir pencereyle gösterir (P06-T08).</summary>
+    /// <summary>Shows the push screen in a real window (P06-T08).</summary>
     private sealed class DialogPushPrompt : IPushPrompt
     {
         private readonly Window _owner;
@@ -415,8 +417,8 @@ public partial class MainWindow : Window
             _model = model;
         }
 
-        // Alt sıradaki "Pull…" düğmesi GitExtensions `FormPush`'tan (§ 9): reddedilen bir
-        // gönderimden sonra kullanıcının gideceği yer zaten orası.
+        // The "Pull…" button on the bottom row comes from GitExtensions' `FormPush` (§ 9): after a
+        // rejected push, that is where the user is going anyway.
         public Task ShowAsync(PushViewModel model) =>
             PushWindow.ShowAsync(
                 model,
@@ -425,7 +427,7 @@ public partial class MainWindow : Window
                 () => _model.PullCommand.ExecuteAsync(null));
     }
 
-    /// <summary>Uzak depo yönetimi ekranını gerçek bir pencereyle gösterir (P06-T05).</summary>
+    /// <summary>Shows the remote management screen in a real window (P06-T05).</summary>
     private sealed class DialogRemotesPrompt : IRemotesPrompt, IRemoteRemovalConfirmer
     {
         private readonly Window _owner;
@@ -440,7 +442,7 @@ public partial class MainWindow : Window
             RemoveRemoteDialog.ShowAsync(request, _owner);
     }
 
-    /// <summary>Dal düzenleme diyaloglarını gerçek bir pencereyle gösterir (P06-T03).</summary>
+    /// <summary>Shows the branch editing dialogs in a real window (P06-T03).</summary>
     private sealed class DialogBranchEditPrompt : IBranchEditPrompt
     {
         private readonly Window _owner;
@@ -454,7 +456,7 @@ public partial class MainWindow : Window
             DeleteBranchDialog.ShowAsync(request, _owner);
     }
 
-    /// <summary>Dala geçme diyaloğunu gerçek bir pencereyle gösterir (P06-T02).</summary>
+    /// <summary>Shows the checkout branch dialog in a real window (P06-T02).</summary>
     private sealed class DialogCheckoutPrompt : ICheckoutPrompt
     {
         private readonly Window _owner;
@@ -465,7 +467,7 @@ public partial class MainWindow : Window
             CheckoutBranchDialog.ShowAsync(request, _owner);
     }
 
-    /// <summary>Dal oluşturma diyaloğunu gerçek bir pencereyle gösterir (P06-T01).</summary>
+    /// <summary>Shows the create branch dialog in a real window (P06-T01).</summary>
     private sealed class DialogBranchPrompt : ICreateBranchPrompt
     {
         private readonly Window _owner;
@@ -477,11 +479,11 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Menüden depo açma. Karşılama ekranındakiyle aynı akış.
+    /// Opening a repository from the menu. The same flow as the one on the welcome screen.
     /// </summary>
     /// <remarks>
-    /// Klasör seçici kod arkasında: <c>IStorageProvider</c> pencereye bağlıdır ve
-    /// ViewModel'ın pencereyi tanıması katman kuralını bozardı.
+    /// The folder picker lives in the code-behind: <c>IStorageProvider</c> is bound to the window,
+    /// and the ViewModel knowing about the window would break the layering rule.
     /// </remarks>
     private async Task OpenRepositoryAsync()
     {
@@ -508,15 +510,15 @@ public partial class MainWindow : Window
 
     private void ShowAbout()
     {
-        // Tam "Hakkında" penceresi Faz 08'in işi (P08-T21); şimdilik sürüm bilgisi başlıkta.
+        // A full "About" window is Phase 08's job (P08-T21); for now the version is in the title.
         Title = $"gitext-core — {typeof(MainWindow).Assembly.GetName().Version}";
     }
 
     private static void OnDragOver(object? sender, DragEventArgs e)
     {
-        // Yalnızca dosya/klasör kabul edilir; metin sürüklendiğinde imleç "yasak" göstersin.
-        // NOT: Avalonia 12'de API değişti — `e.Data`/`DataFormats.Files` yerine
-        // `e.DataTransfer`/`DataFormat.File` (ölçüldü).
+        // Only files/folders are accepted; when text is dragged the cursor should show "forbidden".
+        // NOTE: the API changed in Avalonia 12 — `e.DataTransfer`/`DataFormat.File` instead of
+        // `e.Data`/`DataFormats.Files` (measured).
         e.DragEffects = e.DataTransfer.Contains(DataFormat.File)
             ? DragDropEffects.Link
             : DragDropEffects.None;
@@ -536,7 +538,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Uzak/sanal konumların yerel yolu yoktur; git yerel yol ister, onlar elenir.
+        // Remote/virtual locations have no local path; git wants a local path, so they are filtered out.
         List<string> paths = [.. items
             .Select(item => item.TryGetLocalPath())
             .Where(path => !string.IsNullOrEmpty(path))
@@ -557,12 +559,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Commit ekranını açar (P05-T09).
+    /// Opens the commit screen (P05-T09).
     /// </summary>
     /// <remarks>
-    /// GitExtensions'taki yeri: <i>Commands → Commit</i>, menünün <b>ilk</b> öğesi
-    /// (<c>commandsToolStripMenuItem.DropDownItems</c>). Modal açılıyor; kapanınca commit
-    /// listesi yenileniyor çünkü bu ekranda yeni bir commit oluşmuş olabilir.
+    /// Its place in GitExtensions: <i>Commands → Commit</i>, the <b>first</b> item of the menu
+    /// (<c>commandsToolStripMenuItem.DropDownItems</c>). It opens modally; on closing, the commit
+    /// list is refreshed because a new commit may have been created on that screen.
     /// </remarks>
     private async Task ShowCommitAsync()
     {

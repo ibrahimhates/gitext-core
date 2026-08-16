@@ -4,47 +4,47 @@ using System.Text;
 namespace GitExt.Core;
 
 /// <summary>
-/// Interactive rebase todo listesindeki bir adımın eylemi (P07-T10).
+/// The action of one step in an interactive rebase todo list (P07-T10).
 /// </summary>
 /// <remarks>
-/// Adlar git'in kendi fiilleri; todo dosyasına birebir bu şekilde yazılıyorlar.
+/// The names are git's own verbs; they are written into the todo file exactly like this.
 /// </remarks>
 public enum RebaseAction
 {
-    /// <summary>Commit'i olduğu gibi uygula.</summary>
+    /// <summary>Apply the commit as it is.</summary>
     Pick,
 
-    /// <summary>Uygula ama mesajı değiştir.</summary>
+    /// <summary>Apply it but change the message.</summary>
     Reword,
 
-    /// <summary>Uygula ve düzenlemek için dur.</summary>
+    /// <summary>Apply it and stop for editing.</summary>
     Edit,
 
-    /// <summary>Bir öncekine kaynat, mesajları birleştir.</summary>
+    /// <summary>Fold into the previous one, combining the messages.</summary>
     Squash,
 
-    /// <summary>Bir öncekine kaynat, <b>bu</b> commit'in mesajını at.</summary>
+    /// <summary>Fold into the previous one, discarding <b>this</b> commit's message.</summary>
     Fixup,
 
-    /// <summary>Commit'i tamamen çıkar.</summary>
+    /// <summary>Drop the commit entirely.</summary>
     Drop,
 }
 
 /// <summary>
-/// Interactive rebase todo listesindeki tek satır (P07-T10).
+/// A single line in an interactive rebase todo list (P07-T10).
 /// </summary>
 public sealed record RebaseStep
 {
-    /// <summary>Commit'in tam SHA'sı.</summary>
+    /// <summary>The commit's full SHA.</summary>
     public required string ObjectId { get; init; }
 
-    /// <summary>Commit konusu — yalnızca gösterim için.</summary>
+    /// <summary>The commit subject — for display only.</summary>
     public string Subject { get; init; } = string.Empty;
 
     public RebaseAction Action { get; init; } = RebaseAction.Pick;
 
     /// <summary>
-    /// <see cref="RebaseAction.Reword"/> için kullanıcının yazdığı yeni mesaj.
+    /// The new message the user typed, for <see cref="RebaseAction.Reword"/>.
     /// </summary>
     public string? NewMessage { get; init; }
 
@@ -52,29 +52,29 @@ public sealed record RebaseStep
 }
 
 /// <summary>
-/// Interactive rebase todo listesi (P07-T10).
+/// An interactive rebase todo list (P07-T10).
 /// </summary>
 /// <remarks>
 /// <para>
-/// git normalde bu listeyi bir editörde açar. Biz <c>GIT_SEQUENCE_EDITOR</c>'ı kendi
-/// betiğimize yönlendirip listeyi <b>programatik</b> yazıyoruz.
+/// git normally opens this list in an editor. We point <c>GIT_SEQUENCE_EDITOR</c> at our own
+/// script and write the list <b>programmatically</b>.
 /// </para>
 /// <para>
-/// 🔴 <b>ÖLÇÜLDÜ — betiğe verilen dosya git'in kendi todo'suyla DOLU geliyor.</b>
-/// İlk ölçümde betik <c>&gt;&gt;</c> ile eklediği için git 3 komut yerine <b>6</b> gördü,
-/// commit'ler iki kez uygulandı ve çakıştı. Yazıcı dosyayı <b>kesmek</b> zorunda —
-/// <see cref="RebaseTodoSession"/>'ın betiği bunu yapıyor ve test bunu sabitliyor.
+/// 🔴 <b>MEASURED — the file handed to the script arrives ALREADY FULL of git's own todo.</b>
+/// In the first measurement the script appended with <c>&gt;&gt;</c>, so git saw <b>6</b> commands
+/// instead of 3, the commits were applied twice and conflicted. The writer has to <b>truncate</b>
+/// the file — <see cref="RebaseTodoSession"/>'s script does exactly that, and a test pins it down.
 /// </para>
 /// </remarks>
 public static class RebaseTodo
 {
-    /// <summary>Todo dosyasının içeriğini üretir.</summary>
+    /// <summary>Produces the contents of the todo file.</summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: <c>pick &lt;sha&gt;</c> yeterli — git satırın kalanını yok sayıyor, konu
-    /// yazmak şart değil. Yine de yazılıyor: bir şey ters giderse
-    /// <c>.git/rebase-merge/git-rebase-todo</c> dosyasına bakan <b>insan</b> ne olduğunu
-    /// görebilmeli. Kısa ve tam SHA'nın ikisi de kabul ediliyor; tam SHA yazılıyor ki
-    /// kısaltma çakışması hiç doğmasın.
+    /// MEASURED: <c>pick &lt;sha&gt;</c> is enough — git ignores the rest of the line, writing the
+    /// subject is not required. It is written anyway: if something goes wrong, the <b>person</b>
+    /// looking at <c>.git/rebase-merge/git-rebase-todo</c> must be able to see what happened. Both
+    /// the short and the full SHA are accepted; the full SHA is written so an abbreviation clash
+    /// can never arise.
     /// </remarks>
     public static string Render(IReadOnlyList<RebaseStep> steps)
     {
@@ -86,8 +86,8 @@ public static class RebaseTodo
         {
             if (step.Action == RebaseAction.Drop)
             {
-                // `drop` yazmak ile satırı hiç yazmamak aynı sonucu veriyor; `drop`
-                // yazılıyor çünkü dosyaya bakan biri için niyet açık olmalı.
+                // Writing `drop` and not writing the line at all give the same result; `drop` is
+                // written because the intent must be clear to anyone looking at the file.
                 builder.Append("drop ");
             }
             else
@@ -99,7 +99,7 @@ public static class RebaseTodo
 
             if (step.Subject is { Length: > 0 } subject)
             {
-                // Satır sonu todo'yu bozar; konu tek satıra indirgeniyor.
+                // A line ending would break the todo; the subject is reduced to a single line.
                 builder.Append(" # ").Append(subject.ReplaceLineEndings(" "));
             }
 
@@ -120,17 +120,17 @@ public static class RebaseTodo
     };
 
     /// <summary>
-    /// Todo listesi git tarafından kabul edilir mi?
+    /// Will git accept this todo list?
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 🔴 <b>ÖLÇÜLDÜ — boş todo <c>error: nothing to do</c> ile rc=1 veriyor</b> ve rebase
-    /// hiç başlamıyor (depo el değmemiş kalıyor — güvenli, ama kullanıcı "hiçbir şey
-    /// olmadı" diye şaşırır). Her adımı <c>drop</c> yapmak da aynı kapıya çıkıyor.
+    /// 🔴 <b>MEASURED — an empty todo gives <c>error: nothing to do</c> with rc=1</b> and the
+    /// rebase never starts (the repository is left untouched — safe, but the user is puzzled that
+    /// "nothing happened"). Making every step a <c>drop</c> comes out at the same place.
     /// </para>
     /// <para>
-    /// ⚠️ İlk adım <c>squash</c> ya da <c>fixup</c> olamaz: kaynatacak bir önceki commit
-    /// yok. git bu durumda <c>cannot 'squash' without a previous commit</c> diyor.
+    /// ⚠️ The first step cannot be <c>squash</c> or <c>fixup</c>: there is no previous commit to
+    /// fold into. git says <c>cannot 'squash' without a previous commit</c> in that case.
     /// </para>
     /// </remarks>
     public static string? Validate(IReadOnlyList<RebaseStep> steps)
@@ -154,28 +154,28 @@ public static class RebaseTodo
 }
 
 /// <summary>
-/// <c>GIT_SEQUENCE_EDITOR</c> (ve gerekiyorsa <c>GIT_EDITOR</c>) kuran geçici oturum
+/// A temporary session that sets up <c>GIT_SEQUENCE_EDITOR</c> (and <c>GIT_EDITOR</c> when needed)
 /// (P07-T10).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Deseni <see cref="AskPassSession"/>'dan alıyor: git'e bir <b>betik yolu</b> veriliyor,
-/// asıl içerik betiğin içine gömülmüyor — betik onu <b>ortamdan</b> okunan bir dosyadan
-/// kopyalıyor. Böylece todo metni komut satırında ya da betik gövdesinde görünmüyor ve
-/// içindeki tırnak/satırsonu karakterleri kaçış sorunları doğurmuyor.
+/// The pattern comes from <see cref="AskPassSession"/>: git is handed a <b>script path</b> and the
+/// actual content is not embedded in the script — the script copies it from a file read out of the
+/// <b>environment</b>. That way the todo text never appears on the command line or in the script
+/// body, and the quotes and newlines inside it raise no escaping problems.
 /// </para>
 /// <para>
-/// ÖLÇÜLDÜ — sequence editor <b>hata verirse</b> git rebase'i hiç başlatmıyor
-/// (rc=1, <c>rebase-merge</c> dizini yok, depo el değmemiş). Yani betiğin başarısızlığı
-/// yarım bir duruma yol açmıyor.
+/// MEASURED — if the sequence editor <b>fails</b>, git never starts the rebase (rc=1, no
+/// <c>rebase-merge</c> directory, the repository untouched). So a failure of the script does not
+/// lead to a half-finished state.
 /// </para>
 /// </remarks>
 public sealed class RebaseTodoSession : IDisposable
 {
-    /// <summary>Todo içeriğinin okunacağı dosyanın yolu.</summary>
+    /// <summary>Path of the file the todo content is read from.</summary>
     internal const string TodoVariable = "GITEXT_REBASE_TODO";
 
-    /// <summary>Yeni commit mesajının okunacağı dosyanın yolu.</summary>
+    /// <summary>Path of the file the new commit message is read from.</summary>
     internal const string MessageVariable = "GITEXT_REBASE_MESSAGE";
 
     private readonly List<string> _paths = [];
@@ -186,16 +186,16 @@ public sealed class RebaseTodoSession : IDisposable
     {
     }
 
-    /// <summary>Komuta eklenecek ortam değişkenleri.</summary>
+    /// <summary>Environment variables to add to the command.</summary>
     public IReadOnlyDictionary<string, string> Environment => _environment;
 
     /// <summary>
-    /// Todo listesini (ve isteğe bağlı yeni mesajı) yazan bir oturum kurar.
+    /// Sets up a session that writes the todo list (and optionally a new message).
     /// </summary>
-    /// <param name="todo">Todo dosyasının içeriği.</param>
+    /// <param name="todo">The contents of the todo file.</param>
     /// <param name="message">
-    /// <c>reword</c>/<c>squash</c> için kullanılacak mesaj; <see langword="null"/> ise
-    /// git'in hazırladığı mesaj değiştirilmeden kabul edilir.
+    /// The message to use for <c>reword</c>/<c>squash</c>; when <see langword="null"/>, the message
+    /// git prepared is accepted unchanged.
     /// </param>
     public static RebaseTodoSession Create(string todo, string? message = null)
     {
@@ -213,8 +213,8 @@ public sealed class RebaseTodoSession : IDisposable
         }
         else
         {
-            // Mesaj verilmediyse editörün hiç açılmaması gerekiyor; `true` her zaman
-            // sessizce başarır ve git bunu "kullanıcı değiştirmedi" diye yorumlar.
+            // When no message is given the editor must not open at all; `true` always succeeds
+            // silently and git reads that as "the user did not change it".
             session._environment["GIT_EDITOR"] =
                 OperatingSystem.IsWindows() ? "cmd /c exit 0" : "true";
         }
@@ -234,13 +234,12 @@ public sealed class RebaseTodoSession : IDisposable
     }
 
     /// <summary>
-    /// Verilen ortam değişkenindeki dosyayı git'in verdiği hedefin <b>üzerine</b> yazan
-    /// betik.
+    /// The script that writes the file named by the given environment variable <b>over</b> the
+    /// target git supplies.
     /// </summary>
     /// <remarks>
-    /// 🔴 <c>&gt;</c> (kes ve yaz) kullanılıyor, <c>&gt;&gt;</c> değil. Ölçümde eklemek,
-    /// git'in kendi todo'sunun üstüne bizimkini koyduğu için commit'lerin iki kez
-    /// uygulanmasına yol açmıştı.
+    /// 🔴 <c>&gt;</c> (truncate and write) is used, not <c>&gt;&gt;</c>. In the measurement,
+    /// appending put ours after git's own todo and caused the commits to be applied twice.
     /// </remarks>
     private string WriteScript(string kind, string variable)
     {
@@ -285,7 +284,7 @@ public sealed class RebaseTodoSession : IDisposable
             }
             catch (IOException)
             {
-                // Silinememesi işlevi bozmuyor.
+                // Failing to delete it does not break anything.
             }
             catch (UnauthorizedAccessException)
             {

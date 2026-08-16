@@ -10,7 +10,7 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Detay panelindeki tıklanabilir ebeveyn bağlantısı.
+/// A clickable parent link in the details panel.
 /// </summary>
 public sealed class ParentLink
 {
@@ -31,30 +31,30 @@ public sealed class ParentLink
 }
 
 /// <summary>
-/// Seçili commit'in tam bilgisi (P03-T15).
+/// The full information about the selected commit (P03-T15).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Listedeki satır özeti gösterir; burası "her şey" panelidir: tam SHA, yazar ve kaydeden
-/// <b>ayrı ayrı</b>, tarihler hem yerel hem <b>yazarın kendi saat diliminde</b>, tam mesaj,
-/// tıklanabilir ebeveynler, ref rozetleri ve imza durumu.
+/// The row in the list shows a summary; this is the "everything" panel: the full SHA, author and
+/// committer <b>separately</b>, the dates both locally and <b>in the author's own time zone</b>, the
+/// full message, clickable parents, ref badges and the signature status.
 /// </para>
 /// <para>
-/// <b>İmza ayrıca ve gecikmeli okunur.</b> Ölçüldü: <c>%G?</c> alanını toplu <c>git log</c>
-/// formatına eklemek 2.000 imzasız commit'te okumayı %72 yavaşlatıyor. Ayrıca kullanıcı
-/// <c>↓</c> tuşuna basılı tutarak yüzlerce satır geçebilir; her satır için bir <c>git</c>
-/// süreci başlatmamak adına okuma <see cref="_signatureDelay"/> kadar bekletiliyor ve seçim
-/// değişince iptal ediliyor.
+/// <b>The signature is read separately and with a delay.</b> Measured: adding the <c>%G?</c> field to
+/// the bulk <c>git log</c> format slows the read by 72% over 2,000 unsigned commits. On top of that
+/// the user can hold <c>↓</c> down and pass hundreds of rows; to avoid starting a <c>git</c> process
+/// for every one of them, the read waits <see cref="_signatureDelay"/> and is cancelled when the
+/// selection changes.
 /// </para>
 /// </remarks>
 public sealed partial class CommitDetailsViewModel : ViewModelBase
 {
     /// <summary>
-    /// İmza okumadan önce beklenen süre.
+    /// How long to wait before reading the signature.
     /// </summary>
     /// <remarks>
-    /// Listede hızlıca gezinirken hiç <c>git</c> süreci başlatılmamasını sağlar. İnsan gözüyle
-    /// fark edilmeyecek kadar kısa, tuş tekrarını elemeye yetecek kadar uzun.
+    /// Ensures no <c>git</c> process is started at all while scrolling quickly through the list.
+    /// Short enough to go unnoticed by the human eye, long enough to filter out key repeat.
     /// </remarks>
     private static readonly TimeSpan _signatureDelay = TimeSpan.FromMilliseconds(150);
 
@@ -72,12 +72,12 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
         _signatureReader = signatureReader;
         _navigate = navigate;
 
-        // Tek komut örneği tüm ebeveyn bağlantılarınca paylaşılıyor; her satır için yeni
-        // komut üretmek gereksiz tahsis olurdu.
+        // A single command instance is shared by all the parent links; producing a new command for
+        // every row would be a needless allocation.
         _goToParentCommand = new RelayCommand<CommitId>(id => _navigate(id));
     }
 
-    /// <summary>Gösterilecek bir commit var mı?</summary>
+    /// <summary>Is there a commit to show?</summary>
     [ObservableProperty]
     public partial bool HasCommit { get; private set; }
 
@@ -87,7 +87,7 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
     [ObservableProperty]
     public partial string Subject { get; private set; } = string.Empty;
 
-    /// <summary>Mesajın başlık dışındaki gövdesi.</summary>
+    /// <summary>The body of the message, excluding the subject.</summary>
     [ObservableProperty]
     public partial string Body { get; private set; } = string.Empty;
 
@@ -100,11 +100,11 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
     [ObservableProperty]
     public partial string AuthorDate { get; private set; } = string.Empty;
 
-    /// <summary>Yazarın kendi saat dilimindeki tarih; yerelle aynıysa boş.</summary>
+    /// <summary>The date in the author's own time zone; empty when it matches the local one.</summary>
     [ObservableProperty]
     public partial string? AuthorOriginalDate { get; private set; }
 
-    /// <summary>Yazarın saat dilimi açıklamasının çevrilmiş metni (P11-T05).</summary>
+    /// <summary>The translated text of the author's time zone note (P11-T05).</summary>
     public string? AuthorOriginalDateText => AuthorOriginalDate is null
         ? null
         : Loc.F("commit_details.in_the_authors_time_zone", AuthorOriginalDate);
@@ -121,7 +121,7 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
     [ObservableProperty]
     public partial string? CommitterOriginalDate { get; private set; }
 
-    /// <summary>Kaydedenin saat dilimi açıklamasının çevrilmiş metni (P11-T05).</summary>
+    /// <summary>The translated text of the committer's time zone note (P11-T05).</summary>
     public string? CommitterOriginalDateText => CommitterOriginalDate is null
         ? null
         : Loc.F("commit_details.in_their_own_time_zone", CommitterOriginalDate);
@@ -130,11 +130,11 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
         OnPropertyChanged(nameof(CommitterOriginalDateText));
 
     /// <summary>
-    /// Kaydeden yazardan farklı mı?
+    /// Is the committer different from the author?
     /// </summary>
     /// <remarks>
-    /// Rebase, cherry-pick ve yamalarda ayrışır. Vurgulanmazsa kullanıcı iki özdeş satır
-    /// görür ve farkın ne zaman anlamlı olduğunu bilemez.
+    /// They diverge on rebases, cherry-picks and patches. Without highlighting it, the user sees two
+    /// identical lines and cannot tell when the difference is meaningful.
     /// </remarks>
     [ObservableProperty]
     public partial bool CommitterDiffersFromAuthor { get; private set; }
@@ -151,27 +151,28 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
     [ObservableProperty]
     public partial bool HasBadges { get; private set; }
 
-    /// <summary>İmza durumunun kısa açıklaması; okunuyorsa veya imza yoksa boş.</summary>
+    /// <summary>A short description of the signature status; empty while reading or when unsigned.</summary>
     [ObservableProperty]
     public partial string? SignatureText { get; private set; }
 
-    /// <summary>İmzalayan/anahtar ya da doğrulanamama sebebi.</summary>
+    /// <summary>The signer/key, or the reason it could not be verified.</summary>
     [ObservableProperty]
     public partial string? SignatureDetail { get; private set; }
 
-    /// <summary>İmza doğrulandı ve güvenilir.</summary>
+    /// <summary>The signature was verified and is trusted.</summary>
     [ObservableProperty]
     public partial bool SignatureIsTrusted { get; private set; }
 
-    /// <summary>İmzada sorun var (hatalı, süresi dolmuş, iptal, doğrulanamadı).</summary>
+    /// <summary>There is a problem with the signature (bad, expired, revoked, unverifiable).</summary>
     [ObservableProperty]
     public partial bool SignatureIsProblem { get; private set; }
 
     /// <summary>
-    /// Paneli verilen satıra göre günceller.
+    /// Updates the panel for the given row.
     /// </summary>
-    /// <param name="row">Seçili satır; seçim yoksa <see langword="null"/>.</param>
-    /// <param name="workingDirectory">İmza okumak için depo yolu; yoksa imza okunmaz.</param>
+    /// <param name="row">The selected row; <see langword="null"/> when there is no selection.</param>
+    /// <param name="workingDirectory">The repository path used to read the signature; without it, no
+    /// signature is read.</param>
     public void Show(CommitRowViewModel? row, string? workingDirectory)
     {
         CancelSignatureLoad();
@@ -256,12 +257,12 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            // Kullanıcı başka bir commit seçti; hata değil.
+            // The user selected another commit; not an error.
         }
         catch (GitException)
         {
-            // İmza yardımcı bilgidir. Okunamaması commit'in geri kalanını göstermemek için
-            // sebep değil — panel imza satırı olmadan kalır.
+            // The signature is supplementary information. Failing to read it is no reason to hide the
+            // rest of the commit — the panel is simply left without the signature line.
         }
     }
 
@@ -297,17 +298,17 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gösterilen commit'e ait her şeyi bırakır (P09-T10).
+    /// Releases everything belonging to the commit being shown (P09-T10).
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>Yalnızca <see cref="HasCommit"/>'i kapatmak yetmiyordu.</b> Panel gizlenirken
-    /// <see cref="Badges"/> ve <see cref="Parents"/> kapatılan deponun nesnelerini
-    /// tutmaya devam ediyordu; rozet listesi satırın kendisine ait olduğu için satır da,
-    /// dolayısıyla commit'i de bellekte kalıyordu. Depolar arasında geçen uzun bir
-    /// oturumda her geçiş bir öncekini biriktirirdi.
+    /// 🔴 <b>Turning <see cref="HasCommit"/> off was not enough on its own.</b> While the panel was
+    /// hidden, <see cref="Badges"/> and <see cref="Parents"/> kept holding objects belonging to the
+    /// closed repository; because the badge list belongs to the row itself, the row — and therefore
+    /// its commit — stayed in memory too. Over a long session moving between repositories, every
+    /// switch would accumulate the previous one.
     /// <para>
-    /// Görünmeyen bir panelin eski veriyi tutması gözle fark edilmiyor — sızıntıyı
-    /// bulan şey <c>MemoryStressTests</c>'in zayıf referans ölçümü oldu.
+    /// An invisible panel holding on to old data cannot be spotted by eye — what found the leak was
+    /// the weak-reference measurement in <c>MemoryStressTests</c>.
     /// </para>
     /// </remarks>
     private void Clear()
@@ -359,13 +360,14 @@ public sealed partial class CommitDetailsViewModel : ViewModelBase
         value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture);
 
     /// <summary>
-    /// Tarihi yazarın kendi saat diliminde biçimler; yerel ofsetle aynıysa
-    /// <see langword="null"/> döner.
+    /// Formats the date in the author's own time zone; returns <see langword="null"/> when it matches
+    /// the local offset.
     /// </summary>
     /// <remarks>
-    /// Aynı olduğunda göstermek her satırı iki kez yazmak olurdu. Ofset commit'e özeldir:
-    /// aynı deponun commit'leri farklı dilimlerde atılmış olabilir, bu yüzden karşılaştırma
-    /// <b>o anın</b> yerel ofsetiyle yapılıyor (yaz saati kayması dahil).
+    /// Showing it when they match would be writing every line twice. The offset is specific to the
+    /// commit: commits in the same repository may have been made in different zones, so the
+    /// comparison is made against the local offset <b>at that moment</b> (daylight saving shifts
+    /// included).
     /// </remarks>
     private static string? FormatOriginalIfDifferent(DateTimeOffset value)
     {

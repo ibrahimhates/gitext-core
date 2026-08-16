@@ -1,93 +1,93 @@
 namespace GitExt.Core;
 
 /// <summary>
-/// Bir uzak depo adının neden kabul edilemediği (P06-T05).
+/// Why a remote name cannot be accepted (P06-T05).
 /// </summary>
 public enum RemoteNameProblem
 {
-    /// <summary>Ad boş veya yalnızca boşluk.</summary>
+    /// <summary>The name is empty or only whitespace.</summary>
     Empty,
 
     /// <summary>
-    /// Ad <c>refs/</c> ile başlıyor.
+    /// The name starts with <c>refs/</c>.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ:</b> git bunu hata saymıyor — <c>git remote add refs/remotes/x …</c>
-    /// çıkış kodu <b>0</b> veriyor ve <c>refs/remotes/refs/remotes/x/*</c> altına yazan bir
-    /// remote oluşuyor. Kullanıcı <c>branch -a</c> çıktısından ad kopyaladığında sessizce
-    /// iç içe bir ad elde ediyor. Bu reddi git değil <b>biz</b> koyuyoruz (P06-T01'deki
-    /// <c>refs/heads/</c> kararının aynısı).
+    /// 🔴 <b>MEASURED:</b> git does not treat this as an error — <c>git remote add refs/remotes/x …</c>
+    /// gives exit code <b>0</b> and creates a remote writing under
+    /// <c>refs/remotes/refs/remotes/x/*</c>. When the user copies a name out of <c>branch -a</c>
+    /// output they silently end up with a nested name. This rejection is put in place by <b>us</b>,
+    /// not by git (the same as the <c>refs/heads/</c> decision in P06-T01).
     /// </remarks>
     NestedRefsPrefix,
 
     /// <summary>
-    /// Ad <c>-</c> ile başlıyor.
+    /// The name starts with <c>-</c>.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: git böyle bir adı <b>kabul ediyor</b> (<c>--</c> ayracıyla, çıkış kodu 0),
-    /// ama <c>--</c> unutulduğu her yerde bayrak sanılıyor (<c>unknown switch</c>, rc=129).
-    /// Kendi komutlarımız her zaman <c>--</c> kullanıyor; yine de <b>kullanıcının başka
-    /// araçlarda</b> başına iş açacak bir ad üretmesine izin vermiyoruz.
+    /// MEASURED: git <b>accepts</b> such a name (with the <c>--</c> separator, exit code 0), but
+    /// everywhere <c>--</c> is forgotten it is taken for a flag (<c>unknown switch</c>, rc=129). Our
+    /// own commands always use <c>--</c>; even so, we do not let the user create a name that will
+    /// cause them trouble <b>in other tools</b>.
     /// </remarks>
     LeadingDash,
 
-    /// <summary>Yasak karakter: boşluk, kontrol karakteri, <c>~ ^ : ? * [ \</c>.</summary>
+    /// <summary>A forbidden character: space, a control character, <c>~ ^ : ? * [ \</c>.</summary>
     ForbiddenCharacter,
 
-    /// <summary>Bölüm <c>.</c> ile başlıyor veya <c>.lock</c> ile bitiyor.</summary>
+    /// <summary>A component starts with <c>.</c> or ends with <c>.lock</c>.</summary>
     InvalidSegment,
 
-    /// <summary>Boş bölüm: baştaki/sondaki <c>/</c> veya art arda <c>//</c>.</summary>
+    /// <summary>An empty component: a leading/trailing <c>/</c> or a consecutive <c>//</c>.</summary>
     EmptySegment,
 
     /// <summary>
-    /// Art arda iki nokta (<c>..</c>).
+    /// Two consecutive dots (<c>..</c>).
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>Sonda nokta burada YOK</b> — dal adlarından ayrıldığı bir nokta daha.
-    /// ÖLÇÜLDÜ: <c>git remote add -- "a." …</c> çalışıyor ve <c>a.</c> remote'u
-    /// <b>tamamen işlevsel</b>: <c>fetch</c> geçiyor, <c>refs/remotes/a./main</c> oluşuyor,
-    /// <c>rename</c> çalışıyor. Sebebi <c>check-ref-format</c>'ın kuralı: <b>ref'in tamamı</b>
-    /// nokta ile bitemez, ama remote adı her zaman <c>/…</c> ile devam ettiği için
-    /// <c>refs/remotes/a./HEAD</c> geçerli. <c>BranchName</c>'in kuralı kopyalansaydı
-    /// git'in kabul ettiği bir ad sebepsiz reddedilirdi (ayrık test yakaladı).
+    /// ⚠️ <b>A trailing dot is NOT here</b> — one more point where this differs from branch names.
+    /// MEASURED: <c>git remote add -- "a." …</c> works and the <c>a.</c> remote is <b>fully
+    /// functional</b>: <c>fetch</c> goes through, <c>refs/remotes/a./main</c> is created, and
+    /// <c>rename</c> works. The reason is <c>check-ref-format</c>'s rule: <b>the ref as a whole</b>
+    /// cannot end with a dot, but because a remote name is always followed by <c>/…</c>,
+    /// <c>refs/remotes/a./HEAD</c> is valid. Had <c>BranchName</c>'s rule been copied, a name git
+    /// accepts would be rejected for no reason (a differential test caught it).
     /// </remarks>
     InvalidDot,
 }
 
 /// <summary>
-/// Uzak depo adı doğrulaması (P06-T05).
+/// Remote name validation (P06-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Neden <see cref="BranchName"/> yeniden KULLANILMIYOR?</b> Kurallar aynı değil.
-/// ÖLÇÜLDÜ:
+/// 🔴 <b>Why is <see cref="BranchName"/> NOT REUSED?</b> The rules are not the same.
+/// MEASURED:
 /// </para>
 /// <list type="table">
-///   <listheader><term>Ad</term><description><c>git remote add</c> · <c>git branch</c></description></listheader>
-///   <item><term><c>HEAD</c></term><description><b>kabul</b> · ret</description></item>
-///   <item><term><c>@{-1}</c></term><description>ret · "kabul" (ama başka bir ada çevirerek)</description></item>
+///   <listheader><term>Name</term><description><c>git remote add</c> · <c>git branch</c></description></listheader>
+///   <item><term><c>HEAD</c></term><description><b>accepted</b> · rejected</description></item>
+///   <item><term><c>@{-1}</c></term><description>rejected · "accepted" (but translated to another name)</description></item>
 /// </list>
 /// <para>
-/// <c>BranchName</c> burada kullanılsaydı <c>HEAD</c> adlı bir remote — git'in izin verdiği
-/// ve GitHub akışlarında görülebilen bir ad — sebepsiz reddedilirdi.
+/// Had <c>BranchName</c> been used here, a remote called <c>HEAD</c> — a name git permits and one
+/// that turns up in GitHub workflows — would be rejected for no reason.
 /// </para>
 /// <para>
-/// Doğrulama <b>saf</b>: kullanıcı yazarken her tuş vuruşunda süreç başlatmıyoruz. Sapma
-/// sessiz olurdu, bu yüzden ayrık bir test aynı adları hem buraya hem <b>gerçek</b>
-/// <c>git remote add</c>'e veriyor (bilinçli sapmalar testte adıyla listeli).
+/// The validation is <b>pure</b>: we do not start a process on every keystroke while the user types.
+/// Drift would be silent, so a differential test feeds the same names both to this code and to the
+/// <b>real</b> <c>git remote add</c> (deliberate divergences are listed by name in the test).
 /// </para>
 /// </remarks>
 public static class RemoteName
 {
-    /// <summary>Uzak izleme dallarının ref öneki.</summary>
+    /// <summary>The ref prefix of remote tracking branches.</summary>
     public const string RemotesPrefix = "refs/remotes/";
 
     /// <summary>
-    /// Adı doğrular.
+    /// Validates the name.
     /// </summary>
-    /// <param name="name">Kullanıcının yazdığı ad.</param>
-    /// <returns>Sorun yoksa <see langword="null"/>.</returns>
+    /// <param name="name">The name the user typed.</param>
+    /// <returns><see langword="null"/> when there is no problem.</returns>
     public static RemoteNameProblem? Validate(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -95,7 +95,7 @@ public static class RemoteName
             return RemoteNameProblem.Empty;
         }
 
-        // 🔴 git bunu hata saymıyor, sessizce iç içe ad oluşturuyor (ölçüldü).
+        // 🔴 git does not treat this as an error, it silently creates a nested name (measured).
         if (name.StartsWith("refs/", StringComparison.Ordinal))
         {
             return RemoteNameProblem.NestedRefsPrefix;
@@ -106,7 +106,7 @@ public static class RemoteName
             return RemoteNameProblem.LeadingDash;
         }
 
-        // Yalnızca `..`; sonda nokta git'te GEÇERLİ (yukarıdaki nota bak).
+        // Only `..`; a trailing dot IS VALID in git (see the note above).
         if (name.Contains("..", StringComparison.Ordinal))
         {
             return RemoteNameProblem.InvalidDot;
@@ -120,7 +120,7 @@ public static class RemoteName
             }
         }
 
-        // ⚠️ `Split` boş bölümleri koruyor: baştaki/sondaki `/` ve `//` böyle yakalanıyor.
+        // ⚠️ `Split` keeps empty components: that is how a leading/trailing `/` and `//` are caught.
         foreach (string segment in name.Split('/'))
         {
             if (segment.Length == 0)
@@ -137,11 +137,11 @@ public static class RemoteName
         return null;
     }
 
-    /// <summary>Ad geçerli mi?</summary>
+    /// <summary>Is the name valid?</summary>
     public static bool IsValid(string? name) => Validate(name) is null;
 
     /// <summary>
-    /// Sorunun kullanıcıya gösterilecek açıklaması.
+    /// The explanation of the problem to show the user.
     /// </summary>
     public static string Describe(RemoteNameProblem problem) => problem switch
     {

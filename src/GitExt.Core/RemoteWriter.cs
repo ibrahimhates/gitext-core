@@ -5,80 +5,80 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Uzak depo ekleme seçenekleri (P06-T05).
+/// Options for adding a remote (P06-T05).
 /// </summary>
 public sealed record RemoteAddOptions
 {
-    /// <summary>Eklenecek remote'un adı.</summary>
+    /// <summary>Name of the remote to add.</summary>
     public required string Name { get; init; }
 
     /// <summary>Fetch URL'si.</summary>
     public required string Url { get; init; }
 
     /// <summary>
-    /// Ekledikten hemen sonra <c>fetch</c> yapılsın mı? (<c>git remote add -f</c>)
+    /// Should a <c>fetch</c> run right after adding? (<c>git remote add -f</c>)
     /// </summary>
     /// <remarks>
-    /// Varsayılan <b>kapalı</b>: bu bayrak komutu <b>ağa çıkarıyor</b> ve kimlik doğrulama
-    /// isteyebiliyor. "Uzak depo ekle" düğmesinin kilitlenmesi beklenmedik olurdu
-    /// (ağ işlemlerinin ilerleme/iptali P06-T10).
+    /// Default <b>off</b>: this flag <b>puts the command on the network</b> and it may ask for
+    /// authentication. The "add remote" button freezing would be unexpected
+    /// (progress/cancellation for network operations is P06-T10).
     /// </remarks>
     public bool FetchAfterAdd { get; init; }
 }
 
 /// <summary>
-/// Bir uzak deponun silinmeden <b>önce</b> okunmuş hâli ve kurtarma yolu (P06-T05).
+/// A remote as it was read <b>before</b> deletion, together with the way back (P06-T05).
 /// </summary>
 /// <remarks>
-/// 🔴 <b>Neden var?</b> ÖLÇÜLDÜ: <c>git remote remove</c> geri alınamaz bir kayıp
-/// olabiliyor — yalnızca uzak izleme dalında duran bir commit için
-/// <c>refs/remotes/*</c> <b>ve reflog'ları</b> siliniyor, commit "unreachable" oluyor ve
-/// <c>gc --prune=now</c> sonrası <b>nesne kayboldu</b>. Ayrıca <c>branch.*.remote</c>,
-/// <c>branch.*.merge</c>, <c>branch.*.pushRemote</c> ve <c>remote.pushDefault</c> sessizce
-/// siliniyor.
+/// 🔴 <b>Why does this exist?</b> MEASURED: <c>git remote remove</c> can be an irrecoverable
+/// loss — for a commit that lives only on a remote tracking branch, <c>refs/remotes/*</c>
+/// <b>and their reflogs</b> are deleted, the commit becomes "unreachable", and after
+/// <c>gc --prune=now</c> the <b>object is gone</b>. On top of that <c>branch.*.remote</c>,
+/// <c>branch.*.merge</c>, <c>branch.*.pushRemote</c> and <c>remote.pushDefault</c> are silently
+/// deleted.
 /// <para>
-/// ⚠️ Dal silmeden (P06-T03) <b>farkı</b>: oradaki kurtarma komutu nesneleri geri getiriyordu,
-/// burada getirmiyor — kurtarma <c>fetch</c> gerektiriyor, yani <b>uzak depo hâlâ
-/// erişilebilir olmalı</b>. Kullanıcıya gösterilen metin bunu söylemek zorunda.
+/// ⚠️ The <b>difference</b> from deleting a branch (P06-T03): there the recovery command brought
+/// the objects back, here it does not — recovery needs a <c>fetch</c>, which means the <b>remote
+/// must still be reachable</b>. The text shown to the user has to say so.
 /// </para>
 /// </remarks>
 public sealed record RemoteRemovalPlan
 {
-    /// <summary>Silinecek remote'un silme öncesi hâli.</summary>
+    /// <summary>The remote's state just before deletion.</summary>
     public required GitRemote Remote { get; init; }
 
     /// <summary>
-    /// Upstream'i bu remote'a bakan yerel dallar: (dal, upstream kısa adı).
+    /// Local branches whose upstream points at this remote: (branch, short upstream name).
     /// </summary>
     public IReadOnlyList<(string Branch, string Upstream)> AffectedBranches { get; init; } = [];
 
-    /// <summary>Bu remote'a işaret eden uzak izleme dallarının kısa adları.</summary>
+    /// <summary>Short names of the remote tracking branches pointing at this remote.</summary>
     public IReadOnlyList<string> TrackingBranches { get; init; } = [];
 
-    /// <summary><c>remote.pushDefault</c> bu remote'u gösteriyorsa <see langword="true"/>.</summary>
+    /// <summary><see langword="true"/> if <c>remote.pushDefault</c> names this remote.</summary>
     public bool IsPushDefault { get; init; }
 
     /// <summary>
-    /// Kullanıcının <b>olduğu gibi çalıştırabileceği</b> kurtarma komutları.
+    /// Recovery commands the user <b>can run as they are</b>.
     /// </summary>
     /// <remarks>
-    /// P05-T15 kuralı: geri alınamaz bir işlemde kullanıcı ekranda çalıştırılabilir bir
-    /// kurtarma yolu görüyorsa ayrı bir "emin misiniz" diyaloğu yerine onay kutusu yeterli.
+    /// The P05-T15 rule: for an irrecoverable operation, if the user can see a runnable way back
+    /// on screen, a checkbox is enough instead of a separate "are you sure" dialog.
     /// </remarks>
     public IReadOnlyList<string> RecoveryCommands { get; init; } = [];
 }
 
 /// <summary>
-/// Yeniden adlandırmanın sonucu (P06-T05).
+/// The result of a rename (P06-T05).
 /// </summary>
-/// <param name="OldName">Yeniden adlandırmadan önceki ad.</param>
-/// <param name="NewName">Yeni ad.</param>
+/// <param name="OldName">The name before the rename.</param>
+/// <param name="NewName">The new name.</param>
 /// <param name="Warnings">
-/// git'in <b>çıkış kodu 0</b> ile birlikte verdiği uyarılar. Boş olmayabilir!
+/// Warnings git emitted alongside <b>exit code 0</b>. This may well be non-empty!
 /// </param>
 public sealed record RemoteRenameResult(string OldName, string NewName, IReadOnlyList<string> Warnings);
 
-/// <summary>URL'nin hangi yönü.</summary>
+/// <summary>Which direction the URL is for.</summary>
 public enum RemoteUrlKind
 {
     /// <summary><c>remote.&lt;ad&gt;.url</c></summary>
@@ -89,20 +89,20 @@ public enum RemoteUrlKind
 }
 
 /// <summary>
-/// Uzak depo yazma işlemleri (P06-T05).
+/// Remote write operations (P06-T05).
 /// </summary>
 public interface IRemoteWriter
 {
-    /// <summary>Yeni bir uzak depo ekler.</summary>
-    /// <exception cref="ArgumentException">Ad geçersiz.</exception>
-    /// <exception cref="GitException">Ad zaten var ya da başka bir adla çakışıyor.</exception>
+    /// <summary>Adds a new remote.</summary>
+    /// <exception cref="ArgumentException">The name is invalid.</exception>
+    /// <exception cref="GitException">The name already exists or clashes with another one.</exception>
     Task AddAsync(
         string workingDirectory,
         RemoteAddOptions options,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Silmenin ne kaybettireceğini ve kurtarma yolunu <b>silmeden</b> hesaplar.
+    /// Works out what the deletion will cost and how to recover, <b>without</b> deleting.
     /// </summary>
     Task<RemoteRemovalPlan> PrepareRemovalAsync(
         string workingDirectory,
@@ -110,20 +110,20 @@ public interface IRemoteWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Uzak depoyu siler ve silmeden <b>önce</b> hesaplanmış planı döndürür.
+    /// Deletes the remote and returns the plan computed <b>before</b> the deletion.
     /// </summary>
     /// <remarks>
-    /// Plan bilerek dönüş değeri: bilgi silindikten sonra <b>okunamıyor</b>, çağıranın
-    /// önce ayrı bir çağrı yapmayı hatırlamasına güvenilmez.
+    /// The plan is deliberately the return value: once the information is deleted it <b>cannot be
+    /// read</b>, and the caller cannot be trusted to remember to make a separate call first.
     /// </remarks>
     Task<RemoteRemovalPlan> RemoveAsync(
         string workingDirectory,
         string name,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Uzak depoyu yeniden adlandırır.</summary>
-    /// <exception cref="ArgumentException">Yeni ad geçersiz.</exception>
-    /// <exception cref="GitException">Ad zaten var veya remote bulunamadı.</exception>
+    /// <summary>Renames the remote.</summary>
+    /// <exception cref="ArgumentException">The new name is invalid.</exception>
+    /// <exception cref="GitException">The name already exists, or the remote was not found.</exception>
     Task<RemoteRenameResult> RenameAsync(
         string workingDirectory,
         string oldName,
@@ -131,12 +131,12 @@ public interface IRemoteWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Bir uzak deponun <b>tek</b> URL'sini değiştirir.
+    /// Changes a remote's <b>single</b> URL.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// Remote'ta birden çok URL var. ÖLÇÜLDÜ: bu durumda <c>git remote set-url</c>
-    /// <c>remote.&lt;ad&gt;.url has multiple values</c> diyip çıkış kodu 128 ile duruyor;
-    /// hangisinin değiştirileceğini <b>kullanıcı</b> seçmeli.
+    /// The remote has more than one URL. MEASURED: in that case <c>git remote set-url</c> says
+    /// <c>remote.&lt;name&gt;.url has multiple values</c> and stops with exit code 128; which one
+    /// to change is for the <b>user</b> to pick.
     /// </exception>
     Task SetUrlAsync(
         string workingDirectory,
@@ -145,7 +145,7 @@ public interface IRemoteWriter
         string url,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Aynı yöne ikinci (üçüncü…) bir URL ekler.</summary>
+    /// <summary>Adds a second (third…) URL in the same direction.</summary>
     Task AddUrlAsync(
         string workingDirectory,
         string name,
@@ -154,11 +154,11 @@ public interface IRemoteWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Belirtilen URL'yi kaldırır.
+    /// Removes the given URL.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: git son fetch URL'sinin silinmesine izin vermiyor
-    /// (<c>Will not delete all non-push URLs</c>, çıkış kodu 128).
+    /// MEASURED: git does not allow the last fetch URL to be deleted
+    /// (<c>Will not delete all non-push URLs</c>, exit code 128).
     /// </remarks>
     Task RemoveUrlAsync(
         string workingDirectory,
@@ -169,19 +169,19 @@ public interface IRemoteWriter
 }
 
 /// <summary>
-/// <c>git remote</c> yazma sarmalayıcısı (P06-T05).
+/// The <c>git remote</c> write wrapper (P06-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Her komutta <c>--</c> ayracı var.</b> ÖLÇÜLDÜ: <c>-</c> ile başlayan bir ad ayraçsız
-/// çağrıda <b>bayrak sanılıyor</b> (<c>error: unknown switch 'x'</c>, çıkış kodu 129) ve
-/// <c>--</c> ile aynı ad kabul ediliyor. Kendi doğrulamamız böyle adları reddediyor ama
-/// depoda <b>zaten var olan</b> bir remote da böyle adlanmış olabilir.
+/// <b>Every command carries the <c>--</c> separator.</b> MEASURED: a name starting with <c>-</c>
+/// is <b>taken for a flag</b> when the separator is missing (<c>error: unknown switch 'x'</c>,
+/// exit code 129), and the same name is accepted with <c>--</c>. Our own validation rejects such
+/// names, but a remote that <b>already exists</b> in the repository may be named that way.
 /// </para>
 /// <para>
-/// Yazmalar <c>config.lock</c> kullanıyor, <c>index.lock</c> değil; yine de
-/// <see cref="IGitWriter"/> üzerinden gidiyorlar — yazma yolunun tek girişi orası (P05-T03)
-/// ve kilit çakışmasında yeniden deneme oradan geliyor.
+/// These writes use <c>config.lock</c>, not <c>index.lock</c>; they still go through
+/// <see cref="IGitWriter"/> — that is the single entrance to the write path (P05-T03) and the
+/// retry on a lock collision comes from there.
 /// </para>
 /// </remarks>
 public sealed class RemoteWriter : IRemoteWriter
@@ -267,8 +267,8 @@ public sealed class RemoteWriter : IRemoteWriter
         string name,
         CancellationToken cancellationToken = default)
     {
-        // 🔴 Plan silmeden ÖNCE hesaplanıyor. Silme sonrası config anahtarları ve
-        // uzak izleme dalları YOK — geri okunacak hiçbir şey kalmıyor (ölçüldü).
+        // 🔴 The plan is computed BEFORE the deletion. Afterwards the config keys and the remote
+        // tracking branches are GONE — there is nothing left to read back (measured).
         RemoteRemovalPlan plan =
             await PrepareRemovalAsync(workingDirectory, name, cancellationToken).ConfigureAwait(false);
 
@@ -292,12 +292,12 @@ public sealed class RemoteWriter : IRemoteWriter
             .RunAsync(workingDirectory, ["remote", "rename", "--", oldName, newName], cancellationToken)
             .ConfigureAwait(false);
 
-        // 🔴 ÖLÇÜLDÜ: varsayılan olmayan bir fetch refspec'i git GÜNCELLEMİYOR ama çıkış kodu
-        // yine de 0. Uyarı yalnızca stderr'de duruyor:
+        // 🔴 MEASURED: git DOES NOT UPDATE a non-default fetch refspec, yet the exit code is
+        // still 0. The warning sits on stderr alone:
         //   warning: Not updating non-default fetch refspec
-        // Yalnızca çıkış koduna bakan bir arayüz "başarıyla yeniden adlandırıldı" der,
-        // kullanıcının fetch yapılandırması ise eski ada bağlı kalırdı (P06-T02'deki
-        // `switch --merge` tuzağının aynısı).
+        // A UI that looks only at the exit code would say "renamed successfully" while the user's
+        // fetch configuration stayed bound to the old name (the same trap as `switch --merge` in
+        // P06-T02).
         return new RemoteRenameResult(oldName, newName, ExtractWarnings(result.StandardError));
     }
 
@@ -311,9 +311,9 @@ public sealed class RemoteWriter : IRemoteWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
 
-        // ÖLÇÜLDÜ: birden çok URL varsa git düz `set-url`'ü reddediyor
-        // ("has multiple values", çıkış kodu 128). Hatayı git'ten almak yerine burada
-        // durduruyoruz ki arayüz kullanıcıya HANGİ URL sorusunu sorabilsin.
+        // MEASURED: with more than one URL, git refuses a plain `set-url`
+        // ("has multiple values", exit code 128). Rather than take the error from git we stop
+        // here, so the UI can ask the user WHICH URL.
         GitRemote? remote = await _reader.FindAsync(workingDirectory, name, cancellationToken)
             .ConfigureAwait(false);
 
@@ -382,8 +382,9 @@ public sealed class RemoteWriter : IRemoteWriter
 
     private static void ValidateName(string? name, string parameterName)
     {
-        // Ad doğrulaması git'e bırakılmıyor: git'in cevabı çıkış kodu 128 ve serbest metin,
-        // oysa arayüz kullanıcı YAZARKEN "neden geçersiz" diyebilmeli (P06-T01 kalıbı).
+        // Name validation is not left to git: git's answer is exit code 128 and free text,
+        // whereas the UI must be able to say "why it is invalid" WHILE the user types (the
+        // P06-T01 pattern).
         if (RemoteName.Validate(name) is { } problem)
         {
             throw new ArgumentException(
@@ -393,12 +394,12 @@ public sealed class RemoteWriter : IRemoteWriter
     }
 
     /// <summary>
-    /// Upstream'i bu remote'a bakan yerel dallar.
+    /// Local branches whose upstream points at this remote.
     /// </summary>
     /// <remarks>
-    /// <c>branch.&lt;dal&gt;.remote</c> okunuyor; <c>for-each-ref</c>'in
-    /// <c>%(upstream:short)</c> alanı silme sonrası <b>boş</b> döneceği için bu bilgi
-    /// yalnızca şimdi toplanabiliyor.
+    /// <c>branch.&lt;branch&gt;.remote</c> is read; because <c>for-each-ref</c>'s
+    /// <c>%(upstream:short)</c> field comes back <b>empty</b> after the deletion, this information
+    /// can only be collected now.
     /// </remarks>
     private async Task<IReadOnlyList<(string Branch, string Upstream)>> ReadAffectedBranchesAsync(
         string workingDirectory,
@@ -477,7 +478,7 @@ public sealed class RemoteWriter : IRemoteWriter
     }
 
     /// <summary>
-    /// Silinen yapılandırmayı geri kuran, <b>olduğu gibi çalıştırılabilir</b> komutlar.
+    /// Commands that restore the deleted configuration and are <b>runnable as they are</b>.
     /// </summary>
     private static IReadOnlyList<string> BuildRecoveryCommands(
         GitRemote remote,
@@ -500,7 +501,7 @@ public sealed class RemoteWriter : IRemoteWriter
             commands.Add($"git remote set-url {flag} {Quote(remote.Name)} {Quote(url)}");
         }
 
-        // Varsayılan refspec'i `remote add` zaten kuruyor; yalnızca farklıysa yazılıyor.
+        // `remote add` already sets up the default refspec; it is only written when it differs.
         if (!remote.HasDefaultFetchRefspec)
         {
             foreach (string refspec in remote.FetchRefspecs)
@@ -515,8 +516,9 @@ public sealed class RemoteWriter : IRemoteWriter
             commands.Add($"git config remote.{remote.Name}.tagopt {Quote(tagOption)}");
         }
 
-        // ⚠️ Nesneler `remote add` ile GERİ GELMİYOR: uzak izleme dalları silindi ve
-        // reflog'ları da gitti. Yeniden fetch şart — yani uzak depo erişilebilir olmalı.
+        // ⚠️ The objects DO NOT COME BACK with `remote add`: the remote tracking branches were
+        // deleted and their reflogs went with them. A fresh fetch is required — so the remote has
+        // to be reachable.
         commands.Add($"git fetch {Quote(remote.Name)}");
 
         foreach ((string branch, string upstream) in affected)
@@ -533,11 +535,11 @@ public sealed class RemoteWriter : IRemoteWriter
     }
 
     /// <summary>
-    /// Komut metnini kabuğa yapıştırılabilir hâle getirir.
+    /// Turns the command text into something that can be pasted into a shell.
     /// </summary>
     /// <remarks>
-    /// Yalnızca <b>gösterim</b> içindir; kendi çağrılarımız argümanları dizi olarak geçiyor
-    /// ve hiçbir kabuktan geçmiyor (ADR-0002).
+    /// For <b>display</b> only; our own calls pass arguments as an array and never go through a
+    /// shell (ADR-0002).
     /// </remarks>
     private static string Quote(string value)
     {
@@ -573,8 +575,8 @@ public sealed class RemoteWriter : IRemoteWriter
             }
             else if (current.Length > 0 && line.Trim().Length > 0)
             {
-                // git uyarıyı birden çok satıra yayabiliyor: "Not updating non-default fetch
-                // refspec" satırından sonra refspec'in kendisi ve "Please update…" geliyor.
+                // git can spread the warning over several lines: after the "Not updating
+                // non-default fetch refspec" line come the refspec itself and "Please update…".
                 current.Append(' ').Append(line.Trim());
             }
         }

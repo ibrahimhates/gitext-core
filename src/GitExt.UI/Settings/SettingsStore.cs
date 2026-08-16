@@ -5,52 +5,53 @@ using GitExt.UI.Storage;
 namespace GitExt.UI.Settings;
 
 /// <summary>
-/// Kullanıcı ayarlarının tek erişim noktası (P08-T14).
+/// The single access point for the user settings (P08-T14).
 /// </summary>
 public interface ISettingsStore
 {
-    /// <summary>Yüklü ayarlar. <see cref="LoadAsync"/> çağrılmadan önce varsayılanlardır.</summary>
+    /// <summary>The loaded settings. Before <see cref="LoadAsync"/> is called, these are the defaults.</summary>
     AppSettings Current { get; }
 
-    /// <summary>Ayarlar her değiştiğinde tetiklenir.</summary>
+    /// <summary>Raised whenever the settings change.</summary>
     event EventHandler? Changed;
 
-    /// <summary>Diskteki dosyayı okur. Uygulama açılışında bir kez çağrılır.</summary>
+    /// <summary>Reads the file on disk. Called once at application startup.</summary>
     Task LoadAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Ayarları değiştirir, <see cref="Changed"/>'i tetikler ve kaydı <b>zamanlar</b>.
+    /// Changes the settings, raises <see cref="Changed"/> and <b>schedules</b> the save.
     /// </summary>
     /// <remarks>
-    /// Tek yazma yolu budur. Doğrudan <see cref="Current"/> üzerinde değişiklik yapmak
-    /// bildirimi de kaydı da atlar.
+    /// This is the only write path. Modifying <see cref="Current"/> directly skips both the
+    /// notification and the save.
     /// </remarks>
     void Update(Action<AppSettings> change);
 
-    /// <summary>Bekleyen kaydı hemen diske yazar. Kapanışta çağrılmalıdır.</summary>
+    /// <summary>Writes any pending save to disk immediately. Must be called on shutdown.</summary>
     Task FlushAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// Ayarları platform standardı yapılandırma dizinindeki tek JSON dosyasında tutar.
+/// Keeps the settings in a single JSON file in the platform-standard configuration directory.
 /// </summary>
 /// <remarks>
-/// 🔴 <b><see cref="IDisposable"/> de uygulanmak ZORUNDA.</b> Yalnızca
-/// <see cref="IAsyncDisposable"/> uygulandığında <c>Microsoft.Extensions.DependencyInjection</c>
-/// konteyneri <b>senkron</b> kapatılırken
-/// <c>"type only implements IAsyncDisposable"</c> diye <see cref="InvalidOperationException"/>
-/// atıyor — bir test bunu yakaladı. Uygulama bugün konteyneri hiç kapatmadığı için belirti
-/// görünmüyordu; kapatan ilk kod yolunda çıkacaktı.
+/// 🔴 <b><see cref="IDisposable"/> MUST be implemented as well.</b> With only
+/// <see cref="IAsyncDisposable"/> implemented, the
+/// <c>Microsoft.Extensions.DependencyInjection</c> container throws an
+/// <see cref="InvalidOperationException"/> saying
+/// <c>"type only implements IAsyncDisposable"</c> when it is disposed <b>synchronously</b> — a test
+/// caught this. The symptom was invisible because the application never disposes the container
+/// today; it would have surfaced in the first code path that did.
 /// </remarks>
 public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposable
 {
     /// <summary>
-    /// Kaydın gecikme süresi.
+    /// How long the save is delayed.
     /// </summary>
     /// <remarks>
-    /// Ayarların çoğu tek tıkla değişir ama <b>düzen</b> değişmez: bir ayırıcıyı sürüklemek
-    /// saniyede onlarca değişiklik üretir. Her birini diske yazmak, kullanıcı fareyi
-    /// bırakana kadar sürekli dosya yazmak demekti.
+    /// Most settings change with a single click, but the <b>layout</b> does not: dragging a splitter
+    /// produces dozens of changes a second. Writing each of them to disk would mean writing to the
+    /// file continuously until the user lets go of the mouse.
     /// </remarks>
     public static readonly TimeSpan DefaultSaveDelay = TimeSpan.FromMilliseconds(400);
 
@@ -76,7 +77,7 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
         _migrator = migrator;
     }
 
-    /// <summary>Bozuk bulunan dosyanın taşındığı ad.</summary>
+    /// <summary>The name a file found to be corrupt is moved to.</summary>
     public string InvalidFilePath => _filePath + ".invalid";
 
     public AppSettings Current => _current;
@@ -107,7 +108,7 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
 
         lock (_scheduleLock)
         {
-            // Bekleyen gecikmeyi iptal et: beklemesini değil, YAZMASINI istiyoruz.
+            // Cancel the pending delay: we want it to WRITE, not to wait.
             _pendingSave?.Cancel();
             pending = _pendingSaveTask;
         }
@@ -125,11 +126,11 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
     }
 
     /// <summary>
-    /// Senkron kapanış: bekleyen kayıt <b>bloke edilerek</b> yazılır.
+    /// Synchronous shutdown: any pending save is written <b>blocking</b>.
     /// </summary>
     /// <remarks>
-    /// Bloke etmek burada doğru: alternatif, kullanıcının az önce değiştirdiği ayarı
-    /// kaydetmeden çıkmak olurdu.
+    /// Blocking is the right thing here: the alternative would be exiting without saving the setting
+    /// the user just changed.
     /// </remarks>
     public void Dispose()
     {
@@ -163,8 +164,8 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
         }
         catch (OperationCanceledException)
         {
-            // Ya yeni bir değişiklik geldi (o kendi kaydını zamanlayacak) ya da FlushAsync
-            // beklemeyi kesti (o zaten kendisi yazacak). İki durumda da burada yazmıyoruz.
+            // Either a new change arrived (which will schedule its own save) or FlushAsync cut the
+            // wait short (in which case it will write itself). In both cases we do not write here.
             return;
         }
 
@@ -186,8 +187,8 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Okunamayan dosya bozuk DEĞİL: yeniden adlandırmak, geçici bir kilit yüzünden
-            // kullanıcının ayarlarını kaybettirirdi. Varsayılanlarla devam edilir.
+            // A file that cannot be read is NOT corrupt: renaming it would lose the user's settings
+            // over a temporary lock. We carry on with the defaults.
             return new AppSettings();
         }
 
@@ -213,8 +214,8 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
 
         if (migrated is null)
         {
-            // Gelecekten gelen veya göç edilemeyen dosya. BOZUK DEĞİL — dokunulmuyor,
-            // yeniden adlandırılmıyor; yalnızca bu oturumda varsayılanlar kullanılıyor.
+            // A file from the future, or one that cannot be migrated. NOT CORRUPT — it is not touched
+            // and not renamed; the defaults are simply used for this session.
             return new AppSettings();
         }
 
@@ -224,7 +225,7 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
         }
         catch (JsonException)
         {
-            // Geçerli JSON ama beklenen şekilde değil (ör. `appearance` bir dizi).
+            // Valid JSON but not in the expected shape (`appearance` being an array, say).
             PreserveInvalidFile();
 
             return new AppSettings();
@@ -232,12 +233,13 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
     }
 
     /// <summary>
-    /// Bozuk dosyayı silmek yerine yanına taşır.
+    /// Moves a corrupt file aside rather than deleting it.
     /// </summary>
     /// <remarks>
-    /// Ayar dosyası <b>kullanıcının yazdığı</b> bir dosya. Üstüne yazmak, elle uğraşıp
-    /// bozduğu satırı görmesini de imkânsız kılardı. Son açılanlar listesinden (o türetilmiş
-    /// veri, sessizce sıfırlanabilir) ayrıldığı yer burası.
+    /// The settings file is a file <b>the user writes</b>. Overwriting it would also make it
+    /// impossible for them to see the line they broke while editing it by hand. This is where it
+    /// parts company with the recent-repositories list (that is derived data and can be reset
+    /// silently).
     /// </remarks>
     private void PreserveInvalidFile()
     {
@@ -260,9 +262,9 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
 
             string text = SettingsSerializer.Serialize(_current);
 
-            // Önce geçici dosyaya, sonra yerine taşı. Doğrudan yazmak, yazma sırasında
-            // kesilen bir işlemde (çökme, elektrik) YARIM bir dosya bırakır — ki o dosya
-            // sonraki açılışta "bozuk" sayılıp bütün ayarların kaybı demektir.
+            // First to a temporary file, then moved into place. Writing directly leaves a HALF file
+            // behind if the operation is interrupted mid-write (a crash, a power cut) — and that file
+            // counts as "corrupt" on the next start, meaning the loss of all the settings.
             string temporary = _filePath + ".tmp";
 
             await File.WriteAllTextAsync(temporary, text, cancellationToken).ConfigureAwait(false);
@@ -271,7 +273,7 @@ public sealed class SettingsStore : ISettingsStore, IDisposable, IAsyncDisposabl
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Salt okunur ev dizini, dolu disk. Ayarı kaydedememek uygulamayı durdurmaz.
+            // A read-only home directory, a full disk. Failing to save a setting does not stop the app.
         }
         finally
         {

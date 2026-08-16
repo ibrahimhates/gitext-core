@@ -3,13 +3,13 @@ using GitExt.Core.Model;
 
 namespace GitExt.UI.ViewModels;
 
-/// <summary>Ağaçtaki bir düğümün türü (P06-T13).</summary>
+/// <summary>The kind of a node in the tree (P06-T13).</summary>
 public enum RefNodeKind
 {
-    /// <summary>Üst başlık: <i>Dallar</i>, <i>Uzak depolar</i>, <i>Etiketler</i>.</summary>
+    /// <summary>A top-level heading: <i>Branches</i>, <i>Remotes</i>, <i>Tags</i>.</summary>
     Section,
 
-    /// <summary>Ad içindeki <c>/</c>'lardan doğan klasör (<c>feature/</c>).</summary>
+    /// <summary>A folder arising from the <c>/</c>s in a name (<c>feature/</c>).</summary>
     Folder,
 
     /// <summary>Yerel dal.</summary>
@@ -18,7 +18,7 @@ public enum RefNodeKind
     /// <summary>Uzak dal.</summary>
     RemoteBranch,
 
-    /// <summary>Uzak depo (uzak dalların üstünde).</summary>
+    /// <summary>A remote (above the remote branches).</summary>
     Remote,
 
     /// <summary>Etiket.</summary>
@@ -26,12 +26,12 @@ public enum RefNodeKind
 }
 
 /// <summary>
-/// Dal panelindeki bir düğüm (P06-T13).
+/// A node in the branch panel (P06-T13).
 /// </summary>
 /// <remarks>
-/// Adlar GitExtensions'ın <c>RepoObjectsTree</c>'sindeki gibi <c>/</c>'lardan bölünüp
-/// klasörleniyor: <c>feature/login</c> → <i>feature</i> ▸ <i>login</i>. Onlarca dalı düz
-/// bir liste olarak göstermek, tam da panelin çözmesi gereken sorunu geri getirirdi.
+/// As in GitExtensions' <c>RepoObjectsTree</c>, names are split on <c>/</c> and grouped into
+/// folders: <c>feature/login</c> → <i>feature</i> ▸ <i>login</i>. Showing dozens of branches as a
+/// flat list would bring back exactly the problem the panel exists to solve.
 /// </remarks>
 public sealed class RefNodeViewModel : ViewModelBase
 {
@@ -39,20 +39,20 @@ public sealed class RefNodeViewModel : ViewModelBase
 
     public required string Name { get; init; }
 
-    /// <summary>Tam ref adı (<c>main</c>, <c>origin/main</c>, <c>v1.0</c>); klasörde boş.</summary>
+    /// <summary>The full ref name (<c>main</c>, <c>origin/main</c>, <c>v1.0</c>); empty on a folder.</summary>
     public string FullName { get; init; } = string.Empty;
 
     public required RefNodeKind Kind { get; init; }
 
-    /// <summary>Bu dal şu an checkout edilmiş mi?</summary>
+    /// <summary>Is this branch currently checked out?</summary>
     public bool IsCurrent { get; init; }
 
-    /// <summary>Upstream'e göre konum; yoksa boş.</summary>
+    /// <summary>The position relative to the upstream; empty when there is none.</summary>
     public string AheadBehind { get; init; } = string.Empty;
 
     public bool HasAheadBehind => AheadBehind.Length > 0;
 
-    /// <summary>Üzerine çift tıklanabilir mi (checkout)?</summary>
+    /// <summary>Can it be double-clicked (checkout)?</summary>
     public bool IsCheckoutable => Kind is RefNodeKind.LocalBranch or RefNodeKind.RemoteBranch;
 
     public ObservableCollection<RefNodeViewModel> Children { get; } = [];
@@ -67,18 +67,17 @@ public sealed class RefNodeViewModel : ViewModelBase
 }
 
 /// <summary>
-/// Dal paneli (P06-T13).
+/// The branch panel (P06-T13).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Yerleşim GitExtensions'ın sol <c>RepoObjectsTree</c>'sinden (§ 9): üstte <i>Dallar</i>,
-/// altında <i>Uzak depolar</i> (her uzak kendi düğümü), en altta <i>Etiketler</i>.
+/// The layout comes from GitExtensions' left <c>RepoObjectsTree</c> (§ 9): <i>Branches</i> at the
+/// top, <i>Remotes</i> below it (each remote its own node), and <i>Tags</i> at the bottom.
 /// </para>
 /// <para>
-/// 🔑 <b>Veri buradan okunmuyor, veriliyor.</b> Panel <c>RepositoryRefs</c>'i olduğu gibi
-/// alıyor — aynı soruyu ikinci bir kod yoluyla sormak, bu projede daha önce iki kez
-/// sessizce farklı cevaplar üretmişti (P06-T05'te <c>RefReader</c>, P06-T06'da ref anlık
-/// görüntüsü).
+/// 🔑 <b>The data is not read here, it is handed in.</b> The panel takes <c>RepositoryRefs</c> as it
+/// is — asking the same question through a second code path has already produced silently different
+/// answers twice in this project (<c>RefReader</c> in P06-T05, the ref snapshot in P06-T06).
 /// </para>
 /// </remarks>
 public sealed class RefTreeViewModel : ViewModelBase
@@ -87,10 +86,10 @@ public sealed class RefTreeViewModel : ViewModelBase
     private string _filter = string.Empty;
     private RefNodeViewModel? _selected;
 
-    /// <summary>Ağacın kökleri.</summary>
+    /// <summary>The roots of the tree.</summary>
     public ObservableCollection<RefNodeViewModel> Roots { get; } = [];
 
-    /// <summary>Arama metni; boşsa her şey görünür.</summary>
+    /// <summary>The search text; when empty, everything is visible.</summary>
     public string Filter
     {
         get => _filter;
@@ -121,44 +120,44 @@ public sealed class RefTreeViewModel : ViewModelBase
         }
     }
 
-    // ---- Bağlam menüsünün kararları (P06-T14).
+    // ---- The context menu's decisions (P06-T14).
     //
-    // 🔑 Kararlar BURADA. İlk uygulama `IsEnabled`i menünün `Opening` olayında elle
-    // ayarlıyordu; ölçüldü — headless'ta o olay hiç tetiklenmiyor, yani menü sessizce
-    // her şeyi etkin gösteriyordu ve test bunu ancak menüyü açmaya çalışınca yakaladı.
-    // Faz 03'ün dersinin aynısı: karar görünüm tarafında saklanırsa doğrulanamıyor.
+    // 🔑 The decisions are HERE. The first implementation set `IsEnabled` by hand in the menu's
+    // `Opening` event; measured — that event never fires headless, so the menu silently showed
+    // everything as enabled and the test only caught it when it tried to open the menu.
+    // The same lesson as Phase 03: a decision hidden on the view side cannot be verified.
 
-    /// <summary>Seçili düğüme geçilebilir mi?</summary>
+    /// <summary>Can the selected node be checked out?</summary>
     public bool CanCheckoutSelected => Selected?.IsCheckoutable == true;
 
-    /// <summary>Seçili dal mevcut dala birleştirilebilir mi?</summary>
-    /// <remarks>Kendini kendine birleştirmek git'in de reddettiği bir şey.</remarks>
+    /// <summary>Can the selected branch be merged into the current one?</summary>
+    /// <remarks>Merging something into itself is something git refuses as well.</remarks>
     public bool CanMergeSelected => Selected is { IsCheckoutable: true, IsCurrent: false };
 
-    /// <summary>Yeniden adlandırılabilir mi?</summary>
-    /// <remarks><c>git branch -m</c> uzak dalı değiştirmez; sunmak yanlış bir vaat olurdu.</remarks>
+    /// <summary>Can it be renamed?</summary>
+    /// <remarks><c>git branch -m</c> does not change a remote branch; offering it would be a false promise.</remarks>
     public bool CanRenameSelected => Selected?.Kind == RefNodeKind.LocalBranch;
 
     /// <summary>Silinebilir mi?</summary>
     public bool CanDeleteSelected =>
         Selected is { Kind: RefNodeKind.LocalBranch, IsCurrent: false };
 
-    /// <summary>Gönderilebilir mi?</summary>
+    /// <summary>Can it be pushed?</summary>
     public bool CanPushSelected => Selected?.Kind == RefNodeKind.LocalBranch;
 
-    /// <summary>Adı kopyalanabilir mi? (Etiket de dahil; klasör ve başlık hariç.)</summary>
+    /// <summary>Can its name be copied? (Tags included; folders and headings excluded.)</summary>
     public bool CanCopySelectedName => Selected is { FullName.Length: > 0 };
 
-    /// <summary>Buradan yeni dal oluşturulabilir mi?</summary>
+    /// <summary>Can a new branch be created from here?</summary>
     public bool CanBranchFromSelected => Selected is { FullName.Length: > 0 };
 
-    /// <summary>Süzme sonucu hiçbir şey kalmadı mı?</summary>
+    /// <summary>Did filtering leave nothing at all?</summary>
     public bool IsEmpty => Roots.Count == 0;
 
-    /// <summary>Panel doldurulmuş mu?</summary>
+    /// <summary>Has the panel been populated?</summary>
     public bool HasRefs => _refs is not null;
 
-    /// <summary>Ref'leri verir ve ağacı kurar.</summary>
+    /// <summary>Takes the refs and builds the tree.</summary>
     public void Load(RepositoryRefs? refs)
     {
         _refs = refs;
@@ -202,8 +201,8 @@ public sealed class RefTreeViewModel : ViewModelBase
 
         foreach (BranchInfo branch in refs.RemoteBranches)
         {
-            // Sembolik `origin/HEAD` atlanıyor: aynı commit'te ikinci bir "dal" gibi
-            // görünürdü. Bu projede aynı ref beşinci kez tuzak kuruyor.
+            // The symbolic `origin/HEAD` is skipped: it would look like a second "branch" on the same
+            // commit. That same ref sets a trap for the fifth time in this project.
             if (branch.Ref.IsSymbolic || !Matches(branch.Name))
             {
                 continue;
@@ -250,8 +249,8 @@ public sealed class RefTreeViewModel : ViewModelBase
             }
         }
 
-        // Boş bölüm gösterilmiyor: süzerken "Etiketler" başlığının altında hiçbir şey
-        // olmaması kullanıcıya bir şey söylemez.
+        // An empty section is not shown: while filtering, nothing under a "Tags" heading tells the
+        // user anything.
         foreach (RefNodeViewModel section in new[] { branches, remotes, tags })
         {
             if (section.Children.Count > 0)
@@ -273,7 +272,7 @@ public sealed class RefTreeViewModel : ViewModelBase
         return slash >= 0 ? name[(slash + 1)..] : name;
     }
 
-    /// <summary>Adı <c>/</c>'lardan bölerek klasörleyip yaprağı yerleştirir.</summary>
+    /// <summary>Splits the name on <c>/</c> into folders and places the leaf.</summary>
     private static void Add(RefNodeViewModel parent, string path, RefNodeViewModel leaf)
     {
         string[] segments = path.Split('/');
@@ -305,11 +304,11 @@ public sealed class RefTreeViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Ahead/behind rozeti.
+    /// The ahead/behind badge.
     /// </summary>
     /// <remarks>
-    /// <c>[gone]</c> ayrı yazılıyor: upstream silinmiş bir dalda "0/0" göstermek, dalın
-    /// güncel olduğunu düşündürürdü.
+    /// <c>[gone]</c> is written separately: showing "0/0" for a branch whose upstream was deleted
+    /// would suggest the branch is up to date.
     /// </remarks>
     internal static string Describe(UpstreamTracking tracking, string? upstream)
     {

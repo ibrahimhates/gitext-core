@@ -1,9 +1,9 @@
 namespace GitExt.Core.Model;
 
-/// <summary>Bir ref'in türü.</summary>
+/// <summary>The kind of a ref.</summary>
 public enum GitRefKind
 {
-    /// <summary>Tanınmayan ref alanı (<c>refs/stash</c>, <c>refs/notes/…</c> vb.).</summary>
+    /// <summary>An unrecognised ref namespace (<c>refs/stash</c>, <c>refs/notes/…</c> and so on).</summary>
     Other,
 
     /// <summary><c>refs/heads/…</c></summary>
@@ -17,62 +17,65 @@ public enum GitRefKind
 }
 
 /// <summary>
-/// Bir Git referansı (dal, tag, uzak dal).
+/// A Git reference (branch, tag, remote branch).
 /// </summary>
 public sealed record GitRef
 {
-    /// <summary>Tam ad, örn. <c>refs/heads/main</c>.</summary>
+    /// <summary>The full name, e.g. <c>refs/heads/main</c>.</summary>
     public required string FullName { get; init; }
 
-    /// <summary>Kısa ad, örn. <c>main</c> veya <c>origin/main</c>.</summary>
+    /// <summary>The short name, e.g. <c>main</c> or <c>origin/main</c>.</summary>
     public required string ShortName { get; init; }
 
     public required GitRefKind Kind { get; init; }
 
     /// <summary>
-    /// Ref'in doğrudan işaret ettiği nesne.
+    /// The object the ref points at directly.
     /// </summary>
     /// <remarks>
-    /// Annotated tag'de bu <b>tag nesnesidir</b>, commit değil. Commit için
-    /// <see cref="TargetCommit"/> kullanılmalı.
+    /// On an annotated tag this is the <b>tag object</b>, not the commit. For the commit, use
+    /// <see cref="TargetCommit"/>.
     /// </remarks>
     public required CommitId ObjectId { get; init; }
 
     /// <summary>
-    /// Ref'in nihai olarak işaret ettiği commit.
+    /// The commit the ref ultimately points at.
     /// </summary>
     /// <remarks>
-    /// Annotated tag'lerde <c>%(*objectname)</c> ile çözülür; diğer ref'lerde
-    /// <see cref="ObjectId"/> ile aynıdır.
+    /// For annotated tags it is resolved with <c>%(*objectname)</c>; for other refs it is the same as
+    /// <see cref="ObjectId"/>.
     /// </remarks>
     public required CommitId TargetCommit { get; init; }
 
     /// <summary>
-    /// Annotated (nesneli) tag mi? Hafif tag'ler doğrudan commit'e işaret eder.
+    /// Is it an annotated tag (one with its own object)? Lightweight tags point straight at a commit.
     /// </summary>
     public bool IsAnnotatedTag { get; init; }
 
     /// <summary>
-    /// Bu ref sembolikse işaret ettiği ref'in tam adı; değilse <see langword="null"/>.
+    /// When this ref is symbolic, the full name of the ref it points at; otherwise
+    /// <see langword="null"/>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Pratikteki tek yaygın örnek <c>refs/remotes/&lt;uzak&gt;/HEAD</c>: klonlanan her depoda
-    /// bulunur ve uzağın varsayılan dalına (<c>refs/remotes/origin/main</c>) işaret eder.
-    /// Ayrı bir dalmış gibi gösterilirse kullanıcı aynı commit'te iki özdeş rozet görür.
+    /// The only common example in practice is <c>refs/remotes/&lt;remote&gt;/HEAD</c>: it exists in
+    /// every cloned repository and points at the remote's default branch
+    /// (<c>refs/remotes/origin/main</c>). Shown as if it were a separate branch, the user sees two
+    /// identical badges on the same commit.
     /// </para>
     /// <para>
-    /// <c>%(symref)</c> alanından okunur; sembolik olmayan ref'lerde <b>boş</b> gelir (ölçüldü).
+    /// Read from the <c>%(symref)</c> field; it comes back <b>empty</b> for non-symbolic refs
+    /// (measured).
     /// </para>
     /// </remarks>
     public string? SymbolicTarget { get; init; }
 
-    /// <summary>Başka bir ref'e işaret eden sembolik ref mi?</summary>
+    /// <summary>Is it a symbolic ref pointing at another ref?</summary>
     public bool IsSymbolic => SymbolicTarget is not null;
 
     public override string ToString() => ShortName;
 
-    /// <summary>Tam ada bakarak türü belirler.</summary>
+    /// <summary>Determines the kind from the full name.</summary>
     internal static GitRefKind ClassifyKind(string fullName) => fullName switch
     {
         _ when fullName.StartsWith("refs/heads/", StringComparison.Ordinal) => GitRefKind.LocalBranch,
@@ -83,22 +86,22 @@ public sealed record GitRef
 }
 
 /// <summary>
-/// Bir dalın upstream'ine göre konumu.
+/// A branch's position relative to its upstream.
 /// </summary>
 /// <remarks>
-/// <c>%(upstream:track)</c> alanından ayrıştırılır. Ölçülen biçimler:
+/// Parsed from the <c>%(upstream:track)</c> field. The measured forms:
 /// <c>[ahead 3, behind 2]</c>, <c>[ahead 1]</c>, <c>[behind 4]</c>, <c>[gone]</c>,
-/// ve senkronsa <b>boş</b>.
+/// and <b>empty</b> when in sync.
 /// </remarks>
 public readonly record struct UpstreamTracking(int Ahead, int Behind, bool IsGone)
 {
-    /// <summary>Upstream yok veya takip bilgisi okunamadı.</summary>
+    /// <summary>There is no upstream, or the tracking information could not be read.</summary>
     public static UpstreamTracking None { get; } = new(0, 0, false);
 
-    /// <summary>Upstream ile aynı noktada mı?</summary>
+    /// <summary>Is it at the same point as the upstream?</summary>
     public bool IsUpToDate => !IsGone && Ahead == 0 && Behind == 0;
 
-    /// <summary>Hem ileride hem geride — ayrışmış (diverged).</summary>
+    /// <summary>Both ahead and behind — diverged.</summary>
     public bool IsDiverged => Ahead > 0 && Behind > 0;
 }
 
@@ -109,10 +112,10 @@ public sealed record BranchInfo
 {
     public required GitRef Ref { get; init; }
 
-    /// <summary>Bu dal şu an checkout edilmiş mi?</summary>
+    /// <summary>Is this branch currently checked out?</summary>
     /// <remarks>
-    /// Detached HEAD durumunda <b>hiçbir dal</b> geçerli değildir — ölçüldü:
-    /// <c>%(HEAD)</c> tüm dallar için boşluk döner.
+    /// In a detached HEAD state <b>no branch</b> is current — measured: <c>%(HEAD)</c> returns a
+    /// space for every branch.
     /// </remarks>
     public bool IsCurrent { get; init; }
 
@@ -121,7 +124,7 @@ public sealed record BranchInfo
 
     public UpstreamTracking Tracking { get; init; } = UpstreamTracking.None;
 
-    /// <summary>Uzak depodaki bir dal mı?</summary>
+    /// <summary>Is it a branch on a remote?</summary>
     public bool IsRemote => Ref.Kind == GitRefKind.RemoteBranch;
 
     public string Name => Ref.ShortName;
@@ -134,31 +137,31 @@ public sealed record TagInfo
 {
     public required GitRef Ref { get; init; }
 
-    /// <summary>Annotated tag'in mesaj başlığı; hafif tag'de commit başlığı.</summary>
+    /// <summary>The subject of an annotated tag's message; for a lightweight tag, the commit subject.</summary>
     public string Subject { get; init; } = string.Empty;
 
     public string Name => Ref.ShortName;
 
-    /// <summary>Annotated tag mi (kendi nesnesi, mesajı ve yazarı var)?</summary>
+    /// <summary>Is it an annotated tag (with its own object, message and author)?</summary>
     public bool IsAnnotated => Ref.IsAnnotatedTag;
 
     public override string ToString() => Name;
 }
 
-/// <summary>Yapılandırılmış bir uzak depo.</summary>
+/// <summary>A configured remote.</summary>
 public sealed record RemoteInfo
 {
     public required string Name { get; init; }
 
-    /// <summary>Veri çekilen URL.</summary>
+    /// <summary>The URL data is fetched from.</summary>
     public required string FetchUrl { get; init; }
 
     /// <summary>
-    /// Veri gönderilen URL.
+    /// The URL data is pushed to.
     /// </summary>
     /// <remarks>
-    /// Genellikle <see cref="FetchUrl"/> ile aynıdır ama <c>remote.&lt;ad&gt;.pushurl</c>
-    /// ile farklı olabilir.
+    /// Usually the same as <see cref="FetchUrl"/>, but it can differ via
+    /// <c>remote.&lt;name&gt;.pushurl</c>.
     /// </remarks>
     public required string PushUrl { get; init; }
 
@@ -171,23 +174,23 @@ public sealed record RemoteInfo
 public sealed record HeadState
 {
     /// <summary>
-    /// Bir dala değil doğrudan bir commit'e işaret ediyor mu?
+    /// Does it point straight at a commit rather than at a branch?
     /// </summary>
     public required bool IsDetached { get; init; }
 
     /// <summary>
-    /// Henüz hiç commit yok mu (yeni <c>git init</c>)?
+    /// Are there no commits at all yet (a fresh <c>git init</c>)?
     /// </summary>
     /// <remarks>
-    /// Bu durumda <c>HEAD</c> var olmayan bir dala işaret eder ve <c>rev-parse HEAD</c> başarısız
-    /// olur. Kullanıcının ilk açtığı depo bu olabilir; çökmemeli.
+    /// In this state <c>HEAD</c> points at a branch that does not exist and <c>rev-parse HEAD</c>
+    /// fails. This may be the first repository the user opens; it must not crash.
     /// </remarks>
     public required bool IsUnborn { get; init; }
 
-    /// <summary>Checkout edilmiş dal; detached ise <see langword="null"/>.</summary>
+    /// <summary>The checked-out branch; <see langword="null"/> when detached.</summary>
     public string? BranchName { get; init; }
 
-    /// <summary>İşaret edilen commit; doğmamış depoda boş.</summary>
+    /// <summary>The commit pointed at; empty in an unborn repository.</summary>
     public CommitId Commit { get; init; }
 
     public override string ToString() =>
@@ -195,7 +198,7 @@ public sealed record HeadState
 }
 
 /// <summary>
-/// Bir deponun tüm ref bilgisi — tek okumada.
+/// All the ref information for a repository — in a single read.
 /// </summary>
 public sealed record RepositoryRefs
 {
@@ -209,6 +212,6 @@ public sealed record RepositoryRefs
 
     public required IReadOnlyList<RemoteInfo> Remotes { get; init; }
 
-    /// <summary>Şu an checkout edilmiş dal; detached veya doğmamışsa <see langword="null"/>.</summary>
+    /// <summary>The currently checked-out branch; <see langword="null"/> when detached or unborn.</summary>
     public BranchInfo? CurrentBranch => LocalBranches.FirstOrDefault(b => b.IsCurrent);
 }

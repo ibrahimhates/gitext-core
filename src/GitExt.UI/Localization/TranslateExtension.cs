@@ -5,43 +5,44 @@ using Avalonia.Markup.Xaml;
 namespace GitExt.UI.Localization;
 
 /// <summary>
-/// XAML'de çevrilmiş metin: <c>Text="{loc:Translate settings.title}"</c> (P11-T02).
+/// Translated text in XAML: <c>Text="{loc:Translate settings.title}"</c> (P11-T02).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Projedeki <b>ilk markup extension</b>. Alternatif olarak her metin için ViewModel'de bir
-/// özellik açmak vardı; 42 XAML dosyasında ~460 metin için bu, ViewModel'leri yalnızca metin
-/// taşıyan yüzlerce satırla şişirirdi ve statik etiketlerin ViewModel'de işi yok.
+/// The <b>first markup extension</b> in the project. The alternative was opening a property on the
+/// ViewModel for every text; across 42 XAML files and around 460 texts, that would have bloated the
+/// ViewModels with hundreds of lines that only carry text, and static labels have no business being
+/// in a ViewModel.
 /// </para>
 /// <para>
-/// <b>Dil değişiminde metinler kendiliğinden tazeleniyor:</b> uzantı bir <see cref="Binding"/>
-/// döndürüyor ve kaynağı çevirmenin kendisi. Çevirmen <c>PropertyChanged(null)</c>
-/// yayınladığında Avalonia indeksleyici bağlamalarının tamamını yeniden değerlendiriyor.
-/// Sabit bir string döndürseydik dil değişimi ancak pencere yeniden açılınca görünürdü.
+/// <b>The texts refresh by themselves when the language changes:</b> the extension returns a
+/// <see cref="Binding"/> whose source is the translator itself. When the translator raises
+/// <c>PropertyChanged(null)</c>, Avalonia re-evaluates every indexer binding. Had we returned a
+/// fixed string, a language change would only show after the window was reopened.
 /// </para>
 /// <para>
-/// 🔴 <b>İki yol da denendi, ikisi de ölçüldü:</b>
+/// 🔴 <b>Both routes were tried, and both were measured:</b>
 /// </para>
 /// <list type="number">
 ///   <item>
-///     <b><see cref="IObservable{T}"/> döndürmek</b> — trimming açısından temiz ama
-///     <b>yanlış sonuç veriyor</b>: <c>MenuItem.Header</c> gibi <c>object</c> tipli
-///     özelliklerde Avalonia observable'ı bağlama olarak değil <b>değerin kendisi</b>
-///     olarak alıyor ve menüde sınıf adı ("TranslationSource") görünüyor. 161 test bunu
-///     yakaladı.
+///     <b>Returning an <see cref="IObservable{T}"/></b> — clean as far as trimming goes, but it
+///     <b>gives the wrong result</b>: on <c>object</c>-typed properties such as
+///     <c>MenuItem.Header</c>, Avalonia takes the observable not as a binding but as <b>the value
+///     itself</b>, and the class name ("TranslationSource") shows up in the menu. 161 tests caught
+///     this.
 ///   </item>
 ///   <item>
-///     <b>Yol tabanlı <see cref="Binding"/></b> — doğru çalışıyor ama <c>IL2026</c>
-///     üretiyor: yansıma kullanıyor ve trimmer güvenli sayamıyor. Uyarı bu projede hata
-///     sayıldığı için publish kırılıyordu.
+///     <b>A path-based <see cref="Binding"/></b> — works correctly but produces <c>IL2026</c>: it
+///     uses reflection and the trimmer cannot consider it safe. Because warnings are errors in this
+///     project, the publish was breaking.
 ///   </item>
 /// </list>
 /// <para>
-/// <b>Seçilen: (2), uyarı gerekçesiyle bastırılarak.</b> Bastırma burada güvenli çünkü
-/// bağlama yolu <b>sabit ve bizim kontrolümüzde</b> (<c>[anahtar]</c> indeksleyicisi),
-/// kullanıcı verisinden gelmiyor; hedef tip <see cref="ITranslator"/> ve indeksleyicisi
-/// aşağıdaki <c>DynamicDependency</c> ile trimmer'a korunuyor. Ölçüldü: trimmed publish
-/// temiz geçiyor ve üretilen ikili çalışıyor.
+/// <b>Chosen: (2), with the warning suppressed and the reason recorded.</b> The suppression is safe
+/// here because the binding path is <b>fixed and under our control</b> (the <c>[key]</c> indexer)
+/// and does not come from user data; the target type is <see cref="ITranslator"/> and its indexer is
+/// protected from the trimmer by the <c>DynamicDependency</c> below. Measured: the trimmed publish
+/// goes through clean and the binary it produces works.
 /// </para>
 /// </remarks>
 /// <example>
@@ -53,40 +54,40 @@ namespace GitExt.UI.Localization;
 public sealed class TranslateExtension : MarkupExtension
 {
     /// <summary>
-    /// Uygulama genelinde etkin çevirmen.
+    /// The translator in force across the application.
     /// </summary>
     /// <remarks>
-    /// 🔴 Statik olması bir Service Locator DEĞİL, teknik bir zorunluluk: markup extension
-    /// örneklerini XAML çözümleyici yaratıyor, DI kapsayıcısı değil — yapıcıya bağımlılık
-    /// geçirmenin bir yolu yok. Composition root (ADR-0004) yine tek yetkili: <c>Translator</c>
-    /// orada kuruluyor ve buraya <b>bir kez</b> veriliyor.
+    /// 🔴 Its being static is NOT a Service Locator but a technical necessity: markup extension
+    /// instances are created by the XAML resolver, not by the DI container — there is no way to pass
+    /// a dependency to the constructor. The composition root (ADR-0004) is still the sole authority:
+    /// <c>Translator</c> is built there and handed in here <b>once</b>.
     /// </remarks>
     internal static ITranslator? Instance { get; private set; }
 
-    /// <summary>Çevrilecek anahtar.</summary>
+    /// <summary>The key to translate.</summary>
     public string Key { get; set; } = "";
 
     public TranslateExtension()
     {
     }
 
-    /// <summary>XAML'de konumsal kullanım: <c>{loc:Translate settings.title}</c>.</summary>
+    /// <summary>Positional use in XAML: <c>{loc:Translate settings.title}</c>.</summary>
     public TranslateExtension(string key) => Key = key;
 
     /// <summary>
-    /// Etkin çevirmeni tanıtır. <b>Yalnızca composition root'tan</b> bir kez çağrılıyor.
+    /// Registers the translator in force. Called once <b>from the composition root only</b>.
     /// </summary>
     /// <remarks>
-    /// <c>public</c> olması bir API vaadi değil, <c>GitExt.Desktop</c>'un composition root
-    /// olarak buna erişmesi gerektiği için (ADR-0004). Başka hiçbir yerden çağrılmamalı;
-    /// çağrıldığında uygulama genelindeki çevirmen sessizce değişirdi.
+    /// Its being <c>public</c> is not an API promise, it is because <c>GitExt.Desktop</c> needs to
+    /// reach it as the composition root (ADR-0004). It must not be called from anywhere else; doing
+    /// so would silently change the application-wide translator.
     /// </remarks>
     public static void Attach(ITranslator translator) => Instance = translator;
 
     /// <remarks>
-    /// <c>DynamicDependency</c>: trimmer <see cref="ITranslator"/>'ın indeksleyicisini
-    /// yalnızca bağlama üzerinden kullanıldığı için "kullanılmıyor" sayıp atabilirdi.
-    /// Bu öznitelik onu tutuyor ve aşağıdaki bastırmayı gerçekten güvenli kılıyor.
+    /// <c>DynamicDependency</c>: the trimmer could count <see cref="ITranslator"/>'s indexer as
+    /// "unused" and drop it, because it is only used through a binding. This attribute keeps it, and
+    /// is what makes the suppression below genuinely safe.
     /// </remarks>
     [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(ITranslator))]
     [UnconditionalSuppressMessage(
@@ -98,8 +99,8 @@ public sealed class TranslateExtension : MarkupExtension
             + "trimmed publish temiz ve üretilen ikili çalışıyor.")]
     public override object ProvideValue(IServiceProvider serviceProvider)
     {
-        // Tasarımcıda (ve çevirmen kurulmadan önce) anahtarın kendisi gösteriliyor:
-        // boş bir arayüz yerine hangi anahtarın orada durduğu görünüyor.
+        // In the designer (and before the translator is set up) the key itself is shown: rather than
+        // an empty UI, you can see which key sits there.
         if (Instance is null)
         {
             return Key;

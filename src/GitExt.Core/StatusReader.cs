@@ -5,7 +5,7 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Çalışma dizininin durumunu okur (P02-T10).
+/// Reads the state of the working directory (P02-T10).
 /// </summary>
 public interface IStatusReader
 {
@@ -18,14 +18,15 @@ public interface IStatusReader
 /// <inheritdoc cref="IStatusReader"/>
 /// <remarks>
 /// <para>
-/// <b>Fazın en karmaşık ayrıştırıcısı.</b> <c>--porcelain=v2</c> satırları <b>tek biçimli
-/// değildir</b>: <c>1</c>, <c>2</c>, <c>u</c>, <c>?</c>, <c>!</c> önekleri farklı alan
-/// düzenlerine sahiptir. <c>git log</c>'daki "sabit alan sayısı" yaklaşımı burada çalışmaz.
+/// <b>The most complex parser in this phase.</b> <c>--porcelain=v2</c> lines are <b>not
+/// uniform</b>: the <c>1</c>, <c>2</c>, <c>u</c>, <c>?</c> and <c>!</c> prefixes have different field
+/// layouts. The "fixed field count" approach from <c>git log</c> does not work here.
 /// </para>
 /// <para>
-/// Ölçülen kritik davranış: <c>-z</c> modunda <b>rename/copy girdisi iki NUL kaydına yayılır</b> —
-/// <c>2 …</c> satırı yeni yolla biter, <b>bir sonraki kayıt</b> kaynak yoldur. Tek kayıt
-/// varsayılırsa sonraki tüm girdiler kayar ve veri sessizce bozulur.
+/// The critical measured behaviour: in <c>-z</c> mode <b>a rename/copy entry spans two NUL
+/// records</b> — the <c>2 …</c> line ends with the new path, and <b>the next record</b> is the
+/// source path. Assume a single record and every following entry shifts, corrupting the data
+/// silently.
 /// </para>
 /// </remarks>
 public sealed class StatusReader : IStatusReader
@@ -64,8 +65,8 @@ public sealed class StatusReader : IStatusReader
             {
                 WorkingDirectory = workingDirectory,
                 Arguments = arguments,
-                // status index'i tazelemek isteyebilir; salt okunur sayıp GIT_OPTIONAL_LOCKS=0
-                // ile eşzamanlı yazma işlemleriyle çakışmasını önlüyoruz.
+                // status may want to refresh the index; we treat it as read-only and use
+                // GIT_OPTIONAL_LOCKS=0 to keep it from colliding with concurrent writes.
                 IsReadOnly = true,
             },
             cancellationToken).ConfigureAwait(false);
@@ -79,20 +80,20 @@ public sealed class StatusReader : IStatusReader
     }
 
     /// <summary>
-    /// 🔴 <c>(detached)</c> <b>geçerli bir dal adı</b> — ayrımı git'e sordurur.
+    /// 🔴 <c>(detached)</c> is <b>a valid branch name</b> — the distinction is put to git.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>ÖLÇÜLDÜ (P06-T04):</b> <c>git check-ref-format --branch "(detached)"</c> kabul
-    /// ediyor ve <c>git branch "(detached)"</c> gerçekten oluşturuyor. O dalın üzerindeyken
-    /// <c>--porcelain=v2</c> yine <c>&#35; branch.head (detached)</c> yazıyor — yani çıktı
-    /// <b>ayırt edilemiyor</b> ve kullanıcı bir dalın üzerindeyken "ayrık HEAD, commit'leriniz
-    /// kaybolabilir" uyarısı alırdı.
+    /// <b>MEASURED (P06-T04):</b> <c>git check-ref-format --branch "(detached)"</c> accepts it and
+    /// <c>git branch "(detached)"</c> really does create it. While on that branch,
+    /// <c>--porcelain=v2</c> still prints <c>&#35; branch.head (detached)</c> — so the output is
+    /// <b>indistinguishable</b>, and a user sitting on a branch would get the warning "detached HEAD,
+    /// your commits may be lost".
     /// </para>
     /// <para>
-    /// Ek çağrı <b>yalnızca</b> değer harfiyen <c>(detached)</c> olduğunda yapılıyor:
-    /// yaygın yolda maliyet sıfır, nadir yolda cevap doğru. <c>symbolic-ref</c> gerçekten
-    /// ayrık HEAD'de çıkış kodu 1 veriyor (<see cref="RefReader"/> de aynı yolu kullanıyor).
+    /// The extra call is made <b>only</b> when the value is literally <c>(detached)</c>: zero cost on
+    /// the common path, the right answer on the rare one. <c>symbolic-ref</c> gives exit code 1 on a
+    /// genuinely detached HEAD (<see cref="RefReader"/> uses the same route).
     /// </para>
     /// </remarks>
     private async Task<WorkingTreeStatus> DisambiguateDetachedAsync(
@@ -106,7 +107,7 @@ public sealed class StatusReader : IStatusReader
                 WorkingDirectory = workingDirectory,
                 Arguments = ["symbolic-ref", "-q", "--short", "HEAD"],
 
-                // Ayrık HEAD'de 1 döner; hata değil, cevabın kendisi.
+                // It returns 1 on a detached HEAD; not an error, but the answer itself.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);
@@ -124,11 +125,11 @@ public sealed class StatusReader : IStatusReader
     }
 
     /// <summary>
-    /// NUL ile ayrılmış kayıtları ayrıştırır.
+    /// Parses the NUL-separated records.
     /// </summary>
     /// <remarks>
-    /// Kayıtlar üzerinde <b>indeksle</b> ilerlenir çünkü rename girdisi bir sonraki kaydı da
-    /// tüketir; <c>foreach</c> ile yazılamaz.
+    /// The records are walked <b>by index</b> because a rename entry consumes the next record as
+    /// well; it cannot be written with a <c>foreach</c>.
     /// </remarks>
     internal static WorkingTreeStatus Parse(string[] records)
     {
@@ -166,7 +167,7 @@ public sealed class StatusReader : IStatusReader
                     break;
 
                 case '2':
-                    // Kaynak yol BİR SONRAKİ kayıttadır (ölçüldü).
+                    // The source path is in the NEXT record (measured).
                     string? originalPath = i + 1 < records.Length ? records[++i] : null;
 
                     if (ParseRenamed(record, originalPath) is { } renamed)
@@ -201,8 +202,8 @@ public sealed class StatusReader : IStatusReader
                     break;
 
                 default:
-                    // Belge açıkça söylüyor: tanınmayan satırlar yok sayılmalı, çünkü
-                    // git ileride yeni satır tipleri ekleyebilir.
+                    // The documentation says so explicitly: unrecognised lines must be ignored,
+                    // because git may add new line types in future.
                     break;
             }
         }
@@ -228,7 +229,7 @@ public sealed class StatusReader : IStatusReader
         ref bool isUnborn,
         ref UpstreamTracking tracking)
     {
-        // Biçim: "# branch.oid <sha>" / "# branch.head <ad>" / "# branch.ab +N -M"
+        // The format: "# branch.oid <sha>" / "# branch.head <name>" / "# branch.ab +N -M"
         string[] parts = record.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
 
         if (parts.Length < 3)
@@ -239,7 +240,7 @@ public sealed class StatusReader : IStatusReader
         switch (parts[1])
         {
             case "branch.oid":
-                // Doğmamış depoda "(initial)" gelir — ölçüldü.
+                // In an unborn repository "(initial)" arrives — measured.
                 isUnborn = parts[2] == "(initial)";
                 if (!isUnborn && CommitId.TryParse(parts[2], out CommitId id))
                 {
@@ -249,7 +250,7 @@ public sealed class StatusReader : IStatusReader
                 break;
 
             case "branch.head":
-                // Detached durumda "(detached)" gelir — ölçüldü.
+                // In a detached state "(detached)" arrives — measured.
                 isDetached = parts[2] == "(detached)";
                 branchName = isDetached ? null : parts[2];
                 break;
@@ -263,13 +264,13 @@ public sealed class StatusReader : IStatusReader
                 break;
 
             default:
-                // Tanınmayan başlık — belge yok saymamızı söylüyor.
+                // An unrecognised header — the documentation tells us to ignore it.
                 break;
         }
     }
 
     /// <summary>
-    /// <c># branch.ab +2 -0</c> biçimini ayrıştırır.
+    /// Parses the <c># branch.ab +2 -0</c> format.
     /// </summary>
     internal static UpstreamTracking ParseAheadBehind(string value)
     {
@@ -302,8 +303,8 @@ public sealed class StatusReader : IStatusReader
     /// </summary>
     private static FileStatus? ParseOrdinary(string record)
     {
-        // Yol boşluk içerebilir; bu yüzden sınırlı bölme (8 parça) yapılıyor —
-        // son parça yolun tamamıdır.
+        // A path can contain spaces; that is why a limited split (8 parts) is used —
+        // the last part is the whole path.
         string[] parts = record.Split(' ', 9);
 
         if (parts.Length < 9 || !RepositoryPath.TryParse(parts[8], out RepositoryPath path))
@@ -323,7 +324,7 @@ public sealed class StatusReader : IStatusReader
     }
 
     /// <summary>
-    /// <c>2 &lt;XY&gt; … &lt;X&gt;&lt;score&gt; &lt;path&gt;</c> + ayrı kayıtta kaynak yol.
+    /// <c>2 &lt;XY&gt; … &lt;X&gt;&lt;score&gt; &lt;path&gt;</c> plus the source path in a separate record.
     /// </summary>
     private static FileStatus? ParseRenamed(string record, string? originalPath)
     {
@@ -392,15 +393,15 @@ public sealed class StatusReader : IStatusReader
         'C' => FileChangeKind.Copied,
         'T' => FileChangeKind.TypeChanged,
         'U' => FileChangeKind.Unmerged,
-        // '.' ve tanınmayan her şey.
+        // '.' and anything unrecognised.
         _ => FileChangeKind.Unmodified,
     };
 
     /// <summary>
-    /// Çakışma <c>XY</c> çiftini anlamlandırır.
+    /// Makes sense of the conflict <c>XY</c> pair.
     /// </summary>
     /// <remarks>
-    /// "us" mevcut dal (<c>HEAD</c>), "them" birleştirilen dal.
+    /// "us" is the current branch (<c>HEAD</c>), "them" the branch being merged.
     /// </remarks>
     internal static ConflictKind ParseConflict(string xy) => xy switch
     {
@@ -415,7 +416,7 @@ public sealed class StatusReader : IStatusReader
     };
 
     /// <summary>
-    /// <c>N...</c> (submodule değil) veya <c>S&lt;c&gt;&lt;m&gt;&lt;u&gt;</c>.
+    /// <c>N...</c> (not a submodule) or <c>S&lt;c&gt;&lt;m&gt;&lt;u&gt;</c>.
     /// </summary>
     private static SubmoduleState? ParseSubmodule(string field)
     {

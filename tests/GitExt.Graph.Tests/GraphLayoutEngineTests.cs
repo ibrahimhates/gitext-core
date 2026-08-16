@@ -1,11 +1,11 @@
 namespace GitExt.Graph.Tests;
 
 /// <summary>
-/// P03-T03 / T04 / T07 — Yerleşim algoritması.
+/// P03-T03 / T04 / T07 — The layout algorithm.
 /// </summary>
 /// <remarks>
-/// Testler UI olmadan çalışır (ADR-0003). Bir senaryo kırıldığında hata mesajı,
-/// beklenen ve gerçek yerleşimi metin tablosu olarak gösterir.
+/// The tests run without any UI (ADR-0003). When a scenario breaks, the failure message shows the
+/// expected and the actual layout as a text table.
 /// </remarks>
 public class GraphLayoutEngineTests
 {
@@ -15,7 +15,7 @@ public class GraphLayoutEngineTests
     [Fact]
     public void Dogrusal_gecmis_tek_seritte_kalir()
     {
-        // Düz şerit kuralı: ilk ebeveyn aynı şeritte devam eder.
+        // The straight-lane rule: the first parent carries on in the same lane.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             C: B
@@ -35,7 +35,7 @@ public class GraphLayoutEngineTests
 
         GraphRow root = rows.ShouldHaveSingleItem();
         root.Lane.ShouldBe(0);
-        // Kökten aşağı kenar çıkmaz.
+        // No edge leaves a root going downwards.
         root.Edges.ShouldBeEmpty();
     }
 
@@ -52,17 +52,17 @@ public class GraphLayoutEngineTests
             A:
             """);
 
-        // İlk işlenen (C) 0. şeridi alır, ikinci dal ucu (B) yeni şerit açar.
+        // The first one processed (C) takes lane 0, the second branch tip (B) opens a new lane.
         rows[0].Lane.ShouldBe(0);
         rows[1].Lane.ShouldBe(1);
-        // A, her iki dalın ortak ebeveyni — en soldaki rezervasyonda birleşir.
+        // A is the common parent of both branches — they join at the leftmost reservation.
         rows[2].Lane.ShouldBe(0);
     }
 
     [Fact]
     public void Dallanma_sonrasi_serit_geri_kazanilir()
     {
-        // A'da birleştikten sonra 1. şerit boşalmalı.
+        // After joining at A, lane 1 must become free.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             C: A
@@ -71,7 +71,7 @@ public class GraphLayoutEngineTests
             """);
 
         rows[1].LaneCount.ShouldBe(2);
-        // A satırında ikinci şerit artık kullanılmıyor.
+        // On row A the second lane is no longer in use.
         rows[2].LaneCount.ShouldBe(1);
     }
 
@@ -93,7 +93,7 @@ public class GraphLayoutEngineTests
 
         GraphRow merge = rows[0];
         merge.Lane.ShouldBe(0);
-        // İki kenar: ilk ebeveyn aynı şeritte, ikincisi yeni şeritte.
+        // Two edges: the first parent in the same lane, the second in a new one.
         merge.Edges.Count.ShouldBe(2);
         merge.Edges[0].Target.ShouldBe("B");
         merge.Edges[0].IsDiagonal.ShouldBeFalse();
@@ -117,15 +117,15 @@ public class GraphLayoutEngineTests
         GraphRow octopus = rows[0];
         octopus.Edges.Count.ShouldBe(3);
         octopus.Edges.Select(e => e.Target).ShouldBe(["B", "C", "D"]);
-        // Üç ayrı şeride dağılmalı.
+        // They must spread across three separate lanes.
         octopus.Edges.Select(e => e.ToLane).Distinct().Count().ShouldBe(3);
     }
 
     [Fact]
     public void Uzun_mesafeli_kenar_gectigi_satirlarda_seridi_isgal_eder()
     {
-        // C'nin ebeveyni A; arada B var. C→A kenarı B satırından geçmeli
-        // ve o şeridi işgal etmeli — aksi halde başka bir şey oraya yerleşir ve çakışır.
+        // C's parent is A, with B in between. The C→A edge must pass through row B and occupy that
+        // lane — otherwise something else settles there and they collide.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             D: B C
@@ -134,10 +134,10 @@ public class GraphLayoutEngineTests
             A:
             """);
 
-        // rows[1] = C (şerit 1), rows[2] = B (şerit 0)
+        // rows[1] = C (lane 1), rows[2] = B (lane 0)
         GraphRow rowB = rows[2];
 
-        // B satırında, C'nin rezerve ettiği şerit hâlâ dolu olmalı.
+        // On row B, the lane C reserved must still be occupied.
         rowB.Edges.ShouldContain(e => e.IsPassThrough || e.ToLane != rowB.Lane);
         rowB.LaneCount.ShouldBeGreaterThanOrEqualTo(1);
     }
@@ -153,7 +153,7 @@ public class GraphLayoutEngineTests
             A:
             """);
 
-        // C ve B satırlarında D'nin A'ya uzanan kenarı geçiş olarak görünmeli.
+        // On rows C and B, D's edge reaching to A must appear as a pass-through.
         rows[1].Edges.ShouldContain(e => e.IsPassThrough && e.Target == "A");
         rows[2].Edges.ShouldContain(e => e.IsPassThrough && e.Target == "A");
     }
@@ -161,7 +161,7 @@ public class GraphLayoutEngineTests
     [Fact]
     public void Ayni_ebeveyne_giden_iki_merge_kenari_tek_serit_kullanir()
     {
-        // Aynı commit için iki ayrı şerit açılırsa grafik gereksiz genişler.
+        // If two separate lanes are opened for the same commit, the graph widens for nothing.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             C: A A
@@ -170,7 +170,7 @@ public class GraphLayoutEngineTests
 
         GraphRow merge = rows[0];
         merge.Edges.Count.ShouldBe(2);
-        // İkisi de aynı şeride gitmeli.
+        // Both must go into the same lane.
         merge.Edges.Select(e => e.ToLane).Distinct().Count().ShouldBe(1);
     }
 
@@ -187,20 +187,20 @@ public class GraphLayoutEngineTests
 
         rows[0].Edges.Count.ShouldBe(2);
 
-        // B satırında C→A kenarı GEÇİYOR — bu meşru bir pass-through, boş değil.
-        // (İlk yazdığım beklenti burayı boş sanıyordu; kusur testteydi.)
+        // On row B the C→A edge PASSES THROUGH — that is a legitimate pass-through, not an empty slot.
+        // (My first expectation assumed it was empty here; the fault was in the test.)
         GraphEdge passing = rows[1].Edges.ShouldHaveSingleItem();
         passing.IsPassThrough.ShouldBeTrue();
         passing.Target.ShouldBe("A");
 
-        // A son kök: artık geçen kenar kalmadı.
+        // A is the last root: no edge passes through any more.
         rows[2].Edges.ShouldBeEmpty();
     }
 
     [Fact]
     public void Yalniz_orphan_dal_kendi_seridini_alir()
     {
-        // git checkout --orphan: hiçbir şeye bağlı olmayan ikinci bir geçmiş.
+        // git checkout --orphan: a second history attached to nothing.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             B: A
@@ -209,7 +209,7 @@ public class GraphLayoutEngineTests
             X:
             """);
 
-        // B/A zinciri 0. şeritte, Y/X zinciri de 0'ı geri kazanır (A'da boşaldı).
+        // The B/A chain is in lane 0, and the Y/X chain reclaims 0 as well (it was freed at A).
         rows[0].Lane.ShouldBe(0);
         rows[2].Lane.ShouldBe(0);
     }
@@ -217,9 +217,10 @@ public class GraphLayoutEngineTests
     [Fact]
     public void Ayni_satirda_gorunen_seritler_farkli_renk_alir()
     {
-        // Anlamlı özellik: bir satırda AYNI ANDA görünen şeritlerin renkleri ayırt edilebilir
-        // olmalı. "İlk üç satır üç farklı renk" gibi bir beklenti yanlıştı — şerit geri
-        // kazanıldığında rengin de yeniden kullanılması doğru davranış (git de böyle yapıyor).
+        // The meaningful property: the colours of the lanes visible AT THE SAME TIME on a row must be
+        // distinguishable. An expectation like "the first three rows are three different colours" was
+        // wrong — reusing the colour when a lane is reclaimed is the correct behaviour (git does the
+        // same).
         IReadOnlyList<GraphRow> rows = Layout(
             """
             F: D E
@@ -234,7 +235,7 @@ public class GraphLayoutEngineTests
         {
             int[] colorsInRow = [.. row.Edges.Select(e => e.ColorIndex).Append(row.ColorIndex)];
 
-            // Aynı şeride ait kenarlar aynı rengi paylaşabilir; farklı şeritler paylaşmamalı.
+            // Edges belonging to the same lane may share a colour; different lanes must not.
             var byLane = row.Edges
                 .GroupBy(e => e.ToLane)
                 .Select(g => (Lane: g.Key, Color: g.First().ColorIndex))
@@ -248,9 +249,9 @@ public class GraphLayoutEngineTests
     [Fact]
     public void Ayni_tabandan_acilan_dallar_serit_paylasir()
     {
-        // GERÇEK VERİDEN ÇIKTI: aynı tabandan açılmış konu dalları (ör. birden fazla
-        // dependabot dalı) her biri kendi şeridini tabana kadar tutarsa grafik gereksiz
-        // genişler. git de bu durumda şeridi yeniden kullanıyor — doğrulandı.
+        // FROM REAL DATA: topic branches opened from the same base (several dependabot branches, say)
+        // widen the graph for nothing if each holds its own lane all the way down to the base. git
+        // reuses the lane in this situation too — verified.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             D: A
@@ -259,14 +260,14 @@ public class GraphLayoutEngineTests
             A:
             """);
 
-        // Üç dal ucu var ama hepsi hemen A'ya bağlandığı için iki şerit yetmeli.
+        // There are three branch tips, but because they all join A immediately, two lanes must suffice.
         rows.Max(r => r.LaneCount).ShouldBeLessThanOrEqualTo(2);
     }
 
     [Fact]
     public void Serit_serbest_kalinca_rengi_yeniden_kullanilabilir()
     {
-        // Renk indeksleri sınırsız büyümemeli; boşalan şeridin rengi geri kazanılır.
+        // The colour indices must not grow without bound; a freed lane's colour is reclaimed.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             E: D
@@ -282,7 +283,7 @@ public class GraphLayoutEngineTests
     [Fact]
     public void Uzun_paralel_dallar_kararli_seritte_kalir()
     {
-        // Düz şerit kuralının asıl sınavı: uzun bir dal boyunca şerit değişmemeli.
+        // The real test of the straight-lane rule: the lane must not change along a long branch.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             M: A3 B3
@@ -295,12 +296,12 @@ public class GraphLayoutEngineTests
             A0:
             """);
 
-        // A zinciri tek şeritte
+        // The A chain in a single lane
         int[] aLanes = [.. rows.Where(r => r.Commit.Id.StartsWith('A') && r.Commit.Id != "A0")
             .Select(r => r.Lane)];
         aLanes.Distinct().Count().ShouldBe(1);
 
-        // B zinciri de tek şeritte, ama A'dan farklı
+        // The B chain in a single lane too, but a different one from A
         int[] bLanes = [.. rows.Where(r => r.Commit.Id.StartsWith('B')).Select(r => r.Lane)];
         bLanes.Distinct().Count().ShouldBe(1);
         bLanes[0].ShouldNotBe(aLanes[0]);
@@ -309,7 +310,7 @@ public class GraphLayoutEngineTests
     [Fact]
     public void Her_satirda_kenarlar_gecerli_seritlere_isaret_eder()
     {
-        // Sağlamlık: hiçbir kenar var olmayan bir şeride gitmemeli.
+        // Robustness: no edge may go to a lane that does not exist.
         IReadOnlyList<GraphRow> rows = Layout(
             """
             F: D E
@@ -335,8 +336,8 @@ public class GraphLayoutEngineTests
     [Fact]
     public void Artimli_ekleme_onceki_satirlari_degistirmez()
     {
-        // P03-T06'nın çekirdek güvencesi: sonsuz kaydırmada yeni sayfa yüklenince
-        // ekrandaki satırlar yerinden oynamamalı.
+        // P03-T06's core guarantee: in infinite scrolling, the rows on screen must not move when a
+        // new page is loaded.
         const string definition =
             """
             E: D
@@ -351,7 +352,7 @@ public class GraphLayoutEngineTests
         // Hepsini tek seferde
         IReadOnlyList<GraphRow> atOnce = new GraphLayoutEngine().Add(commits);
 
-        // Parça parça
+        // Piece by piece
         GraphLayoutEngine incremental = new();
         List<GraphRow> stepwise = [];
         stepwise.AddRange(incremental.Add(commits.Take(2)));
@@ -364,8 +365,8 @@ public class GraphLayoutEngineTests
     [Fact]
     public void Buyuk_sentetik_dag_makul_genislikte_kalir()
     {
-        // 10k commit, düzenli aralıklarla dallanan ve birleşen bir geçmiş.
-        // Şerit sayısı patlarsa grafik kullanılamaz hale gelir.
+        // 10k commits, a history branching and merging at regular intervals.
+        // If the lane count explodes, the graph becomes unusable.
         List<DagCommit> commits = [];
 
         for (int i = 10_000; i > 0; i--)

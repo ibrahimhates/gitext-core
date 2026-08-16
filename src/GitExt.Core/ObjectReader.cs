@@ -6,19 +6,19 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Ham Git nesnelerine erişir: dosya içeriği ve ağaç listeleri (P02-T11).
+/// Reaches raw Git objects: file contents and tree listings (P02-T11).
 /// </summary>
 public interface IObjectReader
 {
     /// <summary>
-    /// Bir revizyondaki ağacı listeler.
+    /// Lists the tree at a revision.
     /// </summary>
-    /// <param name="workingDirectory">Deponun çalışma dizini.</param>
-    /// <param name="revision">Revizyon (dal, tag, SHA, <c>HEAD</c>).</param>
-    /// <param name="path">Alt dizin; <see langword="null"/> ise kök.</param>
-    /// <param name="recursive">Alt dizinlere inilsin mi?</param>
-    /// <param name="includeSize">Blob boyutları da alınsın mı (<c>--long</c>)?</param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="workingDirectory">The repository's working directory.</param>
+    /// <param name="revision">The revision (branch, tag, SHA, <c>HEAD</c>).</param>
+    /// <param name="path">A subdirectory; the root when <see langword="null"/>.</param>
+    /// <param name="recursive">Should it descend into subdirectories?</param>
+    /// <param name="includeSize">Should blob sizes be included too (<c>--long</c>)?</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<IReadOnlyList<TreeEntry>> ReadTreeAsync(
         string workingDirectory,
         string revision,
@@ -28,34 +28,33 @@ public interface IObjectReader
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Nesnelerin tür ve boyutunu içerik okumadan öğrenir.
+    /// Finds out the type and size of objects without reading their content.
     /// </summary>
     /// <remarks>
-    /// Çok büyük bir dosyayı belleğe almadan önce boyutunu kontrol etmek için.
+    /// For checking the size of a very large file before pulling it into memory.
     /// </remarks>
-    /// <param name="workingDirectory">Deponun çalışma dizini.</param>
-    /// <param name="revisions">Sorgulanacak nesneler.</param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="workingDirectory">The repository's working directory.</param>
+    /// <param name="revisions">The objects to query.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<IReadOnlyList<GitObjectInfo>> GetInfoAsync(
         string workingDirectory,
         IReadOnlyList<string> revisions,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Birden fazla blob'u <b>tek süreç çağrısında</b> okur.
+    /// Reads several blobs in <b>a single process call</b>.
     /// </summary>
     /// <remarks>
-    /// <c>cat-file --batch</c> stdin'den birden çok nesne kabul eder. Her dosya için ayrı
-    /// süreç başlatmak (N+1 deseni) ADR-0002'nin bilinen zayıflığıdır; toplu okuma bunun
-    /// birincil çözümüdür.
+    /// <c>cat-file --batch</c> accepts several objects on stdin. Starting a separate process per file
+    /// (the N+1 pattern) is ADR-0002's known weakness; batch reading is the primary answer to it.
     /// </remarks>
-    /// <param name="workingDirectory">Deponun çalışma dizini.</param>
-    /// <param name="revisions">Okunacak nesneler, örn. <c>HEAD:src/a.txt</c>.</param>
+    /// <param name="workingDirectory">The repository's working directory.</param>
+    /// <param name="revisions">The objects to read, e.g. <c>HEAD:src/a.txt</c>.</param>
     /// <param name="maxBytes">
-    /// Nesne başına okunacak azami bayt. Aşan içerik kırpılır ve
-    /// <see cref="BlobContent.IsTruncated"/> işaretlenir.
+    /// The maximum bytes to read per object. Content beyond it is truncated and
+    /// <see cref="BlobContent.IsTruncated"/> is set.
     /// </param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<IReadOnlyList<BlobContent>> ReadBlobsAsync(
         string workingDirectory,
         IReadOnlyList<string> revisions,
@@ -67,16 +66,16 @@ public interface IObjectReader
 public sealed class ObjectReader : IObjectReader
 {
     /// <summary>
-    /// Varsayılan nesne başına okuma sınırı: 10 MB.
+    /// The default per-object read limit: 10 MB.
     /// </summary>
     /// <remarks>
-    /// Sınır olmadan 200 MB'lık tek bir dosya arayüzü kilitler. Kullanıcı isterse
-    /// daha yüksek bir değerle yeniden okuyabilir.
+    /// Without a limit, a single 200 MB file locks up the UI. The user can re-read with a higher
+    /// value if they want to.
     /// </remarks>
     public const long DefaultMaxBlobBytes = 10L * 1024 * 1024;
 
     /// <summary>
-    /// İkili tespiti için taranan bayt sayısı — <c>git</c>'in kullandığı değer.
+    /// The number of bytes scanned for binary detection — the value <c>git</c> uses.
     /// </summary>
     private const int BinaryDetectionWindow = 8000;
 
@@ -99,7 +98,7 @@ public sealed class ObjectReader : IObjectReader
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(revision);
 
-        // ls-tree -z DESTEKLENİYOR (for-each-ref'in aksine — ölçüldü).
+        // ls-tree -z IS SUPPORTED (unlike for-each-ref — measured).
         List<string> arguments = ["ls-tree", "-z"];
 
         if (recursive)
@@ -117,8 +116,8 @@ public sealed class ObjectReader : IObjectReader
         if (path is { } subPath)
         {
             arguments.Add("--");
-            // Sondaki eğik çizgi olmadan git dizinin kendisini tek girdi olarak döndürür;
-            // içeriğini listelemek için gerekli.
+            // Without the trailing slash git returns the directory itself as a single entry; it is
+            // needed to list its contents.
             arguments.Add(subPath.Value + "/");
         }
 
@@ -140,11 +139,11 @@ public sealed class ObjectReader : IObjectReader
     }
 
     /// <summary>
-    /// <c>&lt;mod&gt; &lt;tip&gt; &lt;sha&gt;[ &lt;boyut&gt;]&lt;TAB&gt;&lt;yol&gt;</c>
+    /// <c>&lt;mode&gt; &lt;type&gt; &lt;sha&gt;[ &lt;size&gt;]&lt;TAB&gt;&lt;path&gt;</c>
     /// </summary>
     /// <remarks>
-    /// Metadata ile yol arasındaki ayraç <b>TAB</b>'dır, boşluk değil — yol boşluk içerebilir.
-    /// Yolda da TAB olabileceği için yalnızca <b>ilk</b> TAB'da bölünüyor.
+    /// The separator between the metadata and the path is a <b>TAB</b>, not a space — a path can
+    /// contain spaces. Because a path can contain a TAB too, it is split only at the <b>first</b> TAB.
     /// </remarks>
     internal static TreeEntry? ParseTreeEntry(string record)
     {
@@ -162,7 +161,7 @@ public sealed class ObjectReader : IObjectReader
             return null;
         }
 
-        // --long verildiyse dördüncü alan boyuttur; ağaçlarda "-" gelir.
+        // When --long was passed the fourth field is the size; for trees it comes back as "-".
         long? size = metadata.Length > 3
                      && long.TryParse(metadata[3], CultureInfo.InvariantCulture, out long parsed)
             ? parsed
@@ -253,15 +252,15 @@ public sealed class ObjectReader : IObjectReader
     }
 
     /// <summary>
-    /// <c>cat-file --batch</c> çıktısını ayrıştırır.
+    /// Parses the <c>cat-file --batch</c> output.
     /// </summary>
     /// <remarks>
-    /// Biçim (ölçüldü): <c>&lt;sha&gt; &lt;tip&gt; &lt;boyut&gt;\n&lt;içerik&gt;\n</c>.
-    /// Eksik nesne: <c>&lt;girdi&gt; missing\n</c> — içerik yok.
+    /// The format (measured): <c>&lt;sha&gt; &lt;type&gt; &lt;size&gt;\n&lt;content&gt;\n</c>.
+    /// A missing object: <c>&lt;input&gt; missing\n</c> — with no content.
     /// <para>
-    /// İçerik <b>ikili olabilir</b>, bu yüzden bayt düzeyinde işleniyor: başlıktan sonra tam
-    /// olarak <c>boyut</c> bayt okunur, ardından bir kapanış satır sonu atlanır. Metne çevirip
-    /// bölmek içeriği geri dönülemez şekilde bozardı.
+    /// The content <b>may be binary</b>, so it is handled at byte level: after the header exactly
+    /// <c>size</c> bytes are read, then a closing line ending is skipped. Converting to text and
+    /// splitting would corrupt the content irreversibly.
     /// </para>
     /// </remarks>
     internal static IReadOnlyList<BlobContent> ParseBatchOutput(byte[] output, long maxBytes)
@@ -283,7 +282,7 @@ public sealed class ObjectReader : IObjectReader
 
             if (ParseBatchHeader(header) is not { } parsed)
             {
-                // "…missing" satırı: içerik gövdesi yok, sıradaki başlığa geç.
+                // A "…missing" line: there is no content body, move on to the next header.
                 blobs.Add(new BlobContent
                 {
                     Id = default,
@@ -309,7 +308,7 @@ public sealed class ObjectReader : IObjectReader
                 IsTruncated = take < parsed.Size,
             });
 
-            // İçeriğin tamamını atla, ardından git'in eklediği kapanış satır sonunu da.
+            // Skip the whole content, then the closing line ending git appends as well.
             offset += available;
 
             if (offset < output.Length && output[offset] == (byte)'\n')
@@ -322,9 +321,9 @@ public sealed class ObjectReader : IObjectReader
     }
 
     /// <summary>
-    /// <c>&lt;sha&gt; &lt;tip&gt; &lt;boyut&gt;</c> başlığını ayrıştırır.
+    /// Parses the <c>&lt;sha&gt; &lt;type&gt; &lt;size&gt;</c> header.
     /// </summary>
-    /// <returns>Satır <c>missing</c> bildiriyorsa <see langword="null"/>.</returns>
+    /// <returns><see langword="null"/> when the line reports <c>missing</c>.</returns>
     private static (CommitId Id, GitObjectType Type, long Size)? ParseBatchHeader(string line)
     {
         string[] parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -340,7 +339,7 @@ public sealed class ObjectReader : IObjectReader
     }
 
     /// <summary>
-    /// <c>git</c> ile aynı sezgi: ilk 8000 baytta NUL varsa ikili.
+    /// The same heuristic as <c>git</c>: binary when there is a NUL in the first 8000 bytes.
     /// </summary>
     private static bool LooksBinary(ReadOnlySpan<byte> content) =>
         content[..Math.Min(content.Length, BinaryDetectionWindow)].Contains((byte)0);

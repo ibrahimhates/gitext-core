@@ -9,21 +9,21 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Çalışma dizini görünümü (P05-T09).
+/// The working directory view (P05-T09).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Klavye kısayolları artık komut kaydından geliyor (P08-T01/T02): <c>Space</c> seçili
-/// dosyayı karşı tarafa taşır, <c>Ctrl+Shift+S</c>/<c>Ctrl+Shift+U</c> tümünü,
-/// <c>Ctrl+Enter</c> commit atar. <c>F5</c> artık <b>küresel</b> bir komut.
+/// The keyboard shortcuts now come from the command registry (P08-T01/T02): <c>Space</c> moves the
+/// selected file to the other side, <c>Ctrl+Shift+S</c>/<c>Ctrl+Shift+U</c> move all of them, and
+/// <c>Ctrl+Enter</c> commits. <c>F5</c> is now a <b>global</b> command.
 /// </para>
 /// <para>
-/// ⚠️ <b>Odak, bu ekranın en kırılgan yeri.</b> Her stage/unstage işleminden sonra iki liste
-/// de yeniden kuruluyor; odaklı <c>ListBoxItem</c> yok oluyor ve <b>sonraki tuş olayı
-/// görünümün ağacından hiç geçmiyor</b> — klavye sessizce ölüyor (P04-T12'de ölçüldü).
-/// Odağı geri vermek tek başına yetmiyor: konteyner o an <b>henüz oluşmamış</b> oluyor ve
-/// <c>ContainerFromIndex</c> <see langword="null"/> dönüyor, bu yüzden
-/// <see cref="DispatcherPriority.Loaded"/> ile erteleniyor.
+/// ⚠️ <b>Focus is the most fragile part of this screen.</b> After every stage/unstage both lists are
+/// rebuilt; the focused <c>ListBoxItem</c> ceases to exist and <b>the next key event never passes
+/// through the view's tree</b> — the keyboard dies silently (measured in P04-T12). Giving focus back
+/// is not enough on its own: the container <b>does not exist yet</b> at that moment and
+/// <c>ContainerFromIndex</c> returns <see langword="null"/>, which is why it is deferred with
+/// <see cref="DispatcherPriority.Loaded"/>.
 /// </para>
 /// </remarks>
 public partial class WorkingTreeView : UserControl
@@ -32,7 +32,7 @@ public partial class WorkingTreeView : UserControl
     {
         InitializeComponent();
 
-        // Tünelleme: içteki `ScrollViewer` kabaran tuş olayını yutuyor (Faz 03'te ölçüldü).
+        // Tunnelling: the inner `ScrollViewer` swallows the bubbling key event (measured in Phase 03).
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
 
@@ -42,24 +42,24 @@ public partial class WorkingTreeView : UserControl
 
     private WorkingTreeViewModel? ViewModel => DataContext as WorkingTreeViewModel;
 
-    /// <summary>Kullanıcının en son dokunduğu liste.</summary>
+    /// <summary>The list the user touched last.</summary>
     private ListBox ActiveList =>
         ViewModel?.IsStagedListActive == true ? StagedList : UnstagedList;
 
     private void OnViewLoaded(object? sender, RoutedEventArgs e)
     {
-        // Hiçbir şeye odak yoksa tuş olayları bu ağaçtan HİÇ geçmez ve kısayollar sessizce
-        // çalışmaz (Faz 03'te ölçüldü).
+        // With nothing focused, key events NEVER pass through this tree and the shortcuts silently
+        // do not work (measured in Phase 03).
         FocusActiveList();
     }
 
     /// <summary>
-    /// Odaklanan liste "etkin" olur; diff onu izler.
+    /// The focused list becomes the "active" one; the diff follows it.
     /// </summary>
     /// <remarks>
-    /// İki listede aynı anda seçim durabiliyor. Etkin listeyi odağa bağlamak, kullanıcının
-    /// baktığı yerle gösterilen diff'i aynı tutuyor — aksi halde staged listesinde
-    /// gezerken unstaged'in diff'ine bakılırdı.
+    /// Both lists can hold a selection at the same time. Tying the active list to focus keeps the
+    /// place the user is looking at and the diff being shown in step — otherwise you would be
+    /// looking at the unstaged diff while moving through the staged list.
     /// </remarks>
     private void OnUnstagedFocused(object? sender, RoutedEventArgs e)
     {
@@ -84,10 +84,10 @@ public partial class WorkingTreeView : UserControl
             return;
         }
 
-        // 🔴 Metin kutusundayken liste kısayolları ÇALIŞMAMALI. Tünelleme fazında
-        // yakaladığımız için `Space` tuşu commit mesajına boşluk yazmak yerine dosya
-        // stage'lerdi — mesaj yazan kullanıcı farkında olmadan index'i değiştirirdi.
-        // Commit kısayolu bilinçli istisna: commit zaten mesaj kutusundan verilir.
+        // 🔴 While in a text box the list shortcuts MUST NOT RUN. Because we catch them in the
+        // tunnelling phase, the `Space` key was staging a file instead of typing a space into the
+        // commit message — a user writing a message would change the index without noticing.
+        // The commit shortcut is a deliberate exception: a commit is given from the message box anyway.
         bool isCommit = _registry?.GetGesture(CommandIds.WorkingTreeCommit) is { } commit
             && commit.Matches(e);
 
@@ -96,12 +96,12 @@ public partial class WorkingTreeView : UserControl
             return;
         }
 
-        // F5 artık KÜRESEL (P08-T02): burada da yakalasaydık aynı jest iki bağlamda
-        // kayıtlı olurdu ve çakışma tespiti onu haklı olarak raporlardı.
+        // F5 is GLOBAL now (P08-T02): catching it here as well would register the same gesture in two
+        // contexts, and conflict detection would rightly report it.
         _dispatcher?.Handle(e);
     }
 
-    /// <summary>Bağlam kısayollarını komut kaydına bağlar (P08-T01).</summary>
+    /// <summary>Binds the context shortcuts to the command registry (P08-T01).</summary>
     public ShortcutDispatcher AttachShortcuts(ICommandRegistry registry)
     {
         _registry = registry;
@@ -114,9 +114,9 @@ public partial class WorkingTreeView : UserControl
         dispatcher.Bind(CommandIds.WorkingTreeStageAll, () => WithModel(m => m.StageAllAsync()));
         dispatcher.Bind(CommandIds.WorkingTreeUnstageAll, () => WithModel(m => m.UnstageAllAsync()));
 
-        // 🔴 ÖLÇÜLDÜ (P05-T12): `AcceptsReturn` açık bir `TextBox` Ctrl+Enter'ı da düz Enter
-        // gibi işleyip SATIR SONU EKLİYOR. Tünelleme fazında yakalanıp `Handled`
-        // işaretlenmezse commit atılırken mesaja bir de boş satır girerdi.
+        // 🔴 MEASURED (P05-T12): a `TextBox` with `AcceptsReturn` on handles Ctrl+Enter like a plain
+        // Enter and ADDS A LINE BREAK. Unless it is caught in the tunnelling phase and marked
+        // `Handled`, committing would also put a blank line into the message.
         dispatcher.Bind(CommandIds.WorkingTreeCommit, () => WithModel(m => m.CommitAsync()));
 
         _dispatcher = dispatcher;
@@ -149,7 +149,7 @@ public partial class WorkingTreeView : UserControl
         Run(ViewModel?.UnstageAllAsync());
 
     /// <summary>
-    /// İşlemi çalıştırır ve <b>bittikten sonra</b> odağı listeye geri verir.
+    /// Runs the operation and gives focus back to the list <b>after it finishes</b>.
     /// </summary>
     private void Run(Task? operation)
     {
@@ -169,12 +169,11 @@ public partial class WorkingTreeView : UserControl
     }
 
     /// <summary>
-    /// Etkin listedeki seçili satıra odaklanır.
+    /// Focuses the selected row in the active list.
     /// </summary>
     /// <remarks>
-    /// Konteyner henüz oluşmamış olabilir (liste yeni kuruldu); o durumda
-    /// <see cref="DispatcherPriority.Loaded"/> ile erteleniyor. İlk deneme sessizce
-    /// başarısız oluyordu.
+    /// The container may not exist yet (the list was just rebuilt); in that case it is deferred with
+    /// <see cref="DispatcherPriority.Loaded"/>. The first attempt was failing silently.
     /// </remarks>
     private void FocusActiveList()
     {
@@ -192,8 +191,8 @@ public partial class WorkingTreeView : UserControl
 
         if (list.SelectedIndex < 0)
         {
-            // Seçim yoksa liste kutusunun kendisi odaklanamaz (`ListBox.Focusable` false);
-            // görünümün kendisine odaklanmak kısayolları yine de çalışır kılıyor.
+            // With no selection the list box itself cannot take focus (`ListBox.Focusable` is false);
+            // focusing the view itself still keeps the shortcuts working.
             return Focus();
         }
 
@@ -211,7 +210,7 @@ public partial class WorkingTreeView : UserControl
 
     private void OnCommitClick(object? sender, RoutedEventArgs e) => Run(ViewModel?.CommitAsync());
 
-    // ---- P05-T15: onay ve güvenlik ağı ----
+    // ---- P05-T15: confirmation and the safety net ----
 
     private void OnResetAllClick(object? sender, RoutedEventArgs e) =>
         Run(ViewModel?.ResetChangesAsync(DiscardScope.All));
@@ -225,16 +224,16 @@ public partial class WorkingTreeView : UserControl
     private void OnDismissResetNoticeClick(object? sender, RoutedEventArgs e) =>
         ViewModel?.ClearResetNotice();
 
-    // ---- P05-T13: mesaj yardımcıları ----
+    // ---- P05-T13: message helpers ----
 
     /// <summary>
-    /// Geçmiş menüsü açılırken mesajları okur ve öğeleri kurar.
+    /// Reads the messages and builds the items as the history menu opens.
     /// </summary>
     /// <remarks>
-    /// Öğeler <c>ItemsSource</c> ile bağlanmıyor: <see cref="MenuFlyout"/> içinde sabit
-    /// öğeler (<i>yalnızca benim mesajlarım</i> + ayraç) ile veriye bağlı öğeler bir arada
-    /// duruyor ve tek bir <c>ItemsSource</c> ikisini birden veremiyor. Sabit öğeler
-    /// <b>korunuyor</b>, geçmiş satırları her açılışta yenileniyor.
+    /// The items are not bound with <c>ItemsSource</c>: inside the <see cref="MenuFlyout"/>, fixed
+    /// items (<i>only my messages</i> plus a separator) sit alongside data-bound ones, and a single
+    /// <c>ItemsSource</c> cannot supply both. The fixed items are <b>preserved</b> and the history
+    /// rows are rebuilt on every open.
     /// </remarks>
     private async void OnMessageHistoryOpening(object? sender, EventArgs e)
     {
@@ -243,8 +242,8 @@ public partial class WorkingTreeView : UserControl
             return;
         }
 
-        // Flyout içindeki adlar kod arkasında ALAN OLARAK ÜRETİLMİYOR (ayrı ad kapsamı);
-        // menüye düğmenin kendisi üzerinden erişiliyor.
+        // Names inside a flyout are NOT GENERATED AS FIELDS in the code-behind (a separate name
+        // scope); the menu is reached through the button itself.
         if (MessageHistoryButton.Flyout is not MenuFlyout flyout)
         {
             return;
@@ -259,7 +258,7 @@ public partial class WorkingTreeView : UserControl
     {
         List<object> items = [.. flyout.Items.OfType<object>()];
 
-        // Ayraçtan sonrası geçmiş; her açılışta baştan kuruluyor.
+        // Everything after the separator is history; it is rebuilt from scratch on every open.
         int separator = items.FindIndex(item => item is Separator);
 
         if (separator >= 0 && items.Count > separator + 1)
@@ -275,8 +274,8 @@ public partial class WorkingTreeView : UserControl
                 Command = entry.ApplyCommand,
                 CommandParameter = entry,
 
-                // Tam mesaj ipucunda: menüde yalnızca ilk satır görünüyor, kullanıcı gövdesi
-                // olan bir mesajı seçmeden önce ne aldığını görebilmeli.
+                // The full message goes in the tooltip: only the first line shows in the menu, and the
+                // user must be able to see what they are getting before picking a message with a body.
                 [ToolTip.TipProperty] = entry.Message,
             });
         }

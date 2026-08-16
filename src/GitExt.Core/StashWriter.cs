@@ -9,48 +9,48 @@ namespace GitExt.Core;
 /// </summary>
 public sealed record StashEntry
 {
-    /// <summary>Seçici — <c>refs/stash@{0}</c>.</summary>
+    /// <summary>The selector — <c>refs/stash@{0}</c>.</summary>
     public required string Selector { get; init; }
 
-    /// <summary>Stash commit'inin tam SHA'sı.</summary>
+    /// <summary>The stash commit's full SHA.</summary>
     public required string ObjectId { get; init; }
 
-    /// <summary>Girdinin mesajı — <c>On main: benim stash</c>.</summary>
+    /// <summary>The entry's message — <c>On main: my stash</c>.</summary>
     public required string Message { get; init; }
 
     public DateTimeOffset Timestamp { get; init; }
 
-    /// <summary>Sıra numarası — <c>stash@{N}</c> içindeki N.</summary>
+    /// <summary>The ordinal — the N in <c>stash@{N}</c>.</summary>
     public int Index { get; init; }
 
     /// <summary>
-    /// Takip edilmeyen dosyalar da bu stash'e dahil mi?
+    /// Are untracked files included in this stash as well?
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: <c>-u</c> ile alınan stash'in <b>üçüncü bir ebeveyni</b> var — takip
-    /// edilmeyen dosyaların commit'i. Ayrım buradan yapılıyor; mesaja bakmak
-    /// (kullanıcı mesajı serbestçe yazdığı için) güvenilmez olurdu.
+    /// MEASURED: a stash taken with <c>-u</c> has a <b>third parent</b> — the commit of the untracked
+    /// files. That is what the distinction is made from; looking at the message would be unreliable
+    /// (the user writes it freely).
     /// </remarks>
     public bool IncludesUntracked { get; init; }
 
-    /// <summary>Kısa gösterim için <c>stash@{N}</c>.</summary>
+    /// <summary><c>stash@{N}</c>, for short display.</summary>
     public string ShortSelector =>
         $"stash@{{{Index.ToString(CultureInfo.InvariantCulture)}}}";
 }
 
-/// <summary>Stash oluşturma seçenekleri (P07-T12).</summary>
+/// <summary>Options for creating a stash (P07-T12).</summary>
 public sealed record StashPushOptions
 {
-    /// <summary>Girdinin mesajı.</summary>
+    /// <summary>The entry's message.</summary>
     public string? Message { get; init; }
 
     /// <summary><c>--include-untracked</c>.</summary>
     public bool IncludeUntracked { get; init; }
 
-    /// <summary><c>--keep-index</c>: stage'lenmiş olanlar çalışma ağacında kalsın.</summary>
+    /// <summary><c>--keep-index</c>: leave what is staged in the working tree.</summary>
     public bool KeepIndex { get; init; }
 
-    /// <summary>Yalnızca bu yollar; boşsa tamamı.</summary>
+    /// <summary>Only these paths; all of them when empty.</summary>
     public IReadOnlyList<RepositoryPath> Paths { get; init; } = [];
 }
 
@@ -62,35 +62,35 @@ public sealed record StashApplyResult
     public IReadOnlyList<RepositoryPath> ConflictedPaths { get; init; } = [];
 
     /// <summary>
-    /// Girdi listede kaldı mı?
+    /// Did the entry stay in the list?
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — <c>pop</c> çakışırsa girdi DÜŞMÜYOR</b>
-    /// (<i>"The stash entry is kept in case you need it again."</i>, rc=1). Kullanıcıya
-    /// söylenmezse ya değişikliği iki kez uygular ya da elle silerken kaybeder.
+    /// 🔴 <b>MEASURED — when <c>pop</c> conflicts the entry IS NOT DROPPED</b>
+    /// (<i>"The stash entry is kept in case you need it again."</i>, rc=1). Unless the user is told,
+    /// they either apply the change twice or lose it while deleting it by hand.
     /// </remarks>
     public required bool EntryKept { get; init; }
 
     /// <summary>
-    /// Stage'lenmiş/stage'lenmemiş ayrımı korunabildi mi?
+    /// Could the staged/unstaged distinction be preserved?
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — <c>pop</c> varsayılan hâlde bu ayrımı sessizce KAYBEDİYOR.</b>
-    /// Bir dosya stage'li, biri değilken pop sonrası <b>ikisi de</b> stage'siz oluyor.
-    /// <c>--index</c> ile ayrım korunuyor; ama <c>--index</c> her durumda uygulanamıyor
-    /// (çakışma varken git reddediyor), o yüzden sonuç raporlanıyor.
+    /// 🔴 <b>MEASURED — in its default form <c>pop</c> silently LOSES this distinction.</b>
+    /// With one file staged and one not, after the pop <b>both</b> are unstaged. <c>--index</c>
+    /// preserves the distinction; but <c>--index</c> cannot be applied in every case (git refuses it
+    /// when there is a conflict), so the outcome is reported.
     /// </remarks>
     public required bool IndexRestored { get; init; }
 }
 
-/// <summary>Stash işlemleri (P07-T12).</summary>
+/// <summary>Stash operations (P07-T12).</summary>
 public interface IStashWriter
 {
     Task<IReadOnlyList<StashEntry>> ListAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
-    /// <returns>Kenara konacak bir şey yoksa <see langword="false"/>.</returns>
+    /// <returns><see langword="false"/> when there is nothing to set aside.</returns>
     Task<bool> PushAsync(
         string workingDirectory,
         StashPushOptions options,
@@ -107,14 +107,14 @@ public interface IStashWriter
         string selector,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Stash'i yeni bir dala açar (<c>git stash branch</c>).</summary>
+    /// <summary>Opens the stash onto a new branch (<c>git stash branch</c>).</summary>
     Task BranchAsync(
         string workingDirectory,
         string selector,
         string branchName,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Girdinin diff'ini üretir.</summary>
+    /// <summary>Produces the entry's diff.</summary>
     Task<string> ShowAsync(
         string workingDirectory,
         string selector,
@@ -122,7 +122,7 @@ public interface IStashWriter
 }
 
 /// <summary>
-/// <c>git stash</c> sarmalayıcısı (P07-T12).
+/// The <c>git stash</c> wrapper (P07-T12).
 /// </summary>
 public sealed class StashWriter : IStashWriter
 {
@@ -153,10 +153,10 @@ public sealed class StashWriter : IStashWriter
         return result.IsSuccess ? Parse(result.GetStandardOutputText()) : [];
     }
 
-    /// <summary>NUL ayrılmış <c>stash list</c> çıktısını ayrıştırır.</summary>
+    /// <summary>Parses the NUL-separated <c>stash list</c> output.</summary>
     /// <remarks>
-    /// Ayırıcı NUL: stash mesajını <b>kullanıcı</b> yazıyor ve içinde sekme olabilir
-    /// (P07-T14'te reflog'da ölçülen aynı tuzak).
+    /// The separator is NUL: the stash message is written by the <b>user</b> and may contain a tab
+    /// (the same trap measured on the reflog in P07-T14).
     /// </remarks>
     internal static IReadOnlyList<StashEntry> Parse(string output)
     {
@@ -226,18 +226,17 @@ public sealed class StashWriter : IStashWriter
             .RunAsync(workingDirectory, arguments, cancellationToken)
             .ConfigureAwait(false);
 
-        // Kenara konacak bir şey yoksa git "No local changes to save" deyip 0 dönüyor.
-        // Bunu "stash'lendi" diye raporlamak, kullanıcının olmayan bir girdiyi
-        // aramasına yol açardı.
+        // When there is nothing to set aside, git says "No local changes to save" and returns 0.
+        // Reporting that as "stashed" would send the user looking for an entry that does not exist.
         return !result.GetStandardOutputText()
             .Contains("No local changes", StringComparison.Ordinal);
     }
 
     /// <remarks>
-    /// <c>--index</c> <b>önce</b> deneniyor: ölçümde varsayılan <c>pop</c> stage'lenmiş
-    /// olanı stage'siz bırakıyordu. <c>--index</c> her durumda uygulanamıyor (çakışma
-    /// varken git reddediyor), o yüzden başarısızlıkta sade biçime düşülüyor ve
-    /// <see cref="StashApplyResult.IndexRestored"/> ile <b>ne olduğu söyleniyor</b>.
+    /// <c>--index</c> is tried <b>first</b>: in the measurement, the default <c>pop</c> left what was
+    /// staged unstaged. <c>--index</c> cannot be applied in every case (git refuses it when there is
+    /// a conflict), so on failure it falls back to the plain form and
+    /// <see cref="StashApplyResult.IndexRestored"/> <b>says what happened</b>.
     /// </remarks>
     public async Task<StashApplyResult> ApplyAsync(
         string workingDirectory,
@@ -269,7 +268,7 @@ public sealed class StashWriter : IStashWriter
             }
             catch (GitException error)
             {
-                // Çakışma da buraya düşüyor; gerçek hata mı çakışma mı, index söyleyecek.
+                // A conflict lands here too; whether it was a real error or a conflict, the index will say.
                 failure = error;
             }
         }
@@ -279,8 +278,8 @@ public sealed class StashWriter : IStashWriter
 
         if (failure is not null && conflicts.Count == 0)
         {
-            // Çakışma yoksa bu gerçek bir hataydı (bilinmeyen seçici, kirli ağaç…);
-            // sessizce "oldu" demek yanlış olurdu.
+            // With no conflict this was a real error (unknown selector, dirty tree…); saying "done"
+            // silently would be wrong.
             throw failure;
         }
 
@@ -331,8 +330,8 @@ public sealed class StashWriter : IStashWriter
                 "stash", "show", "--patch", "--no-color", selector),
             cancellationToken).ConfigureAwait(false);
 
-        // Kayıpsız okunuyor: diff içeriği deponun kendi baytları, tek bir kodlamada değil
-        // (P04'ün dersi).
+        // Read losslessly: the diff content is the repository's own bytes, not in any single encoding
+        // (the lesson of P04).
         return result.IsSuccess ? result.GetStandardOutputLossless() : string.Empty;
     }
 

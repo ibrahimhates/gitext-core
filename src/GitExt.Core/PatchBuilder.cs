@@ -4,27 +4,27 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Yamanın hangi yönde uygulanacağı (P05-T04).
+/// Which direction the patch will be applied in (P05-T04).
 /// </summary>
 public enum PatchDirection
 {
     /// <summary>
-    /// İleri: çalışma ağacındaki değişikliği index'e taşı (<c>git apply --cached</c>).
+    /// Forward: move the working tree change into the index (<c>git apply --cached</c>).
     /// </summary>
     Stage,
 
     /// <summary>
-    /// Geri: index'teki değişikliği geri al (<c>git apply --cached --reverse</c>).
+    /// Backward: undo the change in the index (<c>git apply --cached --reverse</c>).
     /// </summary>
     /// <remarks>
-    /// Bu yönde yamanın kaynağı <c>git diff --cached</c> olmalıdır — yani index ile
-    /// <c>HEAD</c> arasındaki fark.
+    /// In this direction the patch must come from <c>git diff --cached</c> — that is, the difference
+    /// between the index and <c>HEAD</c>.
     /// </remarks>
     Unstage,
 }
 
 /// <summary>
-/// Bir dosya diff'inde hangi satırların seçildiği (P05-T04).
+/// Which lines are selected in a file diff (P05-T04).
 /// </summary>
 public sealed class PatchSelection
 {
@@ -35,14 +35,14 @@ public sealed class PatchSelection
         _lines = lines;
     }
 
-    /// <summary>Belirli satırları seçer.</summary>
+    /// <summary>Selects specific lines.</summary>
     public static PatchSelection Lines(IEnumerable<(int Hunk, int Line)> lines)
     {
         ArgumentNullException.ThrowIfNull(lines);
         return new PatchSelection([.. lines]);
     }
 
-    /// <summary>Verilen hunk'ların <b>tüm</b> değişiklik satırlarını seçer.</summary>
+    /// <summary>Selects <b>all</b> the change lines of the given hunks.</summary>
     public static PatchSelection Hunks(FileDiff diff, params int[] hunkIndexes)
     {
         ArgumentNullException.ThrowIfNull(diff);
@@ -66,7 +66,7 @@ public sealed class PatchSelection
         return new PatchSelection(lines);
     }
 
-    /// <summary>Dosyadaki tüm değişiklik satırlarını seçer.</summary>
+    /// <summary>Selects every change line in the file.</summary>
     public static PatchSelection All(FileDiff diff)
     {
         ArgumentNullException.ThrowIfNull(diff);
@@ -79,44 +79,45 @@ public sealed class PatchSelection
 }
 
 /// <summary>
-/// Seçilen satırlardan <c>git apply</c>'a verilebilecek bir yama üretir (P05-T04).
+/// Produces a patch that can be handed to <c>git apply</c> from the selected lines (P05-T04).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Bu fazın en riskli kodu.</b> Ölçümle netleşen risk dağılımı:
+/// <b>The riskiest code in this phase.</b> The risk distribution, as measurement made clear:
 /// </para>
 /// <list type="table">
-/// <item><term>Hunk başlığındaki sayılar yanlış</term>
-/// <description><c>error: corrupt patch</c> — git <b>reddediyor</b>.</description></item>
-/// <item><term>Bağlam veya silinen satır dosyayla uyuşmuyor</term>
-/// <description><c>error: patch failed</c> — git <b>reddediyor</b>.</description></item>
-/// <item><term><b>Seçim mantığı yanlış</b></term>
-/// <description>Yama <b>geçerli</b> olduğu için git kabul eder ve <b>sessizce yanlış içerik</b>
-/// stage'lenir. Ölçüldü: seçilmeyen bir <c>-</c> satırı bağlama çevrilmezse o satır
-/// index'ten kayboluyor. <b>Testlerin asıl odağı budur.</b></description></item>
+/// <item><term>The numbers in the hunk header are wrong</term>
+/// <description><c>error: corrupt patch</c> — git <b>rejects it</b>.</description></item>
+/// <item><term>A context or removed line does not match the file</term>
+/// <description><c>error: patch failed</c> — git <b>rejects it</b>.</description></item>
+/// <item><term><b>The selection logic is wrong</b></term>
+/// <description>Because the patch is <b>valid</b>, git accepts it and <b>silently wrong content</b>
+/// is staged. Measured: unless an unselected <c>-</c> line is turned into context, that line
+/// disappears from the index. <b>This is what the tests are really aimed at.</b></description></item>
 /// </list>
 /// <para>
-/// <b><c>--recount</c> bilinçli olarak KULLANILMIYOR.</b> Ölçüldü: yanlış sayıları düzeltip
-/// yamayı kabul ettiriyor. Bu, git'in bize sunduğu tek doğrulamayı kapatmak olurdu — sayı
-/// hatası genelde daha derin bir mantık hatasının belirtisidir.
+/// <b><c>--recount</c> is deliberately NOT USED.</b> Measured: it corrects wrong numbers and gets
+/// the patch accepted. That would switch off the one validation git offers us — and a wrong count is
+/// usually the symptom of a deeper logic error.
 /// </para>
 /// </remarks>
 public static class PatchBuilder
 {
     /// <summary>
-    /// Seçili satırlardan yama üretir; seçilecek bir şey yoksa <see langword="null"/>.
+    /// Produces a patch from the selected lines; <see langword="null"/> when there is nothing to
+    /// select.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Satır dönüşüm kuralları — <b>yöne göre simetrik</b>:
+    /// The line conversion rules — <b>symmetric by direction</b>:
     /// </para>
     /// <list type="bullet">
-    /// <item><description><b>Stage:</b> seçilmeyen <c>+</c> satırı <b>atlanır</b> (henüz
-    /// index'te yok, kalmasın), seçilmeyen <c>-</c> satırı <b>bağlama çevrilir</b> (index'te
-    /// var, kalmalı).</description></item>
-    /// <item><description><b>Unstage:</b> tam tersi — seçilmeyen <c>-</c> satırı atlanır,
-    /// seçilmeyen <c>+</c> satırı bağlama çevrilir. Çünkü yama ters uygulanacak ve
-    /// "eski/yeni" rolleri yer değiştiriyor.</description></item>
+    /// <item><description><b>Stage:</b> an unselected <c>+</c> line is <b>skipped</b> (it is not in
+    /// the index yet, and must not end up there), an unselected <c>-</c> line is <b>turned into
+    /// context</b> (it is in the index, and must stay).</description></item>
+    /// <item><description><b>Unstage:</b> exactly the reverse — an unselected <c>-</c> line is
+    /// skipped, an unselected <c>+</c> line is turned into context. Because the patch will be
+    /// applied in reverse and the "old/new" roles swap.</description></item>
     /// </list>
     /// </remarks>
     public static string? Build(FileDiff diff, PatchSelection selection, PatchDirection direction)
@@ -162,12 +163,12 @@ public static class PatchBuilder
                     lines.Add((DiffLineKind.Context, line));
                 }
 
-                // Diğer durumda satır tamamen atlanır.
+                // Otherwise the line is skipped entirely.
             }
 
             if (!hasChange)
             {
-                // Bu hunk'tan hiçbir şey seçilmedi; yamaya girmemeli.
+                // Nothing was selected from this hunk; it must not go into the patch.
                 continue;
             }
 
@@ -183,8 +184,9 @@ public static class PatchBuilder
                 body.Append(line.Content);
                 body.Append('\n');
 
-                // ⚠️ İşaret satırdan SONRA gelir ve ilgili olduğu satıra aittir (P04-T01'de
-                // ölçüldü). Atlanırsa git yamayı reddeder ya da dosya sonuna newline ekler.
+                // ⚠️ The marker comes AFTER the line and belongs to the line it refers to (measured
+                // in P04-T01). If it is skipped, git either rejects the patch or adds a newline at
+                // the end of the file.
                 if (line.EndsWithoutNewline)
                 {
                     body.Append("\\ No newline at end of file\n");
@@ -204,7 +206,7 @@ public static class PatchBuilder
     }
 
     /// <summary>
-    /// Seçilmemiş bir değişiklik satırı bağlam olarak korunmalı mı?
+    /// Should an unselected change line be preserved as context?
     /// </summary>
     private static bool KeepAsContext(DiffLineKind kind, PatchDirection direction) =>
         direction == PatchDirection.Stage
@@ -219,15 +221,15 @@ public static class PatchBuilder
     };
 
     /// <summary>
-    /// Hunk başlığını biçimlendirir.
+    /// Formats the hunk header.
     /// </summary>
     /// <remarks>
-    /// Tek satırlık taraflarda git sayıyı yazmıyor (<c>@@ -1 +1 @@</c>); aynı biçim
-    /// üretiliyor ki yama git'in kendi çıktısıyla karşılaştırılabilir olsun.
+    /// For single-line sides git omits the count (<c>@@ -1 +1 @@</c>); the same format is produced
+    /// so the patch can be compared against git's own output.
     /// </remarks>
     private static string FormatHunkHeader(int oldStart, int oldCount, int newStart, int newCount)
     {
-        // Boş taraf 0 satır uzunluğundadır ve başlangıcı bir eksiğiyle yazılır (git böyle yapıyor).
+        // An empty side is 0 lines long and its start is written one less (that is what git does).
         string old = oldCount == 1 ? $"-{oldStart}" : $"-{(oldCount == 0 ? oldStart - 1 : oldStart)},{oldCount}";
         string @new = newCount == 1 ? $"+{newStart}" : $"+{(newCount == 0 ? newStart - 1 : newStart)},{newCount}";
 
@@ -235,23 +237,23 @@ public static class PatchBuilder
     }
 
     /// <summary>
-    /// Dosya başlığını üretir.
+    /// Produces the file header.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> <c>git apply</c> yolları <b>ham UTF-8</b> olarak kabul ediyor;
-    /// okuma tarafındaki (P04-T02) tırnaklama/oktal kaçış <b>gerekmiyor</b>. Boşluklu adlar
-    /// da tırnaksız çalışıyor.
+    /// <b>MEASURED:</b> <c>git apply</c> accepts paths as <b>raw UTF-8</b>; the quoting/octal
+    /// escaping from the reading side (P04-T02) is <b>not needed</b>. Names with spaces work
+    /// unquoted too.
     /// </para>
     /// <para>
-    /// <b>Yama TEK PARÇA Unicode metindir.</b> <c>DiffLine.Content</c> ayrıştırıcıdan
-    /// <c>DiffOptions.ContentEncoding</c> ile <b>çözülmüş</b> olarak geliyor (P04-T07), yol
-    /// da öyle. Dolayısıyla yama, dosyanın kodlamasıyla <b>bir kez</b> baytlanır.
+    /// <b>A patch is a SINGLE PIECE of Unicode text.</b> <c>DiffLine.Content</c> arrives from the
+    /// parser already <b>decoded</b> with <c>DiffOptions.ContentEncoding</c> (P04-T07), and so does
+    /// the path. The patch is therefore encoded to bytes with the file's encoding <b>once</b>.
     /// </para>
     /// <para>
-    /// ⚠️ Bu ölçümle öğrenildi: içerik kayıpsız (bayt-başına-karakter) sanılıp Latin-1 ile
-    /// baytlanınca <c>ı</c> gibi karakterler bozuluyor ve <c>git apply</c>
-    /// <c>error: while searching for: ilk satir</c> diyerek yamayı reddediyordu.
+    /// ⚠️ This was learned by measurement: when the content was assumed lossless (byte-per-character)
+    /// and encoded with Latin-1, characters like <c>ı</c> were corrupted and <c>git apply</c>
+    /// rejected the patch with <c>error: while searching for: ilk satir</c>.
     /// </para>
     /// </remarks>
     private static string Header(FileDiff diff)

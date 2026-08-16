@@ -9,11 +9,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Değişen dosyalar listesi ve diff görünümü (P04-T08…T12).
+/// The changed files list and the diff view (P04-T08…T12).
 /// </summary>
 /// <remarks>
-/// Bağımsız bileşen: ana pencereyi tanımaz, dışarıdan yalnızca <c>DiffViewModel</c> alır.
-/// Aynı görünüm <c>P04-T16</c>'daki karşılaştırma penceresinde de kullanılacak.
+/// A standalone component: it knows nothing about the main window and takes only a
+/// <c>DiffViewModel</c> from outside. The same view will be used in the comparison window of
+/// <c>P04-T16</c>.
 /// </remarks>
 public partial class DiffView : UserControl
 {
@@ -21,9 +22,9 @@ public partial class DiffView : UserControl
     {
         InitializeComponent();
 
-        // ⚠️ TÜNEL fazı — Faz 03'te ölçüldü: liste içindeki `ScrollViewer` kabaran tuş
-        // olayını önce alıp `Handled` işaretliyor, kabarma fazındaki bir işleyici hiç
-        // çalışmıyor.
+        // ⚠️ The TUNNEL phase — measured in Phase 03: the `ScrollViewer` inside the list takes the
+        // bubbling key event first and marks it `Handled`, so a handler in the bubbling phase never
+        // runs at all.
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
 
@@ -32,20 +33,21 @@ public partial class DiffView : UserControl
     private DiffViewModel? Model => DataContext as DiffViewModel;
 
     /// <summary>
-    /// Bağlam kısayollarını komut kaydına bağlar (P08-T01).
+    /// Binds the context shortcuts to the command registry (P08-T01).
     /// </summary>
     /// <remarks>
-    /// Kayıt verilmezse görünüm <b>kısayolsuz</b> çalışır: <see cref="DiffView"/> bağımsız bir
-    /// bileşen ve karşılaştırma penceresinde de kullanılıyor; orada kısayol kaydı olmayabilir.
+    /// Without a registry the view works <b>without shortcuts</b>: <see cref="DiffView"/> is a
+    /// standalone component used in the comparison window too, and there may be no shortcut
+    /// registry there.
     /// </remarks>
     public ShortcutDispatcher AttachShortcuts(ICommandRegistry registry)
     {
         ShortcutDispatcher dispatcher = new(registry, CommandContext.Diff);
 
-        // 🔴 Arama kutusundayken gezinme ve çıplak harf kısayolları ÇALIŞMAMALI: `S`
-        // kısayolu metin kutusuna yazarken satır stage'lerdi. Bu koşul kısayol dağıtımının
-        // ÖNÜNDE duruyor, tek tek komutların içinde değil — biri unutulursa sessizce
-        // yazmayı bozardı.
+        // 🔴 While in the search box, navigation and bare-letter shortcuts MUST NOT RUN: the `S`
+        // shortcut was staging lines while the user was typing into the text box. This condition
+        // sits IN FRONT OF shortcut dispatch, not inside the individual commands — forgetting it in
+        // one of them would silently break typing.
         dispatcher.Bind(CommandIds.DiffNextChange, () => WhenNotSearching(m => Move(m.GoToNextChange())));
         dispatcher.Bind(CommandIds.DiffPreviousChange, () => WhenNotSearching(m => Move(m.GoToPreviousChange())));
         dispatcher.Bind(CommandIds.DiffNextHunk, () => WhenNotSearching(m => Move(m.GoToNextHunk())));
@@ -71,7 +73,7 @@ public partial class DiffView : UserControl
             LineSearch.SelectAll();
         });
 
-        // Bul/önceki-sonraki arama kutusunda DA çalışır — aramaya devam etmenin yolu bu.
+        // Find/previous/next work in the search box TOO — that is how you carry on searching.
         dispatcher.Bind(CommandIds.DiffFindNext, () => Find(next: true));
         dispatcher.Bind(CommandIds.DiffFindPrevious, () => Find(next: false));
 
@@ -81,11 +83,11 @@ public partial class DiffView : UserControl
     }
 
     /// <summary>
-    /// Panele odaklanır (P08-T05).
+    /// Focuses the panel (P08-T05).
     /// </summary>
     /// <remarks>
-    /// Odaklanacak satır yoksa <see langword="false"/> dönüyor ki panel gezinmesi burada
-    /// takılmasın: boş bir diff paneline odak vermek, tuşların hiçbir yere gitmemesi demekti.
+    /// When there is no line to focus it returns <see langword="false"/> so panel navigation does
+    /// not get stuck here: giving focus to an empty diff panel meant the keys went nowhere.
     /// </remarks>
     public bool FocusPanel()
     {
@@ -104,12 +106,13 @@ public partial class DiffView : UserControl
 
         bool inSearchBox = LineSearch.IsFocused;
 
-        // Kayda girmeyen iki tuş: ikisi de arama kutusuna ait ve yeniden atanabilir olmaları
-        // anlamsız (Enter "onayla", Escape "vazgeç" — bunlar kısayol değil, kutu davranışı).
+        // Two keys that do not go into the registry: both belong to the search box and being
+        // rebindable would be meaningless for them (Enter is "confirm", Escape is "cancel" — box
+        // behaviour, not shortcuts).
         switch (e.Key)
         {
             case Key.Enter when inSearchBox:
-                // Odak kutuda KALIR: kullanıcı aramaya devam edebilmeli.
+                // Focus STAYS in the box: the user must be able to carry on searching.
                 Move(model.FindNext(), e, keepFocus: true);
                 return;
 
@@ -125,11 +128,11 @@ public partial class DiffView : UserControl
         _dispatcher?.Handle(e);
     }
 
-    /// <summary>Arama kutusunda değilken çalışır; kutudayken olayı tüketmez.</summary>
+    /// <summary>Runs when not in the search box; does not consume the event while in the box.</summary>
     private bool WhenNotSearching(Func<DiffViewModel, bool> action) =>
         !LineSearch.IsFocused && Model is { } model && action(model);
 
-    /// <summary>Gezinmeyi çalıştırır, satırı görünür yapar ve odağı listeye geri verir.</summary>
+    /// <summary>Runs the navigation, brings the line into view and gives focus back to the list.</summary>
     private bool Move(bool moved)
     {
         if (moved)
@@ -164,26 +167,27 @@ public partial class DiffView : UserControl
         return moved;
     }
 
-    /// <summary>Başlatılmış bir işi "tüketildi" olarak bildirir.</summary>
+    /// <summary>Reports a started operation as "consumed".</summary>
     /// <remarks>
-    /// İşlem asenkron; sonucunu beklemek tuş olayını bloke ederdi. Tuşun tüketilmesi
-    /// <b>işin başlatılmış olmasına</b> bağlı, bitmesine değil.
+    /// The operation is asynchronous; waiting for its result would block the key event. Consuming
+    /// the key depends on <b>the work having been started</b>, not on it having finished.
     /// </remarks>
     private static bool Started(Task operation) => operation is not null;
 
     /// <summary>
-    /// Gezinme başarılıysa olayı tüketir, satırı görünür yapar ve odağı listede tutar.
+    /// Consumes the event when the navigation succeeded, brings the line into view and keeps focus
+    /// on the list.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Başarısızsa <b>tüketilmiyor</b>: dosyanın sonundayken <c>Ctrl+↓</c>'yi yutmak
-    /// kullanıcıya sessiz bir duvar olurdu.
+    /// On failure it is <b>not consumed</b>: swallowing <c>Ctrl+↓</c> at the end of a file would be
+    /// a silent wall to the user.
     /// </para>
     /// <para>
-    /// ⚠️ <b>Odağın geri verilmesi şart — bir test bunu yakaladı.</b> Dosya değişince liste
-    /// yeniden kuruluyor ve odaklı <c>ListBoxItem</c> yok oluyor; odak taşınmazsa <b>sonraki
-    /// tuş olayı görünümün ağacından hiç geçmiyor</b> ve klavye sessizce ölüyor. Faz 03'te
-    /// commit listesinde ölçülen tuzağın aynısı.
+    /// ⚠️ <b>Giving focus back is essential — a test caught this.</b> When the file changes the list
+    /// is rebuilt and the focused <c>ListBoxItem</c> ceases to exist; unless focus is moved, <b>the
+    /// next key event never passes through the view's tree at all</b> and the keyboard dies
+    /// silently. The same trap measured on the commit list in Phase 03.
     /// </para>
     /// </remarks>
     private void Move(bool moved, KeyEventArgs e, bool keepFocus = false)
@@ -217,11 +221,11 @@ public partial class DiffView : UserControl
     }
 
     /// <summary>
-    /// Odağı diff listesine verir.
+    /// Gives focus to the diff list.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Faz 03'te ölçüldü: <c>ListBox.Focusable</c> <see langword="false"/>'tur, odaklanan
-    /// şey <c>ListBoxItem</c>'dır. Listeyi odaklamaya çalışmak sessizce hiçbir şey yapmaz.
+    /// ⚠️ Measured in Phase 03: <c>ListBox.Focusable</c> is <see langword="false"/>; the thing that
+    /// takes focus is the <c>ListBoxItem</c>. Trying to focus the list silently does nothing.
     /// </remarks>
     private void FocusLines()
     {
@@ -233,24 +237,24 @@ public partial class DiffView : UserControl
             return;
         }
 
-        // ⚠️ Dosya değişince liste yeniden kuruluyor ve konteynerler HENÜZ YOK; odak
-        // sessizce hiçbir yere gitmiyor ve sonraki tuş görünüme ulaşmıyor. Bir test bunu
-        // yakaladı (Alt+↓ ile dosya değiştirdikten sonra Alt+↑ ölüyordu).
-        // Faz 03'te commit listesinde de odak devri bu yüzden ertelenmişti.
+        // ⚠️ When the file changes the list is rebuilt and the containers DO NOT EXIST YET; focus
+        // silently goes nowhere and the next key never reaches the view. A test caught this (after
+        // changing file with Alt+↓, Alt+↑ was dead).
+        // Handing focus over was deferred for the same reason on the commit list in Phase 03.
         Dispatcher.UIThread.Post(
             () => list.ContainerFromIndex(Math.Max(0, list.SelectedIndex))?.Focus(),
             DispatcherPriority.Loaded);
     }
 
     /// <summary>
-    /// Seçili satırları panoya kopyalar; seçim yoksa tüm dosyayı.
+    /// Copies the selected lines to the clipboard; with no selection, the whole file.
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>ÖLÇÜLDÜ:</b> Avalonia 12'de <c>IClipboard.GetTextAsync</c> <b>yok</b>; okuma
-    /// <c>TryGetTextAsync()</c> uzantısıyla, <c>TryGetDataAsync()</c> ise parametresiz olup
-    /// <c>IAsyncDataTransfer</c> döndürüyor (sürükle-bırak API'siyle aynı değişiklik).
-    /// Yazma tarafı <c>SetTextAsync</c> uzantısı ve <b>headless'ta da çalışıyor</b>, bu
-    /// yüzden kopyalama testle doğrulanabiliyor.
+    /// ⚠️ <b>MEASURED:</b> in Avalonia 12 there is <b>no</b> <c>IClipboard.GetTextAsync</c>; reading
+    /// goes through the <c>TryGetTextAsync()</c> extension, and <c>TryGetDataAsync()</c> takes no
+    /// parameters and returns an <c>IAsyncDataTransfer</c> (the same change as in the drag-and-drop
+    /// API). The write side is the <c>SetTextAsync</c> extension and <b>works headless too</b>, so
+    /// copying can be verified by a test.
     /// </remarks>
     private async Task CopyAsync(DiffViewModel model, DiffCopyMode mode)
     {
@@ -293,7 +297,7 @@ public partial class DiffView : UserControl
         return indices;
     }
 
-    // ---- P05-T10: kısmi staging ve bağlam menüsü ----
+    // ---- P05-T10: partial staging and the context menu ----
 
     private void OnStageLinesClick(object? sender, RoutedEventArgs e) =>
         Apply(model => model.StageSelectionAsync(SelectedLineIndices()));
@@ -301,7 +305,7 @@ public partial class DiffView : UserControl
     private void OnUnstageLinesClick(object? sender, RoutedEventArgs e) =>
         Apply(model => model.UnstageSelectionAsync(SelectedLineIndices()));
 
-    // P05-T15: yıkıcı — onay ve yedek WorkingTreeViewModel tarafında.
+    // P05-T15: destructive — confirmation and backup live on the WorkingTreeViewModel side.
     private void OnResetLinesClick(object? sender, RoutedEventArgs e) =>
         Apply(model => model.DiscardSelectionAsync(SelectedLineIndices()));
 

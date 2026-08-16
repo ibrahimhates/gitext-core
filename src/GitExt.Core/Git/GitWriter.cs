@@ -3,33 +3,33 @@ using System.Collections.Concurrent;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Depoyu <b>değiştiren</b> git komutlarını çalıştırır (P05-T03).
+/// Runs the git commands that <b>modify</b> the repository (P05-T03).
 /// </summary>
 /// <remarks>
-/// Yazma yolunun tek girişi burasıdır: serileştirme (P05-T01) ve kilit çakışmasında yeniden
-/// deneme (P05-T02) burada birleştirilmiştir. Çağıranların ikisini elle kurması gerekmez —
-/// birini unutmak sessiz bir hata sınıfı olurdu.
+/// This is the single entrance to the write path: serialisation (P05-T01) and the retry on a lock
+/// collision (P05-T02) are combined here. Callers do not have to set the two up by hand — forgetting
+/// one of them would be a silent class of bug.
 /// </remarks>
 public interface IGitWriter
 {
     /// <summary>
-    /// Yazma komutunu çalıştırır; sıraya girer ve kilit çakışmasında yeniden dener.
+    /// Runs a write command; it joins the queue and retries on a lock collision.
     /// </summary>
-    /// <param name="workingDirectory">Komutun çalıştırılacağı çalışma dizini.</param>
-    /// <param name="arguments">git argümanları.</param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="workingDirectory">The working directory to run the command in.</param>
+    /// <param name="arguments">The git arguments.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<GitResult> RunAsync(
         string workingDirectory,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Yazma komutunu, o çağrıya özel ortam değişkenleriyle çalıştırır (P06-T09).
+    /// Runs a write command with environment variables specific to that call (P06-T09).
     /// </summary>
     /// <remarks>
-    /// Tek kullanım yeri kimlik doğrulama: <c>GIT_ASKPASS</c> ve onun okuyacağı gizli
-    /// değer. Parola argüman olarak geçirilemez — komut satırı <c>ps</c> ile herkese
-    /// görünür (bkz. <c>AskPassSession</c>).
+    /// The single use is authentication: <c>GIT_ASKPASS</c> and the secret value it will read. The
+    /// password cannot be passed as an argument — the command line is visible to everyone through
+    /// <c>ps</c> (see <c>AskPassSession</c>).
     /// </remarks>
     Task<GitResult> RunWithEnvironmentAsync(
         string workingDirectory,
@@ -39,20 +39,20 @@ public interface IGitWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Yazma komutunu <b>stdin</b>'e veri vererek çalıştırır.
+    /// Runs a write command feeding data to <b>stdin</b>.
     /// </summary>
     /// <remarks>
-    /// Yamalar ve commit mesajları argüman olarak <b>geçirilemez</b>: uzunluk sınırı ve
-    /// kabuk yorumlaması riski var (ADR-0002).
+    /// Patches and commit messages <b>cannot</b> be passed as arguments: there is a length limit and
+    /// a risk of shell interpretation (ADR-0002).
     /// </remarks>
-    /// <param name="workingDirectory">Çalışma dizini.</param>
-    /// <param name="arguments">git argümanları.</param>
-    /// <param name="standardInput">stdin'e yazılacak metin.</param>
+    /// <param name="workingDirectory">The working directory.</param>
+    /// <param name="arguments">The git arguments.</param>
+    /// <param name="standardInput">The text to write to stdin.</param>
     /// <param name="encoding">
-    /// Metnin hangi kodlamayla baytlanacağı; varsayılan UTF-8. Yamalarda bu, <b>dosyanın
-    /// kodlaması</b> olmalıdır — git yamayı çalışma ağacındaki baytlarla karşılaştırıyor.
+    /// Which encoding the text is turned into bytes with; UTF-8 by default. For patches this must be
+    /// <b>the file's encoding</b> — git compares the patch against the bytes in the working tree.
     /// </param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     Task<GitResult> RunAsync(
         string workingDirectory,
         IReadOnlyList<string> arguments,
@@ -65,18 +65,18 @@ public interface IGitWriter
 public sealed class GitWriter : IGitWriter
 {
     /// <summary>
-    /// Bir yazma komutunun süreç sınırı. <see cref="GitCommand"/> varsayılanı 2 dakika.
+    /// The process limit for a write command. The <see cref="GitCommand"/> default is 2 minutes.
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ (P05-T07):</b> 2 dakika yetmiyor. Bu, tek bir komutun değil <b>yazma
-    /// yolunun</b> özelliği: yazma komutları kullanıcının hook'larını çalıştırır ve hook
-    /// keyfi bir iş yapabilir — <c>pre-commit</c> test takımı, <c>pre-push</c> derleme.
-    /// Sınırı tek tek komut seçeneklerine koymak, aynı sayıyı <c>commit</c>, <c>push</c>,
-    /// <c>rebase</c>, <c>merge</c> için ayrı ayrı tekrarlamak olurdu.
+    /// <b>MEASURED (P05-T07):</b> 2 minutes is not enough. This is a property of the <b>write
+    /// path</b>, not of any single command: write commands run the user's hooks, and a hook can do
+    /// arbitrary work — a <c>pre-commit</c> test suite, a <c>pre-push</c> build. Putting the limit on
+    /// individual command options would mean repeating the same number separately for <c>commit</c>,
+    /// <c>push</c>, <c>rebase</c> and <c>merge</c>.
     /// <para>
-    /// Sınıra takıldığında süreç öldürülüyor; ölçüldü — commit <b>oluşmuyor</b> ve geride
-    /// <c>index.lock</c> <b>kalmıyor</b> (git kilidi hook'tan sonra alıyor, P05-T02 ile aynı
-    /// bulgu). Yani zaman aşımı veri kaybettirmiyor, sadece işi bitirmiyor.
+    /// When the limit is hit the process is killed; measured — the commit <b>is not created</b> and
+    /// no <c>index.lock</c> <b>is left behind</b> (git takes the lock after the hook, the same finding
+    /// as P05-T02). So a timeout loses no data, it just does not finish the job.
     /// </para>
     /// </remarks>
     public static readonly TimeSpan DefaultWriteTimeout = TimeSpan.FromMinutes(10);
@@ -87,12 +87,12 @@ public sealed class GitWriter : IGitWriter
     private readonly TimeSpan _writeTimeout;
 
     /// <summary>
-    /// Çalışma dizini → git dizini eşlemesi.
+    /// The working directory → git directory mapping.
     /// </summary>
     /// <remarks>
-    /// Kuyruk anahtarı git dizinidir (worktree'ler ayrı index'e sahip). Her yazmada
-    /// <c>rev-parse</c> çalıştırmak ~1 ms; yine de önbellekleniyor çünkü satır seviyesinde
-    /// staging'de (P05-T04) çağrı sayısı yükselecek.
+    /// The queue key is the git directory (worktrees have their own index). Running <c>rev-parse</c>
+    /// on every write costs about 1 ms; it is cached anyway, because the call count will rise with
+    /// line-level staging (P05-T04).
     /// </remarks>
     private readonly ConcurrentDictionary<string, string> _gitDirectories =
         new(OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
@@ -161,11 +161,11 @@ public sealed class GitWriter : IGitWriter
         return await _queue.RunAsync(
             gitDirectory,
             token => GitLockRetry.RunAsync(
-                // ⚠️ `RunCheckedAsync` — `RunAsync` başarısız çıkışta HATA FIRLATMIYOR,
-                // yalnızca logluyor. Yazma yolunda bu, başarısız bir commit'in başarılı
-                // sayılması demekti; bir test yakaladı (boş mesajlı commit reddedildi ama
-                // akış devam edip `rev-parse HEAD`'i ayrıştırmaya çalıştı).
-                // Kilit yeniden denemesi de buna bağlı: hata fırlamazsa retry hiç tetiklenmez.
+                // ⚠️ `RunCheckedAsync` — `RunAsync` DOES NOT THROW on a failing exit, it only logs.
+                // On the write path that meant a failed commit counting as a success; a test caught it
+                // (a commit with an empty message was rejected but the flow carried on and tried to
+                // parse `rev-parse HEAD`).
+                // The lock retry depends on this too: with no exception thrown, the retry never fires.
                 inner => _runner.RunCheckedAsync(
                     BuildCommand(workingDirectory, arguments, standardInput, environment, progress),
                     inner),
@@ -188,8 +188,8 @@ public sealed class GitWriter : IGitWriter
             Environment = environment,
             Progress = progress,
 
-            // ⚠️ Yazma komutu: `GIT_OPTIONAL_LOCKS=0` uygulanmaz. Bu bayrak yalnızca
-            // "opsiyonel" kilitleri kapatır; yazmanın gerçek kilidi zaten alınmak zorunda.
+            // ⚠️ A write command: `GIT_OPTIONAL_LOCKS=0` is not applied. That flag only turns off
+            // "optional" locks; a write's real lock has to be taken anyway.
             IsReadOnly = false,
 
             Timeout = _writeTimeout,
@@ -216,8 +216,8 @@ public sealed class GitWriter : IGitWriter
 
         if (gitDirectory.Length == 0)
         {
-            // Kuyruk anahtarsız kalmasın: çalışma dizini yedek anahtar olur. Serileştirme
-            // biraz geniş olur ama HİÇ olmamasından iyidir.
+            // The queue must not be left without a key: the working directory serves as the fallback
+            // key. The serialisation is a little broad, but that beats having NONE at all.
             gitDirectory = workingDirectory;
         }
 

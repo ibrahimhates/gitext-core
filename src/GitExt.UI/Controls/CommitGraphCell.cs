@@ -7,71 +7,71 @@ using GitExt.UI.Themes;
 namespace GitExt.UI.Controls;
 
 /// <summary>
-/// Tek bir commit satırının grafik sütununu çizer (P03-T10).
+/// Draws the graph column of a single commit row (P03-T10).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden özel çizim?</b> Şerit sayısı satırdan satıra değişir; XAML'de her satır için
-/// değişken sayıda <c>Line</c>/<c>Ellipse</c> yaratmak hem pahalı hem hantal olurdu.
-/// Grafik sütunu, "hazır kontroller mi özel çizim mi" tartışmasının **zorunlu olarak özel
-/// çizim** tarafında kalan tek parçası (P03-T09).
+/// <b>Why custom drawing?</b> The lane count changes from row to row; creating a variable number of
+/// <c>Line</c>/<c>Ellipse</c> elements per row in XAML would be both expensive and unwieldy. The
+/// graph column is the one piece that necessarily falls on the **custom drawing** side of the
+/// "ready-made controls or custom drawing" question (P03-T09).
 /// </para>
 /// <para>
-/// Kapsam bilinçli olarak dar: <b>yalnızca</b> şeritleri, düğümü ve kenarları çizer.
-/// Satırın geri kalanı (SHA, konu, yazar, tarih, rozetler) sanallaştırılmış <c>ListBox</c>
-/// şablonundaki normal kontrollerle çizilir — seçim, klavye gezinme ve erişilebilirlik
-/// oradan bedava gelir.
+/// The scope is deliberately narrow: it draws <b>only</b> the lanes, the node and the edges. The
+/// rest of the row (SHA, subject, author, date, badges) is drawn with ordinary controls in the
+/// virtualised <c>ListBox</c> template — selection, keyboard navigation and accessibility come free
+/// from there.
 /// </para>
 /// <para>
-/// <b>Tahsis disiplini:</b> <see cref="IPen"/> ve <see cref="IBrush"/> nesneleri statik olarak
-/// önbelleklenir. Her karede yaratmak, 60 FPS'te saniyede binlerce nesne demek olurdu.
+/// <b>Allocation discipline:</b> <see cref="IPen"/> and <see cref="IBrush"/> objects are cached
+/// statically. Creating them every frame would mean thousands of objects per second at 60 FPS.
 /// </para>
 /// </remarks>
 public sealed class CommitGraphCell : Control
 {
-    /// <summary>İki şerit merkezi arasındaki yatay mesafe.</summary>
+    /// <summary>The horizontal distance between two lane centres.</summary>
     public static readonly StyledProperty<double> LaneWidthProperty =
         AvaloniaProperty.Register<CommitGraphCell, double>(nameof(LaneWidth), 14);
 
-    /// <summary>Commit düğümünün yarıçapı.</summary>
+    /// <summary>The radius of the commit node.</summary>
     public static readonly StyledProperty<double> NodeRadiusProperty =
         AvaloniaProperty.Register<CommitGraphCell, double>(nameof(NodeRadius), 4);
 
-    /// <summary>Çizgi kalınlığı.</summary>
+    /// <summary>The line thickness.</summary>
     public static readonly StyledProperty<double> LineThicknessProperty =
         AvaloniaProperty.Register<CommitGraphCell, double>(nameof(LineThickness), 2);
 
-    /// <summary>Bu satırın yerleşim sonucu.</summary>
+    /// <summary>This row's layout result.</summary>
     public static readonly StyledProperty<GraphRow?> RowProperty =
         AvaloniaProperty.Register<CommitGraphCell, GraphRow?>(nameof(Row));
 
     /// <summary>
-    /// Şerit renkleri.
+    /// The lane colours.
     /// </summary>
     /// <remarks>
-    /// Varsayılan palet geçicidir; gerçek palet Faz 08'de temaya bağlanacak
-    /// (renk körlüğü uyumluluğu dahil). <see cref="GraphRow.ColorIndex"/> bu diziye
-    /// modulo ile eşlenir.
+    /// The default palette is temporary; the real palette will be bound to the theme in Phase 08
+    /// (colour-blind compatibility included). <see cref="GraphRow.ColorIndex"/> is mapped onto this
+    /// array modulo its length.
     /// </remarks>
     public static readonly StyledProperty<IReadOnlyList<Color>?> PaletteProperty =
         AvaloniaProperty.Register<CommitGraphCell, IReadOnlyList<Color>?>(nameof(Palette));
 
     /// <summary>
-    /// Görünen ilk şeridin indeksi — grafik penceresinin yatay konumu (P03-T21).
+    /// The index of the first visible lane — the horizontal position of the graph window (P03-T21).
     /// </summary>
     /// <remarks>
-    /// Tüm satırlar aynı değeri kullanır, aksi halde şeritler satırdan satıra kayar.
+    /// Every row uses the same value, otherwise the lanes shift from row to row.
     /// </remarks>
     public static readonly StyledProperty<int> FirstLaneProperty =
         AvaloniaProperty.Register<CommitGraphCell, int>(nameof(FirstLane));
 
     /// <summary>
-    /// Aynı anda gösterilen şerit sayısı (P03-T21).
+    /// How many lanes are shown at once (P03-T21).
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> gerçek depolarda şerit sayısı medyanda ~120 (git/git, Linux). Sütunu
-    /// şerit sayısı kadar genişletmek diğer tüm sütunları ekran dışına itiyordu. Sabit bir
-    /// pencere hem hizayı hem okunabilirliği sağlıyor; pencere seçili commit'i takip ediyor.
+    /// <b>MEASURED:</b> in real repositories the lane count is around 120 at the median (git/git,
+    /// Linux). Widening the column to the lane count pushed every other column off screen. A fixed
+    /// window keeps both the alignment and the readability; the window follows the selected commit.
     /// </remarks>
     public static readonly StyledProperty<int> VisibleLanesProperty =
         AvaloniaProperty.Register<CommitGraphCell, int>(nameof(VisibleLanes), 12);
@@ -128,22 +128,22 @@ public sealed class CommitGraphCell : Control
     }
 
     /// <summary>
-    /// Palet ne özellikten ne kaynaktan gelmediğinde kullanılan renkler.
+    /// The colours used when the palette comes neither from the property nor from the resources.
     /// </summary>
     /// <remarks>
-    /// Yalnızca son çare: normalde palet <see cref="GraphPalettes.ResourceKey"/> anahtarıyla
-    /// kaynaklardan geliyor ve temaya göre değişiyor (P08-T09).
+    /// A last resort only: normally the palette comes from the resources under the
+    /// <see cref="GraphPalettes.ResourceKey"/> key and changes with the theme (P08-T09).
     /// </remarks>
     public static IReadOnlyList<Color> DefaultPalette => GraphPalettes.LightDefault;
 
     /// <summary>
-    /// Yürürlükteki palet: özellik → kaynak → son çare.
+    /// The palette in force: property → resource → last resort.
     /// </summary>
     /// <remarks>
-    /// Kaynaktan okumak zorunlu, çünkü palet <b>hem temaya hem kullanıcının renk körlüğü
-    /// tercihine</b> bağlı ve ikisi de çalışma sırasında değişebiliyor. Sabit bir liste,
-    /// koyu temaya geçen kullanıcıyı açık zemine göre seçilmiş — bazıları neredeyse
-    /// görünmez — şeritlerle bırakırdı.
+    /// Reading it from the resources is mandatory, because the palette depends on <b>both the theme
+    /// and the user's colour-blindness preference</b> and either can change at runtime. A fixed list
+    /// would leave a user switching to the dark theme with lanes picked against a light background
+    /// — some of them all but invisible.
     /// </remarks>
     private IReadOnlyList<Color> EffectivePalette
     {
@@ -162,12 +162,12 @@ public sealed class CommitGraphCell : Control
     }
 
     /// <summary>
-    /// Renk indeksinden fırça/kalem önbelleği.
+    /// The brush/pen cache, keyed by colour index.
     /// </summary>
     /// <remarks>
-    /// Statik ve paylaşımlı: aynı palet tüm satırlarda kullanıldığı için satır başına
-    /// önbellek tutmak gereksiz olurdu. Anahtar, kalınlığı da içerir çünkü kalem
-    /// kalınlığa bağlıdır.
+    /// Static and shared: because the same palette is used on every row, keeping a per-row cache
+    /// would be pointless. The key includes the thickness as well, because a pen depends on its
+    /// thickness.
     /// </remarks>
     private static readonly Dictionary<(Color Color, double Thickness), IPen> _penCache = [];
     private static readonly Dictionary<Color, IBrush> _brushCache = [];
@@ -175,8 +175,9 @@ public sealed class CommitGraphCell : Control
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        // Genişlik SATIRA DEĞİL pencereye bağlı: her satır aynı genişlikte olmalı, yoksa
-        // sütunlar satırdan satıra kayar ve SHA/konu hizası bozulur (P03-T21'de ölçüldü).
+        // The width depends on the WINDOW, NOT ON THE ROW: every row must be the same width,
+        // otherwise the columns shift from row to row and the SHA/subject alignment breaks
+        // (measured in P03-T21).
         return new Size(Math.Max(VisibleLanes, 1) * LaneWidth, 0);
     }
 
@@ -197,12 +198,12 @@ public sealed class CommitGraphCell : Control
         int first = FirstLane;
         int last = first + Math.Max(VisibleLanes, 1) - 1;
 
-        // Kenarlar önce: düğüm üstlerine çizilsin.
+        // Edges first, so the nodes are drawn over them.
         foreach (GraphEdge edge in row.Edges)
         {
-            // Tamamen pencerenin dışındaki kenar hiç çizilmez. Bir ucu içeride olan kenar
-            // çizilir ve kırpma (ClipToBounds) kenarı kutuda tutar — böylece kullanıcı
-            // şeridin dışarı doğru gittiğini görür.
+            // An edge entirely outside the window is not drawn at all. An edge with one end inside
+            // is drawn, and clipping (ClipToBounds) keeps it inside the box — so the user can see
+            // that the lane carries on outwards.
             if ((edge.FromLane < first && edge.ToLane < first)
                 || (edge.FromLane > last && edge.ToLane > last))
             {
@@ -214,8 +215,8 @@ public sealed class CommitGraphCell : Control
             double x1 = LaneCenter(edge.FromLane, first, laneWidth);
             double x2 = LaneCenter(edge.ToLane, first, laneWidth);
 
-            // Kenar bu satırın ortasından başlar ve bir sonraki satırın ortasına uzanır.
-            // Alt sınır satırın altı olduğu için bir sonraki satırın çizgisiyle birleşir.
+            // The edge starts at the middle of this row and reaches the middle of the next one.
+            // Because the lower bound is the bottom of the row, it joins the next row's line.
             context.DrawLine(pen, new Point(x1, centerY), new Point(x2, centerY + height));
         }
 
@@ -236,11 +237,12 @@ public sealed class CommitGraphCell : Control
         ((lane - firstLane) * laneWidth) + (laneWidth / 2);
 
     /// <summary>
-    /// Pencerenin solunda veya sağında gizli şerit varsa kenara işaret koyar.
+    /// Puts a marker at the edge when there are hidden lanes to the left or right of the window.
     /// </summary>
     /// <remarks>
-    /// Gizli şeridi sessizce yutmak, kullanıcıya grafiğin tamamını gördüğünü düşündürür.
-    /// İşaret küçük ve nötr renkli: veri değil, "burada devam ediyor" bilgisi.
+    /// Swallowing a hidden lane silently makes the user think they are seeing the whole graph. The
+    /// marker is small and neutrally coloured: it is not data, it is the information that "this
+    /// carries on here".
     /// </remarks>
     private void DrawOverflowMarkers(
         DrawingContext context,
@@ -275,7 +277,7 @@ public sealed class CommitGraphCell : Control
         }
     }
 
-    /// <summary>Taşma işaretinin rengi — şerit paletiyle karışmasın diye nötr.</summary>
+    /// <summary>The overflow marker's colour — neutral so it does not blend into the lane palette.</summary>
     private static readonly Color _overflowColor = Color.FromRgb(0x90, 0x90, 0x90);
 
     private static IPen GetPen(Color color, double thickness)
