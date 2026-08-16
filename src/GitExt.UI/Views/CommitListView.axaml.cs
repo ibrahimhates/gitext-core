@@ -13,44 +13,44 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Commit listesi görünümü. Klavye gezinmesi burada bağlanır (P03-T14).
+/// Commit list view. Keyboard navigation is wired up here (P03-T14).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden kod arkasında?</b> Buradaki iş saf görünüm işi: hangi tuşun ne yaptığı, bir
-/// sayfanın kaç satır ettiği ve odağın nereye gideceği. Sayfa boyutu <c>ScrollViewer</c>'ın
-/// görünür alanından gelir — ViewModel'ın bilmediği ve bilmemesi gereken bir şey. Gezinme
-/// <b>kararı</b> ise ViewModel'da (<see cref="CommitListViewModel.MoveSelection"/> vb.) ve
-/// orada ayrıca test ediliyor.
+/// <b>Why code-behind?</b> The work here is pure view concern: which key does what, how
+/// many rows a page is, and where focus should go. Page size comes from
+/// <c>ScrollViewer</c>'s visible area — something the ViewModel neither knows nor should
+/// know. The navigation <b>decision</b> itself lives in the ViewModel
+/// (<see cref="CommitListViewModel.MoveSelection"/> etc.) and is tested there separately.
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLEN ÜÇ DAVRANIŞ</b> (hepsi kodu bu hale getirdi):
+/// <b>THREE MEASURED BEHAVIORS</b> (all of which shaped this code):
 /// </para>
 /// <list type="number">
-/// <item><c>ListBox</c> <c>↑↓</c>, <c>Home</c> ve <c>End</c> ile seçimi kendisi taşıyor;
-/// <c>PgUp</c>/<c>PgDn</c>'de ise yalnızca <c>ScrollViewer</c> kayıyor, <b>seçim yerinde
-/// kalıyor</b>. Sayfa gezinmesi bu yüzden elle uygulanıyor.</item>
-/// <item><c>ScrollViewer</c> <c>ListBox</c>'ın <b>içinde</b> olduğu için kabaran (bubble)
-/// olayı önce alıp <c>Handled</c> işaretliyor. Bu yüzden tuşlar <b>tünelleme</b>
-/// (<see cref="RoutingStrategies.Tunnel"/>) fazında yakalanıyor — aksi halde
-/// <c>PgUp</c>/<c>PgDn</c> hiç görülmezdi.</item>
-/// <item><c>ListBox.Focusable</c> <see langword="false"/>'tur; odaklanabilen şey
-/// <c>ListBoxItem</c>'dır ve ok tuşu gezinmesi <b>odaklanmış konteyneri</b> temel alır,
-/// <c>SelectedIndex</c>'i değil.</item>
+/// <item><c>ListBox</c> moves selection itself with <c>↑↓</c>, <c>Home</c> and <c>End</c>;
+/// with <c>PgUp</c>/<c>PgDn</c> only the <c>ScrollViewer</c> scrolls, <b>selection stays
+/// put</b>. Page navigation is therefore applied manually.</item>
+/// <item>Because <c>ScrollViewer</c> is <b>inside</b> <c>ListBox</c>, it grabs the bubbling
+/// event first and marks it <c>Handled</c>. That's why keys are caught in the
+/// <b>tunneling</b> (<see cref="RoutingStrategies.Tunnel"/>) phase — otherwise
+/// <c>PgUp</c>/<c>PgDn</c> would never be seen.</item>
+/// <item><c>ListBox.Focusable</c> is <see langword="false"/>; the thing that can be
+/// focused is <c>ListBoxItem</c>, and arrow-key navigation is based on the <b>focused
+/// container</b>, not <c>SelectedIndex</c>.</item>
 /// </list>
 /// </remarks>
 public partial class CommitListView : UserControl
 {
     /// <summary>
-    /// Görünür alan hesaplanamazsa kullanılan yedek sayfa boyutu.
+    /// Fallback page size used when the visible area can't be computed.
     /// </summary>
     /// <remarks>
-    /// Yalnızca liste henüz ölçülmemişken (ilk kare) devreye girer. Hiçbir şey yapmamaktansa
-    /// makul bir sayfa kadar hareket etmek yeğdir.
+    /// Only kicks in while the list hasn't been measured yet (the first frame). Moving by a
+    /// reasonable page is preferable to doing nothing.
     /// </remarks>
     private const int FallbackPageSize = 20;
 
-    /// <summary>Satırlar gelince odağı listeye devretmeyi bekliyor muyuz?</summary>
+    /// <summary>Are we waiting to hand focus to the list once rows arrive?</summary>
     private bool _awaitingFirstRows;
 
     private CommitListViewModel? _watched;
@@ -63,19 +63,19 @@ public partial class CommitListView : UserControl
 
         DataContextChanged += OnDataContextChanged;
 
-        // Tünelleme şart: kabarma fazında ScrollViewer sayfa tuşlarını yutuyor (ölçüldü).
+        // Tunneling is required: in the bubble phase ScrollViewer swallows page keys (measured).
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
     }
 
     private CommitListViewModel? ViewModel => DataContext as CommitListViewModel;
 
     /// <summary>
-    /// Görünüm yüklendiğinde klavyeyi kullanılabilir hale getirir.
+    /// Makes the keyboard usable once the view has loaded.
     /// </summary>
     /// <remarks>
-    /// Odak hiçbir şeyde değilse tuş olayları bu görünümün ağacından <b>hiç geçmez</b> ve
-    /// kısayollar sessizce çalışmaz. Kullanıcının önce fareyle tıklamak zorunda kalmaması için
-    /// açılışta odak verilir.
+    /// If nothing has focus, key events <b>never pass through</b> this view's tree at all
+    /// and shortcuts silently do nothing. Focus is given on open so the user doesn't have
+    /// to click with the mouse first.
     /// </remarks>
     private void OnViewLoaded(object? sender, RoutedEventArgs e)
     {
@@ -84,9 +84,10 @@ public partial class CommitListView : UserControl
             return;
         }
 
-        // Satırlar henüz gelmedi — depo yüklemesi görünümden sonra bitiyor. Geçici olarak
-        // arama kutusuna odaklanılıyor ki tuşlar bir yere gitsin, ama satırlar gelince odak
-        // listeye devredilecek (aksi halde açılışta ok tuşları arama kutusuna yazardı).
+        // Rows haven't arrived yet — repository loading finishes after the view does. Focus
+        // is temporarily given to the search box so keys go somewhere, but once rows arrive
+        // focus will be handed to the list (otherwise arrow keys on open would type into the
+        // search box).
         _awaitingFirstRows = true;
         ShaSearchBox.Focus();
     }
@@ -113,15 +114,15 @@ public partial class CommitListView : UserControl
             return;
         }
 
-        // Kullanıcı bu arada arama kutusuna yazmaya başladıysa odağı elinden almıyoruz.
+        // We don't steal focus away if the user has meanwhile started typing in the search box.
         if (!string.IsNullOrEmpty(ShaSearchBox.Text))
         {
             _awaitingFirstRows = false;
             return;
         }
 
-        // Yerleşimden SONRA denenmeli: satırlar yeni eklendiği için ListBoxItem konteyneri
-        // henüz oluşmamış olur ve odaklanacak bir şey bulunamaz.
+        // Must be tried AFTER layout: since rows were just added, the ListBoxItem container
+        // doesn't exist yet and there's nothing to focus.
         Dispatcher.UIThread.Post(
             () =>
             {
@@ -133,12 +134,12 @@ public partial class CommitListView : UserControl
             DispatcherPriority.Loaded);
     }
 
-    /// <summary>Bağlam kısayollarını komut kaydına bağlar (P08-T01).</summary>
+    /// <summary>Binds context shortcuts to the command registry (P08-T01).</summary>
     public ShortcutDispatcher AttachShortcuts(ICommandRegistry registry)
     {
         ShortcutDispatcher dispatcher = new(registry, CommandContext.CommitList);
 
-        // Arama kutusu odaktayken çalışması gerekenler.
+        // Ones that need to work while the search box is focused.
         dispatcher.Bind(CommandIds.CommitListFind, () =>
         {
             FocusSearch();
@@ -150,8 +151,8 @@ public partial class CommitListView : UserControl
         dispatcher.Bind(CommandIds.CommitListCompareSelected,
             () => Compare(againstSelected: true));
 
-        // 🔴 Gezinme kısayolları arama kutusundayken ÇALIŞMAZ: PgDn ile metin içinde
-        // gezinmek isteyen kullanıcının listesi kaymamalı.
+        // 🔴 Navigation shortcuts do NOT WORK while the search box is focused: a user
+        // navigating within the text with PgDn shouldn't have the list shift underneath them.
         dispatcher.Bind(CommandIds.CommitListPageDown, () => Navigate(m => m.MoveSelection(PageSize())));
         dispatcher.Bind(CommandIds.CommitListPageUp, () => Navigate(m => m.MoveSelection(-PageSize())));
         dispatcher.Bind(CommandIds.CommitListGoToParent, () => Navigate(m => m.GoToParent()));
@@ -171,8 +172,8 @@ public partial class CommitListView : UserControl
             return;
         }
 
-        // Arama kutusunun kendi Enter/Escape davranışı kısayol değil; yeniden atanabilir
-        // olmaları anlamsız olurdu.
+        // The search box's own Enter/Escape behavior isn't a shortcut; making them
+        // rebindable would be pointless.
         if (ShaSearchBox.IsFocused && e.Key is Key.Enter or Key.Escape)
         {
             HandleSearchKey(viewModel, e);
@@ -195,12 +196,13 @@ public partial class CommitListView : UserControl
     }
 
     /// <summary>
-    /// Gezinme kısayolunu çalıştırır ve odağı seçili satıra taşır.
+    /// Runs a navigation shortcut and moves focus to the selected row.
     /// </summary>
     /// <remarks>
-    /// Hedef bulunamasa bile tuş <b>tüketilir</b>: aksi halde <c>ScrollViewer</c> görünümü
-    /// seçimden koparıp kaydırır, ya da <c>ListBox</c> seçimi bir satır oynatır — kullanıcı
-    /// "ebeveyne git" isterken sessizce başka bir commit'e düşer.
+    /// The key is <b>consumed</b> even if the target isn't found: otherwise
+    /// <c>ScrollViewer</c> would scroll the view away from the selection, or
+    /// <c>ListBox</c> would nudge the selection by one row — the user asking to "go to
+    /// parent" would silently land on a different commit.
     /// </remarks>
     private bool Navigate(Func<CommitListViewModel, bool> move)
     {
@@ -224,13 +226,13 @@ public partial class CommitListView : UserControl
             case Key.Enter:
                 viewModel.ApplySearch();
 
-                // Odak arama kutusunda kalır — kullanıcı aramaya devam edebilsin.
+                // Focus stays on the search box — lets the user keep searching.
                 ScrollSelectionIntoView();
                 e.Handled = true;
                 break;
 
             case Key.Escape:
-                // Aramadan listeye dönüş: kullanıcı gezinmeye devam edebilsin.
+                // Return from search to the list: lets the user keep navigating.
                 FocusSelectedRow();
                 e.Handled = true;
                 break;
@@ -241,24 +243,24 @@ public partial class CommitListView : UserControl
     }
 
     /// <summary>
-    /// Panele odaklanır (P08-T05).
+    /// Focuses the panel (P08-T05).
     /// </summary>
     /// <remarks>
-    /// Seçili satır varsa oraya; yoksa arama kutusuna. Hiçbirine odaklanamazsak
-    /// <see langword="false"/> dönüyoruz ki gezinme <b>bir sonraki panele</b> geçsin —
-    /// odaklanamayan bir panelde durmak, tuşların hiçbir yere gitmemesi demekti.
+    /// Goes to the selected row if there is one; otherwise the search box. If neither can be
+    /// focused, we return <see langword="false"/> so navigation moves on to the <b>next
+    /// panel</b> — staying on a panel that can't be focused would mean keys go nowhere.
     /// </remarks>
     public bool FocusPanel() => FocusSelectedRow() || ShaSearchBox.Focus();
 
-    /// <summary>Arama kutusuna odaklanır (<c>Ctrl+F</c>).</summary>
+    /// <summary>Focuses the search box (<c>Ctrl+F</c>).</summary>
     public void FocusSearch() => ShaSearchBox.Focus();
 
     /// <summary>
-    /// Bir sayfanın kaç satır ettiğini görünür alandan hesaplar.
+    /// Computes how many rows a page is from the visible area.
     /// </summary>
     /// <remarks>
-    /// Sabit satır yüksekliği varsayılmıyor; liste öğesinin gerçek yüksekliği ölçülüyor.
-    /// Satır yüksekliği tema veya yazı tipiyle değişebilir.
+    /// A fixed row height is not assumed; the list item's actual height is measured. Row
+    /// height can change with the theme or font.
     /// </remarks>
     private int PageSize()
     {
@@ -270,8 +272,8 @@ public partial class CommitListView : UserControl
             return FallbackPageSize;
         }
 
-        // Bir satır eksik kaydırmak kasıtlı: kullanıcının baktığı son satır, sayfa
-        // değiştikten sonra ekranın ucunda kalır ve bağlam kopmaz.
+        // Scrolling one row short is intentional: the last row the user was looking at
+        // stays at the edge of the screen after the page changes, so context isn't lost.
         int rows = (int)(scroll.Viewport.Height / rowHeight) - 1;
 
         return Math.Max(1, rows);
@@ -287,14 +289,14 @@ public partial class CommitListView : UserControl
         }
     }
 
-    // ---- Bağlam menüsü (P08-T27) ----
+    // ---- Context menu (P08-T27) ----
 
     /// <summary>
-    /// Seçili commit'ten metin kopyalar.
+    /// Copies text from the selected commit.
     /// </summary>
     /// <remarks>
-    /// GitExtensions'ın "Copy to clipboard" alt menüsündeki alanların karşılığı:
-    /// hash · mesaj · yazar · tarih · dal adı.
+    /// Corresponds to the fields in GitExtensions' "Copy to clipboard" submenu:
+    /// hash · message · author · date · branch name.
     /// </remarks>
     private async void CopyAsync(Func<CommitRowViewModel, string?> select)
     {
@@ -330,20 +332,21 @@ public partial class CommitListView : UserControl
     private void OnCopyDateClick(object? sender, RoutedEventArgs e) =>
         CopyAsync(row => row.Commit.Author.When.ToString("O", CultureInfo.InvariantCulture));
 
-    /// <summary>Satırdaki dal rozetlerinin adlarını kopyalar.</summary>
+    /// <summary>Copies the names of the branch badges on the row.</summary>
     private void OnCopyBranchClick(object? sender, RoutedEventArgs e) =>
         CopyAsync(row => string.Join('\n', row.Badges
             .Where(badge => badge.Kind is RefBadgeKind.LocalBranch or RefBadgeKind.RemoteBranch)
             .Select(badge => badge.Text)));
 
     /// <summary>
-    /// "Burada yeni dal oluştur…" (P06-T01).
+    /// "Create new branch here…" (P06-T01).
     /// </summary>
     /// <remarks>
-    /// Komut ana pencerenin ViewModel'ında; bu görünüm yalnızca commit listesini tanıyor.
-    /// Bağlamayla ulaşmak yerine tepe pencereden okunuyor — bağlam menüsü görsel ağaçta
-    /// ayrı bir ad kapsamında ve kapalıyken bağlamaları hiç değerlendirilmiyor (P05-T13'te
-    /// ölçüldü). Başlangıç noktası olarak seçili commit ViewModel tarafında okunuyor.
+    /// The command lives on the main window's ViewModel; this view only knows about the
+    /// commit list. It's read from the top-level window instead of via binding — the
+    /// context menu sits in a separate name scope in the visual tree and its bindings are
+    /// never evaluated while it's closed (measured in P05-T13). The selected commit is
+    /// read on the ViewModel side as the starting point.
     /// </remarks>
     private async void OnCreateBranchClick(object? sender, RoutedEventArgs e)
     {
@@ -370,16 +373,16 @@ public partial class CommitListView : UserControl
     }
 
     /// <summary>
-    /// "Dala geç" / "Bu commit'e geç" (P06-T02).
+    /// "Checkout branch" / "Checkout this commit" (P06-T02).
     /// </summary>
     /// <remarks>
-    /// İki menü öğesi de aynı komutu çağırıyor: hangisinin olacağını seçili commit'te
-    /// yerel bir dal olup olmaması belirliyor ve sonuç <b>diyalogda yazılı</b>.
-    /// GitExtensions'ta iki ayrı öğe olduğu için ikisi de yerinde duruyor (§ 9).
+    /// Both menu items call the same command: which one applies is decided by whether the
+    /// selected commit has a local branch, and the result is <b>spelled out in the
+    /// dialog</b>. Both remain in place because GitExtensions has two separate items (§ 9).
     /// </remarks>
-    // P06-T14: bu iki öğe P08-T27'de yerinde ama devre dışıydı; komutları T07/T08 ve
-    // T11'de geldi. Menü öğesi kendi akışını yazmıyor, MENÜDEKİ komutu çağırıyor —
-    // ikinci bir yol, birinin sessizce korumasız kalması demekti.
+    // P06-T14: these two items were in place in P08-T27 but disabled; their commands
+    // arrived in T07/T08 and T11. The menu item doesn't write its own flow, it calls the
+    // command IN THE MENU — a second path would mean one of them silently ends up unprotected.
     private async void OnPushClick(object? sender, RoutedEventArgs e)
     {
         if (TopLevel.GetTopLevel(this)?.DataContext is MainWindowViewModel model)
@@ -397,8 +400,8 @@ public partial class CommitListView : UserControl
     }
 
     /// <remarks>
-    /// Bağlam menüsü ana menüyle <b>aynı komutu</b> çağırıyor. İkinci bir yol açmak,
-    /// birinin korumasız kalması demekti — P06-T13'ün dersi.
+    /// The context menu calls <b>the same command</b> as the main menu. Opening a second
+    /// path would mean one of them ends up unprotected — the lesson from P06-T13.
     /// </remarks>
     private async void OnRebaseClick(object? sender, RoutedEventArgs e)
     {
@@ -444,7 +447,7 @@ public partial class CommitListView : UserControl
 
     private void OnCompareHeadClick(object? sender, RoutedEventArgs e) => RequestComparison(againstHead: true);
 
-    /// <summary>Çalışma ağacıyla karşılaştırma: seçim tek satıra indirgeniyor.</summary>
+    /// <summary>Comparison against the working tree: selection is reduced to a single row.</summary>
     private void OnCompareWorkingTreeClick(object? sender, RoutedEventArgs e)
     {
         CommitList.SelectedItems?.Clear();
@@ -476,26 +479,28 @@ public partial class CommitListView : UserControl
     }
 
     /// <summary>
-    /// Karşılaştırma penceresini açar (P04-T16).
+    /// Opens the comparison window (P04-T16).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Kaynak seçimi: <b>iki satır seçiliyse</b> o ikisi karşılaştırılır (P03-T14'te açılan
-    /// çoklu seçimin ilk tüketicisi), tek satır seçiliyse commit ile <b>çalışma ağacı</b>.
-    /// <c>Shift</c> basılıysa tek seçimde de commit ↔ <c>HEAD</c> karşılaştırılır.
+    /// Source selection: if <b>two rows are selected</b>, those two are compared (the first
+    /// consumer of the multi-select opened in P03-T14); with a single row selected, it's the
+    /// commit against the <b>working tree</b>. If <c>Shift</c> is held, a single selection
+    /// compares the commit against <c>HEAD</c> instead.
     /// </para>
     /// <para>
-    /// Pencere <b>modeless</b>: <c>Show()</c> ile açılıyor ve aynı anda birden fazla
-    /// olabiliyor. Kullanıcının itirazı tam da buydu — tek gömülü panel iki değişikliği
-    /// yan yana koymayı imkânsız kılıyordu.
+    /// The window is <b>modeless</b>: opened with <c>Show()</c>, and there can be several
+    /// at once. That was exactly the user's objection — a single embedded panel made it
+    /// impossible to put two diffs side by side.
     /// </para>
     /// </remarks>
     /// <summary>
-    /// Karşılaştırma istendiğinde, pencere açılmadan hemen önce tetiklenir.
+    /// Fires right before the window opens, when a comparison is requested.
     /// </summary>
     /// <remarks>
-    /// Testler için: pencerenin gerçekten açıldığını headless ortamda saymak güvenilir değil,
-    /// ama <b>tuşun doğru revizyonlarla doğru komuta bağlandığı</b> buradan doğrulanabiliyor.
+    /// For tests: counting on the window actually opening in a headless environment isn't
+    /// reliable, but <b>the key binding to the right command with the right revisions</b>
+    /// can be verified from here.
     /// </remarks>
     internal event EventHandler<CompareViewModel>? ComparisonRequested;
 
@@ -516,7 +521,7 @@ public partial class CommitListView : UserControl
 
         if (selected.Count >= 2)
         {
-            // Liste en yeniden eskiye sıralı; kullanıcı "eskiden yeniye" bir fark bekler.
+            // The list is sorted newest to oldest; the user expects an "old to new" diff.
             loading = compare.CompareAsync(selected[^1], selected[0]);
         }
         else if (viewModel.SelectedRow is { } row)
@@ -539,14 +544,14 @@ public partial class CommitListView : UserControl
     }
 
     /// <summary>
-    /// Seçili satırı görünür yapar ve <b>odağı ona taşır</b>.
+    /// Makes the selected row visible and <b>moves focus to it</b>.
     /// </summary>
     /// <remarks>
-    /// Odağı taşımak şart: <c>ListBox</c>'ın ok tuşu gezinmesi odaklanmış konteyneri temel
-    /// aldığı için (ölçüldü), <c>PgDn</c> ile 40 satır ilerledikten sonra <c>↓</c>'ya
-    /// basıldığında seçim <b>eski satırın yanına geri sıçrardı</b>.
+    /// Moving focus is required: since <c>ListBox</c>'s arrow-key navigation is based on the
+    /// focused container (measured), pressing <c>↓</c> after advancing 40 rows with
+    /// <c>PgDn</c> would make the selection <b>jump back next to the old row</b>.
     /// </remarks>
-    /// <returns>Odaklanacak bir satır bulunduysa <see langword="true"/>.</returns>
+    /// <returns><see langword="true"/> if a row to focus was found.</returns>
     private bool FocusSelectedRow()
     {
         int index = ViewModel?.SelectedIndex ?? -1;
@@ -558,8 +563,8 @@ public partial class CommitListView : UserControl
 
         CommitList.ScrollIntoView(index);
 
-        // Sanallaştırma yüzünden konteyner ancak görünür alana girdikten sonra oluşur;
-        // ScrollIntoView'dan önce istemek null döndürürdü.
+        // Because of virtualization the container only exists once it enters the visible
+        // area; requesting it before ScrollIntoView would return null.
         return CommitList.ContainerFromIndex(index)?.Focus() == true;
     }
 }

@@ -10,11 +10,11 @@
         CanResize="False">
 
     <!--
-        Yerleşim GitExtensions `FormResetChanges.Designer.cs`'ten (§ 9):
+        The layout comes from GitExtensions `FormResetChanges.Designer.cs` (§ 9):
         txtMessage → lblDeleteHint → cbDeleteNewFilesAndDirectories → [btnCancel][btnReset].
-        Eklenen tek şey ETKİLENECEK DOSYA LİSTESİ: "emin misiniz?" sorusu neyin gideceğini
-        söylemeden sorulduğunda kullanıcıyı düşünmeye değil tıklamaya yönlendirir (P05-T08
-        bu önizlemeyi T15'e devretmişti).
+        The one addition is the LIST OF AFFECTED FILES: an "are you sure?" asked without saying
+        what will go pushes the user towards clicking rather than thinking (P05-T08 handed this
+        preview over to T15).
     -->
     <StackPanel Margin="16" Spacing="10">
 
@@ -57,7 +57,7 @@
                    FontSize="11"
                    Opacity="0.75" />
 
-        <!-- flowLayoutPanel1 sırası: btnCancel, btnReset. -->
+        <!-- flowLayoutPanel1 order: btnCancel, btnReset. -->
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="8">

@@ -10,10 +10,11 @@
         WindowStartupLocation="CenterOwner">
 
     <!--
-        P06-T16. GitExtensions'ta karşılığı "Git command log" penceresi. Sütunlar:
-        saat · komut · süre · çıkış kodu. Altta seçili komutun ayrıntısı (stderr).
+        P06-T16. The counterpart in GitExtensions is the "Git command log" window. Columns:
+        time · command · duration · exit code. Below, the detail of the selected command
+        (stderr).
 
-        Planın maddesi: "Kullanıcı ne olduğunu her zaman görebilmeli."
+        From the plan: "The user must always be able to see what happened."
     -->
     <Grid RowDefinitions="Auto,*,Auto,140" Margin="10">
 

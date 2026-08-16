@@ -10,12 +10,14 @@
         CanResize="False">
 
     <!--
-        GitExtensions'ta bu ekranın karşılığı yalnızca "Delete" düğmesi ve basit bir onay.
-        Ölçüm bunun yetmediğini gösterdi: silme sonrası uzak izleme dalları VE reflog'ları
-        gidiyor, budayan bir `git gc` sonrası yalnız o dallarda duran commit KAYBOLUYOR.
-        (XML yorumunda iki tire yan yana yazılamıyor — Faz 01'deki tuzağın aynısı.)
-        Bu yüzden P06-T03'teki kurtarma bölümü buraya da kondu — farkıyla birlikte:
-        kurtarma `fetch` gerektiriyor, yani uzak depo hâlâ erişilebilir olmalı.
+        In GitExtensions the counterpart of this screen is just a "Delete" button and a simple
+        confirmation. Measurement showed that is not enough: after the delete the remote tracking
+        branches AND their reflogs are gone, and after a pruning `git gc` a commit that lived only
+        on those branches IS LOST.
+        (Two hyphens cannot be written next to each other in an XML comment — the same trap as in
+        Phase 01.)
+        So the recovery section from P06-T03 was put here too — with one difference: recovery
+        requires a `fetch`, so the remote must still be reachable.
     -->
     <StackPanel Margin="16" Spacing="10">
 

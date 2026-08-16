@@ -20,7 +20,7 @@ public class VersionInfoTests
     {
         // "unknown" — the case where the attribute was never emitted at all. Landing here means
         // the versioning infrastructure has silently been disabled.
-        VersionInfo.Version.ShouldNotBe("bilinmiyor");
+        VersionInfo.Version.ShouldNotBe("unknown");
         VersionInfo.Version.ShouldNotBeNullOrWhiteSpace();
     }
 

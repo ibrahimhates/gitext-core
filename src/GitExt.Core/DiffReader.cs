@@ -5,208 +5,210 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Boşluk farklarının nasıl ele alınacağı (P04-T04).
+/// How whitespace differences are handled (P04-T04).
 /// </summary>
 public enum WhitespaceMode
 {
-    /// <summary>Boşluk farkları normal fark sayılır.</summary>
+    /// <summary>Whitespace differences count as normal diffs.</summary>
     Include,
 
     /// <summary>
-    /// Boşluk <b>miktarındaki</b> değişiklik yoksayılır (<c>-b</c>).
+    /// Changes in whitespace <b>amount</b> are ignored (<c>-b</c>).
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: bu mod, olmayan yere boşluk eklenmesini yoksaymıyor — öyle bir dosya
-    /// diff'te kalmaya devam ediyor.
+    /// MEASURED: this mode does not ignore whitespace added where there was none — such a
+    /// file still stays in the diff.
     /// </remarks>
     IgnoreChange,
 
     /// <summary>
-    /// Tüm boşluk farkları yoksayılır (<c>-w</c>).
+    /// All whitespace differences are ignored (<c>-w</c>).
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: bu modda dosya <b>aynılaşırsa</b> hem ham hem yama bölümünden düşüyor
-    /// (sayılar hizalı kalıyor). Aynılaşmıyorsa (örneğin boş satır eklenmişse) iki bölümde
-    /// de kalıyor — <c>-w</c> satır <i>içindeki</i> boşluğu yoksayıyor, eklenen boş satırı
-    /// değil.
+    /// MEASURED: in this mode, if the file becomes <b>identical</b> it drops out of both the
+    /// raw and the patch section (the counts stay aligned). If it does not become identical
+    /// (e.g. a blank line was added) it stays in both sections — <c>-w</c> ignores whitespace
+    /// <i>inside</i> a line, not an added blank line.
     /// </remarks>
     IgnoreAll,
 }
 
 /// <summary>
-/// Diff okuma seçenekleri (P04-T03, P04-T04).
+/// Diff reading options (P04-T03, P04-T04).
 /// </summary>
 /// <remarks>
-/// <b>Planda olup git'te olmayan bir madde vardı:</b> "büyük/küçük harf duyarsızlık".
-/// Ölçüldü — <c>git diff --ignore-case</c> diye bir seçenek <b>yok</b> (kullanım hatası
-/// veriyor). Bu yüzden karşılığı da yok.
+/// <b>The plan had an item that git does not have:</b> "case insensitivity".
+/// Measured — there is <b>no</b> <c>git diff --ignore-case</c> option (it produces a usage
+/// error). So there is no equivalent for it either.
 /// </remarks>
 public sealed record DiffOptions
 {
     public static DiffOptions Default { get; } = new();
 
     /// <summary>
-    /// Birleştirme commit'inde hangi ebeveyne göre karşılaştırılacak (1 tabanlı).
+    /// Which parent to compare against for a merge commit (1-based).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <see langword="null"/> ise <b>ilk ebeveyn</b> kullanılır — "bu merge ana hatta ne
-    /// getirdi" görünümü. Bu varsayılan ölçümle seçildi: düz <c>git show &lt;merge&gt;</c>
-    /// temiz bir merge'de <b>hiç çıktı vermiyor</b> ve kullanıcı bunu hata sanardı.
-    /// (<c>--cc</c> de temiz merge'de boş; yalnızca çakışma çözümlerini gösteriyor.)
+    /// If <see langword="null"/>, the <b>first parent</b> is used — the "what did this merge
+    /// bring to the main line" view. This default was chosen by measurement: a plain
+    /// <c>git show &lt;merge&gt;</c> produces <b>no output at all</b> on a clean merge, and the
+    /// user would mistake that for a bug. (<c>--cc</c> is also empty on a clean merge; it only
+    /// shows conflict resolutions.)
     /// </para>
     /// <para>
-    /// ⚠️ <c>-m</c> bilinçli olarak <b>kullanılmıyor</b>: her ebeveyn için ayrı bir bölüm
-    /// üretiyor, yani tek bir dosya listesi varsayımını bozuyor. Belirli bir ebeveyn
-    /// istendiğinde <c>&lt;merge&gt;^N</c> söz dizimi kullanılıyor.
+    /// ⚠️ <c>-m</c> is deliberately <b>not used</b>: it produces a separate section per parent,
+    /// which breaks the single-file-list assumption. When a specific parent is requested, the
+    /// <c>&lt;merge&gt;^N</c> syntax is used instead.
     /// </para>
     /// </remarks>
     public int? MergeParent { get; init; }
 
     /// <summary>
-    /// Hunk çevresinde gösterilecek bağlam satırı sayısı (<c>-U</c>); <see langword="null"/>
-    /// ise git'in varsayılanı (3).
+    /// Number of context lines to show around a hunk (<c>-U</c>); <see langword="null"/>
+    /// means git's default (3).
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: <c>-U0</c> hunk başlığını tek satırlık biçime düşürüyor (<c>@@ -4 +4 @@</c>),
-    /// yani uzunluk yazılmıyor. Ayrıştırıcı bunu 1 sayıyor.
+    /// MEASURED: <c>-U0</c> reduces the hunk header to the single-number form
+    /// (<c>@@ -4 +4 @@</c>), i.e. the length is not written. The parser counts this as 1.
     /// </remarks>
     public int? ContextLines { get; init; }
 
-    /// <summary>Boşluk farklarının ele alınışı.</summary>
+    /// <summary>How whitespace differences are handled.</summary>
     public WhitespaceMode Whitespace { get; init; } = WhitespaceMode.Include;
 
     /// <summary>
-    /// Yalnızca boş satır eklenip silinmesi yoksayılsın mı (<c>--ignore-blank-lines</c>)?
+    /// Should only blank-line insertions/deletions be ignored (<c>--ignore-blank-lines</c>)?
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>ÖLÇÜLDÜ — bu seçenek diğerlerinden farklı davranıyor.</b> git, yalnızca boş
-    /// satırı değişmiş dosyayı <b>ham bölümde bırakıyor ama yama bloğu üretmiyor</b>.
-    /// Ayrıştırıcı bu yüzden sayılar uyuşmadığında blob kimliklerine göre eşleme yapıyor;
-    /// eşleşmeyen dosya <b>hunk'sız</b> görünür.
+    /// ⚠️ <b>MEASURED — this option behaves differently from the others.</b> For a file where
+    /// only blank lines changed, git <b>leaves it in the raw section but does not produce a
+    /// patch block for it</b>. The parser therefore matches by blob id when the counts don't
+    /// line up; the unmatched file appears <b>without a hunk</b>.
     /// </remarks>
     public bool IgnoreBlankLines { get; init; }
 
     /// <summary>
-    /// Yeniden adlandırma benzerlik eşiği (1–100); <see langword="null"/> ise git'in
-    /// varsayılanı (%50).
+    /// Rename similarity threshold (1–100); <see langword="null"/> means git's default (50%).
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: %69 benzerlikli bir dosyada <c>-M50%</c> yeniden adlandırma buluyor,
-    /// <c>-M90%</c> bulmuyor (ekleme + silme olarak görünüyor).
+    /// MEASURED: for a file with 69% similarity, <c>-M50%</c> finds the rename,
+    /// <c>-M90%</c> does not (it shows up as an add + delete).
     /// </remarks>
     public int? RenameThreshold { get; init; }
 
     /// <summary>
-    /// Kopyalanan dosyalar da tespit edilsin mi?
+    /// Should copied files also be detected?
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ — <c>-C</c> tek başına yetmiyor.</b> Değiştirilmemiş bir dosyadan yapılan
-    /// kopya <c>-C</c> ile bulunamıyor (durum <c>A</c> kalıyor); bulunması için
-    /// <see cref="FindCopiesHarder"/> gerekiyor (o zaman <c>C100</c>).
+    /// <b>MEASURED — <c>-C</c> alone is not enough.</b> A copy made from an unmodified file is
+    /// not found by <c>-C</c> alone (the status stays <c>A</c>); finding it requires
+    /// <see cref="FindCopiesHarder"/> (then <c>C100</c>).
     /// </remarks>
     public bool DetectCopies { get; init; }
 
     /// <summary>
-    /// Kopya ararken değiştirilmemiş dosyalara da bakılsın mı (<c>--find-copies-harder</c>)?
+    /// Should unmodified files also be examined when searching for copies
+    /// (<c>--find-copies-harder</c>)?
     /// </summary>
     /// <remarks>
-    /// git bunu <b>pahalı</b> olarak belgeliyor; varsayılan kapalı. Kullanıcı açıkça
-    /// istemedikçe açılmamalı.
+    /// git documents this as <b>expensive</b>; default off. Should not be turned on unless the
+    /// user explicitly asks for it.
     /// </remarks>
     public bool FindCopiesHarder { get; init; }
 
-    /// <summary>Kopyalama benzerlik eşiği (1–100); <see langword="null"/> ise git varsayılanı.</summary>
+    /// <summary>Copy similarity threshold (1–100); <see langword="null"/> means git's default.</summary>
     public int? CopyThreshold { get; init; }
 
     /// <summary>
-    /// Satır içi (kelime/karakter seviyesi) değişiklikler de hesaplansın mı (P04-T05)?
+    /// Should inline (word/character-level) changes also be computed (P04-T05)?
     /// </summary>
     /// <remarks>
-    /// <b>git'in <c>--word-diff</c>'i KULLANILMIYOR</b> — ölçüldü ve satır yapısını sadık
-    /// biçimde veremediği görüldü (eklenen boş satırın hangi tarafa ait olduğu çıktıda yok).
-    /// Parçalar, ayrıştırıcının ürettiği kesin satır metinleri üzerinde
-    /// <see cref="InlineDiff"/> ile <b>yerel olarak</b> hesaplanıyor: ek <c>git</c>
-    /// çalıştırması yok, sadakat riski yok.
+    /// <b>git's <c>--word-diff</c> is NOT USED</b> — measured and found to not faithfully
+    /// preserve line structure (which side an added blank line belongs to is not in the
+    /// output). Segments are computed <b>locally</b> with <see cref="InlineDiff"/> on the exact
+    /// line text the parser produced: no extra <c>git</c> invocation, no fidelity risk.
     /// </remarks>
     public bool WordLevel { get; init; }
 
     /// <summary>
-    /// Bu sayıdan fazla satırı değişen dosyanın <b>içeriği okunmaz</b> (P04-T06).
+    /// A file with more changed lines than this has its <b>content not read</b> (P04-T06).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 0 veya negatif ise sınır yok — arayüzdeki "yine de göster" bunu kullanır.
+    /// 0 or negative means no limit — the UI's "show anyway" uses this.
     /// </para>
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> tamamı değişen 12,7 MB'lık bir metin dosyası <b>23 MB</b> yama
-    /// üretiyor (git bunu 0,12 sn'de yapıyor — sorun git'te değil bizde). Böyle bir dosya
-    /// için 800 bin <c>DiffLine</c> nesnesi yaratmak Faz 03'te ölçülen nesne başı ek yük
-    /// nedeniyle uygulamayı kilitler.
+    /// <b>MEASURED:</b> a fully-changed 12.7 MB text file produces a <b>23 MB</b> patch (git
+    /// does this in 0.12s — the problem is not in git but in us). Creating 800k
+    /// <c>DiffLine</c> objects for such a file locks up the app, due to the per-object
+    /// overhead measured in Phase 03.
     /// </para>
     /// <para>
-    /// Sayılar <c>--numstat</c>'tan geliyor: <b>içerik üretilmeden</b> öğrenildiği için
-    /// dosya listesinde satır sayıları yine doğru görünür.
+    /// The counts come from <c>--numstat</c>: since it's learned <b>without generating
+    /// content</b>, line counts still appear correctly in the file list.
     /// </para>
     /// <para>
-    /// <b>Sınır P04-T14'te ölçümle yükseltildi (20.000 → 50.000).</b> İlk değer görüntüleyici
-    /// yokken, ihtiyatla konmuştu. Gerçek ölçüm: <c>git/git</c>'te <c>po/zh_CN.po</c>'nun
-    /// 43.671 satırlık diff'i <b>202 ms</b>'de satırlara dönüşüyor, 45 MB tutuyor ve
-    /// kaydırmada kare süresi <b>0,7 ms</b>. Eski sınır bu ölçekteki <b>gerçek</b> dosyaları
-    /// gereksiz yere "çok büyük" diye eliyordu. Asıl tehlike olan 800 bin satırlık durum
-    /// hâlâ engelleniyor.
+    /// <b>The limit was raised by measurement in P04-T14 (20,000 → 50,000).</b> The initial
+    /// value was set cautiously, before there was a viewer. Real measurement: in
+    /// <c>git/git</c>, the 43,671-line diff of <c>po/zh_CN.po</c> converts to lines in
+    /// <b>202 ms</b>, takes 45 MB, and scrolling frame time is <b>0.7 ms</b>. The old limit was
+    /// needlessly filtering out <b>real</b> files at this scale as "too large". The actual
+    /// danger case of 800k lines is still blocked.
     /// </para>
     /// </remarks>
     public int MaximumChangedLines { get; init; } = 50_000;
 
     /// <summary>
-    /// <c>git</c> çıktısı için üst sınır; aşılırsa okuma durdurulur (P04-T06).
+    /// Upper bound on <c>git</c> output; reading stops if exceeded (P04-T06).
     /// </summary>
     /// <remarks>
-    /// Son savunma hattı: <see cref="MaximumChangedLines"/> dosya başına koruma sağlıyor ama
-    /// binlerce orta boy dosyanın toplamı yine büyük olabilir. Sınır aşılırsa sonuç
-    /// <b>ayrıştırılmaz</b>; yarım çıktıyı ayrıştırmak sessizce eksik veri üretirdi.
+    /// Last line of defense: <see cref="MaximumChangedLines"/> guards per file, but the sum of
+    /// thousands of medium-sized files can still be large. If the limit is exceeded, the
+    /// result is <b>not parsed</b>; parsing half of the output would silently produce
+    /// incomplete data.
     /// </remarks>
     public long MaximumOutputBytes { get; init; } = 64L * 1024 * 1024;
 
     /// <summary>
-    /// Diff içeriğinin kodlaması; <see langword="null"/> ise UTF-8 (P04-T07).
+    /// Encoding of the diff content; <see langword="null"/> means UTF-8 (P04-T07).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> <c>git diff</c> çıktısı <b>tek bir kodlamada değil</b> — başlıklar ve
-    /// işaretler ASCII, satır içerikleri ise <b>dosyanın kendi baytları</b>. git commit
-    /// mesajlarında olduğu gibi bir çeviri yapmıyor (Faz 02'de <c>i18n.logOutputEncoding</c>
-    /// vardı, diff'te karşılığı <b>yok</b>). Latin-5 bir dosyada <c>0xFC</c> baytı doğrudan
-    /// geliyor ve UTF-8 sanılırsa <b>sessizce bozuluyor</b>.
+    /// <b>MEASURED:</b> <c>git diff</c> output is <b>not in a single encoding</b> — headers and
+    /// markers are ASCII, but line content is <b>the file's own bytes</b>. Unlike git commit
+    /// messages, it does not translate (Phase 02 had <c>i18n.logOutputEncoding</c>; diff has
+    /// <b>no</b> equivalent). On a Latin-5 file, a <c>0xFC</c> byte comes through raw and gets
+    /// <b>silently corrupted</b> if assumed to be UTF-8.
     /// </para>
     /// <para>
-    /// Çözüm GitExtensions'ın <c>PatchProcessor</c>'ından alındı: çıktı <b>kayıpsız</b>
-    /// okunuyor (her bayt bir karakter), yapı ASCII olduğu için ayrıştırma etkilenmiyor, ve
-    /// satır içerikleri sonradan bu kodlamayla yeniden çözülüyor. Onlar da not düşmüş:
-    /// ideali <c>.gitattributes</c>'tan dosya başına almak, şimdilik depo başına tek kodlama.
+    /// The solution was taken from GitExtensions' <c>PatchProcessor</c>: the output is read
+    /// <b>losslessly</b> (each byte as one character), parsing is unaffected since the
+    /// structure is ASCII, and line content is later re-decoded with this encoding. They also
+    /// noted the ideal would be per-file from <c>.gitattributes</c>; for now, a single encoding
+    /// per repository.
     /// </para>
     /// </remarks>
     public Encoding? ContentEncoding { get; init; }
 
-    /// <summary>Yeniden adlandırma tespiti açık mı?</summary>
+    /// <summary>Is rename detection on?</summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> tespit modern git'te <b>varsayılan olarak açık</b> (<c>diff.renames</c>).
-    /// Yani <c>-M</c>'i yazmamak onu <b>kapatmıyor</b>; kapatmak için <c>--no-renames</c>
-    /// gerekiyor. İki bayrak da açıkça geçiliyor, böylece davranış kullanıcının
-    /// <c>.gitconfig</c>'inden bağımsız oluyor (Faz 02'de <c>i18n.logOutputEncoding</c>
-    /// için verilen kararın aynısı).
+    /// <b>MEASURED:</b> detection is <b>on by default</b> in modern git (<c>diff.renames</c>).
+    /// So not writing <c>-M</c> does <b>not</b> turn it off; turning it off requires
+    /// <c>--no-renames</c>. Both flags are passed explicitly, so behavior is independent of the
+    /// user's <c>.gitconfig</c> (the same decision made in Phase 02 for
+    /// <c>i18n.logOutputEncoding</c>).
     /// </remarks>
     public bool DetectRenames { get; init; } = true;
 }
 
 /// <summary>
-/// Depodan diff okur (P04-T03).
+/// Reads diffs from the repository (P04-T03).
 /// </summary>
 public interface IDiffReader
 {
     /// <summary>
-    /// Bir commit'in kendi getirdiği değişiklikleri okur.
+    /// Reads the changes a commit itself introduced.
     /// </summary>
     Task<IReadOnlyList<FileDiff>> ReadCommitAsync(
         string workingDirectory,
@@ -214,7 +216,7 @@ public interface IDiffReader
         DiffOptions? options = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>İki keyfi revizyon arasındaki farkı okur.</summary>
+    /// <summary>Reads the diff between two arbitrary revisions.</summary>
     Task<IReadOnlyList<FileDiff>> ReadBetweenAsync(
         string workingDirectory,
         string fromRevision,
@@ -223,11 +225,11 @@ public interface IDiffReader
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Bir revizyon ile <b>çalışma ağacı</b> arasındaki farkı okur (P04-T16).
+    /// Reads the diff between a revision and the <b>working tree</b> (P04-T16).
     /// </summary>
     /// <remarks>
-    /// <c>git diff &lt;rev&gt;</c>. <see cref="ReadUnstagedAsync"/>'dan farklı: o yalnızca
-    /// index ile çalışma ağacını karşılaştırır, bu ise stage'lenmiş değişiklikleri de içerir.
+    /// <c>git diff &lt;rev&gt;</c>. Different from <see cref="ReadUnstagedAsync"/>: that only
+    /// compares the index against the working tree, whereas this also includes staged changes.
     /// </remarks>
     Task<IReadOnlyList<FileDiff>> ReadAgainstWorkingTreeAsync(
         string workingDirectory,
@@ -235,13 +237,13 @@ public interface IDiffReader
         DiffOptions? options = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Çalışma dizini ile index arasındaki farkı okur (stage'lenmemiş değişiklikler).</summary>
+    /// <summary>Reads the diff between the working directory and the index (unstaged changes).</summary>
     Task<IReadOnlyList<FileDiff>> ReadUnstagedAsync(
         string workingDirectory,
         DiffOptions? options = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Index ile <c>HEAD</c> arasındaki farkı okur (stage'lenmiş değişiklikler).</summary>
+    /// <summary>Reads the diff between the index and <c>HEAD</c> (staged changes).</summary>
     Task<IReadOnlyList<FileDiff>> ReadStagedAsync(
         string workingDirectory,
         DiffOptions? options = null,
@@ -274,8 +276,8 @@ public sealed class DiffReader : IDiffReader
 
         options ??= DiffOptions.Default;
 
-        // Belirli bir ebeveyn istendiyse `<commit>^N <commit>` ile karşılaştırılır.
-        // İlk ebeveyn için bu yola gerek yok; aşağıdaki tek komut zaten onu yapıyor.
+        // If a specific parent was requested, compare with `<commit>^N <commit>`.
+        // No need for this path for the first parent; the single command below already does it.
         if (options.MergeParent is > 1 and int parent)
         {
             return ReadBetweenAsync(
@@ -286,17 +288,17 @@ public sealed class DiffReader : IDiffReader
                 cancellationToken);
         }
 
-        // TEK KOMUT üç durumu birden karşılıyor (ölçüldü):
-        //   --root         → kök commit'te `<sha>^` çökmesini önler
-        //   --first-parent → merge'de tek ve anlamlı diff üretir (düz `git show` BOŞ döner)
-        //   normal commit  → ikisi de zararsız
+        // A SINGLE COMMAND covers three cases at once (measured):
+        //   --root         → avoids `<sha>^` crashing on the root commit
+        //   --first-parent → produces a single, meaningful diff for a merge (plain `git show` returns EMPTY)
+        //   normal commit  → both are harmless
         List<string> arguments =
         [
             "show",
             "--root",
             "--first-parent",
 
-            // Commit başlığı/mesajı bastırılır: ayrıştırıcı çıktının `:` ile başlamasını bekler.
+            // Commit subject/message is suppressed: the parser expects output to start with `:`.
             "--format=",
         ];
 
@@ -385,26 +387,27 @@ public sealed class DiffReader : IDiffReader
     }
 
     /// <summary>
-    /// Ayrıştırıcının beklediği biçimi kuran ortak argümanlar.
+    /// Common arguments that set up the format the parser expects.
     /// </summary>
     /// <remarks>
-    /// <c>--raw -z</c> yolları ham (tırnaksız) verir, <c>--patch</c> hunk'ları ekler.
-    /// İkisi tek çağrıda alınıyor; ayrı çağrılar iki ayrı süreç ve iki ayrı anlık görüntü
-    /// demek olurdu (çalışma dizini bu arada değişebilir).
+    /// <c>--raw -z</c> gives paths raw (unquoted), <c>--patch</c> adds hunks.
+    /// Both are obtained in a single call; separate calls would mean two separate processes and
+    /// two separate snapshots (the working directory could change in between).
     /// </remarks>
     private static void AddFormatArguments(List<string> arguments, DiffOptions options)
     {
         arguments.Add("--raw");
 
-        // İçerik üretmeden dosya başına değişen satır sayısını verir; boyut koruması buna
-        // dayanıyor. Ölçüldü: aynı çağrıya eklemek ek maliyet getirmiyor (20,5 vs 21,4 ms).
+        // Gives the number of changed lines per file without generating content; the size
+        // guard relies on this. Measured: adding it to the same call adds no extra cost
+        // (20.5 vs 21.4 ms).
         arguments.Add("--numstat");
 
         arguments.Add("-z");
         arguments.Add("--patch");
 
-        // İkisi de AÇIKÇA geçiliyor: `-M`'i atlamak tespiti kapatmıyor (varsayılan açık),
-        // ve kullanıcının `diff.renames` ayarı davranışımızı değiştirmemeli.
+        // Both are passed EXPLICITLY: omitting `-M` does not turn detection off (on by
+        // default), and the user's `diff.renames` setting must not change our behavior.
         arguments.Add(options.DetectRenames
             ? options.RenameThreshold is { } threshold
                 ? $"-M{Clamp(threshold)}%"
@@ -417,9 +420,9 @@ public sealed class DiffReader : IDiffReader
                 ? $"-C{Clamp(copyThreshold)}%"
                 : "-C");
 
-            // ÖLÇÜLDÜ: `-C` tek başına, DEĞİŞTİRİLMEMİŞ bir dosyadan yapılan kopyayı
-            // bulamıyor. Kullanıcı kopya tespiti istediyse ama bunu açmadıysa çoğu kopya
-            // görünmez kalır — bu yüzden ayrı ve açık bir seçenek.
+            // MEASURED: `-C` alone cannot find a copy made from an UNMODIFIED file. If the
+            // user wanted copy detection but didn't enable this, most copies remain invisible
+            // — hence a separate, explicit option.
             if (options.FindCopiesHarder)
             {
                 arguments.Add("--find-copies-harder");
@@ -452,7 +455,7 @@ public sealed class DiffReader : IDiffReader
 
     }
 
-    /// <summary>Eşik yüzdesini git'in kabul ettiği aralığa sıkıştırır.</summary>
+    /// <summary>Clamps a threshold percentage to the range git accepts.</summary>
     private static int Clamp(int percent) => Math.Clamp(percent, 1, 100);
 
     private async Task<IReadOnlyList<FileDiff>> RunAsync(
@@ -472,8 +475,8 @@ public sealed class DiffReader : IDiffReader
 
         if (result.OutputTruncated)
         {
-            // Yarım çıktıyı ayrıştırmak sessizce eksik diff göstermek olurdu. İçeriksiz
-            // ikinci bir okuma yapılıp dosya listesi yine de gösteriliyor.
+            // Parsing truncated output would mean silently showing an incomplete diff. A
+            // second, content-free read is done instead so the file list is still shown.
             return await ReadMetadataOnlyAsync(workingDirectory, arguments, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -486,11 +489,11 @@ public sealed class DiffReader : IDiffReader
     }
 
     /// <summary>
-    /// Yalnızca dosya listesi ve satır sayıları — yama istenmez.
+    /// Only the file list and line counts — no patch is requested.
     /// </summary>
     /// <remarks>
-    /// Çıktı sınırı aşıldığında kullanılır. Kullanıcı hangi dosyaların değiştiğini yine
-    /// görür; içerik "çok büyük" olarak işaretlenir.
+    /// Used when the output limit was exceeded. The user still sees which files changed;
+    /// content is marked as "too large".
     /// </remarks>
     private async Task<IReadOnlyList<FileDiff>> ReadMetadataOnlyAsync(
         string workingDirectory,
@@ -503,7 +506,7 @@ public sealed class DiffReader : IDiffReader
             new GitCommand { WorkingDirectory = workingDirectory, Arguments = metadata },
             cancellationToken).ConfigureAwait(false);
 
-        // Sınır 1: her dosya "çok büyük" sayılır, çünkü hangisinin taşırdığını bilmiyoruz.
+        // Limit 1: every file is considered "too large", since we don't know which one overflowed.
         return DiffParser.Parse(
             result.GetStandardOutputLossless(), inlineSegments: false, maximumChangedLines: 1);
     }

@@ -6,9 +6,9 @@
              x:DataType="vm:RefTreeViewModel">
 
     <!--
-        Dal paneli (P06-T13). Yerleşim GitExtensions'ın sol RepoObjectsTree'sinden (§ 9):
-        üstte arama kutusu, altında Dallar / Uzak depolar / Etiketler ağacı.
-        Çift tıkla checkout — GitExtensions'ta da öyle.
+        The branch panel (P06-T13). The layout comes from GitExtensions' left RepoObjectsTree
+        (§ 9): a search box on top, below it the Branches / Remotes / Tags tree.
+        Double-click to check out — as it is in GitExtensions.
     -->
     <Grid RowDefinitions="Auto,*">
         <TextBox Name="FilterBox"
@@ -25,15 +25,16 @@
                   DragDrop.AllowDrop="True">
 
             <!--
-                DAL BAĞLAM MENÜSÜ (P06-T14) — öğe sırası GitExtensions'ın RepoObjectsTree
-                dal menüsünden: checkout · yeni dal · birleştir · ayraç · yeniden adlandır ·
-                sil · ayraç · push · ayraç · adı kopyala.
+                BRANCH CONTEXT MENU (P06-T14) — the item order comes from GitExtensions'
+                RepoObjectsTree branch menu: checkout · new branch · merge · separator · rename ·
+                delete · separator · push · separator · copy name.
 
-                ⚠️ Uygulanmamış olanlar KALDIRILMIYOR, devre dışı duruyor (§ 9): rebase ve
-                "upstream ayarla" Faz 07'nin konusu.
+                ⚠️ The unimplemented ones are NOT REMOVED, they stay disabled (§ 9): rebase and
+                "set upstream" are Phase 07's subject.
 
-                🔑 Her öğe ana penceredeki AYNI komutu çağırıyor; menü kendi akışını
-                yazmıyor. İkinci bir yol, birinin kirli-ağaç korumasız kalması demekti.
+                🔑 Every item calls the SAME command as the main window; the menu does not write
+                its own flow. A second path meant one of them ending up without the dirty-tree
+                guard.
             -->
             <TreeView.ContextMenu>
                 <ContextMenu Name="RefContextMenu">

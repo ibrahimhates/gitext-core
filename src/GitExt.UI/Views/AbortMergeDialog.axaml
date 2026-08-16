@@ -9,9 +9,10 @@
         CanResize="False">
 
     <!--
-        P06-T12. Yıkıcı bir işlem: birleştirmeyi iptal eden komut çalışma ağacını ÖNCESİNE
-        döndürüyor, yani çakışmaları çözerken yazılan her şey gider (ölçüldü).
-        P05-T15 kuralı: kaybolacak şey ekranda listeliyse onay kutusu yeterli.
+        P06-T12. A destructive operation: the command that aborts the merge returns the working
+        tree to its PREVIOUS state, so everything written while resolving conflicts is lost
+        (measured). The P05-T15 rule: when what will be lost is listed on screen, a checkbox is
+        enough.
     -->
     <StackPanel Margin="16" Spacing="10">
         <TextBlock Name="ExplanationText"

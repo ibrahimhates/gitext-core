@@ -13,32 +13,33 @@
              Loaded="OnViewLoaded">
 
     <!--
-        YERLEŞİM GitExtensions'ın `FormCommit`'inden BİREBİR alındı (CLAUDE.md § 9).
-        Kaynak: src/app/GitUI/CommandsDialogs/FormCommit.Designer.cs
+        The LAYOUT was taken VERBATIM from GitExtensions' `FormCommit` (CLAUDE.md § 9).
+        Source: src/app/GitUI/CommandsDialogs/FormCommit.Designer.cs
 
-          splitMain  (dikey)   : Panel1 = sol sütun            │ Panel2 = sağ sütun
-                                 SplitterDistance = 397 / 918  → sol ≈ %43
-          splitLeft  (yatay)   : Panel1 = Unstaged (üst)
-                                 Panel2 = toolbarStaged + Staged (alt)
-                                 SplitterDistance = 274 / 622  → üst ≈ %44
-          splitRight (yatay)   : Panel1 = SelectedDiff (üst)
-                                 Panel2 = commit mesajı (alt, P05-T12)
-                                 SplitterDistance = 426 / 622  → üst ≈ %68
+          splitMain  (vertical)  : Panel1 = left column           │ Panel2 = right column
+                                   SplitterDistance = 397 / 918  → left ≈ 43%
+          splitLeft  (horizontal): Panel1 = Unstaged (top)
+                                   Panel2 = toolbarStaged + Staged (bottom)
+                                   SplitterDistance = 274 / 622  → top ≈ 44%
+          splitRight (horizontal): Panel1 = SelectedDiff (top)
+                                   Panel2 = commit message (bottom, P05-T12)
+                                   SplitterDistance = 426 / 622  → top ≈ 68%
 
-        Araç çubuğu (`toolbarStaged`) iki listenin ARASINDA duruyor ve öğeleri iki yana
-        hizalı: unstage eylemleri solda, stage eylemleri sağda (`ToolStripItemAlignment.Right`).
-        Yönler listelerin konumuyla uyumlu — "Stage" yukarıdaki listeden aşağıdakine taşıyor.
+        The toolbar (`toolbarStaged`) sits BETWEEN the two lists with its items aligned to either
+        side: unstage actions on the left, stage actions on the right
+        (`ToolStripItemAlignment.Right`). The directions match where the lists are — "Stage" moves
+        from the list above to the one below.
 
-        ⚠️ AYRI BİR "untracked" BÖLÜMÜ YOK: GitExtensions'ta takip edilmeyen dosyalar
-        Unstaged listesinde duruyor. Plan üç bölüm öngörüyordu; § 9 kuralı gereği yerleşim
-        kazandı (ayrıntı: WorkingTreeViewModel).
+        ⚠️ THERE IS NO SEPARATE "untracked" SECTION: in GitExtensions untracked files sit in the
+        Unstaged list. The plan called for three sections; under the § 9 rule the layout won
+        (details: WorkingTreeViewModel).
     -->
 
     <UserControl.Resources>
         <!--
-            Satır biçimi P04-T08'deki değişen dosyalar listesiyle AYNI: git'in kendi durum
-            harfi + yol. Kullanıcı harfleri zaten biliyor; iki listede iki ayrı gösterim
-            kurmak gereksiz bir alfabe olurdu.
+            The row format is the SAME as the changed files list in P04-T08: git's own status
+            letter plus the path. The user already knows the letters; setting up two different
+            presentations across two lists would be a needless second alphabet.
         -->
         <DataTemplate x:Key="WorkingTreeFileTemplate" DataType="vm:WorkingTreeFileRow">
             <Grid ColumnDefinitions="Auto,*" Height="20">
@@ -77,7 +78,7 @@
             <Setter Property="Foreground" Value="{DynamicResource GitExtAttentionBrush}" />
         </Style>
 
-        <!-- Konu sayacı sınırı aşınca uyarı rengine geçiyor; commit'i ENGELLEMİYOR. -->
+        <!-- Once the subject counter passes the limit it turns the warning colour; it does NOT BLOCK the commit. -->
         <Style Selector="TextBlock.over">
             <Setter Property="Foreground" Value="{DynamicResource GitExtAttentionBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -87,9 +88,9 @@
     <Grid RowDefinitions="Auto,*" Margin="6">
 
         <!--
-            Sıfırlama şeridi (P05-T15). Modal bir "tamam" kutusu yerine şerit: yıkıcı
-            işlemden SONRA gösterilen bir diyalog yalnızca kapatılmayı bekleyen bir engeldir,
-            oysa asıl gereken GERİ ALMA yolunun bir süre görünür kalması.
+            The reset strip (P05-T15). A strip rather than a modal "OK" box: a dialog shown AFTER a
+            destructive operation is nothing but an obstacle waiting to be dismissed, whereas what
+            is actually needed is for the UNDO path to stay visible for a while.
         -->
         <Border Grid.Row="0"
                 Name="ResetNoticeBar"
@@ -127,10 +128,10 @@
 
         <Grid Grid.Row="1" ColumnDefinitions="43*,Auto,57*">
 
-        <!-- ================= SOL SÜTUN ================= -->
+        <!-- ================= LEFT COLUMN ================= -->
         <Grid Grid.Column="0" RowDefinitions="44*,Auto,56*">
 
-            <!-- ═══ Üst: Unstaged ═══ -->
+            <!-- ═══ Top: Unstaged ═══ -->
             <Grid Grid.Row="0" RowDefinitions="Auto,*">
 
                 <TextBlock Grid.Row="0"
@@ -154,7 +155,7 @@
                 </Border>
             </Grid>
 
-            <!-- ═══ Orta: stage/unstage araç çubuğu ═══ -->
+            <!-- ═══ Middle: stage/unstage toolbar ═══ -->
             <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,6">
 
                 <!-- Sol grup: staged listesinden geri alma -->
@@ -178,7 +179,7 @@
                             Click="OnUnstageClick" />
                 </StackPanel>
 
-                <!-- Sağ grup: unstaged listesinden stage'leme -->
+                <!-- Right group: staging from the unstaged list -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
                     <Button Name="StageButton"
                             Content="{loc:Translate working_tree.stage}"
@@ -223,7 +224,7 @@
                              GotFocus="OnStagedFocused" />
                 </Border>
 
-                <!-- Hata şeridi + git'in tam çıktısı (P05-T07) -->
+                <!-- Error strip plus git's full output (P05-T07) -->
                 <StackPanel Grid.Row="2"
                             Orientation="Horizontal"
                             Spacing="8"
@@ -242,10 +243,10 @@
 
         <GridSplitter Grid.Column="1" Width="6" Background="Transparent" />
 
-        <!-- ================= SAĞ SÜTUN ================= -->
+        <!-- ================= RIGHT COLUMN ================= -->
         <!--
-            `splitRight` (yatay): Panel1 = SelectedDiff, Panel2 = commit mesajı.
-            SplitterDistance 426 / 622 ≈ %68.
+            `splitRight` (horizontal): Panel1 = SelectedDiff, Panel2 = commit message.
+            SplitterDistance 426 / 622 ≈ 68%.
         -->
         <Grid Grid.Column="2" RowDefinitions="68*,Auto,32*">
 
@@ -254,16 +255,16 @@
             <GridSplitter Grid.Row="1" Height="6" Background="Transparent" />
 
             <!--
-                `tableLayoutPanel1` (2×2): sol sütun `flowCommitButtons` (otomatik genişlik),
-                sağ sütunda üstte `toolbarCommit`, altta `Message`.
+                `tableLayoutPanel1` (2×2): the left column is `flowCommitButtons` (automatic
+                width), the right column has `toolbarCommit` on top and `Message` below.
             -->
             <Grid Grid.Row="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,*" Margin="0,4,0,0">
 
                 <!--
-                    `flowCommitButtons` sırası birebir: Commit · Commit&amp;Push ·
+                    `flowCommitButtons` order verbatim: Commit · Commit&amp;Push ·
                     Stage in Superproject · Amend · [Reset author · Reset soft] ·
                     Stash staged · Reset all changes · Reset unstaged changes.
-                    Uygulanmamış olanlar devre dışı ama YERİNDE (§ 9).
+                    The unimplemented ones are disabled but IN PLACE (§ 9).
                 -->
                 <StackPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
                             Spacing="4"
@@ -313,8 +314,8 @@
                 </StackPanel>
 
                 <!--
-                    `toolbarCommit` sırası: commit message ▾ · options ▾ · templates ▾ ·
-                    create branch. Hepsi P05-T13 / Faz 06.
+                    `toolbarCommit` order: commit message ▾ · options ▾ · templates ▾ ·
+                    create branch. All of it is P05-T13 / Phase 06.
                 -->
                 <StackPanel Grid.Row="0" Grid.Column="1"
                             Orientation="Horizontal"
@@ -322,9 +323,9 @@
                             Margin="0,0,0,4">
 
                     <!--
-                        Geçmiş menüsü AÇILIRKEN okunuyor (GitExtensions'ta da
-                        `DropDownOpening`): her depo açılışında fazladan bir `git log`
-                        çalıştırmak, kullanıcının hiç açmayacağı bir menünün bedeli olurdu.
+                        The history menu is read WHEN IT OPENS (as `DropDownOpening` does in
+                        GitExtensions): running an extra `git log` on every repository open would
+                        be the price of a menu the user may never open.
                     -->
                     <Button Name="MessageHistoryButton" Content="{loc:Translate working_tree.message}" FontSize="11" Padding="8,2">
                         <Button.Flyout>
@@ -341,11 +342,11 @@
                         <Button.Flyout>
                             <MenuFlyout>
                                 <!--
-                                    Hook atlama VERİ KAYBETTİRMİYOR: commit reflog'da
-                                    kalıyor ve geri alınabiliyor (P05-T15'te ölçüldü). Bu
-                                    yüzden diyalog değil onay kutusu — her commit'te modal
-                                    açmak, atlanan şeyin ağırlığını değil sadece kullanıcının
-                                    sabrını sınardı.
+                                    Skipping hooks DOES NOT LOSE DATA: the commit stays in the
+                                    reflog and can be recovered (measured in P05-T15). That is why
+                                    it is a checkbox and not a dialog — opening a modal on every
+                                    commit would test the user's patience rather than the weight of
+                                    what is being skipped.
                                 -->
                                 <MenuItem Name="SkipHooksItem"
                                           Header="{loc:Translate working_tree.skip_hooks_no_verify}"
@@ -359,9 +360,9 @@
                         <Button.Flyout>
                             <MenuFlyout>
                                 <!--
-                                    Bulunamayan şablon GİZLENMİYOR: git'in kendisi o durumda
-                                    commit'i `fatal: could not read` ile reddediyor, yani
-                                    yapılandırma gerçekten bozuk (ölçüldü).
+                                    A template that cannot be found is NOT HIDDEN: git itself
+                                    rejects the commit in that case with `fatal: could not read`,
+                                    so the configuration really is broken (measured).
                                 -->
                                 <MenuItem Name="TemplateItem"
                                           Header="{Binding Message.TemplateLabel}"
@@ -381,8 +382,8 @@
                 </StackPanel>
 
                 <!--
-                    Mesaj kutusu + 50/72 kılavuzu. Kılavuz kutunun ARKASINDA çiziliyor;
-                    metnin üstüne çizmek imleci ve seçimi gölgelerdi.
+                    The message box plus the 50/72 guide. The guide is drawn BEHIND the box;
+                    drawing it over the text would shadow the caret and the selection.
                 -->
                 <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
 

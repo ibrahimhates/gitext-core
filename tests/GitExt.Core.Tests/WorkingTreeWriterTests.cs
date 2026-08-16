@@ -5,12 +5,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P05-T08 — dosya işlemleri (geri alma, silme, <c>.gitignore</c>, <c>clean</c>).
+/// P05-T08 — file operations (discard, delete, <c>.gitignore</c>, <c>clean</c>).
 /// </summary>
 /// <remarks>
-/// Fazın en tehlikeli görevi: buradaki her işlem kullanıcının <b>henüz kaydedilmemiş</b>
-/// emeğini silebilir. Testlerin ağırlığı, ölçümde bulunan <b>sessiz</b> davranışlarda —
-/// git'in hata vermeden hiçbir şey yapmadığı durumlar.
+/// The phase's most dangerous task: every operation here can erase the user's <b>not-yet
+/// committed</b> work. The tests' weight is on the <b>silent</b> behaviors found through
+/// measurement — cases where git does nothing without giving an error.
 /// </remarks>
 public class WorkingTreeWriterTests
 {
@@ -70,8 +70,8 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Onaysiz_geri_alma_REDDEDILIR()
     {
-        // Onay parametre olarak zorunlu (P05-T02'deki `GitLock.Remove` deseni): kuralı
-        // yorumda bırakmak, birinin ileride onaysız çağırmasına engel olmaz.
+        // Confirmation is mandatory as a parameter (the `GitLock.Remove` pattern from P05-T02):
+        // leaving the rule in a comment wouldn't stop someone from calling it unconfirmed later.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("a.txt", "degisti\n");
 
@@ -85,8 +85,8 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Bos_yol_listesi_HICBIR_SEYI_geri_almaz()
     {
-        // ⚠️ Yolsuz `git restore --` deponun TAMAMINI geri alırdı (P05-T03'teki
-        // `git add -A --` korumasının aynısı).
+        // ⚠️ `git restore --` without a path would revert the ENTIRE repository (the same
+        // protection as `git add -A --` in P05-T03).
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("a.txt", "degisti\n");
         harness.Repository.WriteFile("b.txt", "b degisti\n");
@@ -101,7 +101,7 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Stage_lenmemis_degisiklik_atilir_STAGE_LENMIS_KORUNUR()
     {
-        // ÖLÇÜLDÜ: düz `git restore` çalışma ağacını HEAD'den değil INDEX'ten geri yüklüyor.
+        // MEASURED: plain `git restore` restores the working tree from the INDEX, not HEAD.
         using Harness harness = await CreateAsync();
 
         harness.Repository.WriteFile("a.txt", "stage edilmis\n");
@@ -146,8 +146,8 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Atilan_icerik_YEDEKTEN_geri_okunabilir()
     {
-        // CLAUDE.md § 8: geri alınamaz işlem için bir dönüş yolu. Reflog burada yok
-        // (içerik hiç commit'lenmedi), ama nesne veritabanına yazılabiliyor.
+        // CLAUDE.md § 8: a way back for an operation that can't be undone. There's no reflog
+        // here (the content was never committed), but it can be written to the object database.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("a.txt", "KAYBOLMAMASI GEREKEN\n");
 
@@ -164,7 +164,7 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Diskte_olmayan_yol_yedeklenmeye_CALISILMAZ()
     {
-        // `hash-object` olmayan dosyada düşer; silinmiş dosyanın geri alınacak içeriği de yok.
+        // `hash-object` fails on a nonexistent file; a deleted file has no content to back up.
         using Harness harness = await CreateAsync();
         File.Delete(Path.Combine(harness.Path, "b.txt"));
 
@@ -175,7 +175,7 @@ public class WorkingTreeWriterTests
         harness.Read("b.txt").ShouldBe("b\n");
     }
 
-    // ---- Takip edilmeyen dosyayı silme ----
+    // ---- Deleting an untracked file ----
 
     [Fact]
     public async Task Takip_edilmeyen_dosya_silinir()
@@ -192,12 +192,11 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Silinen_takip_edilmeyen_dosyanin_icerigi_YEDEKLENIR()
     {
-        // 🔴 P05-T15'in gerekçesi, ölçümle: `git clean` ile silinen bir dosyanın nesne
-        // veritabanında hiçbir izi kalmıyor — `git fsck --lost-found` bile bulmuyor.
-        // Bu, deponun tek gerçekten geri döndürülemez işlemiydi. Oysa takip edilmeyen
-        // dosyalar tipik olarak henüz commit edilmemiş YENİ KAYNAK DOSYALAR: bu deponun
-        // kendisinde `git clean -dn` çıktısı, o sırada yazılmakta olan dosyaları
-        // listeliyordu.
+        // 🔴 The rationale for P05-T15, by measurement: a file deleted with `git clean` leaves
+        // no trace at all in the object database — not even `git fsck --lost-found` finds it.
+        // This was the repository's only truly unrecoverable operation. Yet untracked files
+        // are typically NEW SOURCE FILES not yet committed: in this very repository, the
+        // output of `git clean -dn` listed files that were being written at that moment.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("yeni-kaynak.cs", "çok değerli emek\n");
 
@@ -209,7 +208,7 @@ public class WorkingTreeWriterTests
         backups.Count.ShouldBe(1);
         backups[0].Path.Value.ShouldBe("yeni-kaynak.cs");
 
-        // Yedek gerçekten okunabilmeli; kimlik döndürüp içeriği kaybetmek işe yaramaz.
+        // The backup must actually be readable; returning an id but losing the content is useless.
         harness.Repository.Git("cat-file", "-p", backups[0].BlobId)
             .ShouldContain("çok değerli emek");
     }
@@ -217,10 +216,10 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Yedek_normal_gc_ile_KAYBOLMUYOR()
     {
-        // ⚠️ ÖLÇÜLDÜ — T08'in "garanti değil" notu doğru ama fazla karamsardı: yedeğe
-        // hiçbir ref işaret etmiyor, ama `git gc` onu SİLMİYOR (dangling nesneler
-        // varsayılan `gc.pruneExpire=2.weeks` boyunca korunuyor). Silen şey yalnızca
-        // `gc --prune=now`. Kullanıcıya söylenen kurtarma yolu bu yüzden gerçekçi.
+        // ⚠️ MEASURED — T08's "not a guarantee" note was correct but too pessimistic: no ref
+        // points to the backup, but `git gc` does NOT delete it (dangling objects are kept for
+        // the default `gc.pruneExpire=2.weeks`). Only `gc --prune=now` deletes it. The recovery
+        // path told to the user is therefore realistic.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("gidecek.txt", "kurtarılacak içerik\n");
 
@@ -236,9 +235,9 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Secili_satirlar_geri_alinir_INDEX_korunur()
     {
-        // 🔴 ÖLÇÜLDÜ: `git apply --reverse` (--cached OLMADAN) yamayı yalnızca çalışma
-        // ağacına uyguluyor; dosyanın stage'lenmiş sürümü olduğu gibi kalıyor. `--cached`
-        // eklenseydi kullanıcı "şu satırı geri al" derken index'ini de değiştirmiş olurdu.
+        // 🔴 MEASURED: `git apply --reverse` (WITHOUT --cached) applies the patch only to the
+        // working tree; the file's staged version is left as is. If `--cached` were added, the
+        // user saying "revert this line" would also change their index.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("a.txt", "bir\niki\nuc\n");
         harness.Repository.Git("add", "a.txt");
@@ -251,8 +250,8 @@ public class WorkingTreeWriterTests
         FileDiff diff = (await harness.Diff.ReadUnstagedAsync(harness.Path, cancellationToken: Ct))
             .Single();
 
-        // Tüm hunk'ı seç: dosyada tek bir değişiklik var, ölçülmek istenen şey index'in
-        // korunması.
+        // Select the whole hunk: the file has a single change, and what's being measured is
+        // whether the index is preserved.
         PatchSelection selection = PatchSelection.All(diff);
 
         IReadOnlyList<DiscardBackup> backups = await harness.Writer.DiscardPartialAsync(
@@ -260,23 +259,24 @@ public class WorkingTreeWriterTests
 
         backups.Count.ShouldBe(1);
 
-        // Çalışma ağacı yamadan önceki hâle dönmeli…
+        // The working tree should return to its pre-patch state…
         harness.Read("a.txt").ShouldBe("BIR\niki\nUC\n");
 
-        // …index'e ise DOKUNULMAMALI. ⚠️ Tam eşitlik şart: "UC içeriyor mu" diye bakmak
-        // "UCUC" ile de geçerdi (P04-T09'un dersi: baktığın yer, doğruladığın şeyin
-        // yeri olmalı).
+        // …while the index should NOT be touched. ⚠️ Exact equality is required: checking
+        // "does it contain UC" would also pass for "UCUC" (the lesson of P04-T09: where you
+        // look must match what you're verifying).
         harness.Repository.Git("show", ":a.txt").ShouldBe("BIR\niki\nUC\n");
     }
 
     [Fact]
     public async Task Kismi_geri_alma_eol_crlf_altinda_SATIR_SONLARINI_bozmuyor()
     {
-        // P05-T17 ölçümü: yama `git diff`ten geldiği için LF, çalışma ağacındaki dosya ise
-        // CRLF. `git apply` (worktree yolu) aynı filtreleri kendisi uyguladığı için yama
-        // tutuyor ve CRLF korunuyor. Tutmasaydı belirti sessiz değil `patch does not apply`
-        // olurdu — ama geri alma kullanıcının emeğini silen bir işlem, bunun testsiz
-        // varsayıma bırakılacak yeri yok.
+        // P05-T17 measurement: the patch is LF because it comes from `git diff`, while the file
+        // in the working tree is CRLF. `git apply` (the worktree path) applies the same
+        // filters itself, so the patch applies cleanly and CRLF is preserved. If it didn't, the
+        // symptom wouldn't be silent — it would be `patch does not apply` — but a discard is an
+        // operation that erases the user's work, so there's no room to leave this to an
+        // untested assumption.
         using Harness harness = await CreateAsync();
         string path = System.IO.Path.Combine(harness.Path, "c.txt");
 
@@ -318,8 +318,8 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Yedek_geri_yazilabiliyor()
     {
-        // Yedek almak tek başına güvenlik ağı değil: kullanıcıya blob kimliği verip
-        // `git cat-file` yazmasını beklemek panik anında işe yaramaz.
+        // Taking a backup alone isn't the safety net: giving the user a blob id and expecting
+        // them to type `git cat-file` is useless in a moment of panic.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("alt/dizin/yeni.cs", "geri gelmeli\n");
 
@@ -333,7 +333,7 @@ public class WorkingTreeWriterTests
 
         restored.Count.ShouldBe(1);
 
-        // Dizin de silinmişti (`clean -d`); geri yazma onu yeniden oluşturmalı.
+        // The directory was also deleted (`clean -d`); writing back should recreate it.
         (await File.ReadAllTextAsync(
             Path.Combine(harness.Path, "alt/dizin/yeni.cs"), Ct))
             .ShouldBe("geri gelmeli\n");
@@ -360,10 +360,10 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Yedek_CRLF_donusumune_ugramaz()
     {
-        // 🔴 ÖLÇÜLDÜ: `--no-filters` olmadan `.gitattributes`'ta `text=auto` varken git
-        // yedeği yazarken CRLF'i LF'e çeviriyor — geri yazımda kullanıcının satır sonları
-        // sessizce değişirdi. Kurtarma vaadi veren bir yedeğin içeriği değiştirmesi,
-        // hiç yedek almamaktan daha kötü: kullanıcı kurtardığını sanır.
+        // 🔴 MEASURED: without `--no-filters`, when `.gitattributes` has `text=auto`, git
+        // converts CRLF to LF while writing the backup — the user's line endings would
+        // silently change on restore. A backup that promises recovery but changes the content
+        // is worse than taking no backup at all: the user thinks they recovered it.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile(".gitattributes", "* text=auto\n");
         harness.Repository.Git("add", ".gitattributes");
@@ -384,9 +384,10 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Yedek_CLEAN_FILTRESINDEN_etkilenmez()
     {
-        // 🔴 ÖLÇÜLDÜ ve en tehlikelisi: özel bir clean filtresi (Git LFS'in çalışma biçimi)
-        // varken filtresiz yazılmayan yedeğe dosyanın kendisi değil FİLTRENİN ÇIKTISI
-        // giriyor — ölçümde `GIZLI parola` içeriği yedekte `*** parola` oldu.
+        // 🔴 MEASURED and the most dangerous: when a custom clean filter is present (how Git
+        // LFS works), the backup written without `--no-filters` gets the FILTER'S OUTPUT
+        // instead of the file itself — in measurement, content `GIZLI parola` became
+        // `*** parola` in the backup.
         using Harness harness = await CreateAsync();
 
         harness.Repository.Git("config", "filter.maskele.clean", "sed s/GIZLI/***/");
@@ -408,11 +409,11 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task COK_dosyali_ikili_kurtarma_her_dosyayi_DOGRU_esliyor()
     {
-        // `cat-file --batch` akışı tek bir bayt dizisi: içerikler arka arkaya geliyor ve
-        // sınırları yalnızca başlıktaki BOYUT belirliyor. Ayrıştırıcı bir bayt kayarsa
-        // dosyalar birbirinin içeriğiyle "kurtarılır" ve bu sessiz bir veri kaybıdır —
-        // tam da P05-T15'in engellemek için var olduğu şey. Farklı boyutlarda ve ayraç
-        // baytları (\n) içeren ikili içerikle sınanıyor.
+        // The `cat-file --batch` stream is a single byte sequence: the contents arrive back to
+        // back, and only the SIZE in the header determines the boundaries. If the parser drifts
+        // by one byte, files get "recovered" with each other's content, and that's a silent
+        // data loss — exactly what P05-T15 exists to prevent. Tested with binary content of
+        // different sizes containing separator bytes (\n).
         using Harness harness = await CreateAsync();
 
         Dictionary<string, byte[]> contents = [];
@@ -422,7 +423,7 @@ public class WorkingTreeWriterTests
             byte[] data = new byte[i * 1000];
             Random.Shared.NextBytes(data);
 
-            // Satır sonu baytları bilinçli: ayraç arayan bir ayrıştırıcı burada kırılır.
+            // The line-ending bytes are deliberate: a parser searching for a separator breaks here.
             data[i * 10] = (byte)'\n';
             data[^1] = (byte)'\n';
 
@@ -450,8 +451,8 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Budanmis_yedek_digerlerini_ENGELLEMEZ()
     {
-        // `gc --prune=now` yedeği anında siliyor (ölçüldü). Kısmi kurtarma, hiç
-        // kurtarmamaktan iyidir; tek bir kayıp nesne diğerlerini düşürmemeli.
+        // `gc --prune=now` deletes the backup instantly (measured). Partial recovery is better
+        // than none at all; a single missing object must not drag the others down with it.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("duran.txt", "bu kurtarılmalı\n");
 
@@ -479,9 +480,9 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task YOK_SAYILAN_dosya_da_silinir()
     {
-        // 🔴 ÖLÇÜLDÜ: `-x` olmadan `git clean -f -- hata.log` çıkış 0 veriyor ve dosya
-        // DURUYOR. Kullanıcı adıyla seçtiği dosyanın silinmesini bekler; sessizce hiçbir
-        // şey yapmamak bu görevdeki en kötü sonuçtur.
+        // 🔴 MEASURED: without `-x`, `git clean -f -- hata.log` exits 0 and the file STAYS.
+        // The user expects the file they selected by name to be deleted; silently doing
+        // nothing is the worst possible outcome for this task.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile(".gitignore", "*.log\n");
         harness.Repository.WriteFile("hata.log", "x\n");
@@ -495,7 +496,7 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Takip_edilmeyen_DIZIN_silinir()
     {
-        // ÖLÇÜLDÜ: `-d` olmadan dizin hiç silinmiyor ve hata da verilmiyor.
+        // MEASURED: without `-d` the directory isn't deleted at all, and no error is given either.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("dizin/ic.txt", "x\n");
 
@@ -521,7 +522,7 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Bos_yol_listesi_HICBIR_SEYI_silmez()
     {
-        // ⚠️ Yolsuz `git clean -f` çalışma ağacının TAMAMINI siler.
+        // ⚠️ `git clean -f` without a path deletes the ENTIRE working tree.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("yeni.txt", "x\n");
 
@@ -533,7 +534,7 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Silme_IZLENEN_dosyaya_dokunmaz()
     {
-        // Karşı kanıt: `-x` eklemek "her şeyi sil"e dönüşmemeli.
+        // Counter-evidence: adding `-x` must not turn into "delete everything".
         using Harness harness = await CreateAsync();
 
         await harness.Writer.DeleteUntrackedAsync(
@@ -561,8 +562,8 @@ public class WorkingTreeWriterTests
         harness.Exists("yeni.txt").ShouldBeFalse();
         Directory.Exists(Path.Combine(harness.Path, "dizin")).ShouldBeFalse();
 
-        // Yok sayılanlar ayrı bir karar: `.env` gibi yeniden üretilemeyen dosyalar da
-        // genellikle yok sayılıyor.
+        // Ignored files are a separate decision: files that can't be regenerated, like `.env`,
+        // are also commonly ignored.
         harness.Exists("hata.log").ShouldBeTrue();
     }
 
@@ -584,7 +585,8 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Clean_ic_ice_depoyu_ancak_ISTENIRSE_siler()
     {
-        // 🔴 ÖLÇÜLDÜ: tek `-f` ile iç içe depo çıktıda HİÇ görünmüyor, sessizce atlanıyor.
+        // 🔴 MEASURED: with plain `-f`, a nested repository does NOT appear in the output at
+        // all — it's silently skipped.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("init", "icdepo");
         harness.Repository.WriteFile("icdepo/dosya.txt", "x\n");
@@ -625,9 +627,9 @@ public class WorkingTreeWriterTests
     [InlineData("ters\\slash.txt")]
     public async Task Ozel_karakterli_ad_GERCEKTEN_yok_sayilir(string name)
     {
-        // 🔴 ÖLÇÜLDÜ: adı HAM yazmak `#`, `!`, `[` ve `\` için sessizce çalışmıyor —
-        // git hata vermiyor, dosya da yok sayılmıyor. Doğrulama `check-ignore` ile
-        // gerçek git'e sorularak yapılıyor; desenin "doğru göründüğü" yetmez.
+        // 🔴 MEASURED: writing the name RAW silently fails for `#`, `!`, `[`, and `\` — git
+        // gives no error, and the file isn't ignored either. Verification is done by actually
+        // asking real git via `check-ignore`; the pattern merely "looking correct" isn't enough.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile(name, "x\n");
 
@@ -638,18 +640,19 @@ public class WorkingTreeWriterTests
 
         outcome.ShouldBe(GitIgnoreOutcome.Added);
 
-        // ⚠️ Doğrulama `-z` ile yapılıyor: `git status` özel karakterli adları TIRNAKLIYOR
-        // (`"ters\\slash.txt"`), dolayısıyla ham adı düz çıktıda aramak hatalı sürümde de
-        // "bulunamadı" derdi — yani test sessizce boşa geçerdi (P04-T09'un dersi).
+        // ⚠️ Verification is done with `-z`: `git status` QUOTES names with special characters
+        // (`"ters\\slash.txt"`), so searching for the raw name in plain output would also say
+        // "not found" for a broken version — meaning the test would silently pass for nothing
+        // (the lesson of P04-T09).
         Untracked(harness).ShouldNotContain(name);
 
-        // Ve doğrudan git'e sorularak. Çıkış koduna bakılıyor, çıktıya DEĞİL: `check-ignore`
-        // özel karakterli adı tırnaklıyor ve `-z` yalnızca `--stdin` ile çalışıyor (ölçüldü).
-        // `TestRepository.Git` sıfır olmayan çıkışta fırlatıyor, yani eşleşme yoksa test kırılır.
+        // And by asking git directly. The exit code is checked, NOT the output: `check-ignore`
+        // quotes names with special characters, and `-z` only works with `--stdin` (measured).
+        // `TestRepository.Git` throws on a nonzero exit, so the test breaks if there's no match.
         Should.NotThrow(() => harness.Repository.Git("check-ignore", "--quiet", "--", name));
     }
 
-    /// <summary>Takip edilmeyen yollar — <c>-z</c> ile, yani tırnaklanmamış ham adlar.</summary>
+    /// <summary>Untracked paths — via <c>-z</c>, i.e. unquoted raw names.</summary>
     private static IReadOnlyList<string> Untracked(Harness harness) =>
         [.. harness.Repository
             .Git("status", "--porcelain=v2", "-z", "--untracked-files=all")
@@ -660,9 +663,9 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task Satir_sonu_olmayan_gitignore_BOZULMAZ()
     {
-        // 🔴 ÖLÇÜLDÜ: satır sonu eklenmezse yeni desen bir öncekine yapışıyor
-        // (`derleme/` + `/kok.txt` → `derleme//kok.txt`). Sonuç yalnızca yeni desenin
-        // çalışmaması değil — kullanıcının VAR OLAN deseni de bozuluyor.
+        // 🔴 MEASURED: without adding a line ending, the new pattern glues onto the previous
+        // one (`derleme/` + `/kok.txt` → `derleme//kok.txt`). The result isn't just that the
+        // new pattern fails to work — the user's EXISTING pattern breaks too.
         using Harness harness = await CreateAsync();
 
         File.WriteAllText(Path.Combine(harness.Path, ".gitignore"), "derleme/");
@@ -682,9 +685,9 @@ public class WorkingTreeWriterTests
     [Fact]
     public async Task IZLENEN_dosya_icin_gitignore_YAZILMAZ()
     {
-        // 🔴 ÖLÇÜLDÜ: izlenen bir dosyayı `.gitignore`'a eklemek HİÇBİR ŞEY yapmıyor —
-        // `git status` dosyayı göstermeye devam ediyor. Yazıp "eklendi" demek, kullanıcıya
-        // olmayan bir sonuç vaat etmek olurdu.
+        // 🔴 MEASURED: adding a tracked file to `.gitignore` does NOTHING — `git status`
+        // keeps showing the file. Writing it and saying "added" would promise the user a
+        // result that doesn't exist.
         using Harness harness = await CreateAsync();
         RepositoryPath path = RepositoryPath.Parse("a.txt");
 
@@ -733,7 +736,7 @@ public class WorkingTreeWriterTests
     [Fact]
     public void Uzantisiz_ve_gizli_dosyalarda_uzanti_deseni_URETILMEZ()
     {
-        // `.env` bir uzantı değil, gizli dosya adıdır; `*.env` yazmak farklı bir şey demek.
+        // `.env` isn't an extension, it's a hidden file name; writing `*.env` means something different.
         GitIgnorePattern.ForExtensionOf(RepositoryPath.Parse("Makefile")).ShouldBeNull();
         GitIgnorePattern.ForExtensionOf(RepositoryPath.Parse(".env")).ShouldBeNull();
         GitIgnorePattern.ForExtensionOf(RepositoryPath.Parse("alt/.env")).ShouldBeNull();

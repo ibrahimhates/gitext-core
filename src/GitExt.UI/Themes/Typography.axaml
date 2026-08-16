@@ -3,16 +3,16 @@
                     xmlns:sys="using:System">
 
     <!--
-        Tipografi (P08-T10).
+        Typography (P08-T10).
 
-        Yazı tipi ailesi ve boyutlar TEMADAN BAĞIMSIZ: açık/koyu geçişi yazıyı değiştirmemeli.
-        Bu yüzden `ThemeDictionaries` içinde değiller.
+        The font family and the sizes are THEME-INDEPENDENT: switching light/dark must not change
+        the type. That is why they are not inside `ThemeDictionaries`.
 
-        Değerler çalışma zamanında `TypographyService` tarafından üzerine yazılıyor
-        (kullanıcı ayarı, P08-T14). Buradakiler yalnızca ayar okunmadan önceki ilk kare için.
+        The values are overwritten at runtime by `TypographyService` (user setting, P08-T14).
+        The ones here are only for the first frame, before the setting is read.
 
-        ⚠️ Sabit genişlikli aile bir LİSTE: "monospace" tek başına Linux'ta çalışır ama
-        Windows ve macOS'ta karşılığı yoktur. Sıra önemli — bulunan ilk aile kullanılıyor.
+        ⚠️ The monospace family is a LIST: "monospace" alone works on Linux but has no
+        counterpart on Windows or macOS. The order matters — the first family found is used.
     -->
 
     <FontFamily x:Key="GitExtMonospaceFont">Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace</FontFamily>
@@ -20,7 +20,7 @@
     <sys:Double x:Key="GitExtUiFontSize">12</sys:Double>
     <sys:Double x:Key="GitExtMonospaceFontSize">12</sys:Double>
 
-    <!-- Türetilmiş boyutlar: kullanıcı ana boyutu değiştirdiğinde bunlar da kayar. -->
+    <!-- Derived sizes: when the user changes the base size, these shift with it. -->
     <sys:Double x:Key="GitExtSmallFontSize">11</sys:Double>
     <sys:Double x:Key="GitExtLargeFontSize">14</sys:Double>
 </ResourceDictionary>

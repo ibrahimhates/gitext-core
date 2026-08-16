@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# SHA256SUMS üretimi ve doğrulaması (P10-T04).
+# SHA256SUMS generation and verification (P10-T04).
 #
-# Kullanım:
-#   build/checksums.sh              # dist/ içindeki paketler için SHA256SUMS üret
-#   build/checksums.sh --verify     # üretilmiş dosyayı doğrula
+# Usage:
+#   build/checksums.sh              # generate SHA256SUMS for packages in dist/
+#   build/checksums.sh --verify     # verify the generated file
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# Checksum bir GÜVENLİK önlemi değil, BÜTÜNLÜK önlemidir. Saldırgan dosyayı
-# değiştirebiliyorsa SHA256SUMS'ı da değiştirebilir. Yakaladığı şey: yarım inen
-# dosya, bozuk ayna, kesilmiş aktarım. GPG imzası olmadan bundan fazlasını
-# vaat etmek yanıltıcı olur — README bunu böyle söylemeli.
+# A checksum is not a SECURITY measure, it's an INTEGRITY measure. If an attacker
+# can modify the file, they can modify SHA256SUMS too. What it catches: a
+# half-downloaded file, a broken mirror, a truncated transfer. Promising more than
+# that without a GPG signature would be misleading — the README should say so.
 
 set -euo pipefail
 
@@ -20,11 +20,12 @@ SUMS="$DIST/SHA256SUMS"
 
 cd "$DIST"
 
-# Yalnızca dağıtılan çıktılar. Ara ürünler (appimagetool, açılmış klasörler)
-# checksum listesine girmemeli — kullanıcı onları indirmiyor.
-# ⚠️ Desen `gitext-core-*` DEĞİL `gitext-core[-_]*`: Debian paket adları alt çizgi
-# kullanıyor (gitext-core_1.0.0_amd64.deb). Yalnızca tire aranırken .deb sessizce
-# listenin dışında kalıyordu — checksum dosyası eksik ama "başarılı" görünüyordu.
+# Distributed outputs only. Intermediate artifacts (appimagetool, extracted folders)
+# must not enter the checksum list — the user doesn't download those.
+# ⚠️ The pattern is `gitext-core[-_]*`, NOT `gitext-core-*`: Debian package names use
+# an underscore (gitext-core_1.0.0_amd64.deb). When only the hyphen was matched, .deb
+# silently fell outside the list — the checksum file was missing something but looked
+# "successful."
 mapfile -t ARTIFACTS < <(
     find . -maxdepth 1 -type f \
         \( -name 'gitext-core[-_]*.tar.gz' \
@@ -38,39 +39,39 @@ mapfile -t ARTIFACTS < <(
 )
 
 if [ "${1:-}" = "--verify" ]; then
-    [ -f "$SUMS" ] || { echo "HATA: $SUMS yok." >&2; exit 1; }
+    [ -f "$SUMS" ] || { echo "ERROR: $SUMS does not exist." >&2; exit 1; }
     sha256sum -c "$SUMS"
     exit $?
 fi
 
 if [ "${#ARTIFACTS[@]}" -eq 0 ]; then
-    # Sessizce boş bir SHA256SUMS üretmek, paketlemenin başarısız olduğunu gizlerdi.
-    echo "HATA: $DIST içinde dağıtılabilir çıktı yok. Paketleme çalıştı mı?" >&2
+    # Silently producing an empty SHA256SUMS would hide that packaging failed.
+    echo "ERROR: no distributable output in $DIST. Did packaging run?" >&2
     exit 1
 fi
 
 sha256sum "${ARTIFACTS[@]}" > "$SUMS"
 
-echo "== SHA256SUMS (${#ARTIFACTS[@]} dosya)"
+echo "== SHA256SUMS (${#ARTIFACTS[@]} files)"
 cat "$SUMS"
 
-# Ürettiğimiz dosyanın kendisinin doğrulandığını görmeden bitirmiyoruz:
-# yanlış dizinden üretilmiş bir liste de "başarılı" görünür.
+# We don't finish without seeing the file we produced verify itself: a list
+# generated from the wrong directory would also look "successful."
 echo
-echo "== doğrulama"
+echo "== verification"
 sha256sum -c "$SUMS"
 
-# ---------------------------------------------------------------- GPG (opsiyonel)
+# ---------------------------------------------------------------- GPG (optional)
 #
-# İmzalama yalnızca bir anahtar AÇIKÇA verilmişse yapılıyor. Anahtar yoksa adım
-# ATLANDIĞI SÖYLENEREK geçiliyor — sessizce geçmek, imzalı sanılan imzasız bir
-# sürüm üretirdi.
+# Signing only happens if a key is EXPLICITLY given. If there's no key, the step is
+# passed with the SKIP announced — passing silently would produce a release that
+# looks signed but isn't.
 if [ -n "${GPG_KEY_ID:-}" ]; then
     echo
-    echo "== GPG imzası ($GPG_KEY_ID)"
+    echo "== GPG signature ($GPG_KEY_ID)"
     gpg --batch --yes --local-user "$GPG_KEY_ID" --armor --detach-sign "$SUMS"
     echo "   $SUMS.asc"
 else
     echo
-    echo "-- GPG imzalama ATLANDI (GPG_KEY_ID verilmedi)."
+    echo "-- GPG signing SKIPPED (GPG_KEY_ID not given)."
 fi

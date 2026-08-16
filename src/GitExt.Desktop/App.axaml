@@ -4,14 +4,14 @@
              RequestedThemeVariant="Light">
 
     <!--
-        Varsayılan AÇIK tema — GitExtensions'ın görsel kimliği bu ve hedef kitle oradan geliyor.
-        Sistem koyu temada olsa bile varsayılan açıktır; "sistemi takip et" bilinçli bir
-        tercihtir, varsayılan değil.
+        The LIGHT theme is the default — that is GitExtensions' visual identity and the target
+        audience comes from there. Even when the system is in dark mode the default is light;
+        "follow the system" is a deliberate choice, not the default.
 
-        Buradaki değer yalnızca **ilk kare** için: `ThemeService.ApplyStored()` açılışta
-        kullanıcının kaydettiği tercihi uyguluyor (P08-T08). Öncesinde bir varsayılan
-        yazılmasaydı, ayar okunana kadar geçen sürede uygulama sistem temasıyla açılıp
-        gözle görülür biçimde zıplardı.
+        The value here is only for the **first frame**: `ThemeService.ApplyStored()` applies the
+        user's saved preference at startup (P08-T08). Without a default written beforehand, the
+        application would open with the system theme for the time it takes to read the setting
+        and then visibly jump.
     -->
 
     <Application.Styles>

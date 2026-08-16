@@ -4,42 +4,43 @@ using System.Text.Json.Serialization;
 namespace GitExt.UI.Storage;
 
 /// <summary>
-/// Son açılan depoların listesini saklar (P03-T16).
+/// Stores the list of recently opened repositories (P03-T16).
 /// </summary>
 public interface IRecentRepositoryStore
 {
-    /// <summary>Son açılanları, en yeni ilk sırada döndürür.</summary>
+    /// <summary>Returns recently opened repositories, newest first.</summary>
     Task<IReadOnlyList<string>> LoadAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Bir depoyu listenin başına taşır (veya ekler) ve kaydeder.</summary>
+    /// <summary>Moves a repository to the front of the list (or adds it) and saves.</summary>
     Task AddAsync(string workingDirectory, CancellationToken cancellationToken = default);
 
-    /// <summary>Bir depoyu listeden çıkarır.</summary>
+    /// <summary>Removes a repository from the list.</summary>
     Task RemoveAsync(string workingDirectory, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// Son açılan depoları platform standardı yapılandırma dizinindeki JSON dosyasında tutar.
+/// Keeps recently opened repositories in a JSON file in the platform-standard config directory.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Bu, P08-T14'ün (ayarlar altyapısı) habercisi.</b> Tam ayar sistemi geldiğinde bu dosya
-/// onun içine taşınacak; o yüzden şemaya <b>ilk günden sürüm alanı</b> konuyor (ADR-0006:
-/// ayar formatı <c>v1.0.0</c>'da donuyor, sürüm alanı sonradan eklenemez).
+/// <b>This is the forerunner of P08-T14 (settings infrastructure).</b> When the full settings
+/// system arrives, this file will move into it; that's why a <b>version field is included
+/// from day one</b> (ADR-0006: the settings format freezes at <c>v1.0.0</c>, a version field
+/// cannot be added afterwards).
 /// </para>
 /// <para>
-/// Liste okunamazsa veya bozuksa <b>boş kabul edilir</b>. Son açılanlar kolaylıktır;
-/// bozuk bir dosya yüzünden uygulamanın açılmaması kabul edilemez.
+/// If the list cannot be read or is corrupt, it is <b>treated as empty</b>. Recently opened is
+/// a convenience; the app failing to open because of a corrupt file is unacceptable.
 /// </para>
 /// </remarks>
 public sealed class RecentRepositoryStore : IRecentRepositoryStore
 {
     /// <summary>
-    /// Listede tutulan en fazla depo sayısı.
+    /// Maximum number of repositories kept in the list.
     /// </summary>
     /// <remarks>
-    /// Menüye sığması ve göz taraması kolay olsun diye kısa tutuldu; sınırsız bir liste
-    /// zamanla kullanıcının hiç açmadığı depolarla dolar.
+    /// Kept short so it fits in the menu and is easy to scan; an unbounded list would
+    /// eventually fill up with repositories the user never opens.
     /// </remarks>
     public const int MaximumCount = 12;
 
@@ -53,19 +54,21 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
     }
 
     /// <summary>
-    /// Ayar dosyalarının bulunduğu dizin (platform standardı konumda).
+    /// Directory where settings files live (platform-standard location).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>⚠️ ÖLÇÜLDÜ:</b> Linux'ta <c>XDG_CONFIG_HOME</c> <b>var olmayan</b> bir dizini
-    /// gösteriyorsa .NET'in <see cref="Environment.SpecialFolder.ApplicationData"/> değeri
-    /// <b>boş dize</b> döner. Boş dize <see cref="Path.Combine(string, string)"/>'e girerse
-    /// sonuç <b>göreli</b> bir yol olur ve dosya kullanıcının çalışma dizinine —
-    /// yani açtığı deponun içine — yazılır.
+    /// <b>⚠️ MEASURED:</b> on Linux, if <c>XDG_CONFIG_HOME</c> points to a directory that
+    /// <b>doesn't exist</b>, .NET's <see cref="Environment.SpecialFolder.ApplicationData"/>
+    /// value returns an <b>empty string</b>. If the empty string is passed into
+    /// <see cref="Path.Combine(string, string)"/>, the result becomes a <b>relative</b> path
+    /// and the file gets written to the user's working directory — i.e. inside the repository
+    /// they opened.
     /// </para>
     /// <para>
-    /// (Ölçülen diğer davranışlar: var olan bir dizin gösteriyorsa o dizin döner; <b>göreli</b>
-    /// bir değer XDG şartnamesi gereği yok sayılır ve <c>~/.config</c>'e düşülür.)
+    /// (Other measured behaviors: if it points to an existing directory, that directory is
+    /// returned; a <b>relative</b> value is ignored per the XDG specification, falling back to
+    /// <c>~/.config</c>.)
     /// </para>
     /// </remarks>
     public static string ConfigurationDirectory()
@@ -74,8 +77,8 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
 
         if (string.IsNullOrEmpty(root))
         {
-            // XDG_CONFIG_HOME var olmayan bir yeri gösteriyor. XDG şartnamesindeki
-            // varsayılana kendimiz düşüyoruz.
+            // XDG_CONFIG_HOME points somewhere that doesn't exist. We fall back to the XDG
+            // spec's default ourselves.
             string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
             root = string.IsNullOrEmpty(home)
@@ -101,7 +104,7 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
 
         List<string> updated = [workingDirectory];
 
-        // Aynı depo iki kez görünmemeli; yeniden açmak onu başa taşır.
+        // The same repository must not appear twice; reopening it moves it to the front.
         updated.AddRange(current.Where(p => !PathsEqual(p, workingDirectory)));
 
         if (updated.Count > MaximumCount)
@@ -122,12 +125,12 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
     }
 
     /// <summary>
-    /// İki yolun aynı depoyu gösterip göstermediği.
+    /// Whether two paths point to the same repository.
     /// </summary>
     /// <remarks>
-    /// Karşılaştırma Windows ve macOS'ta büyük/küçük harf duyarsız, Linux'ta duyarlıdır —
-    /// dosya sistemlerinin gerçek davranışı bu. Sondaki ayraç da normalleştirilir, aksi halde
-    /// <c>/depo</c> ve <c>/depo/</c> iki ayrı girdi olurdu.
+    /// Comparison is case-insensitive on Windows and macOS, case-sensitive on Linux — that's
+    /// the actual behavior of those file systems. Trailing separators are also normalized,
+    /// otherwise <c>/repo</c> and <c>/repo/</c> would count as two separate entries.
     /// </remarks>
     private static bool PathsEqual(string left, string right) =>
         string.Equals(Normalize(left), Normalize(right), PathComparison);
@@ -155,7 +158,7 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
-            // Bozuk veya okunamayan dosya: liste yokmuş gibi devam edilir.
+            // Corrupt or unreadable file: proceed as if the list didn't exist.
             return null;
         }
     }
@@ -176,15 +179,15 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Salt okunur ev dizini, dolu disk vb. Son açılanları kaydedememek
-            // uygulamayı durdurmaz.
+            // Read-only home directory, full disk, etc. Failing to save recently opened
+            // repositories must not stop the app.
         }
     }
 
 }
 
 /// <summary>
-/// Son açılanlar dosyasının şeması.
+/// Schema of the recently-opened file.
 /// </summary>
 internal sealed class RecentFile
 {
@@ -196,13 +199,13 @@ internal sealed class RecentFile
 }
 
 /// <summary>
-/// <see cref="RecentFile"/> için kaynak üretimli seri hale getirme bağlamı.
+/// Source-generated serialization context for <see cref="RecentFile"/>.
 /// </summary>
 /// <remarks>
-/// <b>Yansımalı <c>JsonSerializer</c> aşırı yüklemeleri kullanılamaz:</b> trimming'i bozuyorlar
-/// (IL2026) ve <c>PublishTrimmed</c> ile yayın <b>derlenmiyor</b>. Bu, ölçülerek bulundu —
-/// P03-T16'da eklenen yansımalı çağrılar yayını kırdı ama derleme ve testler yeşil kaldığı için
-/// ancak `dotnet publish` denenince görüldü.
+/// <b>Reflective <c>JsonSerializer</c> overloads cannot be used:</b> they break trimming
+/// (IL2026) and the publish <b>fails to build</b> with <c>PublishTrimmed</c>. This was found
+/// by measurement — the reflective calls added in P03-T16 broke the publish, but build and
+/// tests stayed green, so it was only caught when `dotnet publish` was actually tried.
 /// </remarks>
 [JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(RecentFile))]

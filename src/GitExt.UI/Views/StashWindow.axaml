@@ -7,7 +7,7 @@
         Title="{loc:Translate stash.stashes}" Width="900" Height="560"
         WindowStartupLocation="CenterOwner">
 
-  <!-- Yerleşim GitExtensions FormStash'ten (§ 9): solda liste, sağda diff, altta eylemler. -->
+  <!-- The layout comes from GitExtensions FormStash (§ 9): list on the left, diff on the right, actions at the bottom. -->
   <Grid RowDefinitions="Auto,*,Auto" Margin="12">
 
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">

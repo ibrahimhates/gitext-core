@@ -12,18 +12,18 @@
         CanResize="False">
 
     <!--
-        Yerleşim GitExtensions `FormMergeBranch.Designer.cs`'ten (§ 9), sıra birebir:
-          "Merge branch" (dal seçimi) -> "Into current branch" (salt okunur) ->
+        The layout comes from GitExtensions `FormMergeBranch.Designer.cs` (§ 9), order verbatim:
+          "Merge branch" (branch selection) -> "Into current branch" (read-only) ->
           fast forward / always create a merge commit -> "Do not commit" ->
           "Show advanced options" -> (squash · allow unrelated histories · merge message)
-          -> "Merge" düğmesi.
+          -> "Merge" button.
 
-        Bizde OLMAYAN: "Use non-default merge strategy" (resolve/octopus/ours/subtree) ve
-        "Add log messages" — yerinde ama devre dışı; ikisi de ileri seviye ve Faz 07'nin
-        çakışma çözümüyle birlikte anlam kazanıyor.
+        What we DO NOT have: "Use non-default merge strategy" (resolve/octopus/ours/subtree) and
+        "Add log messages" — in place but disabled; both are advanced and only take on meaning
+        alongside Phase 07's conflict resolution.
 
-        EKLENEN: seçilen dalın NE getireceği (ileri sarılabilir mi, kaç commit) ve
-        çalıştırılacak KOMUT. Ayrıca squash seçilince ne olacağı ÖNCEDEN yazılı.
+        ADDED: what the selected branch WILL BRING (can it fast-forward, how many commits) and the
+        COMMAND that will run. Also, what squash will do is written out BEFOREHAND.
     -->
     <StackPanel Margin="16" Spacing="10">
 
@@ -78,7 +78,7 @@
                       IsChecked="{Binding ShowAdvanced}" />
 
         <StackPanel Name="AdvancedPanel" Spacing="6" IsVisible="{Binding ShowAdvanced}">
-            <!-- Yerinde ama devre dışı (§ 9): Faz 07'nin çakışma çözümüyle anlam kazanıyor. -->
+            <!-- In place but disabled (§ 9): it takes on meaning with Phase 07's conflict resolution. -->
             <CheckBox Name="CustomStrategyBox"
                       Content="{loc:Translate merge.use_a_non_default_merge_strategy}"
                       IsEnabled="False" />
@@ -112,7 +112,7 @@
                      Text="{Binding Message}" />
         </StackPanel>
 
-        <!-- "Komutu göster" ilkesi. -->
+        <!-- The "show the command" principle. -->
         <StackPanel Spacing="3">
             <TextBlock Text="{loc:Translate merge.command_to_run}" FontSize="11" Opacity="0.8" />
             <TextBox Name="CommandPreviewBox"

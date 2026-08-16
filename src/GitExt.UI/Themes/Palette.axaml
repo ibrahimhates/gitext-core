@@ -3,32 +3,33 @@
 
     <!--
         ===================================================================================
-        GitExt renk paleti (P08-T07)
+        GitExt colour palette (P08-T07)
         ===================================================================================
 
-        HİÇBİR renk XAML görünümlerinin içine gömülmez. Faz 08'e girilirken 47 gömülü renk
-        vardı ve hepsi açık zemine göre seçilmişti; koyu temada okunmayacak olan tam da
-        onlardı. Tek kaynak burasıdır.
+        NO colour is embedded inside the XAML views. Going into Phase 08 there were 47 embedded
+        colours and every one of them had been picked against a light background; those were
+        exactly the ones that would be unreadable in the dark theme. This is the single source.
 
-        ⚠️ Kullanım kuralı: görünümlerde **DynamicResource** kullanılır, StaticResource DEĞİL.
-        P08-T00/M08b'de ölçüldü: `ThemeDictionaries` yalnızca dinamik kaynakla canlı
-        güncelleniyor; statik bağlama ilk temada donar ve tema geçişi ekranın bir kısmında
-        yarım kalır — yarım bir tema, temasızlıktan kötüdür (P08-T08).
+        ⚠️ Usage rule: views use **DynamicResource**, NOT StaticResource. Measured in
+        P08-T00/M08b: `ThemeDictionaries` update live only with a dynamic resource; a static
+        binding freezes on the first theme and the theme switch stays half-done over part of the
+        screen — a half theme is worse than no theme (P08-T08).
 
-        Adlandırma: `GitExt<Amaç><Tür>Brush`. Amaç ANLAMDIR, renk değil: "Error" denir,
-        "Red" denmez — koyu temada aynı anlam farklı bir renkle karşılanıyor.
+        Naming: `GitExt<Purpose><Kind>Brush`. The purpose is the MEANING, not the colour: it is
+        called "Error", not "Red" — in the dark theme the same meaning is met by a different
+        colour.
 
-        Açık tema değerleri GitHub'ın açık paletine yakın (mevcut kod zaten oradan gelmiş:
-        #E6FFEC / #FFEBE9 GitHub'ın diff renkleri). Koyu tema karşılıkları GitHub koyu
-        paletinden türetildi.
+        The light theme values are close to GitHub's light palette (the existing code already
+        came from there: #E6FFEC / #FFEBE9 are GitHub's diff colours). The dark theme
+        counterparts were derived from GitHub's dark palette.
     -->
 
     <ResourceDictionary.ThemeDictionaries>
 
-        <!-- =========================================================== AÇIK (varsayılan) -->
+        <!-- =========================================================== LIGHT (default) -->
         <ResourceDictionary x:Key="Light">
 
-            <!-- Yapısal -->
+            <!-- Structural -->
             <SolidColorBrush x:Key="GitExtBorderBrush" Color="#D0D7DE" />
             <SolidColorBrush x:Key="GitExtSeparatorBrush" Color="#40808080" />
             <SolidColorBrush x:Key="GitExtSubtleBackgroundBrush" Color="#20808080" />
@@ -42,13 +43,13 @@
             <SolidColorBrush x:Key="GitExtAttentionBrush" Color="#BC4C00" />
             <SolidColorBrush x:Key="GitExtRenameBrush" Color="#5B4BB5" />
 
-            <!-- Hata şeridi -->
+            <!-- Error strip -->
             <SolidColorBrush x:Key="GitExtErrorBrush" Color="#B3261E" />
             <SolidColorBrush x:Key="GitExtErrorBackgroundBrush" Color="#FBE0DE" />
             <SolidColorBrush x:Key="GitExtErrorBorderBrush" Color="#E39D98" />
             <SolidColorBrush x:Key="GitExtErrorForegroundBrush" Color="#6E1F1A" />
 
-            <!-- Uyarı şeridi -->
+            <!-- Warning strip -->
             <SolidColorBrush x:Key="GitExtWarningBrush" Color="#8A5A00" />
             <SolidColorBrush x:Key="GitExtWarningBackgroundBrush" Color="#FFF6D8" />
             <SolidColorBrush x:Key="GitExtWarningBorderBrush" Color="#E0C169" />

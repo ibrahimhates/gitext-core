@@ -10,11 +10,11 @@
         CanResize="False">
 
     <!--
-        Yerleşim GitExtensions `FormDeleteBranch`'ten (§ 9): dal listesi + "Delete" düğmesi.
-        Eklenen: birleştirilmemiş dalda KURTARMA KOMUTU. GitExtensions yalnızca
-        "not been merged into HEAD. Proceed?" diye soruyor; ölçüm gösterdi ki silme sonrası
-        dalın kendi reflog'u da gidiyor, dolayısıyla kullanıcıya geri dönüş yolunu
-        vermezsek gerçekten kaybedebilir.
+        The layout comes from GitExtensions `FormDeleteBranch` (§ 9): the branch list plus a
+        "Delete" button. Added: the RECOVERY COMMAND for an unmerged branch. GitExtensions only
+        asks "not been merged into HEAD. Proceed?"; measurement showed that after the delete the
+        branch's own reflog is gone too, so unless the user is given the way back they really can
+        lose it.
     -->
     <StackPanel Margin="16" Spacing="10">
 

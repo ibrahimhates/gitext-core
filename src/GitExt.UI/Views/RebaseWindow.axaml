@@ -7,7 +7,7 @@
         Title="{loc:Translate rebase.rebase}" Width="820" Height="600"
         WindowStartupLocation="CenterOwner">
 
-  <!-- GitExtensions FormRebase (§ 9): üstte hedef, ortada todo listesi, altta eylemler. -->
+  <!-- GitExtensions FormRebase (§ 9): the target on top, the todo list in the middle, actions at the bottom. -->
   <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12">
 
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">

@@ -12,17 +12,17 @@
         CanResize="False">
 
     <!--
-        Yerleşim GitExtensions `FormPull.Designer.cs`'ten (§ 9), grup sırası birebir:
+        The layout comes from GitExtensions `FormPull.Designer.cs` (§ 9), group order verbatim:
           GroupPullFrom (Remote / URL) → GroupBranch (Local / Remote branch) →
-          GroupMergeOptions (Merge · Rebase · yalnızca Fetch) → GroupTagOptions →
-          Prune / PruneTags → AutoStash → Pull düğmesi.
+          GroupMergeOptions (Merge · Rebase · Fetch only) → GroupTagOptions →
+          Prune / PruneTags → AutoStash → Pull button.
 
-        Bizde OLMAYAN: "URL" seçeneği (yerinde ama devre dışı — uzak depo eklemeden URL'den
-        çekmek P06-T09'un kimlik doğrulama akışına bağlı), "Solve conflicts" ve "Stash
-        changes" düğmeleri (mergetool Faz 07, stash yönetimi Faz 07).
+        What we DO NOT have: the "URL" option (in place but disabled — pulling from a URL without
+        adding a remote depends on P06-T09's authentication flow), and the "Solve conflicts" and
+        "Stash changes" buttons (mergetool is Phase 07, stash management is Phase 07).
 
-        EKLENEN: stratejinin NEREDEN geldiğini yazan satır ve çalıştırılacak KOMUT.
-        Planın maddesi: "pull düğmesinin ne yaptığı belirsiz kalmamalı".
+        ADDED: the line stating WHERE the strategy comes from, and the COMMAND that will run.
+        From the plan: "what the pull button does must not stay ambiguous".
     -->
     <StackPanel Margin="16" Spacing="10">
 
@@ -45,7 +45,7 @@
                         Margin="8,0,0,0"
                         Click="OnManageRemotesClick" />
 
-                <!-- Yerinde ama devre dışı (§ 9): URL'den çekme P06-T09'a bağlı. -->
+                <!-- In place but disabled (§ 9): pulling from a URL depends on P06-T09. -->
                 <RadioButton Name="FromUrlRadio"
                              Grid.Row="1" Grid.Column="0"
                              GroupName="PullFrom"
@@ -140,7 +140,7 @@
                       IsChecked="{Binding AutoStash}" />
         </StackPanel>
 
-        <!-- "Komutu göster" ilkesi: düğmeye basmadan ne olacağı okunabilmeli. -->
+        <!-- The "show the command" principle: what will happen must be readable before the button is pressed. -->
         <StackPanel Spacing="3">
             <TextBlock Text="{loc:Translate pull.command_to_run}" FontSize="11" Opacity="0.8" />
             <TextBox Name="CommandPreviewBox"
@@ -174,9 +174,9 @@
         </StackPanel>
 
         <!--
-            İlerleme + iptal (P06-T10). Ölçüldü: git ilerleme satırlarını taşıma dönüşüyle
-            yazıyor, bu yüzden stderr akış hâlinde okunuyor. İptal düğmesi süreci gerçekten
-            öldürüyor; yarıda kesilen fetch geride kilit bırakmıyor.
+            Progress and cancel (P06-T10). Measured: git writes its progress lines with a carriage
+            return, which is why stderr is read as a stream. The cancel button really does kill the
+            process; a fetch interrupted halfway leaves no lock behind.
         -->
         <StackPanel Name="ProgressPanel" Spacing="4" IsVisible="{Binding IsBusy}">
             <TextBlock Name="ProgressText"

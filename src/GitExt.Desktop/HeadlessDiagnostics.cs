@@ -53,12 +53,12 @@ internal static class HeadlessDiagnostics
         catch (Exception ex) when (ex is GitException or GitNotFoundException
                                        or GitVersionTooOldException or DirectoryNotFoundException)
         {
-            Console.Error.WriteLine($"HATA: {ex.Message}");
+            Console.Error.WriteLine($"ERROR: {ex.Message}");
 
             if (ex is GitException git)
             {
-                Console.Error.WriteLine($"  tür    : {git.Kind}");
-                Console.Error.WriteLine($"  komut  : {git.CommandLine}");
+                Console.Error.WriteLine($"  kind   : {git.Kind}");
+                Console.Error.WriteLine($"  command: {git.CommandLine}");
 
                 if (!string.IsNullOrWhiteSpace(git.StandardError))
                 {
@@ -72,22 +72,22 @@ internal static class HeadlessDiagnostics
 
     private static void PrintLocation(RepositoryLocation location)
     {
-        Console.WriteLine($"depo        : {location.WorkingDirectory}");
-        Console.WriteLine($"  git dizini: {location.GitDirectory}");
+        Console.WriteLine($"repository  : {location.WorkingDirectory}");
+        Console.WriteLine($"  git dir   : {location.GitDirectory}");
 
         if (location.IsLinkedWorkTree)
         {
-            Console.WriteLine($"  ortak dizin: {location.CommonDirectory}  (bağlı worktree)");
+            Console.WriteLine($"  common dir: {location.CommonDirectory}  (linked worktree)");
         }
 
         if (location.IsBare)
         {
-            Console.WriteLine("  tür       : bare (çalışma ağacı yok)");
+            Console.WriteLine("  kind      : bare (no working tree)");
         }
 
         if (location.IsSubmodule)
         {
-            Console.WriteLine($"  üst proje : {location.SuperprojectWorkTree}");
+            Console.WriteLine($"  superproj : {location.SuperprojectWorkTree}");
         }
     }
 
@@ -105,7 +105,7 @@ internal static class HeadlessDiagnostics
         if (refs.CurrentBranch is { } current && current.Upstream is { } upstream)
         {
             string tracking = current.Tracking.IsGone
-                ? "upstream silinmiş"
+                ? "upstream deleted"
                 : $"+{current.Tracking.Ahead} -{current.Tracking.Behind}";
 
             Console.WriteLine($"  upstream  : {upstream} ({tracking})");
@@ -134,13 +134,13 @@ internal static class HeadlessDiagnostics
 
         if (status.IsClean)
         {
-            Console.WriteLine("durum       : temiz");
+            Console.WriteLine("status      : clean");
             return;
         }
 
         Console.WriteLine(
             $"durum       : {status.Staged.Count()} staged, {status.Unstaged.Count()} unstaged, "
-            + $"{status.Untracked.Count()} untracked, {status.Conflicted.Count()} çakışma");
+            + $"{status.Untracked.Count()} untracked, {status.Conflicted.Count()} conflicted");
 
         foreach (FileStatus entry in status.Entries.Take(20))
         {
@@ -160,7 +160,7 @@ internal static class HeadlessDiagnostics
 
         if (status.Entries.Count > 20)
         {
-            Console.WriteLine($"  … ve {status.Entries.Count - 20} girdi daha");
+            Console.WriteLine($"  … and {status.Entries.Count - 20} more entries");
         }
     }
 
@@ -170,7 +170,7 @@ internal static class HeadlessDiagnostics
         CancellationToken cancellationToken)
     {
         Console.WriteLine();
-        Console.WriteLine("son commit'ler:");
+        Console.WriteLine("recent commits:");
 
         CommitLogReader reader = new(runner);
 
@@ -195,14 +195,14 @@ internal static class HeadlessDiagnostics
         catch (GitException ex) when (ex.Kind is GitFailureKind.UnknownRevision or GitFailureKind.Unknown)
         {
             // An unborn repository has no commits; this is not an error.
-            Console.WriteLine("  (henüz commit yok)");
+            Console.WriteLine("  (no commits yet)");
         }
     }
 
     private static void PrintCommandLog(InMemoryGitCommandLog log)
     {
         Console.WriteLine();
-        Console.WriteLine($"çalıştırılan git komutları ({log.Entries.Count}):");
+        Console.WriteLine($"git commands run ({log.Entries.Count}):");
 
         foreach (GitCommandLogEntry entry in log.Entries)
         {
@@ -212,7 +212,7 @@ internal static class HeadlessDiagnostics
         }
 
         double total = log.Entries.Sum(e => e.Duration.TotalMilliseconds);
-        Console.WriteLine($"  {total,6:F0} ms  toplam");
+        Console.WriteLine($"  {total,6:F0} ms  total");
     }
 
     private static string Truncate(string value, int length) =>

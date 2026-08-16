@@ -12,14 +12,14 @@
              x:DataType="vm:DiffViewModel">
 
     <!--
-        Bu görünüm BAĞIMSIZ: ana pencereyi veya commit listesini tanımaz. Aynı bileşen hem
-        ana penceredeki panelde hem P04-T16'daki karşılaştırma penceresinde kullanılacak
-        (karar GitExtensions'a bakılarak verildi — orada da gömülü diff alanı ve ayrıca
-        modeless açılan bir karşılaştırma penceresi var).
+        This view is STANDALONE: it knows nothing about the main window or the commit list.
+        The same component is used both in the main window's panel and in the comparison
+        window from P04-T16 (the decision came from looking at GitExtensions — it has an
+        embedded diff area plus a modeless comparison window as well).
     -->
 
     <UserControl.Styles>
-        <!-- Durum harfi: git'in ham çıktısındaki harflerle aynı, renkle desteklenmiş. -->
+        <!-- Status letter: the same letters git emits raw, reinforced with colour. -->
         <Style Selector="TextBlock.status">
             <Setter Property="Width" Value="14" />
             <Setter Property="FontSize" Value="11" />
@@ -49,19 +49,21 @@
         </Style>
 
         <!--
-            Satır arka planları. Renkler AÇIK tema için; Faz 08'de tema kaynak sözlüğüne
-            taşınacak (rozetlerle aynı gerekçe).
+            Line backgrounds. The colours are for the LIGHT theme; they move into the theme
+            resource dictionary in Phase 08 (same reason as the badges).
         -->
         <!--
-            🔴 ÖLÇÜLDÜ (P05-T11): satır arka planı `ListBoxItem`'ın seçim vurgusunu TAMAMEN
-            örtüyordu — seçim yalnızca bağlam satırlarında görünüyor, eklenen/silinen
-            satırlarda hiç görünmüyordu. Kullanıcının kısmi staging için seçtiği satırlar
-            tam da onlar; seçimi göremeyen kullanıcı yanlış satırları stage'ler ve git bunu
-            kabul eder (yama geçerlidir, içerik sessizce yanlış olur — P05-T04'ün bulgusu).
+            🔴 MEASURED (P05-T11): the line background COMPLETELY covered `ListBoxItem`'s
+            selection highlight — the selection was visible only on context lines, never on
+            added or deleted ones. Those are exactly the lines a user selects for partial
+            staging; unable to see the selection, the user stages the wrong lines and git
+            accepts it (the patch is valid, the content is silently wrong — the finding of
+            P05-T04).
 
-            Çözüm satırın KENDİ çerçevesi: sol kenarda kalın vurgu + ince üst/alt çizgi.
-            Kenarlık her satırda AYNI kalınlıkta (seçilmemişken saydam) — yoksa seçim
-            değiştikçe satır yüksekliği oynar ve liste zıplar.
+            The fix is the line's OWN border: a thick accent on the left edge plus a thin
+            top/bottom rule. The border has the SAME thickness on every line (transparent
+            when unselected) — otherwise the row height shifts as the selection moves and
+            the list jumps.
         -->
         <Style Selector="Border.line">
             <Setter Property="BorderThickness" Value="3,1,0,1" />
@@ -82,14 +84,15 @@
         </Style>
 
         <!--
-            Satır İÇİ vurgulama artık `DiffTextPresenter` içinde `Run.Background` ile
-            çiziliyor (satır kaydırma yatay panelde çalışmadığı için). Renkler orada;
-            buradaki satır arka planlarıyla uyumlu tutulmalı.
+            INTRA-line highlighting is now drawn inside `DiffTextPresenter` via
+            `Run.Background` (because word wrap does not work in a horizontal panel). The
+            colours live there; they must stay consistent with the line backgrounds here.
         -->
 
         <!--
-            Dolgu: yan yana görünümde karşılığı olmayan taraf. Boş bir bağlam satırından
-            AYRI boyanıyor — aksi hâlde kullanıcı olmayan bir satırı var sanar.
+            Filler: the side with no counterpart in the side-by-side view. It is painted
+            DIFFERENTLY from an empty context line — otherwise the user takes a line that
+            does not exist for one that does.
         -->
         <Style Selector="Border.line.filler">
             <Setter Property="Background" Value="{DynamicResource GitExtDiffGutterBackgroundBrush}" />
@@ -101,17 +104,18 @@
             <Setter Property="Opacity" Value="0.5" />
             <Setter Property="TextAlignment" Value="Right" />
             <Setter Property="Padding" Value="0,0,6,0" />
-            <!-- Satır sarıldığında numara ÜSTTE kalmalı; ortalanırsa satırın ortasına kayar. -->
+            <!-- When a line wraps the number must stay at the TOP; centred, it drifts to the middle. -->
             <Setter Property="VerticalAlignment" Value="Top" />
         </Style>
 
         <!--
-            Kod satırları MONOSPACE olmalı; önceki hâli tema yazı tipiydi (orantılı) ve kod
-            hizalanmıyordu. Zincir platform başına farklı çözülür: Linux'ta `monospace`
-            fontconfig takma adı (bu makinede Noto Sans Mono'ya çözülüyor), Windows'ta
-            Consolas, macOS'ta Menlo.
-            ⚠️ Headless testte doğrulanamaz: orada tüm yazı tipi adları tek bir yedeğe
-            düşüyor (dört farklı ad da aynı genişliği verdi). Gerçek pencerede kontrol edildi.
+            Code lines must be MONOSPACE; previously they used the theme font (proportional)
+            and code did not line up. The chain resolves differently per platform: on Linux
+            the `monospace` fontconfig alias (which resolves to Noto Sans Mono on this
+            machine), Consolas on Windows, Menlo on macOS.
+            ⚠️ Not verifiable in a headless test: there every font name falls back to a
+            single face (four different names all gave the same width). Checked in a real
+            window.
         -->
         <Style Selector="TextBlock.code">
             <Setter Property="FontFamily" Value="{DynamicResource GitExtMonospaceFont}" />
@@ -119,9 +123,9 @@
         </Style>
 
         <!--
-            Satır kaydırma tek bir sınıfla açılıyor. `TextWrapping` KALITSAL DEĞİL, bu yüzden
-            şablondaki her metne tek tek bağlamak yerine seçici kullanılıyor; punto ise
-            kalıtsal olduğu için kök öğede bir kez veriliyor.
+            Word wrap is switched on through a single class. `TextWrapping` is NOT
+            inherited, so a selector is used instead of binding it on every text element in
+            the template; font size, being inherited, is set once on the root element.
         -->
         <Style Selector="Grid.wrap TextBlock.code">
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -138,7 +142,7 @@
           Classes.wrap="{Binding WordWrap}"
           TextElement.FontSize="{Binding FontSize}">
 
-        <!-- Araç çubuğu: filtre + görünüm geçişi -->
+        <!-- Toolbar: filter + view toggles -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="6,4">
             <TextBox Grid.Column="0"
                      Text="{Binding Filter}"
@@ -159,10 +163,10 @@
                               ToolTip.Tip="{loc:Translate diff.toggle_between_unified_and_side_by_side_diff}" />
 
                 <!--
-                    Görsel ayarlar (P04-T13). Araç çubuğunu şişirmemek için açılır panelde;
-                    hepsi az kullanılan ama gerektiğinde şart olan ayarlar.
-                    ⚠️ Şu an yalnızca oturum boyunca yaşıyorlar — kalıcı saklama ayarlar
-                    altyapısına bağlı (`P08-T14`).
+                    Display settings (P04-T13). They sit in a flyout so the toolbar does not
+                    bloat; each is rarely used but essential when it is needed.
+                    ⚠️ They currently live only for the session — persisting them depends on
+                    the settings infrastructure (`P08-T14`).
                 -->
                 <Button Content="{loc:Translate diff.view}" FontSize="11" Padding="8,2">
                     <Button.Flyout>
@@ -208,8 +212,9 @@
                 </Button>
 
                 <!--
-                    Diff İÇİNDE arama (P04-T12). Dosya filtresinden ayrı: biri hangi dosyaların
-                    listeleneceğini, diğeri seçili dosyada nereye gidileceğini belirler.
+                    Search INSIDE the diff (P04-T12). Separate from the file filter: one
+                    decides which files are listed, the other where to jump in the selected
+                    file.
                 -->
                 <TextBox Name="LineSearch"
                          Text="{Binding LineSearchText}"
@@ -220,7 +225,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- Yükleme / hata / boş durumları -->
+        <!-- Loading / error / empty states -->
         <ProgressBar Grid.Row="0"
                      IsIndeterminate="True"
                      Height="2"
@@ -236,7 +241,7 @@
                    Margin="8"
                    VerticalAlignment="Top" />
 
-        <!-- Arama sonuç vermediyse sessiz kalınmaz (P04-T12). -->
+        <!-- When a search finds nothing, it does not stay silent (P04-T12). -->
         <TextBlock Grid.Row="0"
                    Text="{Binding LineSearchStatus}"
                    IsVisible="{Binding LineSearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -255,14 +260,15 @@
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center" />
 
-        <!-- Alt alan: dosya listesi solda, seçili dosyanın diff'i sağda. -->
+        <!-- Lower area: file list on the left, the selected file's diff on the right. -->
         <!--
-            Dosya listesi sütunu gizlenebiliyor (P05-T09): çalışma dizini görünümünde liste
-            solda, ayrı bir bileşende. Genişlik `Auto` olunca gizli sütun yer kaplamıyor.
+            The file list column can be hidden (P05-T09): in the working directory view the
+            list sits on the left in a separate component. With width `Auto`, a hidden column
+            takes up no space.
         -->
         <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*">
 
-        <!-- Düz liste -->
+        <!-- Flat list -->
         <ListBox Grid.Column="0"
                  Name="FileList"
                  Width="260"
@@ -289,7 +295,7 @@
                                    Classes.renamed="{Binding IsRenamed}"
                                    Text="{Binding StatusLetter}" />
 
-                        <!-- Düz listede TAM yol gösterilir; ağaç görünümü klasörü ayırır. -->
+                        <!-- The flat list shows the FULL path; the tree view splits off the folder. -->
                         <TextBlock Grid.Column="1"
                                    Text="{Binding Path}"
                                    FontSize="12"
@@ -297,7 +303,7 @@
                                    VerticalAlignment="Center"
                                    ToolTip.Tip="{Binding RenamedFrom}" />
 
-                        <!-- Binary ve çok büyük dosyalarda sayı yerine etiket. -->
+                        <!-- For binary and very large files, a label instead of a count. -->
                         <TextBlock Grid.Column="2"
                                    Classes="dim"
                                    Text="{loc:Translate diff.binary}"
@@ -311,8 +317,9 @@
                                    Margin="6,0" />
 
                         <!--
-                            Sağdaki boşluk kaydırma çubuğu içindir: onsuz "−12" sayısının
-                            son karakteri çubuğun altında kalıyordu (render'da görüldü).
+                            The space on the right is for the scrollbar: without it the last
+                            character of a "−12" count sat underneath the bar (seen in a
+                            render).
                         -->
                         <StackPanel Grid.Column="3"
                                     Orientation="Horizontal"
@@ -329,7 +336,7 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <!-- Ağaç -->
+        <!-- Tree -->
         <TreeView Grid.Column="0"
                   Name="FileTree"
                   Width="260"
@@ -375,9 +382,9 @@
                           Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
 
             <!--
-                Unified diff. SANALLAŞTIRILMIŞ ListBox: hunk başlıkları ve içerik satırları
-                tek düz listede akıyor. Gruplanmış bir yapı satır başına kontrol yaratmak
-                demek olurdu (Faz 03'te commit listesinde aynı gerekçe).
+                Unified diff. A VIRTUALISED ListBox: hunk headers and content lines flow in
+                one flat list. A grouped structure would mean creating a control per line
+                (same reasoning as the commit list in Phase 03).
             -->
             <ListBox Grid.Column="2"
                      Name="DiffLines"
@@ -388,16 +395,16 @@
                      BorderThickness="0">
 
                 <!--
-                    DIFF BAĞLAM MENÜSÜ ═ öğe sırası GitExtensions'ın `FileViewer`
-                    `contextMenu`'sünden birebir alındı (P05-T10):
+                    DIFF CONTEXT MENU ═ the item order was taken verbatim from
+                    GitExtensions' `FileViewer` `contextMenu` (P05-T10):
 
                       stage selected lines · unstage selected lines · reset selected lines ·
-                      copy · copy patch · copy new version · copy old version · ayraç ·
-                      gösterim seçenekleri…
+                      copy · copy patch · copy new version · copy old version · separator ·
+                      display options…
 
-                    ⚠️ Stage ve unstage BİRBİRİNİ DIŞLIYOR: GitExtensions'ta stage yalnızca
-                    çalışma ağacı tarafında, unstage yalnızca index tarafında görünüyor.
-                    Uygulanmamış komutlar kaldırılmıyor, devre dışı duruyor (§ 9).
+                    ⚠️ Stage and unstage are MUTUALLY EXCLUSIVE: in GitExtensions stage
+                    appears only on the working tree side, unstage only on the index side.
+                    Unimplemented commands are not removed, they stay disabled (§ 9).
                 -->
                 <ListBox.ContextMenu>
                     <ContextMenu>
@@ -437,7 +444,7 @@
                                 Classes.added="{Binding IsAdded}"
                                 Classes.removed="{Binding IsRemoved}"
                                 Classes.hunk="{Binding IsHunkHeader}">
-                            <!-- Yükseklik SABİT DEĞİL: satır kaydırma açıkken satır büyüyebilmeli. -->
+                            <!-- The height is NOT FIXED: with word wrap on, a row must be able to grow. -->
                             <Grid ColumnDefinitions="Auto,Auto,*" MinHeight="18">
                                 <TextBlock Grid.Column="0"
                                            Classes="gutter"
@@ -448,10 +455,10 @@
                                            Text="{Binding NewLineNumber}" />
 
                                 <!--
-                                    Satır her zaman PARÇALAR üzerinden çiziliyor; satır içi
-                                    fark hesaplanmamışsa tek parça geliyor.
-                                    ⚠️ Parçalar TEK bir TextBlock içinde `Run` olarak çiziliyor:
-                                    yatay StackPanel'de satır kaydırma ÇALIŞMIYOR (ölçüldü).
+                                    A line is always drawn from SEGMENTS; when no intra-line
+                                    diff was computed, a single segment arrives.
+                                    ⚠️ Segments are drawn as `Run`s inside ONE TextBlock: word
+                                    wrap DOES NOT WORK in a horizontal StackPanel (measured).
                                 -->
                                 <TextBlock Grid.Column="2"
                                            Classes="code"
@@ -463,13 +470,13 @@
             </ListBox>
 
             <!--
-                Yan yana diff (P04-T10). **Tek** sanallaştırılmış liste, satır başına iki
-                sütun — iki ayrı listeyi senkronize kaydırmak yerine bu seçildi: senkron
-                kaydırma problemi böylece hiç oluşmuyor ve iki tarafın satırları yapısal
-                olarak aynı hizada kalıyor.
+                Side-by-side diff (P04-T10). ONE virtualised list with two columns per row —
+                chosen over synchronising the scroll of two separate lists: that way the
+                synchronised-scrolling problem never arises at all, and the two sides' lines
+                stay structurally aligned.
 
-                Hizalama `SideBySideDiff` (çekirdek katman) tarafından üretiliyor ve satır
-                içi vurgulamayla AYNI eşlemeyi kullanıyor.
+                The alignment is produced by `SideBySideDiff` (the core layer) and uses the
+                SAME mapping as the intra-line highlighting.
             -->
             <ListBox Grid.Column="2"
                      Name="SideDiffLines"
@@ -490,7 +497,7 @@
                     <DataTemplate DataType="vm:SideBySideLineRow">
                         <Grid ColumnDefinitions="*,1,*" MinHeight="18">
 
-                            <!-- Hunk başlığı iki sütunu birden kaplar. -->
+                            <!-- The hunk header spans both columns. -->
                             <Border Grid.Column="0" Grid.ColumnSpan="3"
                                     Classes="line hunk"
                                     IsVisible="{Binding IsHunkHeader}">
@@ -499,7 +506,7 @@
                                            Margin="6,0,0,0" />
                             </Border>
 
-                            <!-- Sol: eski hâl -->
+                            <!-- Left: the old state -->
                             <Border Grid.Column="0"
                                     Classes="line"
                                     Classes.removed="{Binding Left.IsRemoved}"
@@ -520,7 +527,7 @@
                                     Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
                                     IsVisible="{Binding !IsHunkHeader}" />
 
-                            <!-- Sağ: yeni hâl -->
+                            <!-- Right: the new state -->
                             <Border Grid.Column="2"
                                     Classes="line"
                                     Classes.added="{Binding Right.IsAdded}"
@@ -541,7 +548,7 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <!-- İçerik yoksa NEDEN olmadığı yazılır; boş alan bırakmak hata gibi görünür. -->
+            <!-- When there is no content, WHY is stated; leaving a blank area looks like a bug. -->
             <TextBlock Grid.Column="2"
                        Text="{Binding ContentNotice}"
                        IsVisible="{Binding ContentNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

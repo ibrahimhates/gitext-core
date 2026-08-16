@@ -19,7 +19,7 @@
               IsVisible="{Binding SupportsRecordOrigin}" />
 
     <!--
-      Merge commit'inde ebeveyn seçimi ZORUNLU: ölçümde -m olmadan rc=128
+      Choosing a parent is MANDATORY on a merge commit: measured, without -m it gives rc=128
       ("is a merge but no -m option was given").
     -->
     <StackPanel Name="MainlinePanel" Spacing="4" IsVisible="{Binding IsMergeCommit}">

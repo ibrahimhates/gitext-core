@@ -15,10 +15,10 @@
         WindowStartupLocation="CenterOwner">
 
     <!--
-        Pencere MODELESS (`Show()`): kullanıcı hook çıktısını açık tutup koda dönebilmeli —
-        "hangi dosyada hata vardı" sorusunun cevabı orada. `ShowDialog` olsaydı çıktıyı
-        okumak için önce kapatmak gerekirdi. P04-T16'daki karşılaştırma penceresiyle aynı
-        gerekçe.
+        The window is MODELESS (`Show()`): the user must be able to keep the hook output open and
+        go back to the code — the answer to "which file had the error" is in there. With
+        `ShowDialog` they would have to close it before they could read the output. Same reasoning
+        as the comparison window in P04-T16.
     -->
 
     <Grid RowDefinitions="*,Auto" Margin="12">

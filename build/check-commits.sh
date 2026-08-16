@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 #
-# Commit mesajı biçim denetimi (P10-T03) — Conventional Commits.
+# Commit message format check (P10-T03) — Conventional Commits.
 #
-# Kullanım:
+# Usage:
 #   build/check-commits.sh                 # origin/main..HEAD
-#   build/check-commits.sh v0.9.0..HEAD    # aralığı açıkça ver
+#   build/check-commits.sh v0.9.0..HEAD    # give the range explicitly
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# Sürüm notları commit'lerden üretiliyor (build/release-notes.sh), çünkü bu depoda
-# PR akışı yok: ölçüldü, 53 commit'in 50'si doğrudan main'e atılmış. Yani commit
-# mesajının biçimi bir üslup tercihi değil, sürüm notunun GİRDİSİ. Biçimi bozuk bir
-# commit "Diğer" başlığına düşer ve orada kimse okumaz.
+# Release notes are generated from commits (build/release-notes.sh), because this
+# repo has no PR flow: measured, 50 of 53 commits were pushed straight to main. So
+# the commit message format is not a style preference, it's the INPUT to the release
+# notes. A badly formatted commit falls into the "Other" heading, where no one reads it.
 #
-# GEÇMİŞE DÖNÜK UYGULANMIYOR: kural bugünden itibaren geçerli. Geçmişteki 6 uyumsuz
-# commit (3 dependabot, 2 projenin ilk commit'leri, 1 "init") olduğu gibi bırakılıyor —
-# geçmişi yeniden yazmak, düzelttiğinden çok daha fazlasını kırar.
+# NOT APPLIED RETROACTIVELY: the rule applies from today onward. The 6 non-compliant
+# commits in the past (3 dependabot, 2 the project's first commits, 1 "init") are
+# left as-is — rewriting history would break far more than it fixes.
 
 set -euo pipefail
 
@@ -28,7 +28,7 @@ if [ -z "$RANGE" ]; then
     fi
 fi
 
-# Conventional Commits türleri. `!` kırıcı değişikliği işaretler.
+# Conventional Commits types. `!` marks a breaking change.
 PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9.-]+\))?!?: .+'
 
 failed=0
@@ -38,14 +38,14 @@ while IFS='|' read -r sha subject; do
     [ -n "$sha" ] || continue
     checked=$((checked + 1))
 
-    # Dependabot kendi mesaj biçimini kullanıyor ve onu değiştiremeyiz.
+    # Dependabot uses its own message format and we can't change that.
     case "$subject" in
         "Bump "*) continue ;;
     esac
 
     if ! printf '%s' "$subject" | grep -qE "$PATTERN"; then
         if [ "$failed" -eq 0 ]; then
-            echo "Conventional Commits biçimine uymayan commit'ler:" >&2
+            echo "Commits that don't match the Conventional Commits format:" >&2
             echo >&2
         fi
         printf '  %s  %s\n' "${sha:0:7}" "$subject" >&2
@@ -56,19 +56,19 @@ done < <(git log --no-merges --pretty='%H|%s' "$RANGE" 2>/dev/null)
 if [ "$failed" -gt 0 ]; then
     cat >&2 <<'EOF'
 
-Beklenen biçim:  <tür>[(kapsam)][!]: <özet>
+Expected format:  <type>[(scope)][!]: <summary>
 
-  feat(ui): commit grafiğine şerit renkleri eklendi
-  fix: detached HEAD'de yanlış dal adı gösteriliyordu
-  perf(core): commit okumada metin havuzu
-  feat(settings)!: ayar dosyası biçimi değişti     ← kırıcı değişiklik
+  feat(ui): add lane colors to commit graph
+  fix: wrong branch name shown in detached HEAD
+  perf(core): string pool for commit reading
+  feat(settings)!: settings file format changed     ← breaking change
 
-Türler: feat fix docs style refactor perf test build ci chore revert
+Types: feat fix docs style refactor perf test build ci chore revert
 
-Bu biçim sürüm notlarının girdisi (build/release-notes.sh) — uymayan commit'ler
-"Diğer" başlığına düşer ve kullanıcı tarafından okunmaz.
+This format is the input to the release notes (build/release-notes.sh) — commits
+that don't match fall into the "Other" heading and go unread.
 EOF
     exit 1
 fi
 
-echo "OK: $checked commit denetlendi, hepsi uyumlu."
+echo "OK: $checked commits checked, all compliant."

@@ -5,118 +5,119 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Değişiklikleri geri almanın kapsamı (P05-T08).
+/// The scope of reverting changes (P05-T08).
 /// </summary>
 public enum DiscardScope
 {
     /// <summary>
-    /// Yalnızca stage'lenmemiş değişiklikler atılır; index'teki içerik korunur.
+    /// Only unstaged changes are discarded; the content in the index is preserved.
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> düz <c>git restore</c> çalışma ağacını <b>index'ten</b> geri yüklüyor,
-    /// HEAD'den değil. Yani stage'lenmiş bir değişiklik ayakta kalıyor. Bu, "değişikliği geri
-    /// al" düğmesinin çoğu kullanıcı için beklediği davranış.
+    /// <b>MEASURED:</b> a plain <c>git restore</c> restores the working tree <b>from the
+    /// index</b>, not from HEAD. So a staged change survives. This is the behavior most
+    /// users expect from the "revert change" button.
     /// </remarks>
     UnstagedOnly,
 
-    /// <summary>Hem stage'lenmiş hem stage'lenmemiş değişiklikler atılır (HEAD'e döner).</summary>
+    /// <summary>Both staged and unstaged changes are discarded (reverts to HEAD).</summary>
     All,
 }
 
 /// <summary>
-/// <c>git clean</c> kapsamı (P05-T08).
+/// The scope of <c>git clean</c> (P05-T08).
 /// </summary>
 public sealed record CleanOptions
 {
     public static CleanOptions Default { get; } = new();
 
-    /// <summary>Takip edilmeyen <b>dizinler</b> de silinsin mi (<c>-d</c>).</summary>
+    /// <summary>Whether untracked <b>directories</b> should also be deleted (<c>-d</c>).</summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> <c>-d</c> olmadan takip edilmeyen bir dizin <b>hiç silinmiyor</b> ve
-    /// bu bir hata olarak da bildirilmiyor.
+    /// <b>MEASURED:</b> without <c>-d</c> an untracked directory is <b>not deleted at
+    /// all</b>, and this is not reported as an error either.
     /// </remarks>
     public bool IncludeDirectories { get; init; } = true;
 
-    /// <summary>Yok sayılan (ignored) dosyalar da silinsin mi (<c>-x</c>).</summary>
+    /// <summary>Whether ignored files should also be deleted (<c>-x</c>).</summary>
     /// <remarks>
-    /// ⚠️ Tehlikeli: derleme çıktısının yanında <c>.env</c> gibi <b>yeniden üretilemeyen</b>
-    /// dosyalar da genellikle yok sayılır.
+    /// ⚠️ Dangerous: alongside build output, <b>non-reproducible</b> files like
+    /// <c>.env</c> are also typically ignored.
     /// </remarks>
     public bool IncludeIgnored { get; init; }
 
-    /// <summary>Yalnızca yok sayılan dosyalar silinsin (<c>-X</c>).</summary>
+    /// <summary>Only ignored files should be deleted (<c>-X</c>).</summary>
     public bool OnlyIgnored { get; init; }
 
-    /// <summary>İç içe git depoları da silinsin mi (<c>-ff</c>).</summary>
+    /// <summary>Whether nested git repositories should also be deleted (<c>-ff</c>).</summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> tek <c>-f</c> ile iç içe bir depo (klonlanmış alt dizin)
-    /// <b>sessizce atlanıyor</b> — çıktıda hiç görünmüyor. Kullanıcı "temizlendi" sanır,
-    /// dizin durmaya devam eder.
+    /// <b>MEASURED:</b> with a single <c>-f</c> a nested repository (a cloned
+    /// subdirectory) is <b>silently skipped</b> — it never appears in the output. The
+    /// user thinks it was "cleaned", but the directory keeps sitting there.
     /// </remarks>
     public bool IncludeNestedRepositories { get; init; }
 }
 
 /// <summary>
-/// Atılan içeriğin nesne veritabanına alınmış yedeği (P05-T08).
+/// A backup of the discarded content taken into the object database (P05-T08).
 /// </summary>
 /// <remarks>
-/// <b>ÖLÇÜLDÜ:</b> <c>git hash-object -w</c> ile yazılan blob, geri alma işleminden sonra
-/// <c>git cat-file -p &lt;blob&gt;</c> ile okunabiliyor.
+/// <b>MEASURED:</b> the blob written with <c>git hash-object -w</c> can be read back
+/// after the discard operation with <c>git cat-file -p &lt;blob&gt;</c>.
 /// <para>
-/// ⚠️ <b>Garanti değil.</b> Bu nesneye hiçbir ref işaret etmiyor; <c>git gc --prune=now</c>
-/// onu <b>anında</b> siliyor (ölçüldü). Buna karşılık <b>düz <c>git gc</c> silmiyor</b>
-/// (P05-T15'te ölçüldü): dangling nesneler varsayılan <c>gc.pruneExpire=2.weeks</c> boyunca
-/// korunuyor. Yani yedek gerçek bir kurtarma yolu, ama süresiz değil — yıkıcı işlem yine de
-/// <b>açık onay</b> istiyor.
+/// ⚠️ <b>Not a guarantee.</b> No ref points to this object; <c>git gc --prune=now</c>
+/// deletes it <b>immediately</b> (measured). In contrast, <b>plain <c>git gc</c> does
+/// not delete it</b> (measured in P05-T15): dangling objects are preserved for the
+/// default <c>gc.pruneExpire=2.weeks</c>. So the backup is a real recovery path, but
+/// not permanent — the destructive operation still requires <b>explicit
+/// confirmation</b>.
 /// </para>
 /// </remarks>
 public sealed record DiscardBackup
 {
     public required RepositoryPath Path { get; init; }
 
-    /// <summary>Atılan içeriğin blob kimliği.</summary>
+    /// <summary>The blob id of the discarded content.</summary>
     public required string BlobId { get; init; }
 }
 
 /// <summary>
-/// <c>.gitignore</c>'a ekleme girişiminin sonucu (P05-T08).
+/// The result of an attempt to add an entry to <c>.gitignore</c> (P05-T08).
 /// </summary>
 public enum GitIgnoreOutcome
 {
-    /// <summary>Desen eklendi.</summary>
+    /// <summary>The pattern was added.</summary>
     Added,
 
-    /// <summary>Yol zaten yok sayılıyordu; dosya değiştirilmedi.</summary>
+    /// <summary>The path was already ignored; the file was not modified.</summary>
     AlreadyIgnored,
 
     /// <summary>
-    /// Yol <b>izleniyor</b>; <c>.gitignore</c> bu dosyaya etki etmez.
+    /// The path is <b>tracked</b>; <c>.gitignore</c> has no effect on this file.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ:</b> izlenen bir dosyayı <c>.gitignore</c>'a eklemek <b>hiçbir şey
-    /// yapmıyor</b> — <c>git status</c> dosyayı göstermeye devam ediyor ve
-    /// <c>check-ignore</c> bile eşleşme bildirmiyor. Dosyayı sessizce yazıp "eklendi" demek,
-    /// kullanıcıya olmayan bir sonuç vaat etmek olurdu. Önce
-    /// <see cref="IStagingWriter.UntrackAsync"/> gerekiyor.
+    /// 🔴 <b>MEASURED:</b> adding a tracked file to <c>.gitignore</c> <b>does
+    /// nothing</b> — <c>git status</c> keeps showing the file, and even
+    /// <c>check-ignore</c> reports no match. Silently writing the file and saying
+    /// "added" would promise the user a result that does not exist.
+    /// <see cref="IStagingWriter.UntrackAsync"/> is required first.
     /// </remarks>
     PathIsTracked,
 }
 
 /// <summary>
-/// Çalışma ağacındaki dosyalar üzerinde <b>yıkıcı</b> işlemler (P05-T08).
+/// <b>Destructive</b> operations on files in the working tree (P05-T08).
 /// </summary>
 /// <remarks>
-/// Buradaki her işlem kullanıcının <b>henüz kaydedilmemiş</b> emeğini silebilir. CLAUDE.md § 8
-/// gereği hepsi açık onay istiyor ve onay bir <b>parametre</b> olarak zorunlu tutuluyor
-/// (P05-T02'deki <c>GitLock.Remove</c> ile aynı desen): kuralı yorumda bırakmak, birinin
-/// ileride onaysız çağırmasına engel olmaz.
+/// Every operation here can delete the user's <b>not-yet-saved</b> work. Per CLAUDE.md
+/// § 8 they all require explicit confirmation, and confirmation is enforced as a
+/// <b>parameter</b> (the same pattern as <c>GitLock.Remove</c> in P05-T02): leaving the
+/// rule in a comment does not stop someone from calling it without confirmation later.
 /// </remarks>
 public interface IWorkingTreeWriter
 {
     /// <summary>
-    /// Verilen yollardaki değişiklikleri geri alır.
+    /// Reverts changes at the given paths.
     /// </summary>
-    /// <returns>Atılan içeriğin yedekleri; boş liste, yedeklenecek dosya olmadığını gösterir.</returns>
+    /// <returns>Backups of the discarded content; an empty list indicates there was no file to back up.</returns>
     Task<IReadOnlyList<DiscardBackup>> DiscardChangesAsync(
         string workingDirectory,
         IReadOnlyList<RepositoryPath> paths,
@@ -125,17 +126,17 @@ public interface IWorkingTreeWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Takip edilmeyen dosyaları <b>siler</b>.
+    /// <b>Deletes</b> untracked files.
     /// </summary>
     /// <returns>
-    /// Silinen içeriğin yedekleri.
+    /// Backups of the deleted content.
     /// </returns>
     /// <remarks>
-    /// <b>⚠️ ÖLÇÜLDÜ (P05-T15):</b> <c>git clean</c> ile silinen bir dosyanın nesne
-    /// veritabanında <b>hiçbir izi kalmıyor</b> — <c>git fsck --lost-found</c> bile
-    /// bulmuyor. Bu yüzden içerik silinmeden önce <c>hash-object -w</c> ile yedekleniyor;
-    /// takip edilmeyen dosyalar tipik olarak <b>henüz commit edilmemiş yeni kaynak
-    /// dosyalardır</b> ve kaybı telafi edilemez.
+    /// <b>⚠️ MEASURED (P05-T15):</b> a file deleted with <c>git clean</c> leaves <b>no
+    /// trace</b> in the object database — even <c>git fsck --lost-found</c> does not
+    /// find it. That is why the content is backed up with <c>hash-object -w</c> before
+    /// deletion; untracked files are typically <b>new source files not yet
+    /// committed</b>, and their loss cannot be compensated for.
     /// </remarks>
     Task<IReadOnlyList<DiscardBackup>> DeleteUntrackedAsync(
         string workingDirectory,
@@ -144,13 +145,13 @@ public interface IWorkingTreeWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Çalışma ağacının <b>tamamını</b> temizler (<c>git clean</c>).
+    /// Cleans the <b>entire</b> working tree (<c>git clean</c>).
     /// </summary>
     /// <remarks>
-    /// Silinecekler önceden <see cref="IStatusReader"/> ile listelenmeli.
-    /// <c>git clean --dry-run</c> çıktısı <b>ayrıştırılmaz</b>: insan-okunur
-    /// (<c>Would remove …</c>), <c>-z</c> desteklemiyor ve özel karakterli adları
-    /// tırnaklıyor (ölçüldü).
+    /// Files to be deleted must be listed beforehand with <see cref="IStatusReader"/>.
+    /// The output of <c>git clean --dry-run</c> is <b>not parseable</b>: it is
+    /// human-readable (<c>Would remove …</c>), does not support <c>-z</c>, and quotes
+    /// names with special characters (measured).
     /// </remarks>
     Task CleanAsync(
         string workingDirectory,
@@ -159,19 +160,20 @@ public interface IWorkingTreeWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Bir dosyanın <b>seçili satırlarındaki</b> değişiklikleri geri alır (P05-T15).
+    /// Reverts the changes on a file's <b>selected lines</b> (P05-T15).
     /// </summary>
-    /// <returns>Atılan içeriğin yedekleri.</returns>
+    /// <returns>Backups of the discarded content.</returns>
     /// <remarks>
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> <c>git apply --reverse</c> (yani <c>--cached</c> OLMADAN) yamayı
-    /// yalnızca <b>çalışma ağacına</b> uyguluyor; index'e dokunmuyor. Dosyanın
-    /// stage'lenmiş bir sürümü varsa o olduğu gibi kalıyor — git'in kendi davranışı bu ve
-    /// "şu satırları geri al" komutundan beklenen de bu.
+    /// <b>MEASURED:</b> <c>git apply --reverse</c> (i.e. WITHOUT <c>--cached</c>)
+    /// applies the patch only to the <b>working tree</b>; it does not touch the index.
+    /// If the file has a staged version, it stays as is — this is git's own behavior,
+    /// and it is also what is expected from a "revert these lines" command.
     /// </para>
     /// <para>
-    /// Kısmi geri alma da yıkıcı: dosyanın <b>tamamı</b> önceden yedekleniyor, çünkü geri
-    /// alma işlemi dosyayı yamadan önceki hâline döndürmek zorunda.
+    /// A partial revert is destructive too: the file's <b>entire</b> content is backed
+    /// up beforehand, because the revert has to restore the file to its state before
+    /// the patch.
     /// </para>
     /// </remarks>
     Task<IReadOnlyList<DiscardBackup>> DiscardPartialAsync(
@@ -183,33 +185,34 @@ public interface IWorkingTreeWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Bir yedeği çalışma ağacına geri yazar (P05-T15).
+    /// Writes a backup back to the working tree (P05-T15).
     /// </summary>
-    /// <returns>Gerçekten geri yazılan yedekler.</returns>
+    /// <returns>The backups that were actually written back.</returns>
     /// <remarks>
     /// <para>
-    /// Yedek almak tek başına güvenlik ağı değil: kullanıcıya blob kimliği verip
-    /// <c>git cat-file</c> yazmasını beklemek, panik anında işe yaramaz. Geri yazma
-    /// <b>uygulamanın sunduğu bir işlem</b> olmalı.
+    /// Taking a backup alone is not a safety net: giving the user a blob id and
+    /// expecting them to type <c>git cat-file</c> is useless in a moment of panic.
+    /// Writing it back must be <b>an operation the application provides</b>.
     /// </para>
     /// <para>
-    /// İçerik <b>ham baytlarla</b> yazılıyor. Yedek <c>--no-filters</c> ile alındığı için
-    /// blob dosyanın diskteki hâlinin birebir kopyası; yazarken de dönüştürülmemeli.
+    /// The content is written as <b>raw bytes</b>. Since the backup was taken with
+    /// <c>--no-filters</c>, the blob is an exact copy of the file's on-disk state; it
+    /// must not be transformed when writing it back either.
     /// </para>
     /// <para>
-    /// Nesne artık yoksa (<c>gc --prune=now</c>) o yedek <b>sessizce atlanır</b>: kısmi
-    /// kurtarma, hiç kurtarmamaktan iyidir.
+    /// If the object no longer exists (<c>gc --prune=now</c>) that backup is
+    /// <b>silently skipped</b>: partial recovery is better than no recovery at all.
     /// </para>
     /// </remarks>
     /// <summary>
-    /// Verilen yolların diskteki hâlini nesne veritabanına yedekler (P06-T02).
+    /// Backs up the on-disk state of the given paths into the object database (P06-T02).
     /// </summary>
-    /// <returns>Diskte bulunan yolların yedekleri; olmayanlar atlanır.</returns>
+    /// <returns>Backups of the paths found on disk; missing ones are skipped.</returns>
     /// <remarks>
-    /// Yıkıcı bir işlemden <b>önce</b> çağrılır. Ayrı bir işlem olarak açıldı çünkü
-    /// dal değiştirme de (<c>switch --discard-changes</c>) aynı güvenlik ağına ihtiyaç
-    /// duyuyor ve <c>--no-filters</c> tuzağının ikinci kez yazılması, ikinci kez
-    /// unutulabilmesi demekti.
+    /// Called <b>before</b> a destructive operation. Exposed as a separate operation
+    /// because switching branches (<c>switch --discard-changes</c>) needs the same
+    /// safety net too, and writing the <c>--no-filters</c> trap a second time meant it
+    /// could be forgotten a second time.
     /// </remarks>
     Task<IReadOnlyList<DiscardBackup>> BackupPathsAsync(
         string workingDirectory,
@@ -222,7 +225,7 @@ public interface IWorkingTreeWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Bir deseni deponun kök <c>.gitignore</c> dosyasına ekler.
+    /// Adds a pattern to the repository's root <c>.gitignore</c> file.
     /// </summary>
     Task<GitIgnoreOutcome> AddToGitIgnoreAsync(
         string workingDirectory,
@@ -235,12 +238,13 @@ public interface IWorkingTreeWriter
 public sealed class WorkingTreeWriter : IWorkingTreeWriter
 {
     /// <summary>
-    /// Tek <c>hash-object</c> çağrısına konan yol sayısı.
+    /// The number of paths placed into a single <c>hash-object</c> call.
     /// </summary>
     /// <remarks>
-    /// Yollar <b>argüman</b> olarak veriliyor, stdin ile değil: <c>--stdin-paths</c> yolları
-    /// satır sonuyla ayırıyor ve dosya adı satır sonu içerebiliyor. Argüman listesi sınırsız
-    /// olmadığı için parçalanıyor. Ölçüldü: 500 dosya tek çağrıda <b>14 ms</b>.
+    /// The paths are given as <b>arguments</b>, not via stdin: <c>--stdin-paths</c>
+    /// separates paths by newline, and a file name can contain a newline. The argument
+    /// list is chunked because it is not unbounded. Measured: 500 files in a single
+    /// call take <b>14 ms</b>.
     /// </remarks>
     private const int BackupBatchSize = 500;
 
@@ -273,8 +277,9 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         if (paths.Count == 0)
         {
-            // ⚠️ Boş liste ile `git restore --` deponun TAMAMINI geri alırdı (P05-T03'te
-            // `git add -A --` için aynı koruma konmuştu).
+            // ⚠️ With an empty list, `git restore --` would revert the ENTIRE
+            // repository (the same protection was put in place for `git add -A --`
+            // in P05-T03).
             return [];
         }
 
@@ -285,10 +290,11 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         if (scope == DiscardScope.All)
         {
-            // `--source=HEAD` şart: `--staged` tek başına da HEAD'i kaynak alıyor ama
-            // niyeti açıkça yazmak, ileride `--source` eklemeyi unutma riskini kapatıyor.
-            // ⚠️ HEAD yokken git `could not resolve 'HEAD'` ile düşer (ölçüldü) — henüz
-            // hiç commit'i olmayan depoda "her şeyi geri al" tanımsız.
+            // `--source=HEAD` is required: `--staged` alone also takes HEAD as the
+            // source, but writing the intent explicitly closes off the risk of
+            // forgetting to add `--source` later. ⚠️ Without a HEAD, git fails with
+            // `could not resolve 'HEAD'` (measured) — "revert everything" is undefined
+            // in a repository with no commits yet.
             arguments.AddRange(["--source=HEAD", "--staged"]);
         }
 
@@ -317,25 +323,27 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         if (paths.Count == 0)
         {
-            // ⚠️ Yolsuz `git clean -f` çalışma ağacının TAMAMINI siler.
+            // ⚠️ Without paths, `git clean -f` deletes the ENTIRE working tree.
             return [];
         }
 
-        // 🔴 P05-T15'te eklendi. ÖLÇÜLDÜ ve tasarımı değiştirdi: `git clean` ile silinen
-        // takip edilmeyen bir dosyanın nesne veritabanında **hiçbir izi yok**
-        // (`fsck --lost-found` bile bulmuyor) — yani bu, deponun tek gerçekten
-        // geri döndürülemez işlemiydi. Oysa takip edilmeyen dosyalar tipik olarak
-        // **henüz commit edilmemiş yeni kaynak dosyalar**: bu deponun kendisinde
-        // `git clean -dn` çıktısı o sırada yazılmakta olan dosyaları listeliyordu.
-        // Yedeklemek ucuz (500 dosya = 110 ms), kaybı telafi edilemez.
+        // 🔴 Added in P05-T15. MEASURED and it changed the design: a file deleted with
+        // `git clean` that was untracked leaves **no trace at all** in the object
+        // database (`fsck --lost-found` does not find it either) — meaning this was
+        // the repository's only truly irreversible operation. Yet untracked files are
+        // typically **new source files not yet committed**: in this very repository,
+        // the output of `git clean -dn` listed files that were being written at that
+        // moment. Backing up is cheap (500 files = 110 ms); the loss cannot be
+        // compensated for.
         IReadOnlyList<DiscardBackup> backups =
             await BackupAsync(workingDirectory, paths, cancellationToken).ConfigureAwait(false);
 
-        // `-x`: 🔴 ölçüldü — yok sayılan bir dosyayı `-x` OLMADAN silmeye çalışmak çıkış 0
-        // veriyor ve dosya duruyor. Kullanıcı adıyla seçtiği dosyanın silinmesini bekler;
-        // "yok sayılıyor olabilir" ayrımı burada anlamsız. Kapsam zaten verilen yollarla
-        // sınırlı, tüm depoyu ilgilendirmiyor.
-        // `-d`: takip edilmeyen bir dizin seçildiyse onsuz hiçbir şey olmaz.
+        // `-x`: 🔴 measured — trying to delete an ignored file WITHOUT `-x` returns
+        // exit 0 and the file stays. The user expects the file they selected by name
+        // to be deleted; the "it might be ignored" distinction is meaningless here.
+        // The scope is already limited to the given paths, it does not concern the
+        // whole repository.
+        // `-d`: if an untracked directory was selected, nothing happens without it.
         List<string> arguments = ["clean", "--force", "-d", "-x", "--quiet", "--"];
         arguments.AddRange(paths.Select(path => path.Value));
 
@@ -363,7 +371,7 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         if (options.IncludeNestedRepositories)
         {
-            // İkinci `-f`: iç içe depolar için. Tek `-f` onları sessizce atlıyor (ölçüldü).
+            // Second `-f`: for nested repositories. A single `-f` silently skips them (measured).
             arguments.Add("--force");
         }
 
@@ -412,9 +420,10 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         StringBuilder builder = new(existing);
 
-        // 🔴 ÖLÇÜLDÜ: dosya satır sonuyla bitmiyorsa yeni desen bir öncekine YAPIŞIYOR
-        // (`derleme/` + `/kok.txt` → `derleme//kok.txt`). Sonuç, yeni desenin çalışmaması
-        // DEĞİL sadece: kullanıcının var olan deseni de bozuluyor.
+        // 🔴 MEASURED: if the file does not end with a newline, the new pattern
+        // STICKS to the previous one (`build/` + `/root.txt` → `build//root.txt`).
+        // The result is not just that the new pattern fails to work: it also
+        // corrupts the user's existing pattern.
         if (builder.Length > 0 && builder[^1] is not ('\n' or '\r'))
         {
             builder.Append('\n');
@@ -444,20 +453,20 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
             "Reverting the changes on the selected lines deletes content in the working tree. "
             + "The operation can only be performed with the user's explicit consent.");
 
-        // Ters uygulanacağı için yama "stage" yönünde üretiliyor: yamayı üretmek ile
-        // uygulamak ayrı kararlar (P05-T04).
+        // Since it will be applied in reverse, the patch is generated in the "stage"
+        // direction: generating the patch and applying it are separate decisions (P05-T04).
         string? patch = PatchBuilder.Build(diff, selection, PatchDirection.Stage);
 
         if (patch is null)
         {
-            // Seçilen bir şey yok.
+            // Nothing was selected.
             return [];
         }
 
         IReadOnlyList<DiscardBackup> backups =
             await BackupAsync(workingDirectory, [diff.Path], cancellationToken).ConfigureAwait(false);
 
-        // ⚠️ `--cached` YOK: yama yalnızca çalışma ağacına uygulanmalı (ölçüldü).
+        // ⚠️ NO `--cached`: the patch must be applied only to the working tree (measured).
         await _writer
             .RunAsync(
                 workingDirectory,
@@ -483,9 +492,10 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
             return [];
         }
 
-        // 🔴 ÖLÇÜLDÜ: yedek başına ayrı `cat-file -p` süreci 200 dosyada **671 ms**,
-        // `--batch` ile tek süreçte **9 ms** (75×). Kurtarma kullanıcının beklediği bir
-        // işlem; büyük bir sıfırlamanın geri alınması saniyeler sürmemeli.
+        // 🔴 MEASURED: a separate `cat-file -p` process per backup takes **671 ms**
+        // for 200 files, versus **9 ms** with `--batch` in a single process (75×).
+        // Recovery is an operation the user is waiting on; undoing a large reset
+        // should not take seconds.
         StringBuilder request = new();
 
         foreach (DiscardBackup backup in backups)
@@ -510,14 +520,14 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
         {
             if (!TryReadBatchEntry(result.StandardOutput, ref offset, out ReadOnlyMemory<byte> content))
             {
-                // Nesne budanmış (`gc --prune=now`) → git `<oid> missing` yazıyor.
-                // Kurtarılamayan bir yedek hata değil; diğerlerine devam edilir.
+                // The object has been pruned (`gc --prune=now`) → git writes `<oid> missing`.
+                // A backup that cannot be recovered is not an error; continue with the rest.
                 continue;
             }
 
             string target = Path.Combine(workingDirectory, backup.Path.Value);
 
-            // Silinen dosyanın dizini de silinmiş olabilir (`clean -d`).
+            // The directory of the deleted file may have been deleted too (`clean -d`).
             string? directory = Path.GetDirectoryName(target);
 
             if (directory is { Length: > 0 })
@@ -534,15 +544,16 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
     }
 
     /// <summary>
-    /// <c>cat-file --batch</c> akışından sıradaki nesnenin içeriğini okur.
+    /// Reads the content of the next object from a <c>cat-file --batch</c> stream.
     /// </summary>
     /// <remarks>
-    /// Biçim: <c>&lt;oid&gt; &lt;tür&gt; &lt;boyut&gt;\n&lt;içerik&gt;\n</c>, bulunamayan
-    /// nesne için <c>&lt;oid&gt; missing\n</c>. İçerik <b>bayt olarak</b> alınıyor: boyut
-    /// başlıkta yazdığı için ikili veride ayraç aramak gerekmiyor — yedeğin birebir
-    /// olması bu görevin tüm amacı (P05-T15).
+    /// Format: <c>&lt;oid&gt; &lt;type&gt; &lt;size&gt;\n&lt;content&gt;\n</c>, and
+    /// <c>&lt;oid&gt; missing\n</c> for an object that cannot be found. The content is
+    /// taken <b>as bytes</b>: since the size is written in the header, there is no
+    /// need to search for a delimiter in binary data — the whole point of this task is
+    /// for the backup to be byte-for-byte (P05-T15).
     /// </remarks>
-    /// <returns>Nesne okunduysa <see langword="true"/>; eksikse <see langword="false"/>.</returns>
+    /// <returns><see langword="true"/> if the object was read; <see langword="false"/> if it is missing.</returns>
     private static bool TryReadBatchEntry(
         byte[] stream,
         ref int offset,
@@ -562,7 +573,7 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         string[] parts = header.Split(' ');
 
-        // `<oid> missing` — üç alan yoksa içerik de yok.
+        // `<oid> missing` — if there are not three fields, there is no content either.
         if (parts.Length < 3 || !int.TryParse(parts[2], out int size))
         {
             return false;
@@ -575,18 +586,18 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
         content = stream.AsMemory(offset, size);
 
-        // İçerikten sonra git bir satır sonu daha yazıyor.
+        // git writes one more newline after the content.
         offset += size + 1;
 
         return true;
     }
 
     /// <summary>
-    /// Atılacak içeriği nesne veritabanına yazar.
+    /// Writes the content to be discarded into the object database.
     /// </summary>
     /// <remarks>
-    /// Diskte olmayan yollar (silinmiş dosyalar) atlanır: <c>hash-object</c> onlarda düşer ve
-    /// zaten geri alınacak bir içerikleri yoktur.
+    /// Paths not present on disk (deleted files) are skipped: <c>hash-object</c> fails
+    /// on them, and they have no content to revert anyway.
     /// </remarks>
     public Task<IReadOnlyList<DiscardBackup>> BackupPathsAsync(
         string workingDirectory,
@@ -611,15 +622,17 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
             List<RepositoryPath> batch =
                 [.. existing.Skip(offset).Take(BackupBatchSize)];
 
-            // 🔴 `--no-filters` ŞART (P05-T15'te ölçüldü). Onsuz git, yedeği yazarken
-            // "clean" filtrelerini uyguluyor ve yedek **birebir olmuyor**:
-            //   · `.gitattributes`'ta `text=auto` varsa CRLF → LF (geri yazımda satır
-            //     sonları sessizce değişir),
-            //   · özel bir clean filtresi (Git LFS'in çalışma biçimi) varsa yedeğe
-            //     **dosyanın kendisi değil filtrenin çıktısı** girer — ölçümde
-            //     `GIZLI parola` içeriği yedekte `*** parola` oldu.
-            // Kurtarma vaadi veren bir yedeğin içeriği değiştirmesi, hiç yedek almamaktan
-            // daha kötüdür: kullanıcı kurtardığını sanır.
+            // 🔴 `--no-filters` IS REQUIRED (measured in P05-T15). Without it, git
+            // applies "clean" filters while writing the backup and the backup is
+            // **not byte-for-byte**:
+            //   · if `.gitattributes` has `text=auto`, CRLF → LF (line endings
+            //     silently change when written back),
+            //   · if there is a custom clean filter (how Git LFS operates), the
+            //     backup ends up with **the filter's output, not the file itself** —
+            //     in the measurement, content of `SECRET password` became
+            //     `*** password` in the backup.
+            // A backup that promises recovery but changes the content is worse than
+            // taking no backup at all: the user thinks they recovered it.
             List<string> arguments = ["hash-object", "-w", "--no-filters", "--"];
             arguments.AddRange(batch.Select(path => path.Value));
 
@@ -629,7 +642,7 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
                     WorkingDirectory = workingDirectory,
                     Arguments = arguments,
 
-                    // Nesne yazıyor ama index'e dokunmuyor; kuyruğa girmesi gerekmiyor.
+                    // Writes an object but does not touch the index; it does not need to go through the queue.
                     IsReadOnly = false,
                 },
                 cancellationToken).ConfigureAwait(false);
@@ -639,7 +652,7 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
 
             if (hashes.Length != batch.Count)
             {
-                // Hiza bozulduysa yanlış içeriği "yedek" diye sunmaktansa hiç sunmamak yeğdir.
+                // If the alignment is broken, it is better to offer nothing than to offer the wrong content as a "backup".
                 throw new GitException(
                     GitFailureKind.Unknown,
                     "The number of backed-up contents did not match the number of paths.",
@@ -685,7 +698,7 @@ public sealed class WorkingTreeWriter : IWorkingTreeWriter
                 WorkingDirectory = workingDirectory,
                 Arguments = ["check-ignore", "--quiet", "--", path.Value],
 
-                // `check-ignore` eşleşme yoksa 1 döner; bu bir hata değil, cevaptır.
+                // `check-ignore` returns 1 when there is no match; this is not an error, it's the answer.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);

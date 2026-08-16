@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 #
-# Debian (.deb) ve Fedora (.rpm) paketleri (P10-T11, P10-T12).
+# Debian (.deb) and Fedora (.rpm) packages (P10-T11, P10-T12).
 #
-# Kullanım:
-#   build/linux/package-deb-rpm.sh          # ikisini de üret
-#   build/linux/package-deb-rpm.sh deb      # yalnızca .deb
-#   build/linux/package-deb-rpm.sh rpm      # yalnızca .rpm
+# Usage:
+#   build/linux/package-deb-rpm.sh          # build both
+#   build/linux/package-deb-rpm.sh deb      # .deb only
+#   build/linux/package-deb-rpm.sh rpm      # .rpm only
 #
-# Önkoşul: build/linux/package.sh çalışmış olmalı (dist/linux-x64/gitext-core hazır).
+# Prerequisite: build/linux/package.sh must have run (dist/linux-x64/gitext-core ready).
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# ⚠️ ÖLÇÜLDÜ — dpkg-deb ve rpmbuild bu makinede (Arch) KURULU DEĞİL. Araç yoksa
-# paket bir konteynerde üretiliyor. Araçları host'a kurmayı zorunlu kılmak,
-# yayın yapabilmeyi geliştirme makinesinin dağıtımına bağlardı.
+# ⚠️ MEASURED — dpkg-deb and rpmbuild are NOT installed on this machine (Arch). If
+# the tool is missing, the package is built in a container instead. Requiring the
+# tools to be installed on the host would tie the ability to release to the dev
+# machine's distro.
 
 set -euo pipefail
 
@@ -29,21 +30,21 @@ OUT="$ROOT/dist"
 APP_ID="io.github.ibrahimhates.GitExtCore"
 
 [ -x "$STAGE/gitext-core" ] || {
-    echo "HATA: $STAGE/gitext-core yok. Önce build/linux/package.sh çalıştırın." >&2
+    echo "ERROR: $STAGE/gitext-core does not exist. Run build/linux/package.sh first." >&2
     exit 1
 }
 
 WHAT="${1:-both}"
 
-# Semver ön sürümü ("-rc.1") paket sürümlerinde GEÇERSİZ:
-#   deb — '-' revizyon ayırıcısı; '~' ise sürüm sıralamasında 1.0.0'dan ÖNCE gelir,
-#         yani 1.0.0~rc.1 < 1.0.0. Doğru davranış tam olarak bu.
-#   rpm — '-' hiç kullanılamaz; aynı nedenle '~' kullanılıyor.
-# Yalnızca İLK '-' dönüştürülüyor: "1.0.1-alpha.0.3" → "1.0.1~alpha.0.3".
+# The semver pre-release suffix ("-rc.1") is INVALID in package versions:
+#   deb — '-' is the revision separator; '~' instead sorts BEFORE 1.0.0 in version
+#         ordering, i.e. 1.0.0~rc.1 < 1.0.0. That is exactly the correct behavior.
+#   rpm — '-' can't be used at all; '~' is used for the same reason.
+# Only the FIRST '-' is converted: "1.0.1-alpha.0.3" → "1.0.1~alpha.0.3".
 PKG_VERSION="${VERSION/-/\~}"
 
-# Docker gerekiyorsa hazırla. Kullanıcının global docker yapılandırmasına DOKUNULMUYOR:
-# Docker Desktop'tan kalma bozuk bir credsStore/context yaygın (P10-T00'de ölçüldü).
+# Prepare Docker if needed. The user's global docker configuration is NOT TOUCHED:
+# a broken credsStore/context left over from Docker Desktop is common (measured in P10-T00).
 setup_docker() {
     DOCKER_CFG="$(mktemp -d)"
     printf '{"auths":{}}' > "$DOCKER_CFG/config.json"
@@ -51,9 +52,9 @@ setup_docker() {
     export DOCKER_HOST="${DOCKER_HOST:-unix:///var/run/docker.sock}"
 }
 
-# ---------------------------------------------------------------- ortak ağaç
+# ---------------------------------------------------------------- shared tree
 
-# Her iki paket de aynı dosya düzenini kuruyor; tek yerde hazırlanıyor.
+# Both packages install the same file layout; it's prepared in one place.
 build_tree() {
     local root="$1"
 
@@ -78,7 +79,7 @@ make_deb() {
 
     build_tree "$work"
 
-    # Installed-Size kilobayt cinsinden; dpkg-deb hesaplamıyor, biz veriyoruz.
+    # Installed-Size is in kilobytes; dpkg-deb doesn't compute it, we provide it.
     local size
     size=$(du -sk "$work/usr" | cut -f1)
 
@@ -108,7 +109,7 @@ EOF
     if command -v dpkg-deb >/dev/null; then
         dpkg-deb --build --root-owner-group "$work" "$deb" >/dev/null
     else
-        echo "   dpkg-deb yok — konteynerde üretiliyor"
+        echo "   dpkg-deb missing — building in a container"
         setup_docker
         docker run --rm -v "$OUT:/out" debian:12 \
             dpkg-deb --build --root-owner-group /out/deb "/out/$(basename "$deb")" >/dev/null
@@ -139,7 +140,8 @@ URL:            https://github.com/ibrahimhates/gitext-core
 
 Requires:       git >= 2.30
 
-# İkili self-contained ve trimmed; rpmbuild'in otomatik işlemleri ona zarar verir.
+# The binary is self-contained and trimmed; rpmbuild's automatic post-processing
+# would damage it.
 %global __os_install_post %{nil}
 %global debug_package %{nil}
 AutoReqProv:    no
@@ -170,7 +172,7 @@ EOF
         rpmbuild --define "_topdir $work" --define "_rpmdir $OUT" \
             --buildroot "$work/BUILDROOT" -bb "$work/SPECS/gitext-core.spec" >/dev/null
     else
-        echo "   rpmbuild yok — konteynerde üretiliyor"
+        echo "   rpmbuild missing — building in a container"
         setup_docker
         docker run --rm -v "$OUT:/out" fedora:41 sh -c '
             dnf install -y -q rpm-build >/dev/null 2>&1
@@ -178,11 +180,12 @@ EOF
                 --buildroot /out/rpm/BUILDROOT -bb /out/rpm/SPECS/gitext-core.spec' >/dev/null
     fi
 
-    # rpmbuild çıktıyı mimariye göre alt klasöre koyuyor; üst dizine taşınıyor.
+    # rpmbuild puts the output in an arch-named subfolder; it's moved up to the parent dir.
     #
-    # ⚠️ Konteynerde üretilen dosyalar ROOT'a ait: `mv` izin hatası verip
-    # `|| true` ile yutuluyordu ve rpm dist/x86_64/ altında kalıyordu. Hata
-    # bastırılmadan taşınıyor, dizin de kendisi silinemezse konteynerde siliniyor.
+    # ⚠️ Files produced in the container belong to ROOT: `mv` used to fail with a
+    # permission error that got swallowed by `|| true`, leaving the rpm stuck under
+    # dist/x86_64/. It's moved without suppressing the error, and if the directory
+    # itself can't be removed, it's removed inside the container.
     local produced
     produced=$(find "$OUT/x86_64" -name '*.rpm' 2>/dev/null | head -1)
 
@@ -199,7 +202,7 @@ EOF
     local rpm
     rpm=$(find "$OUT" -maxdepth 1 -name 'gitext-core-*.rpm' | head -1)
 
-    [ -n "$rpm" ] || { echo "HATA: .rpm üretilemedi." >&2; exit 1; }
+    [ -n "$rpm" ] || { echo "ERROR: could not produce .rpm." >&2; exit 1; }
 
     echo "   $rpm ($(du -h "$rpm" | cut -f1))"
 }
@@ -208,5 +211,5 @@ case "$WHAT" in
     deb)  make_deb ;;
     rpm)  make_rpm ;;
     both) make_deb; make_rpm ;;
-    *)    echo "Kullanım: $0 [deb|rpm]" >&2; exit 2 ;;
+    *)    echo "Usage: $0 [deb|rpm]" >&2; exit 2 ;;
 esac

@@ -58,7 +58,7 @@ internal static class VersionInfo
             // The attribute is always generated; landing here means the build configuration is
             // broken. Silently inventing "1.0.0" would make an output packaged with the wrong
             // version look correct.
-            return "bilinmiyor";
+            return "unknown";
         }
 
         int plus = raw.IndexOf('+', StringComparison.Ordinal);

@@ -10,8 +10,8 @@
         CanResize="False">
 
     <!--
-        Yerleşim GitExtensions `FormRenameBranch.Designer.cs`'ten (§ 9):
-        label1 "New name" + kutu, düğme "Rename".
+        The layout comes from GitExtensions `FormRenameBranch.Designer.cs` (§ 9):
+        label1 "New name" plus the box, button "Rename".
     -->
     <StackPanel Margin="16" Spacing="10">
 

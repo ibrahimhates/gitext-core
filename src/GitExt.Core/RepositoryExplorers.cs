@@ -4,9 +4,9 @@ using GitExt.Core.Model;
 
 namespace GitExt.Core;
 
-// ===================================================== P07-T17 dosya geçmişi
+// ===================================================== P07-T17 file history
 
-/// <summary>Bir dosyanın geçmişindeki tek girdi (P07-T17).</summary>
+/// <summary>A single entry in a file's history (P07-T17).</summary>
 public sealed record FileHistoryEntry
 {
     public required string ObjectId { get; init; }
@@ -18,21 +18,21 @@ public sealed record FileHistoryEntry
     public DateTimeOffset AuthorTime { get; init; }
 
     /// <summary>
-    /// Dosyanın o commit'teki adı.
+    /// The file's name at that commit.
     /// </summary>
     /// <remarks>
-    /// Yeniden adlandırma boyunca takipte bu değişiyor; ekranda "şu ada sahipti"
-    /// gösterilebilsin diye tutuluyor.
+    /// This changes across a rename while tracking; kept so the screen can show "this used
+    /// to be named X".
     /// </remarks>
     public string Path { get; init; } = string.Empty;
 
-    /// <summary>Bu commit'te dosya yeniden adlandırılmış mı?</summary>
+    /// <summary>Was the file renamed at this commit?</summary>
     public bool IsRename { get; init; }
 
     public string ShortId => ObjectId.Length >= 7 ? ObjectId[..7] : ObjectId;
 }
 
-/// <summary>Dosya geçmişi okuma (P07-T17).</summary>
+/// <summary>Reading file history (P07-T17).</summary>
 public interface IFileHistoryReader
 {
     Task<IReadOnlyList<FileHistoryEntry>> ReadAsync(
@@ -43,23 +43,23 @@ public interface IFileHistoryReader
 }
 
 /// <summary>
-/// <c>git log --follow</c> okuyucusu (P07-T17).
+/// <c>git log --follow</c> reader (P07-T17).
 /// </summary>
 /// <remarks>
-/// <b>ÖLÇÜLDÜ — <c>--follow</c> gerçekten fark yaratıyor.</b> Bir kez yeniden adlandırılmış
-/// dosyada <c>--follow</c> ile 3 commit, onsuz <b>1</b> commit görünüyordu: yeniden
-/// adlandırmadan önceki geçmiş tamamen kayboluyor. Kullanıcı "bu dosyanın geçmişi bu kadar
-/// mıymış" diye düşünürdü.
+/// <b>MEASURED — <c>--follow</c> really does make a difference.</b> For a once-renamed
+/// file, <c>--follow</c> showed 3 commits, without it only <b>1</b> commit: the history
+/// before the rename disappears entirely. The user would think "is this really all the
+/// history this file has".
 /// </remarks>
 public sealed class FileHistoryReader : IFileHistoryReader
 {
-    /// <summary>Kayıt ayracı <b>başta</b>.</summary>
+    /// <summary>Record separator is <b>at the start</b>.</summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — ayraç sonda olursa <c>--name-status</c> satırları yanlış kayda
-    /// düşüyor.</b> git bu satırları biçim çıktısının <b>ardından</b> yazıyor; ayraç sonda
-    /// olduğunda bölme sonucu her parça, bir <b>önceki</b> commit'in durum satırlarıyla
-    /// başlıyordu. Sonuç: yeniden adlandırma bir sonraki commit'e atfedilirdi. Ayraç başa
-    /// alınınca her parça kendi durum satırlarını taşıyor.
+    /// 🔴 <b>MEASURED — if the separator is at the end, <c>--name-status</c> lines land in
+    /// the wrong record.</b> git writes those lines <b>after</b> the format output; with a
+    /// trailing separator, each split chunk started with the <b>previous</b> commit's status
+    /// lines. Result: a rename would be attributed to the next commit. With the separator
+    /// moved to the front, each chunk carries its own status lines.
     /// </remarks>
     private const string Format = "%x1e%H%x00%s%x00%an%x00%at";
 
@@ -101,9 +101,9 @@ public sealed class FileHistoryReader : IFileHistoryReader
     }
 
     /// <remarks>
-    /// Her kayıt: <c>&lt;sha&gt;\0&lt;konu&gt;\0&lt;yazar&gt;\0&lt;zaman&gt;</c>, ardından
-    /// <c>--name-status</c> satırları — <c>R100&lt;TAB&gt;eski&lt;TAB&gt;yeni</c> ya da
-    /// <c>M&lt;TAB&gt;yol</c>. Yeniden adlandırmalar buradan okunuyor.
+    /// Each record: <c>&lt;sha&gt;\0&lt;subject&gt;\0&lt;author&gt;\0&lt;time&gt;</c>, followed
+    /// by <c>--name-status</c> lines — either <c>R100&lt;TAB&gt;old&lt;TAB&gt;new</c> or
+    /// <c>M&lt;TAB&gt;path</c>. Renames are read from here.
     /// </remarks>
     internal static IReadOnlyList<FileHistoryEntry> Parse(string output, string currentPath)
     {
@@ -118,7 +118,7 @@ public sealed class FileHistoryReader : IFileHistoryReader
                 continue;
             }
 
-            // Son alan: zaman damgası + ardından gelen durum satırları.
+            // Last field: the timestamp + the status lines that follow it.
             string[] tail = fields[3].Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
             string path = currentPath;
@@ -130,7 +130,7 @@ public sealed class FileHistoryReader : IFileHistoryReader
 
                 if (columns.Length >= 3 && columns[0].StartsWith('R'))
                 {
-                    // Yeniden adlandırmada ESKİ ad ilginç olan: "bu dosya eskiden şuydu".
+                    // On a rename the OLD name is the interesting one: "this file used to be that".
                     rename = true;
                     path = columns[1];
                     break;
@@ -162,21 +162,22 @@ public sealed class FileHistoryReader : IFileHistoryReader
 
 // ============================================================ P07-T18 tag
 
-/// <summary>Bir etiket (P07-T18).</summary>
+/// <summary>A tag (P07-T18).</summary>
 public sealed record GitTag
 {
     public required string Name { get; init; }
 
-    /// <summary>Etiketin gösterdiği commit.</summary>
+    /// <summary>The commit the tag points to.</summary>
     public required string ObjectId { get; init; }
 
     /// <summary>
-    /// Açıklamalı (annotated) etiket mi?
+    /// Is this an annotated tag?
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: ayrım <c>%(objecttype)</c> ile yapılıyor — açıklamalıda <c>tag</c>,
-    /// hafifte <c>commit</c>. Açıklamalıda <c>%(*objectname)</c> asıl commit'i veriyor;
-    /// <c>%(objectname)</c> <b>etiket nesnesinin</b> kendi SHA'sı, commit değil.
+    /// MEASURED: the distinction is made via <c>%(objecttype)</c> — <c>tag</c> for
+    /// annotated, <c>commit</c> for lightweight. For annotated tags,
+    /// <c>%(*objectname)</c> gives the actual commit; <c>%(objectname)</c> is the
+    /// <b>tag object's</b> own SHA, not the commit's.
     /// </remarks>
     public bool IsAnnotated { get; init; }
 
@@ -187,25 +188,25 @@ public sealed record GitTag
     public DateTimeOffset? TaggedAt { get; init; }
 }
 
-/// <summary>Etiket oluşturma seçenekleri (P07-T18).</summary>
+/// <summary>Tag creation options (P07-T18).</summary>
 public sealed record TagOptions
 {
     public required string Name { get; init; }
 
-    /// <summary>Etiketlenecek commit; <see langword="null"/> ise <c>HEAD</c>.</summary>
+    /// <summary>Commit to tag; <see langword="null"/> means <c>HEAD</c>.</summary>
     public string? Target { get; init; }
 
-    /// <summary>Açıklama metni; verilirse etiket <b>annotated</b> olur.</summary>
+    /// <summary>Annotation text; if given, the tag becomes <b>annotated</b>.</summary>
     public string? Message { get; init; }
 
-    /// <summary><c>--sign</c>: GPG/SSH ile imzala.</summary>
+    /// <summary><c>--sign</c>: sign with GPG/SSH.</summary>
     public bool Sign { get; init; }
 
-    /// <summary><c>--force</c>: aynı adlı etiketi taşı.</summary>
+    /// <summary><c>--force</c>: move a tag with the same name.</summary>
     public bool Force { get; init; }
 }
 
-/// <summary>Etiket işlemleri (P07-T18).</summary>
+/// <summary>Tag operations (P07-T18).</summary>
 public interface ITagWriter
 {
     Task<IReadOnlyList<GitTag>> ListAsync(
@@ -223,17 +224,18 @@ public interface ITagWriter
         CancellationToken cancellationToken = default);
 }
 
-/// <summary><c>git tag</c> sarmalayıcısı (P07-T18).</summary>
+/// <summary><c>git tag</c> wrapper (P07-T18).</summary>
 public sealed class TagWriter : ITagWriter
 {
     /// <remarks>
-    /// 🔴 <b><c>for-each-ref</c> <c>%x1e</c>'yi DESTEKLEMİYOR</b> — ölçümde kaçış dizisi
-    /// harfi harfine <c>%x1e</c> olarak basıldı (<c>log</c> tabanlı komutlarda çalışıyor).
-    /// Burada kayıtlar <b>satır sonuyla</b> ayrılıyor; bu güvenli, çünkü etiket adı,
-    /// nesne adı ve <c>contents:subject</c> tek satır.
+    /// 🔴 <b><c>for-each-ref</c> does NOT SUPPORT <c>%x1e</c></b> — measured, the escape
+    /// sequence was printed literally as <c>%x1e</c> (it works in <c>log</c>-based
+    /// commands). Records here are separated by <b>newline</b> instead; that's safe
+    /// because the tag name, object name, and <c>contents:subject</c> are all a single line.
     /// <para>
-    /// Alanlar yine NUL: hafif bir etiketin <c>*objectname</c>/<c>taggername</c> alanları
-    /// <b>boş</b> geliyor ve NUL çifti kullanılsaydı sahte bir kayıt sınırı üretirdi.
+    /// Fields are still NUL-separated: a lightweight tag's <c>*objectname</c>/<c>taggername</c>
+    /// fields come back <b>empty</b>, and using a double-NUL would have produced a fake
+    /// record boundary.
     /// </para>
     /// </remarks>
     private const string Format =
@@ -285,9 +287,9 @@ public sealed class TagWriter : ITagWriter
                 Name = fields[0],
                 IsAnnotated = annotated,
 
-                // Açıklamalıda `%(objectname)` ETİKET NESNESİNİN SHA'sı; commit
-                // `%(*objectname)`de. Karıştırmak, etikete tıklayınca var olmayan bir
-                // commit'e gitmek demekti.
+                // For annotated tags `%(objectname)` is the TAG OBJECT'S SHA; the commit
+                // is in `%(*objectname)`. Mixing them up would mean clicking the tag
+                // navigates to a commit that doesn't exist.
                 ObjectId = annotated && fields[3].Length > 0 ? fields[3] : fields[2],
                 Message = fields[4],
                 TaggedAt = long.TryParse(fields[5], CultureInfo.InvariantCulture, out long seconds)
@@ -349,29 +351,29 @@ public sealed class TagWriter : ITagWriter
 
 // ======================================================== P07-T20 worktree
 
-/// <summary>Bağlı bir çalışma ağacı (P07-T20).</summary>
+/// <summary>A linked working tree (P07-T20).</summary>
 public sealed record WorkTree
 {
     public required string Path { get; init; }
 
     public string ObjectId { get; init; } = string.Empty;
 
-    /// <summary>Üzerindeki dal; ayrık <c>HEAD</c> ise <see langword="null"/>.</summary>
+    /// <summary>The branch checked out on it; <see langword="null"/> if a detached <c>HEAD</c>.</summary>
     public string? BranchName { get; init; }
 
-    /// <summary>Ana çalışma ağacı mı? (Listenin ilki.)</summary>
+    /// <summary>Is this the main working tree? (First in the list.)</summary>
     public bool IsMain { get; init; }
 
     public bool IsDetached => BranchName is null;
 
-    /// <summary>Kilitli mi? Kilitli worktree kaldırılamaz.</summary>
+    /// <summary>Is it locked? A locked worktree can't be removed.</summary>
     public bool IsLocked { get; init; }
 
-    /// <summary>Dizini artık yok mu?</summary>
+    /// <summary>Is its directory gone?</summary>
     public bool IsPrunable { get; init; }
 }
 
-/// <summary>Worktree işlemleri (P07-T20).</summary>
+/// <summary>Worktree operations (P07-T20).</summary>
 public interface IWorkTreeReader
 {
     Task<IReadOnlyList<WorkTree>> ListAsync(
@@ -393,12 +395,12 @@ public interface IWorkTreeReader
 }
 
 /// <summary>
-/// <c>git worktree</c> sarmalayıcısı (P07-T20).
+/// <c>git worktree</c> wrapper (P07-T20).
 /// </summary>
 /// <remarks>
-/// <c>--porcelain</c> çıktısı <b>boş satırla ayrılmış bloklar</b>: her blok
-/// <c>worktree &lt;yol&gt;</c> ile başlıyor, ardından <c>HEAD</c>, <c>branch</c>,
-/// <c>detached</c>, <c>locked</c>, <c>prunable</c> gibi anahtarlar geliyor.
+/// <c>--porcelain</c> output is <b>blocks separated by a blank line</b>: each block starts
+/// with <c>worktree &lt;path&gt;</c>, followed by keys like <c>HEAD</c>, <c>branch</c>,
+/// <c>detached</c>, <c>locked</c>, <c>prunable</c>.
 /// </remarks>
 public sealed class WorkTreeReader : IWorkTreeReader
 {
@@ -482,7 +484,7 @@ public sealed class WorkTreeReader : IWorkTreeReader
                 ObjectId = objectId,
                 BranchName = branch,
 
-                // git ana çalışma ağacını her zaman ilk yazıyor.
+                // git always writes the main working tree first.
                 IsMain = trees.Count == 0,
                 IsLocked = locked,
                 IsPrunable = prunable,
@@ -520,8 +522,8 @@ public sealed class WorkTreeReader : IWorkTreeReader
     }
 
     /// <remarks>
-    /// ⚠️ <c>--force</c> yalnızca kullanıcı açıkça isterse: kirli bir worktree'yi zorla
-    /// kaldırmak commit'lenmemiş işi siler.
+    /// ⚠️ <c>--force</c> only when the user explicitly asks for it: force-removing a dirty
+    /// worktree deletes uncommitted work.
     /// </remarks>
     public Task RemoveAsync(
         string workingDirectory,

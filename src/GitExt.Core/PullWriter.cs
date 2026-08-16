@@ -2,162 +2,166 @@ using GitExt.Core.Git;
 
 namespace GitExt.Core;
 
-/// <summary>Pull'un birleştirme stratejisi (P06-T07).</summary>
+/// <summary>Pull's merge strategy (P06-T07).</summary>
 public enum PullStrategy
 {
     /// <summary>
-    /// Kullanıcının ayarı ne diyorsa o.
+    /// Whatever the user's setting says.
     /// </summary>
     /// <remarks>
-    /// Bu değer <b>komuta geçirilmez</b>: <see cref="IPullWriter.ResolveStrategyAsync"/> ile
-    /// gerçek stratejiye çevrilir ve komuta <b>açık</b> bayrak yazılır. Gerekçesi
-    /// <see cref="PullWriter"/> notlarında.
+    /// This value is <b>never passed to the command</b>: it is resolved to the actual
+    /// strategy via <see cref="IPullWriter.ResolveStrategyAsync"/> and an <b>explicit</b>
+    /// flag is written to the command. The rationale is in the <see cref="PullWriter"/>
+    /// notes.
     /// </remarks>
     Default,
 
-    /// <summary><c>--no-rebase</c>: uzak dalı mevcut dala birleştir.</summary>
+    /// <summary><c>--no-rebase</c>: merge the remote branch into the current branch.</summary>
     Merge,
 
-    /// <summary><c>--rebase</c>: yerel commit'leri uzak dalın üstüne taşı.</summary>
+    /// <summary><c>--rebase</c>: move local commits on top of the remote branch.</summary>
     Rebase,
 
-    /// <summary><c>--ff-only</c>: yalnızca ileri sarılabiliyorsa.</summary>
+    /// <summary><c>--ff-only</c>: only if it can fast-forward.</summary>
     FastForwardOnly,
 }
 
-/// <summary>Stratejinin <b>nereden</b> geldiği — kullanıcıya gösterilir (P06-T07).</summary>
+/// <summary><b>Where</b> the strategy came from — shown to the user (P06-T07).</summary>
 public enum PullStrategySource
 {
-    /// <summary>Kullanıcı bu ekranda seçti.</summary>
+    /// <summary>The user chose it on this screen.</summary>
     UserChoice,
 
-    /// <summary><c>branch.&lt;dal&gt;.rebase</c> ayarı.</summary>
+    /// <summary>The <c>branch.&lt;name&gt;.rebase</c> setting.</summary>
     BranchSetting,
 
-    /// <summary><c>pull.rebase</c> ayarı.</summary>
+    /// <summary>The <c>pull.rebase</c> setting.</summary>
     PullRebaseSetting,
 
-    /// <summary><c>pull.ff</c> ayarı.</summary>
+    /// <summary>The <c>pull.ff</c> setting.</summary>
     PullFfSetting,
 
-    /// <summary>Hiçbir ayar yok; uygulamanın varsayılanı (birleştir).</summary>
+    /// <summary>No setting at all; the application's default (merge).</summary>
     ApplicationDefault,
 }
 
-/// <param name="Strategy">Uygulanacak strateji.</param>
-/// <param name="Source">Kararın kaynağı.</param>
-/// <param name="ConfigValue">Varsa ayarın ham değeri.</param>
+/// <param name="Strategy">The strategy to apply.</param>
+/// <param name="Source">The source of the decision.</param>
+/// <param name="ConfigValue">The raw value of the setting, if any.</param>
 public sealed record ResolvedPullStrategy(
     PullStrategy Strategy,
     PullStrategySource Source,
     string? ConfigValue);
 
-/// <summary>Pull seçenekleri (P06-T07).</summary>
+/// <summary>Pull options (P06-T07).</summary>
 public sealed record PullOptions
 {
-    /// <summary>Hangi remote? <see langword="null"/> ise dalın upstream'i.</summary>
+    /// <summary>Which remote? If <see langword="null"/>, the branch's upstream.</summary>
     public string? Remote { get; init; }
 
-    /// <summary>Hangi uzak dal? <see langword="null"/> ise upstream'in dalı.</summary>
+    /// <summary>Which remote branch? If <see langword="null"/>, the upstream's branch.</summary>
     public string? Branch { get; init; }
 
-    /// <summary>Strateji; <see cref="PullStrategy.Default"/> ise ayarlardan çözülür.</summary>
+    /// <summary>The strategy; resolved from settings if <see cref="PullStrategy.Default"/>.</summary>
     public PullStrategy Strategy { get; init; }
 
     /// <summary>
-    /// <c>--autostash</c>: kirli ağaçta çalışmayı stash'leyip sonra geri koy.
+    /// <c>--autostash</c>: stash work in a dirty tree and restore it afterward.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — geri koyma ÇAKIŞABİLİYOR ve çıkış kodu yine 0 oluyor.</b> Böyle bir
-    /// durumda çalışma ağacında <c>UU</c> dosyalar ve dosyanın <b>içinde çakışma işaretleri</b>
-    /// kalıyor, stash de listede duruyor. Sonuç
-    /// <see cref="PullResult.AutoStashConflict"/> ile ayrıca bildiriliyor.
+    /// 🔴 <b>MEASURED — restoring the stash CAN CONFLICT and the exit code is still 0.</b>
+    /// In that case the working tree ends up with <c>UU</c> files and <b>conflict
+    /// markers inside the file</b>, and the stash still sits in the list. The result is
+    /// reported separately via <see cref="PullResult.AutoStashConflict"/>.
     /// </remarks>
     public bool AutoStash { get; init; }
 
-    /// <summary><c>--prune</c>: fetch aşamasında budama yap.</summary>
+    /// <summary><c>--prune</c>: prune during the fetch stage.</summary>
     public bool Prune { get; init; }
 
-    /// <summary>Etiket davranışı (fetch aşaması).</summary>
+    /// <summary>Tag behavior (fetch stage).</summary>
     public FetchTagMode Tags { get; init; }
 
     /// <summary>
-    /// Kullanıcının verdiği HTTPS kimlik bilgisi (P06-T09).
+    /// The HTTPS credentials supplied by the user (P06-T09).
     /// </summary>
     /// <remarks>
-    /// <see langword="null"/> ise git kendi kanallarını (credential helper, SSH agent)
-    /// kullanır — ölçüldü, ikisi de bizim ortamımızda sorunsuz çalışıyor. Dolu olduğunda
-    /// değer <c>GIT_ASKPASS</c> üzerinden geçiriliyor, komut satırına <b>yazılmıyor</b>.
+    /// If <see langword="null"/>, git uses its own channels (credential helper, SSH
+    /// agent) — measured, both work fine in our environment. When set, the value is
+    /// passed via <c>GIT_ASKPASS</c>; it is <b>not written</b> to the command line.
     /// </remarks>
     public GitCredentials? Credentials { get; init; }
 
-    /// <summary>Canlı ilerleme bildirimi (P06-T10).</summary>
+    /// <summary>Live progress notification (P06-T10).</summary>
     public IProgress<GitProgress>? Progress { get; init; }
 }
 
-/// <summary>Pull sonucu (P06-T07).</summary>
+/// <summary>The result of a pull (P06-T07).</summary>
 public sealed record PullResult
 {
-    /// <summary>Gerçekten uygulanan strateji ve kaynağı.</summary>
+    /// <summary>The strategy that was actually applied, and its source.</summary>
     public required ResolvedPullStrategy Strategy { get; init; }
 
-    /// <summary>Pull öncesi <c>HEAD</c>.</summary>
+    /// <summary><c>HEAD</c> before the pull.</summary>
     public required string HeadBefore { get; init; }
 
-    /// <summary>Pull sonrası <c>HEAD</c>.</summary>
+    /// <summary><c>HEAD</c> after the pull.</summary>
     public required string HeadAfter { get; init; }
 
-    /// <summary>Fetch aşamasında değişen uzak izleme ref'leri.</summary>
+    /// <summary>Remote-tracking refs that changed during the fetch stage.</summary>
     public IReadOnlyList<RefChange> Changes { get; init; } = [];
 
     /// <summary>
-    /// Çözülmemiş dosya kaldı mı?
+    /// Are there any unresolved files left?
     /// </summary>
     /// <remarks>
-    /// 🔴 Çıkış koduna bakılarak <b>belirlenemez</b>: çakışmada rc=1 geliyor ama
-    /// <c>--autostash</c> geri koyma çakışmasında rc <b>0</b>. Durum ayrıca okunuyor.
+    /// 🔴 <b>Cannot be determined</b> from the exit code alone: a conflict yields rc=1,
+    /// but an <c>--autostash</c> restore conflict yields rc <b>0</b>. The state is read
+    /// separately.
     /// </remarks>
     public bool HasConflicts { get; init; }
 
-    /// <summary>Çakışma, stash'in geri konmasından mı kaynaklandı?</summary>
+    /// <summary>Did the conflict come from restoring the stash?</summary>
     /// <remarks>
-    /// Ayırt etmek şart: kullanıcının yapması gereken iş farklı. Pull'un kendisi
-    /// <b>başarılı</b> olmuştur, çözülecek olan kendi kaydedilmemiş değişikliğidir ve
-    /// stash hâlâ durur.
+    /// This must be distinguished: what the user needs to do differs. The pull itself
+    /// <b>succeeded</b>; what needs resolving is their own uncommitted change, and the
+    /// stash is still there.
     /// </remarks>
     public bool AutoStashConflict { get; init; }
 
-    /// <summary><c>HEAD</c> hiç ilerlemedi mi ("zaten güncel")?</summary>
+    /// <summary>Did <c>HEAD</c> not move at all ("already up to date")?</summary>
     public bool AlreadyUpToDate => string.Equals(HeadBefore, HeadAfter, StringComparison.Ordinal);
 
     /// <summary>
-    /// Pull'u geri almanın <b>çalıştırılabilir</b> komutu.
+    /// The <b>runnable</b> command to revert the pull.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: git <c>ORIG_HEAD</c>'i üç yolda da (ileri sarma, birleştirme, rebase)
-    /// pull öncesi commit'e ayarlıyor ve <c>reset --hard</c> ile eski hâl birebir geri
-    /// geliyor. Yine de <b>hash yazılıyor</b>, <c>ORIG_HEAD</c> değil: bir sonraki
-    /// merge/rebase onu ezer ve kullanıcı komutu yarım saat sonra çalıştırabilir.
+    /// MEASURED: git sets <c>ORIG_HEAD</c> to the pre-pull commit in all three paths
+    /// (fast-forward, merge, rebase), and <c>reset --hard</c> restores the previous
+    /// state exactly. Even so, the <b>hash is written</b>, not <c>ORIG_HEAD</c>: the
+    /// next merge/rebase overwrites it, and the user might run the command half an hour
+    /// later.
     /// </remarks>
     public string RecoveryCommand => $"git reset --hard {HeadBefore}";
 }
 
-/// <summary>Pull işlemleri (P06-T07).</summary>
+/// <summary>Pull operations (P06-T07).</summary>
 public interface IPullWriter
 {
     /// <summary>
-    /// Kullanıcının ayarlarına göre <b>hangi stratejinin</b> uygulanacağını söyler.
+    /// Reports <b>which strategy</b> will be applied based on the user's settings.
     /// </summary>
     /// <remarks>
-    /// Arayüz bunu <b>pull'dan önce</b> gösteriyor: README'nin "komutu göster" ilkesi ve
-    /// planın "pull düğmesinin ne yaptığı belirsiz kalmamalı" maddesi.
+    /// The UI shows this <b>before the pull</b>: the README's "show the command"
+    /// principle and the plan's rule that "what the pull button does must not remain
+    /// ambiguous".
     /// </remarks>
     Task<ResolvedPullStrategy> ResolveStrategyAsync(
         string workingDirectory,
         PullStrategy requested = PullStrategy.Default,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Pull yapar.</summary>
+    /// <summary>Performs a pull.</summary>
     Task<PullResult> PullAsync(
         string workingDirectory,
         PullOptions options,
@@ -165,21 +169,22 @@ public interface IPullWriter
 }
 
 /// <summary>
-/// <c>git pull</c> sarmalayıcısı (P06-T07).
+/// A <c>git pull</c> wrapper (P06-T07).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Strateji ASLA git'e bırakılmıyor.</b> ÖLÇÜLDÜ: hiçbir ayar yokken ve dallar
-/// iraksamışken <c>git pull</c> <b>çalışmayı reddediyor</b> (çıkış kodu 128) ve ekrana
-/// dokuz satırlık bir <c>hint:</c> bloğu basıyor. Daha kötüsü: reddetmeden <b>önce fetch
-/// aşamasını tamamlıyor</b>, yani depo değişmiş oluyor ama kullanıcı "başarısız" görüyor.
-/// Bu yüzden strateji önce <see cref="ResolveStrategyAsync"/> ile çözülüyor ve komuta
-/// <b>her zaman açık bir bayrak</b> (<c>--rebase</c>/<c>--no-rebase</c>/<c>--ff-only</c>)
-/// yazılıyor.
+/// 🔴 <b>The strategy is NEVER left up to git.</b> MEASURED: with no setting present and
+/// diverged branches, <c>git pull</c> <b>refuses to run</b> (exit code 128) and prints a
+/// nine-line <c>hint:</c> block. Worse: it <b>completes the fetch stage before
+/// refusing</b>, meaning the repository has changed but the user sees "failed". That is
+/// why the strategy is resolved first via <see cref="ResolveStrategyAsync"/>, and an
+/// <b>always-explicit flag</b> (<c>--rebase</c>/<c>--no-rebase</c>/<c>--ff-only</c>) is
+/// written to the command.
 /// </para>
 /// <para>
-/// <b>Ayar önceliği ölçüldü:</b> <c>branch.&lt;dal&gt;.rebase</c>, <c>pull.rebase</c>'i
-/// <b>eziyor</b> (<c>pull.rebase=true</c> + <c>branch.main.rebase=false</c> → merge yapıldı).
+/// <b>Setting priority measured:</b> <c>branch.&lt;name&gt;.rebase</c> <b>overrides</b>
+/// <c>pull.rebase</c> (<c>pull.rebase=true</c> + <c>branch.main.rebase=false</c> →
+/// a merge was performed).
 /// </para>
 /// </remarks>
 public sealed class PullWriter : IPullWriter

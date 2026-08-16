@@ -10,12 +10,13 @@
              x:DataType="vm:GitOutputViewModel">
 
     <!--
-        P05-T07 — git komutunun TAM çıktısı.
+        P05-T07 — the FULL output of the git command.
 
-        Çıktı MONOSPACE: hook'lar sütun hizalı tablo ve kod parçası yazıyor (linter çıktısı
-        en yaygın örnek). P04-T13'te ölçülmüştü — orantılı yazı tipiyle hiza bozuluyor.
-        ⚠️ Yazı tipi seçimi headless testte doğrulanamıyor (tüm aile adları tek yedeğe
-        düşüyor); gerçek pencerede kontrol edilmeli.
+        The output is MONOSPACE: hooks print column-aligned tables and code fragments (linter
+        output being the most common example). This was measured in P04-T13 — with a
+        proportional font the alignment breaks.
+        ⚠️ The font choice cannot be verified in a headless test (all family names fall back to
+        one face); it has to be checked in a real window.
     -->
 
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
@@ -51,8 +52,9 @@
                    Margin="0,0,0,6" />
 
         <!--
-            Hook mesajı değiştirdiyse commit'e GİREN mesaj gösteriliyor. Kullanıcının yazdığı
-            metinle kaydedilen metin farklıysa bunu ancak `git log` açıp fark ederdi.
+            When a hook has changed the message, the message that ACTUALLY WENT INTO the commit is
+            shown. If the text the user wrote differs from the text that was recorded, they would
+            only notice it by opening `git log`.
         -->
         <StackPanel Grid.Row="4"
                     IsVisible="{Binding HasFinalMessage}"
@@ -86,8 +88,8 @@
                           VerticalScrollBarVisibility="Auto">
 
                 <!--
-                    Seçilebilir: kullanıcının ilk yapacağı şey hook çıktısını kopyalayıp
-                    aramak. Salt okunur bir TextBlock bunu imkânsız kılardı.
+                    Selectable: the first thing a user does is copy the hook output and search for
+                    it. A read-only TextBlock would make that impossible.
                 -->
                 <SelectableTextBlock Name="OutputText"
                                      Text="{Binding Output}"

@@ -90,7 +90,7 @@ internal static class StartupBenchmark
         {
             Console.WriteLine(string.Create(
                 CultureInfo.InvariantCulture,
-                $"soğuk başlatma : {elapsed:0} ms (süreç başlangıcından ilk kareye)"));
+                $"cold start : {elapsed:0} ms (from process start to first frame)"));
 
             using Process current = Process.GetCurrentProcess();
             Console.WriteLine(string.Create(
@@ -102,7 +102,7 @@ internal static class StartupBenchmark
         }
         else
         {
-            Console.Error.WriteLine("Ölçüm alınamadı: ilk kare hiç çizilmedi.");
+            Console.Error.WriteLine("No measurement: the first frame was never drawn.");
             return 1;
         }
 

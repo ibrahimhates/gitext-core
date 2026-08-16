@@ -13,9 +13,10 @@
              Loaded="OnViewLoaded">
 
     <!--
-        P03-T09 kararı: sanallaştırılmış ListBox + grafik sütunu için özel çizim.
-        Seçim, klavye gezinme ve erişilebilirlik ListBox'tan geliyor; yalnızca şerit/düğüm/kenar
-        özel çiziliyor (XAML'de değişken sayıda çizgi üretmek pahalı ve hantal olurdu).
+        The P03-T09 decision: a virtualised ListBox plus custom drawing for the graph column.
+        Selection, keyboard navigation and accessibility come from the ListBox; only the
+        lane/node/edge drawing is custom (producing a variable number of lines in XAML would be
+        expensive and unwieldy).
     -->
 
     <UserControl.Styles>
@@ -24,12 +25,12 @@
 
     <Grid RowDefinitions="Auto,*">
 
-        <!-- Arama, hata ve yükleme durumu -->
+        <!-- Search, error and loading state -->
         <StackPanel Grid.Row="0" Margin="8,6" Spacing="4">
 
             <!--
-                SHA ile atlama (P03-T14). Yalnızca SHA öneki aranır; mesaj/yazar araması
-                ayrı bir görevdir (P07-T21) ve burada karıştırılmıyor.
+                Jump by SHA (P03-T14). Only the SHA prefix is searched; searching message/author
+                is a separate task (P07-T21) and is not mixed in here.
             -->
             <Grid ColumnDefinitions="*,Auto">
                 <TextBox Grid.Column="0"
@@ -48,8 +49,9 @@
             </Grid>
 
             <!--
-                Özet + "Ayrıntılar" (P05-T07). Özet sınıflandırılmış tek cümledir; git'in
-                asıl çıktısı ayrı pencerede. Buton yalnızca gösterilecek çıktı varsa görünür.
+                Summary + "Details" (P05-T07). The summary is one classified sentence; git's
+                actual output lives in a separate window. The button appears only when there is
+                output to show.
             -->
             <StackPanel Orientation="Horizontal"
                         Spacing="8"
@@ -69,8 +71,8 @@
         </StackPanel>
 
         <!--
-            SelectedIndex bağlanıyor, SelectedItem değil: seçimin tek doğruluk kaynağı
-            indekstir (bkz. CommitListViewModel.SelectedIndex).
+            SelectedIndex is bound, not SelectedItem: the single source of truth for the
+            selection is the index (see CommitListViewModel.SelectedIndex).
         -->
         <ListBox Grid.Row="1"
                  Name="CommitList"
@@ -81,7 +83,7 @@
                  BorderThickness="0">
 
             <ListBox.Styles>
-                <!-- Satırlar dar ve sabit yükseklikte: sanallaştırma bundan faydalanıyor. -->
+                <!-- Rows are narrow and of fixed height: virtualisation depends on that. -->
                 <Style Selector="ListBoxItem">
                     <Setter Property="Padding" Value="0" />
                     <Setter Property="MinHeight" Value="22" />
@@ -89,20 +91,21 @@
             </ListBox.Styles>
 
             <!--
-                COMMIT BAĞLAM MENÜSÜ — öğe sırası GitExtensions'ın `RevisionGridControl`
-                `mainContextMenu`'sünden birebir alındı (P08-T27):
+                COMMIT CONTEXT MENU — the item order was taken verbatim from GitExtensions'
+                `RevisionGridControl` `mainContextMenu` (P08-T27):
 
-                  bisect · ayraç · copy to clipboard · ayraç · stash ·
-                  ayraç · checkout branch / push / merge / rebase / reset current ·
-                  ayraç · reset changes / commit / create branch / reset other /
+                  bisect · separator · copy to clipboard · separator · stash ·
+                  separator · checkout branch / push / merge / rebase / reset current ·
+                  separator · reset changes / commit / create branch / reset other /
                           rename / delete branch ·
-                  ayraç · create tag / delete tag ·
-                  ayraç · checkout this commit / revert / cherry pick / archive / advanced ·
-                  ayraç · compare · ayraç · navigate / view …
+                  separator · create tag / delete tag ·
+                  separator · checkout this commit / revert / cherry pick / archive / advanced ·
+                  separator · compare · separator · navigate / view …
 
-                ⚠️ Uygulanmamış komutlar KALDIRILMIYOR, devre dışı duruyor: kullanıcı
-                GitExtensions'taki yeri kas hafızasıyla arıyor, sonradan araya sokmak sırayı
-                bozar. Bisect Faz 07, stash/branch/tag Faz 05-06.
+                ⚠️ Unimplemented commands are NOT REMOVED, they stay disabled: the user reaches
+                for the position they know from GitExtensions by muscle memory, and slotting an
+                item in later would break the order. Bisect is Phase 07, stash/branch/tag are
+                Phases 05-06.
             -->
             <ListBox.ContextMenu>
                 <ContextMenu>
@@ -111,7 +114,7 @@
                     <MenuItem Header="{loc:Translate commit_list.skip_revision}" IsEnabled="False" />
                     <Separator />
 
-                    <!-- GitExtensions'ta bu alt menü dinamik: dallar/etiketler + sabit alanlar -->
+                    <!-- In GitExtensions this submenu is dynamic: branches/tags plus fixed entries -->
                     <MenuItem Header="{loc:Translate commit_list.copy_to_clipboard}">
                         <MenuItem Header="{loc:Translate commit_list.commit_hash}" Click="OnCopyHashClick" />
                         <MenuItem Header="{loc:Translate commit_list.message}" Click="OnCopyMessageClick" />
@@ -154,7 +157,7 @@
                     <MenuItem Header="{loc:Translate commit_list.archive_this_commit}" IsEnabled="False" />
                     <Separator />
 
-                    <!-- Faz 04'te geldi: çalışan tek grup. -->
+                    <!-- Arrived in Phase 04: the only working group. -->
                     <MenuItem Header="{loc:Translate commit_list.compa_re}">
                         <MenuItem Header="{loc:Translate commit_list.compare_the_two_selected_commits}"
                                   InputGesture="Ctrl+D"
@@ -179,15 +182,15 @@
                     <Grid Height="22"
                           ColumnDefinitions="Auto,70,*,Auto,140,120">
 
-                        <!-- Grafik sütunu — tek özel çizim yapan parça -->
+                        <!-- Graph column — the one piece that draws itself -->
                         <!--
-                            Grafik sütunu SABİT genişlikte ve tüm satırlar aynı şerit
-                            penceresini gösterir (P03-T21). Genişliği satır başına şerit
-                            sayısına bağlamak, gerçek depolarda sütunu ~2200 px yapıp
-                            diğer tüm sütunları ekran dışına itiyordu (P03-T18'de ölçüldü).
+                            The graph column has a FIXED width and every row shows the same lane
+                            window (P03-T21). Tying the width to the per-row lane count made the
+                            column ~2200 px wide in real repositories and pushed every other
+                            column off screen (measured in P03-T18).
 
-                            Pencere seçili commit'i takip eder; iki yana taşan şeritler
-                            kenardaki işaretlerle bildirilir.
+                            The window follows the selected commit; lanes overflowing to either
+                            side are announced by markers at the edge.
                         -->
                         <controls:CommitGraphCell
                             Grid.Column="0"
@@ -212,9 +215,9 @@
                                    Margin="0,0,8,0" />
 
                         <!--
-                            Ref rozetleri, TÜRE GÖRE ayrı stillerde (P03-T12).
-                            Tür bilgisi git'in %D alanından değil for-each-ref'ten geliyor;
-                            %D yerel ve uzak dalı ayırt etmiyor (ölçüldü).
+                            Ref badges, in separate styles BY KIND (P03-T12).
+                            The kind comes from for-each-ref, not from git's %D field; %D does not
+                            tell a local branch from a remote one (measured).
                         -->
                         <ItemsControl Grid.Column="3"
                                       ItemsSource="{Binding Badges}"
@@ -229,9 +232,9 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:RefBadge">
                                     <!--
-                                        Stil, türe göre CSS benzeri sınıflarla seçiliyor.
-                                        Sınıflar bağlanabilir olduğu için her tür kendi
-                                        rengini UserControl.Styles'tan alıyor.
+                                        The style is selected by kind through CSS-like classes.
+                                        Because classes are bindable, each kind takes its own
+                                        colour from UserControl.Styles.
                                     -->
                                     <Border Classes="badge"
                                             Classes.head="{Binding IsHead}"

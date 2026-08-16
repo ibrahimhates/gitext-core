@@ -11,14 +11,14 @@
         CanResize="False">
 
     <!--
-        GitExtensions'ta bunun tam karşılığı yok: orada kimlik doğrulama PuTTY/pageant
-        etrafında kurulu (§ 9'un kapsamı Windows araçları). Linux'ta karşılığı SSH agent
-        ve credential helper; bu yüzden ekran GitExtensions'ın "Load SSH key" düğmesinin
-        yerini alıyor, onu taklit etmiyor.
+        There is no exact counterpart to this in GitExtensions: authentication there is built
+        around PuTTY/pageant (§ 9's scope is Windows tooling). On Linux the counterpart is the
+        SSH agent and the credential helper; so this screen takes the place of GitExtensions'
+        "Load SSH key" button rather than imitating it.
 
-        Sıra: ne oldu -> hangi adres -> ne yapılabilir (öneriler) -> kimlik alanları.
-        Kimlik alanları YALNIZCA HTTPS'te görünüyor: SSH'ta istenen şey bir parola değil,
-        anahtar; alan göstermek yanlış bir vaat olurdu.
+        Order: what happened -> which address -> what can be done (suggestions) -> credential
+        fields. The credential fields appear ONLY over HTTPS: over SSH what is wanted is not a
+        password but a key; showing a field would be a false promise.
     -->
     <StackPanel Margin="16" Spacing="12">
 

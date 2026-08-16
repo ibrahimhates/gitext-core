@@ -9,8 +9,8 @@
         WindowStartupLocation="CenterOwner">
 
     <!--
-      Yerleşim GitExtensions FormResolveConflicts'ten (§ 9):
-      solda çakışan dosyalar, sağda Base | Ours | Theirs, altta eylemler.
+      The layout comes from GitExtensions FormResolveConflicts (§ 9):
+      conflicting files on the left, Base | Ours | Theirs on the right, actions at the bottom.
     -->
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
 
@@ -22,7 +22,7 @@
 
         <Grid Grid.Row="1" ColumnDefinitions="260,4,*">
 
-            <!-- Çakışan dosyalar -->
+            <!-- Conflicting files -->
             <ListBox Grid.Column="0"
                      Name="ConflictList"
                      ItemsSource="{Binding Files}"
@@ -43,7 +43,7 @@
 
             <Grid Grid.Column="2" RowDefinitions="*,4,*" IsVisible="{Binding HasSelection}">
 
-                <!-- Üç yollu paneller; varlık çakışmasında gizleniyor. -->
+                <!-- Three-way panels; hidden on a presence conflict. -->
                 <Grid Grid.Row="0"
                       Name="ThreeWayPanel"
                       ColumnDefinitions="*,*,*"
@@ -111,7 +111,7 @@
 
                 <Border Width="1" Background="{DynamicResource GitExtSeparatorBrush}" Margin="4,2" />
 
-                <!-- Devam yalnızca hepsi çözülünce etkin: erken çalıştırmak rc=128. -->
+                <!-- Continue is enabled only once everything is resolved: running it early gives rc=128. -->
                 <Button Name="ContinueButton"
                         Content="{loc:Translate conflict.continue}"
                         Command="{Binding ContinueCommand}"

@@ -14,12 +14,13 @@ env:
   CI: true
 
 jobs:
-  # P10-T03 — Commit mesajı biçimi sürüm notlarının GİRDİSİ, üslup tercihi değil.
-  # Sürüm notları commit'lerden üretiliyor (bu depoda PR akışı yok: 53 commit'in 50'si
-  # doğrudan main'e atılmış), yani biçimi bozuk bir commit "Diğer" başlığına düşer.
+  # P10-T03 — Commit message format is the INPUT to the release notes, not a style
+  # preference. Release notes are generated from commits (this repo has no PR flow:
+  # 50 of 53 commits were pushed straight to main), so a badly formatted commit
+  # falls into the "Other" heading.
   #
-  # Yalnızca PR'larda: main'e atılmış commit'ler zaten geçmiş, geriye dönük kırmak
-  # anlamsız. Kural bugünden itibaren geçerli.
+  # Only on PRs: commits already pushed to main are history, breaking them
+  # retroactively is pointless. The rule applies from today onward.
   commits:
     name: Commit message format
     runs-on: ubuntu-latest
@@ -28,15 +29,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # Aralık karşılaştırması için taban dal lazım; sığ klonda yok.
+          # A base branch is needed for range comparison; not present in a shallow clone.
           fetch-depth: 0
 
       - name: Check Conventional Commits
         run: build/check-commits.sh "origin/${{ github.base_ref }}..HEAD"
 
-  # P11-T10 — Gömülü İngilizce yedek, en.json'dan ÜRETİLİYOR. İkisi ayrışırsa hangi
-  # metnin geçerli olduğu belirsizleşir: dosya bir şey, kod başka bir şey söyler.
-  # Burada ayrışma derleme hatası hâline getiriliyor.
+  # P11-T10 — The embedded English fallback is GENERATED from en.json. If the two
+  # drift apart, which text is authoritative becomes ambiguous: the file says one
+  # thing, the code says another. Here, drift is turned into a build failure.
   localization:
     name: Localization fallback in sync
     runs-on: ubuntu-latest
@@ -74,16 +75,16 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # --locked-mode: packages.lock.json güncel değilse build kırılır (ADR-0006).
-      # Lock dosyası değiştiyse commit edilmelidir.
+      # --locked-mode: the build fails if packages.lock.json is not up to date (ADR-0006).
+      # If the lock file changed, it must be committed.
       - name: Restore (locked)
         run: dotnet restore --locked-mode
 
       - name: Build
         run: dotnet build -c Release --no-restore
 
-      # Katman ihlali (ADR-0003) build sırasında GITEXT001 hatası olarak yakalanır;
-      # ayrıca LayeringTests çalışma zamanında ikinci kez doğrular.
+      # A layering violation (ADR-0003) is caught as a GITEXT001 error during the build;
+      # LayeringTests also verifies it a second time at runtime.
       - name: Test
         run: dotnet test -c Release --no-build --logger "trx;LogFileName=test-results.trx"
 
@@ -95,7 +96,7 @@ jobs:
           path: '**/TestResults/*.trx'
           if-no-files-found: ignore
 
-      # Render testi başarısız olursa görsel kanıt lazım (P01-T16).
+      # If the render test fails, visual evidence is needed (P01-T16).
       - name: Upload render artifacts
         if: failure()
         uses: actions/upload-artifact@v7
@@ -104,16 +105,16 @@ jobs:
           path: '**/render-*.png'
           if-no-files-found: ignore
 
-  # P02-T15 — Çekirdek katman, desteklenen EN ESKİ git sürümüne karşı da çalışmalı.
-  # git'in çıktı formatları sürümler arası değişir ve ayrıştırıcılarımız bunlara dayanıyor;
-  # yalnızca güncel git ile test etmek, eski dağıtımlardaki kullanıcıyı görmemek demek.
+  # P02-T15 — The core layer must also work against the OLDEST supported git version.
+  # git's output formats change across versions and our parsers depend on them; testing
+  # only against current git means not seeing the user on an older distro.
   #
-  # 2.30.2 = ADR-0002'deki minimum (Debian bullseye'ın taşıdığı sürüm).
-  # Runner'lar çok daha yeni git taşıdığı için kaynaktan derleniyor; sonuç önbelleklenir.
+  # 2.30.2 = the minimum from ADR-0002 (the version Debian bullseye ships).
+  # Runners carry a much newer git, so it's built from source; the result is cached.
   min-git:
     name: Test with minimum git (2.30.2)
     runs-on: ubuntu-latest
-    # git derlemesi önbelleklenir; ilk çalıştırma ~3 dk, sonrakiler ~1 dk.
+    # The git build is cached; the first run takes ~3 min, subsequent runs ~1 min.
     env:
       GIT_VERSION: 2.30.2
 
@@ -149,7 +150,7 @@ jobs:
           echo "$HOME/git-${GIT_VERSION}/bin" >> "$GITHUB_PATH"
           "$HOME/git-${GIT_VERSION}/bin/git" --version
 
-      # Yalnızca çekirdek testleri: UI testleri git sürümünden etkilenmez.
+      # Only the core tests: UI tests are not affected by the git version.
       - name: Test GitExt.Core
         run: |
           git --version
@@ -172,8 +173,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # Yayınlanan yapılandırmanın derlendiğini her PR'da doğrula — sürüm gününde
-      # sürprizle karşılaşmamak için (Faz 10).
+      # Verify on every PR that the published configuration builds — so there are
+      # no surprises on release day (Phase 10).
       - name: Publish self-contained
         run: |
           dotnet publish src/GitExt.Desktop \
@@ -186,16 +187,16 @@ jobs:
       - name: Report size
         run: du -sh ./dist/${{ matrix.rid }}
 
-  # P09-T16 — performans regresyon koruması.
+  # P09-T16 — performance regression guard.
   #
-  # UYARIR, KIRMAZ. Planın maddesi: "Kırmızı yapmak değil, uyarmak — CI makinelerinin
-  # gürültüsü yanlış alarm üretir." Paylaşımlı runner'lar CPU'yu komşu işlerle
-  # paylaşıyor; P09-T02'de aynı benchmark'ın iki koşusu arasında %10'a varan fark
-  # ölçüldü. Bir eşiği kırmızı yapmak, gerçek regresyonları da görmezden gelinen bir
-  # gürültü akışına gömerdi.
+  # WARNS, DOES NOT FAIL. From the plan: "Not to turn it red, but to warn — CI
+  # machine noise produces false alarms." Shared runners share CPU with neighboring
+  # jobs; in P09-T02 a difference of up to 10% was measured between two runs of the
+  # same benchmark. Turning a threshold red would bury real regressions in a noise
+  # stream that gets ignored.
   #
-  # Yalnızca Linux'ta: üç işletim sisteminde ölçmek gürültüyü üçe katlar, karşılaştırma
-  # değeri artmaz. Temel çizgi zaten tek bir makinede alındı.
+  # Linux only: measuring on three operating systems triples the noise without
+  # adding comparison value. The baseline was already taken on a single machine.
   benchmarks:
     name: Performance regression check
     runs-on: ubuntu-latest
@@ -214,8 +215,9 @@ jobs:
       - name: Build benchmarks
         run: dotnet build benchmarks/GitExt.Benchmarks -c Release --no-restore
 
-      # --fast: 1 warmup, 3 iterasyon. Tam koşu CI'da ~15 dakika sürüyor ve elde edilen
-      # dar güven aralığı, makinenin gürültüsü yanında zaten anlamını yitiriyor.
+      # --fast: 1 warmup, 3 iterations. A full run takes ~15 minutes in CI, and the
+      # narrow confidence interval it buys already loses its meaning next to the
+      # machine's noise.
       - name: Run benchmarks
         run: dotnet run --project benchmarks/GitExt.Benchmarks -c Release --no-build -- --fast
 
@@ -228,7 +230,7 @@ jobs:
               echo "--- $(basename "$current") ---"
               python3 tools/compare-benchmarks.py "$baseline" "$current"
             else
-              echo "::warning::Temel çizgi yok: $(basename "$current")"
+              echo "::warning::No baseline: $(basename "$current")"
             fi
           done
 

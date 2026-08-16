@@ -7,7 +7,7 @@
         Title="{loc:Translate reset.reset_current_branch}" Width="580" SizeToContent="Height"
         WindowStartupLocation="CenterOwner">
 
-  <!-- GitExtensions FormResetCurrentBranch (§ 9): radyo düğmeleri + açıklama + onay. -->
+  <!-- GitExtensions FormResetCurrentBranch (§ 9): radio buttons plus explanation plus confirmation. -->
   <StackPanel Margin="16" Spacing="10">
 
     <TextBlock Name="TargetLabel" FontWeight="Bold"
@@ -28,7 +28,7 @@
       <TextBlock Name="ModeDescriptionLabel" Text="{Binding ModeDescription}" TextWrapping="Wrap" />
     </Border>
 
-    <!-- Ek onay yalnızca GERİ ALINAMAYAN kayıpta: hard mod + kirli ağaç. -->
+    <!-- The extra confirmation only for IRRECOVERABLE loss: hard mode plus a dirty tree. -->
     <CheckBox Name="ConfirmBox"
               IsChecked="{Binding Confirmed}"
               IsVisible="{Binding RequiresConfirmation}"

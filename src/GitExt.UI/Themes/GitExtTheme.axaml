@@ -2,8 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-        Uygulamanın tek tema girişi (P08-T07). `App.axaml` yalnızca bunu ekler; hangi
-        sözlüklerin hangi sırayla yükleneceği burada, tek yerde duruyor.
+        The application's single theme entry point (P08-T07). `App.axaml` adds only this; which
+        dictionaries load in which order lives here, in one place.
     -->
 
     <Styles.Resources>
@@ -18,14 +18,14 @@
     <StyleInclude Source="avares://GitExt.UI/Styles/RefBadgeStyles.axaml" />
 
     <!--
-        Odak göstergesi (P08-T05). Odaklı panelin kenarlığı vurgulanıyor.
+        Focus indicator (P08-T05). The focused panel's border is highlighted.
 
-        🔴 Gösterge olmadan klavye gezinmesi işe yaramaz: kullanıcı tuşlarının nereye
-        gittiğini göremez ve `F6` bastığında bir şey olup olmadığını anlayamaz.
+        🔴 Without an indicator, keyboard navigation is useless: the user cannot see where their
+        keystrokes are going and cannot tell whether pressing `F6` did anything.
 
-        `:focus-within` kullanılıyor, `:focus` değil — P08-T00/M09'da ölçüldü, odak
-        neredeyse her zaman panelin İÇİNDEKİ bir öğede (bir `ListBoxItem`, bir `TextBox`);
-        panelin kendisi hiç odak almıyor.
+        `:focus-within` is used, not `:focus` — measured in P08-T00/M09, focus is almost always
+        on an element INSIDE the panel (a `ListBoxItem`, a `TextBox`); the panel itself never
+        takes focus.
     -->
     <Style Selector="Border.panel">
         <Setter Property="BorderThickness" Value="1" />

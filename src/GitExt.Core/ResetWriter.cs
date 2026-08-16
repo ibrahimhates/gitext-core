@@ -3,97 +3,98 @@ using GitExt.Core.Git;
 namespace GitExt.Core;
 
 /// <summary>
-/// <c>git reset</c> modu (P07-T06).
+/// <c>git reset</c> mode (P07-T06).
 /// </summary>
 /// <remarks>
-/// Sıra GitExtensions <c>FormResetCurrentBranch</c>'ten (§ 9): en zararsızdan en yıkıcıya.
+/// Order follows GitExtensions' <c>FormResetCurrentBranch</c> (§ 9): least destructive to most.
 /// </remarks>
 public enum ResetMode
 {
     /// <summary>
-    /// <c>--soft</c>: yalnızca <c>HEAD</c> oynar.
+    /// <c>--soft</c>: only <c>HEAD</c> moves.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: dosya diskte <b>yeni</b> içeriğiyle kalıyor ve index'te <b>stage'li</b>
-    /// görünüyor (<c>M.</c>) — yani commit geri alınıp değişiklik commit'lenmeye hazır
-    /// bekliyor. "Commit'i böl" ya da "mesajı düzelt" senaryosunun aracı.
+    /// MEASURED: the file stays on disk with its <b>new</b> content, and appears
+    /// <b>staged</b> in the index (<c>M.</c>) — i.e. the commit is undone and the change
+    /// waits ready to be committed. The tool for the "split a commit" or "fix the message"
+    /// scenario.
     /// </remarks>
     Soft,
 
     /// <summary>
-    /// <c>--mixed</c> (git'in varsayılanı): <c>HEAD</c> ve index oynar.
+    /// <c>--mixed</c> (git's default): <c>HEAD</c> and the index move.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: dosya diskte yeni içeriğiyle kalıyor ama artık <b>stage'siz</b>
-    /// (<c>.M</c>). Değişiklik durur, yeniden seçerek stage'lemek gerekir.
+    /// MEASURED: the file stays on disk with the new content, but is now <b>unstaged</b>
+    /// (<c>.M</c>). The change remains, but needs to be re-selected and staged.
     /// </remarks>
     Mixed,
 
     /// <summary>
-    /// <c>--hard</c>: <c>HEAD</c>, index <b>ve çalışma ağacı</b> oynar.
+    /// <c>--hard</c>: <c>HEAD</c>, the index, <b>and the working tree</b> move.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>YIKICI.</b> ÖLÇÜLDÜ: dosya eski içeriğine döndü ve çalışma ağacı
-    /// <b>tertemiz</b>. Commit'lenmemiş her değişiklik <b>kaybolur</b> ve reflog bunu
-    /// geri getirmez — reflog yalnızca commit'leri tutar. Bu yüzden ayrı bir onay
-    /// gerektiriyor.
+    /// 🔴 <b>DESTRUCTIVE.</b> MEASURED: the file reverted to its old content and the working
+    /// tree is <b>completely clean</b>. Every uncommitted change is <b>lost</b>, and the
+    /// reflog does not bring it back — the reflog only holds commits. This is why it requires
+    /// a separate confirmation.
     /// </remarks>
     Hard,
 
     /// <summary>
-    /// <c>--keep</c>: <c>HEAD</c> oynar ama yerel değişiklikler korunur.
+    /// <c>--keep</c>: <c>HEAD</c> moves but local changes are preserved.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: ilgisiz yerel değişiklikler ayakta kaldı. Çakışırsa git reddediyor —
-    /// yani <c>--hard</c>'ın "önce sor" hali.
+    /// MEASURED: unrelated local changes survived. If there's a conflict, git refuses —
+    /// i.e. the "ask first" version of <c>--hard</c>.
     /// </remarks>
     Keep,
 }
 
-/// <summary>Reset seçenekleri (P07-T06).</summary>
+/// <summary>Reset options (P07-T06).</summary>
 public sealed record ResetOptions
 {
-    /// <summary>Dönülecek commit ya da referans.</summary>
+    /// <summary>Commit or reference to reset to.</summary>
     public required string Target { get; init; }
 
     public ResetMode Mode { get; init; } = ResetMode.Mixed;
 }
 
 /// <summary>
-/// Reset'in <b>ne yapacağının</b> önizlemesi (P07-T06).
+/// Preview of <b>what a reset will do</b> (P07-T06).
 /// </summary>
 /// <remarks>
-/// Plan bunu açıkça istiyor: <i>"Her modun ne yapacağını açıkça anlatan bir diyalog:
-/// hangi commit'ler kaybolacak, çalışma dizinine ne olacak."</i>
+/// The plan explicitly asks for this: <i>"A dialog that clearly explains what each mode will
+/// do: which commits will be lost, what will happen to the working directory."</i>
 /// </remarks>
 public sealed record ResetPreview
 {
-    /// <summary>Hedeften sonra gelen, yani <c>HEAD</c>'den düşecek commit'ler.</summary>
+    /// <summary>Commits after the target, i.e. those that will drop off <c>HEAD</c>.</summary>
     public IReadOnlyList<string> DroppedCommits { get; init; } = [];
 
     public int DroppedCount => DroppedCommits.Count;
 
-    /// <summary>Çalışma ağacında commit'lenmemiş değişiklik var mı?</summary>
+    /// <summary>Are there uncommitted changes in the working tree?</summary>
     public bool HasUncommittedChanges { get; init; }
 
-    /// <summary>Hedef geçerli bir commit'e çözülüyor mu?</summary>
+    /// <summary>Does the target resolve to a valid commit?</summary>
     public required bool IsTargetValid { get; init; }
 
-    /// <summary>Hedefin tam SHA'sı.</summary>
+    /// <summary>Full SHA of the target.</summary>
     public string TargetObjectId { get; init; } = string.Empty;
 
     /// <summary>
-    /// Bu modla <b>geri alınamayacak</b> bir kayıp olur mu?
+    /// Would this mode cause an <b>unrecoverable</b> loss?
     /// </summary>
     /// <remarks>
-    /// Düşen commit'ler reflog'da durduğu için geri alınabilir; asıl geri alınamayan şey
-    /// <c>--hard</c>'ın sildiği <b>commit'lenmemiş</b> değişiklikler.
+    /// Dropped commits stay in the reflog and can be recovered; what's actually unrecoverable
+    /// is the <b>uncommitted</b> changes that <c>--hard</c> deletes.
     /// </remarks>
     public bool LosesUncommittedWork(ResetMode mode) =>
         mode == ResetMode.Hard && HasUncommittedChanges;
 }
 
-/// <summary>Reset işlemleri (P07-T06).</summary>
+/// <summary>Reset operations (P07-T06).</summary>
 public interface IResetWriter
 {
     Task<SafetyPoint> ResetAsync(
@@ -110,7 +111,7 @@ public interface IResetWriter
 }
 
 /// <summary>
-/// <c>git reset</c> sarmalayıcısı (P07-T06).
+/// Wrapper around <c>git reset</c> (P07-T06).
 /// </summary>
 public sealed class ResetWriter : IResetWriter
 {
@@ -129,7 +130,7 @@ public sealed class ResetWriter : IResetWriter
         _safety = safety;
     }
 
-    /// <returns>İşlem <b>öncesi</b> konum — geri alma bilgisi bunun üzerinden veriliyor.</returns>
+    /// <returns>Position <b>before</b> the operation — undo information is given via this.</returns>
     public async Task<SafetyPoint> ResetAsync(
         string workingDirectory,
         ResetOptions options,
@@ -138,7 +139,7 @@ public sealed class ResetWriter : IResetWriter
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Target);
 
-        // Faz kuralı: geçmişi değiştiren her işlemden ÖNCE konum kaydedilir.
+        // Phase rule: position is recorded BEFORE every history-altering operation.
         SafetyPoint point = await _safety
             .CaptureAsync(workingDirectory, "reset", cancellationToken)
             .ConfigureAwait(false);
@@ -166,8 +167,8 @@ public sealed class ResetWriter : IResetWriter
             return new ResetPreview { IsTargetValid = false };
         }
 
-        // Hedeften HEAD'e kadar olanlar düşecek olanlar. `--oneline` değil, konu ayrı
-        // okunuyor: insan biçimli çıktı ayrıştırmak ADR-0002'ye aykırı.
+        // Everything from the target up to HEAD is what will drop. Not `--oneline`; the
+        // subject is read separately: parsing human-formatted output goes against ADR-0002.
         GitResult dropped = await _runner.RunAsync(
             GitCommand.Create(
                 workingDirectory, "log", "--format=%x1e%H%x00%s", $"{target}..HEAD"),
@@ -208,7 +209,7 @@ public sealed class ResetWriter : IResetWriter
 
     public string DescribeCommand(ResetOptions options) => Describe(options);
 
-    /// <summary>Çalıştırılacak komutu üretir ("komutu göster" ilkesi).</summary>
+    /// <summary>Produces the command to be run ("show the command" principle).</summary>
     public static string Describe(ResetOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -216,14 +217,15 @@ public sealed class ResetWriter : IResetWriter
     }
 
     /// <remarks>
-    /// 🔴 <b>Ayracın YERİ burada diğer komutlardan farklı.</b> İlk yazımda merge'den
-    /// kopyalanan <c>… -- &lt;hedef&gt;</c> deyimi kullanılmıştı ve ÖLÇÜMDE
-    /// <c>fatal: Cannot do hard reset with paths</c> ile öldü: <c>reset</c> için
-    /// <c>--</c>'dan sonrası <b>yol</b> demek, commit demek değil.
+    /// 🔴 <b>The POSITION of the separator here differs from other commands.</b> The first
+    /// draft used the <c>… -- &lt;target&gt;</c> idiom copied from merge, and MEASUREMENT
+    /// killed it with <c>fatal: Cannot do hard reset with paths</c>: for <c>reset</c>,
+    /// what follows <c>--</c> means a <b>path</b>, not a commit.
     /// <para>
-    /// Doğrusu ayracı <b>sona</b> koymak. Gereksiz de değil: bir dal adıyla aynı adda bir
-    /// dosya varken ayraçsız çağrı <c>fatal: ambiguous argument … both revision and
-    /// filename</c> veriyor, sondaki <c>--</c> ile sorun kalmıyor (ölçüldü).
+    /// The correct approach is to put the separator at the <b>end</b>. And it's not
+    /// unnecessary: when a file shares a name with a branch, calling without the separator
+    /// gives <c>fatal: ambiguous argument … both revision and filename</c>; the trailing
+    /// <c>--</c> removes the ambiguity (measured).
     /// </para>
     /// </remarks>
     private static IReadOnlyList<string> BuildArguments(ResetOptions options) =>

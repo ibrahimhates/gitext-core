@@ -7,28 +7,28 @@ using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
-/// <summary>Push ekranındaki sekme (P06-T08).</summary>
+/// <summary>Tab on the push screen (P06-T08).</summary>
 /// <remarks>
-/// Sıra GitExtensions <c>FormPush</c>'un <c>TabControlTagBranch</c>'inden (§ 9):
+/// Order follows GitExtensions' <c>FormPush</c> <c>TabControlTagBranch</c> (§ 9):
 /// <i>Push branches · Push tags · Push multiple branches</i>.
 /// </remarks>
 public enum PushTab
 {
-    /// <summary>Tek bir dal.</summary>
+    /// <summary>A single branch.</summary>
     Branch,
 
-    /// <summary>Etiketler.</summary>
+    /// <summary>Tags.</summary>
     Tag,
 
-    /// <summary>Birden çok dal — <b>uzak dal silme</b> de burada.</summary>
+    /// <summary>Multiple branches — <b>remote branch deletion</b> is here too.</summary>
     MultipleBranches,
 }
 
 /// <summary>
-/// "Birden çok dal" sekmesindeki bir satır (P06-T08).
+/// A row on the "Multiple branches" tab (P06-T08).
 /// </summary>
 /// <remarks>
-/// Sütunlar GitExtensions'ın <c>BranchGrid</c>'inden: <i>Local Branch · Remote Branch ·
+/// Columns follow GitExtensions' <c>BranchGrid</c>: <i>Local Branch · Remote Branch ·
 /// Ahead/Behind · Push · Force · Delete Remote Branch</i>.
 /// </remarks>
 public sealed class PushBranchRowViewModel : ViewModelBase
@@ -40,13 +40,13 @@ public sealed class PushBranchRowViewModel : ViewModelBase
 
     public required string RemoteBranch { get; init; }
 
-    /// <summary>Upstream'e göre konum; upstream yoksa boş.</summary>
+    /// <summary>Position relative to upstream; empty if there's no upstream.</summary>
     public required string AheadBehind { get; init; }
 
-    /// <summary>Uzakta bu dal var mı? Yoksa silinemez.</summary>
+    /// <summary>Does this branch exist on the remote? If not, it can't be deleted.</summary>
     public required bool ExistsOnRemote { get; init; }
 
-    /// <summary>Kira çıpası — uzak izleme ref'inin ekran açılırkenki ucu.</summary>
+    /// <summary>Lease anchor — tip of the remote tracking ref when the screen was opened.</summary>
     public string? RemoteTipObjectId { get; init; }
 
     public bool Push
@@ -62,11 +62,11 @@ public sealed class PushBranchRowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Uzaktaki dalı sil (<c>--delete</c>).
+    /// Delete the remote branch (<c>--delete</c>).
     /// </summary>
     /// <remarks>
-    /// Gönderme ile aynı anda işaretlenemez: git tek refspec için ikisini birden kabul
-    /// etmiyor ve kullanıcının niyeti de belirsiz kalırdı.
+    /// Cannot be checked at the same time as pushing: git doesn't accept both for a single
+    /// refspec, and the user's intent would also stay ambiguous.
     /// </remarks>
     public bool Delete
     {
@@ -84,21 +84,21 @@ public sealed class PushBranchRowViewModel : ViewModelBase
 }
 
 /// <summary>
-/// Push ekranı (P06-T08).
+/// Push screen (P06-T08).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔑 <b>Çıplak <c>--force</c> yok.</b> Plan kararı: başkasının commit'lerini sessizce
-/// siler. Ekranda GitExtensions'taki gibi bir <i>Force push</i> kutusu <b>duruyor</b> ama
-/// devre dışı ve nedeni yazılı — yerini boş bırakmak kullanıcıya "bu program zorlayamıyor"
-/// dedirtirdi, oysa <see cref="ForceWithLease"/> tam da onun güvenli hâli.
+/// 🔑 <b>No bare <c>--force</c>.</b> Plan decision: it silently deletes someone else's commits.
+/// The screen <b>keeps</b> a <i>Force push</i> checkbox like GitExtensions does, but it's
+/// disabled with a written reason — leaving its place empty would make the user think "this
+/// program just can't force push", whereas <see cref="ForceWithLease"/> is exactly its safe form.
 /// </para>
 /// <para>
-/// 🔴 <b>Kira çıpası ekran açılırken donuyor.</b> <see cref="LeaseNotice"/> kullanıcıya
-/// hangi uca göre karar verileceğini söylüyor. Gerekçe:
-/// <see cref="PushOptions.ForceWithLease"/> — çıplak <c>--force-with-lease</c> araya giren
-/// bir fetch'ten sonra korumayı bırakıyor ve bu projede fetch kullanıcı istemeden de
-/// olabiliyor (otomatik tazeleme).
+/// 🔴 <b>The lease anchor freezes when the screen opens.</b> <see cref="LeaseNotice"/> tells the
+/// user which tip the decision is based on. Rationale:
+/// <see cref="PushOptions.ForceWithLease"/> — a bare <c>--force-with-lease</c> drops its
+/// protection after an intervening fetch, and in this project a fetch can also happen without
+/// the user asking for it (automatic refresh).
 /// </para>
 /// </remarks>
 public sealed class PushViewModel : ViewModelBase
@@ -147,16 +147,16 @@ public sealed class PushViewModel : ViewModelBase
         CancelCommand = new RelayCommand(Cancel, () => CanCancel);
     }
 
-    /// <summary>Yapılandırılmış uzak depolar.</summary>
+    /// <summary>Configured remotes.</summary>
     public ObservableCollection<string> Remotes { get; } = [];
 
-    /// <summary>Yerel dallar (kaynak seçimi).</summary>
+    /// <summary>Local branches (source selection).</summary>
     public ObservableCollection<string> SourceBranches { get; } = [];
 
-    /// <summary>Gönderilebilecek etiketler.</summary>
+    /// <summary>Tags that can be pushed.</summary>
     public ObservableCollection<string> Tags { get; } = [];
 
-    /// <summary>"Birden çok dal" sekmesinin satırları.</summary>
+    /// <summary>Rows of the "Multiple branches" tab.</summary>
     public ObservableCollection<PushBranchRowViewModel> Rows { get; } = [];
 
     public string? SelectedRemote
@@ -210,7 +210,7 @@ public sealed class PushViewModel : ViewModelBase
         set { if (value) { Tab = PushTab.MultipleBranches; } }
     }
 
-    /// <summary>Gönderilecek yerel dal.</summary>
+    /// <summary>Local branch to push.</summary>
     public string? SourceBranch
     {
         get => _sourceBranch;
@@ -220,7 +220,7 @@ public sealed class PushViewModel : ViewModelBase
             {
                 if (value is { Length: > 0 })
                 {
-                    // Hedef adı kaynakla birlikte gidiyor; kullanıcı isterse değiştirir.
+                    // The destination name follows the source; the user changes it if they want.
                     RemoteBranch = value;
                 }
 
@@ -229,7 +229,7 @@ public sealed class PushViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Uzaktaki hedef dal adı (GitExtensions'ta da serbest metin).</summary>
+    /// <summary>Destination branch name on the remote (free text in GitExtensions too).</summary>
     public string RemoteBranch
     {
         get => _remoteBranch;
@@ -256,7 +256,7 @@ public sealed class PushViewModel : ViewModelBase
         }
     }
 
-    /// <summary><c>--tags</c>: tek etiket yerine hepsi.</summary>
+    /// <summary><c>--tags</c>: all of them instead of a single tag.</summary>
     public bool AllTags
     {
         get => _allTags;
@@ -270,7 +270,7 @@ public sealed class PushViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// <c>--set-upstream</c> (GitExtensions'ta <i>"Replace tracking reference"</i>).
+    /// <c>--set-upstream</c> (called <i>"Replace tracking reference"</i> in GitExtensions).
     /// </summary>
     public bool SetUpstream
     {
@@ -298,7 +298,7 @@ public sealed class PushViewModel : ViewModelBase
         }
     }
 
-    /// <summary>GitExtensions'taki <i>"Show options"</i> bağlantısı.</summary>
+    /// <summary>The <i>"Show options"</i> link, like in GitExtensions.</summary>
     public bool ShowOptions
     {
         get => _showOptions;
@@ -340,11 +340,12 @@ public sealed class PushViewModel : ViewModelBase
 
     public bool HasWarning => !string.IsNullOrEmpty(Warning);
 
-    /// <summary>Red durumunda ne yapılacağını söyleyen satır.</summary>
+    /// <summary>Line telling what to do in case of a rejection.</summary>
     /// <remarks>
-    /// GitExtensions reddi <b>insan-okunur çıktıya düzenli ifade uygulayarak</b> tespit
-    /// ediyor (<c>FormPush.cs</c>). Bizde sebep porcelain satırından geliyor; öneri de
-    /// sebebe göre değişiyor, "push başarısız" demekle yetinmiyoruz.
+    /// GitExtensions detects a rejection by <b>applying a regular expression to the
+    /// human-readable output</b> (<c>FormPush.cs</c>). For us the reason comes from the
+    /// porcelain line; the suggestion also changes based on the reason — we don't settle for
+    /// just saying "push failed".
     /// </remarks>
     public string? Advice
     {
@@ -360,11 +361,11 @@ public sealed class PushViewModel : ViewModelBase
 
     public bool HasAdvice => !string.IsNullOrEmpty(Advice);
 
-    /// <summary>Uzakta yeni bir dal oluşacak mı?</summary>
+    /// <summary>Would a new branch be created on the remote?</summary>
     public bool WouldCreateRemoteBranch =>
         _plan is not null && !_plan.RemoteBranches.Contains(RemoteBranch, StringComparer.Ordinal);
 
-    /// <summary>Kiranın hangi uca göre karar vereceği.</summary>
+    /// <summary>Which tip the lease will base its decision on.</summary>
     public string? LeaseNotice
     {
         get
@@ -387,13 +388,13 @@ public sealed class PushViewModel : ViewModelBase
     public bool HasLeaseNotice => LeaseNotice is not null;
 
     /// <summary>
-    /// Çıplak <c>--force</c> neden yok?
+    /// Why isn't there a bare <c>--force</c>?
     /// </summary>
     public static string ForceDisabledReason =>
         Loc.T("push.a_bare_force_is_not_offered_it_deletes_remot")
         + Loc.T("push.force_with_lease_does_the_same_thing_but_sto");
 
-    /// <summary>Çalıştırılacak komut ("komutu göster" ilkesi).</summary>
+    /// <summary>Command that will run ("show the command" principle).</summary>
     public string CommandPreview =>
         SelectedRemote is not { Length: > 0 } ? string.Empty : PushWriter.Describe(BuildOptions());
 
@@ -408,7 +409,7 @@ public sealed class PushViewModel : ViewModelBase
 
     public IAsyncRelayCommand RunCommand { get; }
 
-    /// <summary>Canlı ilerleme metni; işlem yokken boş.</summary>
+    /// <summary>Live progress text; empty while no operation is running.</summary>
     public string? ProgressText
     {
         get => _progressText;
@@ -423,7 +424,7 @@ public sealed class PushViewModel : ViewModelBase
 
     public bool HasProgress => !string.IsNullOrEmpty(ProgressText);
 
-    /// <summary>Yüzde; git yüzde vermiyorsa <see langword="null"/> (belirsiz çubuk).</summary>
+    /// <summary>Percentage; <see langword="null"/> if git doesn't report one (indeterminate bar).</summary>
     public double? ProgressPercent
     {
         get => _progressPercent;
@@ -439,12 +440,12 @@ public sealed class PushViewModel : ViewModelBase
     public bool IsProgressIndeterminate => ProgressPercent is null;
 
     /// <summary>
-    /// Çalışan işlemi iptal eder (P06-T10).
+    /// Cancels the running operation (P06-T10).
     /// </summary>
     /// <remarks>
-    /// 🔑 Süreç <b>gerçekten öldürülüyor</b> (<c>Kill(entireProcessTree: true)</c>) —
-    /// yalnızca beklemeyi bırakmak, arkada çalışmaya devam eden bir git bırakırdı.
-    /// Ölçüldü: yarıda kesilen bir fetch geride kilit bırakmıyor ve <c>fsck</c> temiz.
+    /// 🔑 The process is <b>actually killed</b> (<c>Kill(entireProcessTree: true)</c>) —
+    /// merely giving up waiting would leave a git process still running in the background.
+    /// Measured: a fetch interrupted midway leaves no lock behind and <c>fsck</c> stays clean.
     /// </remarks>
     public IRelayCommand CancelCommand { get; }
 
@@ -459,7 +460,7 @@ public sealed class PushViewModel : ViewModelBase
     });
 
 
-    /// <summary>Ekranı bir depo için doldurur.</summary>
+    /// <summary>Fills in the screen for a repository.</summary>
     public async Task LoadAsync(
         string workingDirectory,
         string currentBranch,
@@ -501,12 +502,13 @@ public sealed class PushViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Seçim değişince planı tazeler.
+    /// Refreshes the plan when the selection changes.
     /// </summary>
     /// <remarks>
-    /// 🔑 Çıpa <b>seçili dala</b> ait olmak zorunda. Tazelenmezse
-    /// <see cref="LeaseAnchor"/> güvenli tarafa düşer (çıpa yok → kira bayrağı yazılmaz →
-    /// zorlama denenmez), ama kullanıcı işaretlediği kutunun çalışmadığını göremezdi.
+    /// 🔑 The anchor must belong to the <b>selected branch</b>. If not refreshed,
+    /// <see cref="LeaseAnchor"/> falls onto the safe side (no anchor → the lease flag isn't
+    /// written → forcing isn't attempted), but the user would have no way to see that the box
+    /// they checked isn't working.
     /// </remarks>
     private void ReloadPlan() => _ = ReloadPlanSafeAsync();
 
@@ -522,7 +524,7 @@ public sealed class PushViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Kira çıpasını ve satırları tazeler.</summary>
+    /// <summary>Refreshes the lease anchor and the rows.</summary>
     private async Task ReloadPlanAsync(CancellationToken cancellationToken)
     {
         if (SelectedRemote is not { Length: > 0 } remote || SourceBranch is not { Length: > 0 } branch)
@@ -534,9 +536,9 @@ public sealed class PushViewModel : ViewModelBase
             .PlanAsync(_workingDirectory, remote, branch, cancellationToken)
             .ConfigureAwait(true);
 
-        // Kullanıcının en sık istediği şey: upstream'i olmayan bir dal gönderiliyorsa
-        // kutusu kendiliğinden işaretli gelsin (GitExtensions da böyle yapıyor). Aksi
-        // hâlde çıplak `git push` bir daha çalışmazdı — ölçüldü, çıkış kodu 128.
+        // The most common thing the user wants: when pushing a branch that has no upstream,
+        // the box should come pre-checked (GitExtensions does this too). Otherwise a bare
+        // `git push` would fail again — measured, exit code 128.
         SetUpstream = !_plan.HasUpstream;
 
         Tags.Clear();
@@ -596,7 +598,7 @@ public sealed class PushViewModel : ViewModelBase
         return tracking.IsUpToDate ? "up to date" : $"↑{tracking.Ahead} ↓{tracking.Behind}";
     }
 
-    /// <summary>Kira çıpası: seçili hedefin uzak izleme ref'inin donmuş ucu.</summary>
+    /// <summary>Lease anchor: the frozen tip of the selected target's remote tracking ref.</summary>
     private string? LeaseAnchor =>
         _plan is not null && string.Equals(_plan.RemoteBranch, RemoteBranch, StringComparison.Ordinal)
             ? _plan.RemoteTipObjectId
@@ -716,13 +718,13 @@ public sealed class PushViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Kimlik doğrulama hatasını ele alır (P06-T09).
+    /// Handles an authentication error (P06-T09).
     /// </summary>
     /// <remarks>
-    /// 🔑 Ham <c>stderr</c> gösterilmiyor: aynı satır hem eksik SSH anahtarında hem
-    /// çözülemeyen sunucu adında yazılıyor (ölçüldü). Teşhis <b>ortama</b> bakıyor ve
-    /// yalnızca HTTPS'te kimlik sorup tekrar deniyor — SSH'ta istenen şey bir anahtar,
-    /// diyalogla çözülmez.
+    /// 🔑 The raw <c>stderr</c> isn't shown: the same line is written both for a missing SSH
+    /// key and for a hostname that can't be resolved (measured). Diagnostics look at the
+    /// <b>environment</b> and only for HTTPS does it ask for credentials and retry — over SSH
+    /// what's needed is a key, and that isn't solved by a dialog.
     /// </remarks>
     private async Task HandleAuthenticationAsync(GitException error)
     {
@@ -773,9 +775,9 @@ public sealed class PushViewModel : ViewModelBase
             return;
         }
 
-        // 🔴 Kısmi başarıda hem gideni hem reddedileni söylüyoruz: "push başarısız" demek
-        // kullanıcıyı gitmiş bir gönderimi tekrarlamaya iterdi (ölçüldü — çıkış kodu 1
-        // olsa da diğer dal gerçekten gitmişti).
+        // 🔴 On partial success we report both what went through and what was rejected: saying
+        // "push failed" would push the user to retry a push that had already gone through
+        // (measured — even with exit code 1 the other branch had actually gone through).
         Warning = (result.IsPartial
                 ? Loc.T("push.some_were_pushed_some_were_rejected")
                 : Loc.T("push.the_push_was_rejected"))

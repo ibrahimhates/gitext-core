@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 #
-# İkon seti üretimi (P10-T06).
+# Icon set generation (P10-T06).
 #
-# Kullanım:
-#   build/icons/generate.sh [çıktı-dizini]
+# Usage:
+#   build/icons/generate.sh [output-dir]
 #
-# Varsayılan çıktı: build/icons/out/
+# Default output: build/icons/out/
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# Freedesktop ikon teması yapısı üretiliyor:
-#   hicolor/<boyut>x<boyut>/apps/io.github.ibrahimhates.GitExtCore.png
+# Produces the Freedesktop icon theme structure:
+#   hicolor/<size>x<size>/apps/io.github.ibrahimhates.GitExtCore.png
 #   hicolor/scalable/apps/io.github.ibrahimhates.GitExtCore.svg
 #
-# ⚠️ ÖLÇÜLDÜ — 16 ve 22 px için AYRI bir çizim kullanılıyor (gitext-core-small.svg).
-# Tam ikon o boyutta bulanıklaşıyor: üç düğüm, iki şerit ve merge bağı 16 piksele
-# sığmıyor. Küçük varyant aynı fikri iki düğüm ve tek bağla anlatıyor. Bu Freedesktop
-# ikon temalarında olağan — 16 px'lik ikon 256 px'liğin küçültülmüşü değildir.
+# ⚠️ MEASURED — a SEPARATE drawing is used for 16 and 22 px (gitext-core-small.svg).
+# The full icon turns blurry at that size: three nodes, two lanes and a merge edge
+# don't fit into 16 pixels. The small variant conveys the same idea with two nodes
+# and a single edge. This is standard in Freedesktop icon themes — a 16 px icon is
+# not a shrunk version of the 256 px one.
 
 set -euo pipefail
 
@@ -24,17 +25,17 @@ OUT="${1:-$HERE/out}"
 
 APP_ID="io.github.ibrahimhates.GitExtCore"
 
-# Küçük boyutlarda sadeleştirilmiş çizim kullanılan eşik.
+# Threshold below which the simplified drawing is used.
 SMALL_MAX=22
 
 command -v rsvg-convert >/dev/null || {
-    echo "HATA: rsvg-convert bulunamadı (paket: librsvg)." >&2
+    echo "ERROR: rsvg-convert not found (package: librsvg)." >&2
     exit 1
 }
 
 rm -rf "$OUT"
 
-# Freedesktop'un beklediği boyutlar. 512 Flathub ve yazılım merkezleri için.
+# The sizes Freedesktop expects. 512 is for Flathub and software centers.
 for size in 16 22 24 32 48 64 128 256 512; do
     dir="$OUT/hicolor/${size}x${size}/apps"
     mkdir -p "$dir"
@@ -48,11 +49,11 @@ for size in 16 22 24 32 48 64 128 256 512; do
     rsvg-convert -w "$size" -h "$size" "$source_svg" -o "$dir/$APP_ID.png"
 done
 
-# Ölçeklenebilir (scalable) sürüm: HiDPI ve rastgele boyutlar için.
+# Scalable version: for HiDPI and arbitrary sizes.
 mkdir -p "$OUT/hicolor/scalable/apps"
 cp "$HERE/gitext-core.svg" "$OUT/hicolor/scalable/apps/$APP_ID.svg"
 
-# Windows .ico — çok boyutlu tek dosya. Küçük boyutlar için sade varyant kullanılıyor.
+# Windows .ico — a single multi-size file. The simplified variant is used for small sizes.
 if command -v magick >/dev/null; then
     tmp="$(mktemp -d)"
     trap 'rm -rf "$tmp"' EXIT
@@ -69,9 +70,9 @@ if command -v magick >/dev/null; then
     magick "$tmp"/16.png "$tmp"/24.png "$tmp"/32.png "$tmp"/48.png \
            "$tmp"/64.png "$tmp"/128.png "$tmp"/256.png "$OUT/gitext-core.ico"
 else
-    echo "-- .ico ATLANDI (ImageMagick yok)."
+    echo "-- .ico SKIPPED (ImageMagick not found)."
 fi
 
 count=$(find "$OUT" -type f | wc -l)
-echo "== ikon seti hazır: $OUT ($count dosya)"
+echo "== icon set ready: $OUT ($count files)"
 find "$OUT" -type f -printf '   %P\n' | sort

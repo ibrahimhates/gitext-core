@@ -1,33 +1,36 @@
 #!/usr/bin/env bash
 #
-# Linux paketleme (P06-T17, P10-T06/T08/T09): taşınabilir tarball + AppImage.
+# Linux packaging (P06-T17, P10-T06/T08/T09): portable tarball + AppImage.
 #
-# Kullanım:
+# Usage:
 #   build/linux/package.sh
-#   MINVER_VERSION_OVERRIDE=1.0.0-test build/linux/package.sh   # etiketsiz deneme
+#   MINVER_VERSION_OVERRIDE=1.0.0-test build/linux/package.sh   # tagless trial
 #
-# Sürüm git tag'inden türetiliyor (P10-T01) — build/version.sh. Elle sürüm VERİLMEZ.
+# The version is derived from the git tag (P10-T01) — build/version.sh. The version
+# is NOT given by hand.
 #
-# ⚠️ ÖLÇÜLDÜ — appimagetool bu makinede kurulu DEĞİL ve olmayabilir de. Betik onu
-# indirmeye çalışır; indiremezse tarball yine üretilir ve AppImage adımı ATLANDIĞI
-# SÖYLENEREK geçilir. Sessizce geçmek, yayın betiğinin yarım çalıştığını gizlerdi.
+# ⚠️ MEASURED — appimagetool is NOT installed on this machine and may not be
+# elsewhere either. The script tries to download it; if it can't, the tarball is
+# still produced and the AppImage step is skipped with the SKIP ANNOUNCED. Skipping
+# silently would hide that the release script ran only halfway.
 #
-# ⚠️ ÖLÇÜLDÜ — appimagetool FUSE istiyor. FUSE yoksa `--appimage-extract-and-run`
-# ile çalıştırılıyor (konteynerlerde tek yol).
+# ⚠️ MEASURED — appimagetool wants FUSE. Without FUSE it's run with
+# `--appimage-extract-and-run` (the only way in containers).
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-# Sürüm TEK kaynaktan: git tag → MinVer → ikiliye gömülen değer (P10-T01).
-# Eskiden burada Directory.Build.props'tan VersionPrefix okunuyordu; o alan artık yok.
+# Version from a SINGLE source: git tag → MinVer → the value embedded in the binary
+# (P10-T01). This used to read VersionPrefix from Directory.Build.props; that field
+# no longer exists.
 # shellcheck source=../version.sh
 . "$ROOT/build/version.sh"
 
 if [ $# -gt 0 ]; then
-    echo "!! Sürüm artık argümanla verilmiyor — git tag'inden türetiliyor (ADR-0006)." >&2
-    echo "   Etiketsiz deneme için: MINVER_VERSION_OVERRIDE=$1 $0" >&2
+    echo "!! Version is no longer given as an argument — it's derived from the git tag (ADR-0006)." >&2
+    echo "   For a tagless trial: MINVER_VERSION_OVERRIDE=$1 $0" >&2
     exit 2
 fi
 
@@ -44,7 +47,7 @@ echo "== gitext-core $VERSION ($RID)"
 rm -rf "$OUT/$RID"
 mkdir -p "$STAGE"
 
-echo "== yayın (self-contained, tek dosya)"
+echo "== publish (self-contained, single file)"
 dotnet publish src/GitExt.Desktop \
     -c Release \
     -r "$RID" \
@@ -55,31 +58,32 @@ dotnet publish src/GitExt.Desktop \
     -p:MinVerVersionOverride="$VERSION" \
     -o "$STAGE"
 
-# ⚠️ ÖLÇÜLDÜ (P10-T00) — burada eskiden `-p:Version=` vardı. MinVer eklendikten sonra
-# o parametre SESSİZCE etkisiz: MinVer sürümü kendi hesaplayıp üzerine yazıyor.
-# MinVerVersionOverride, sürümü dışarıdan dayatmanın tek geçerli yolu.
+# ⚠️ MEASURED (P10-T00) — `-p:Version=` used to be here. After MinVer was added,
+# that parameter became SILENTLY ineffective: MinVer computes the version itself and
+# overwrites it. MinVerVersionOverride is the only valid way to impose a version
+# from outside.
 
-# Paketin adındaki sürüm ile ikilinin içindeki sürüm AYNI olmalı. Ayrışırlarsa
-# kullanıcı "1.0.0 kurdum ama 0.9.1 diyor" ile karşılaşır ve hangisinin doğru olduğu
-# hata raporundan anlaşılmaz. Burada bir kez doğrulanıyor.
+# The version in the package's name and the version inside the binary MUST be THE
+# SAME. If they diverge, the user ends up with "I installed 1.0.0 but it says
+# 0.9.1" and which one is correct can't be told from a bug report. Verified once here.
 EMBEDDED="$("$STAGE/gitext-core" --version | head -1 | awk '{print $2}')"
 
 if [ "$EMBEDDED" != "$VERSION" ]; then
-    echo "!! SÜRÜM UYUŞMAZLIĞI: paket '$VERSION', ikili '$EMBEDDED'." >&2
+    echo "!! VERSION MISMATCH: package '$VERSION', binary '$EMBEDDED'." >&2
     exit 1
 fi
 
-echo "   sürüm doğrulandı: $EMBEDDED"
+echo "   version verified: $EMBEDDED"
 
-# Yayın klasöründeki hata ayıklama sembolleri tarball'ı gereksiz şişiriyor.
+# Debug symbols in the publish folder bloat the tarball for no reason.
 rm -f "$STAGE"/*.pdb
 
-# ---------------------------------------------------------------- masaüstü varlıkları
+# ---------------------------------------------------------------- desktop assets
 
-echo "== ikonlar ve masaüstü girdisi"
+echo "== icons and desktop entry"
 build/icons/generate.sh "$OUT/icons" >/dev/null
 
-# Metadata dosyaları tarball'a giriyor: install.sh bunları sistem dizinlerine kopyalıyor.
+# Metadata files go into the tarball: install.sh copies them into system directories.
 mkdir -p "$STAGE/share/applications" "$STAGE/share/metainfo" "$STAGE/share/icons"
 
 cp "build/linux/$APP_ID.desktop" "$STAGE/share/applications/"
@@ -104,13 +108,14 @@ echo "   $TARBALL ($(du -h "$TARBALL" | cut -f1))"
 
 APPDIR="$OUT/$RID/AppDir"
 rm -rf "$APPDIR"
-# `usr/share/icons` ÖNCEDEN oluşturulmalı: yoksa `cp -r hicolor icons/` kaynağı
-# hedefin adıyla kopyalar ve hicolor katmanı kaybolur (ölçüldü — ikonlar
-# usr/share/icons/256x256/... altına düşmüştü ve hiçbir masaüstü onları bulamazdı).
+# `usr/share/icons` MUST be created FIRST: otherwise `cp -r hicolor icons/` copies the
+# source under the destination's own name and the hicolor layer is lost (measured —
+# the icons ended up under usr/share/icons/256x256/... and no desktop environment
+# could find them).
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \
          "$APPDIR/usr/share/metainfo" "$APPDIR/usr/share/icons"
 
-# Yayınlanan çalıştırılabilirin adı `AssemblyName` ile `gitext-core`.
+# The name of the published executable is `gitext-core`, matching `AssemblyName`.
 cp "$STAGE/gitext-core" "$APPDIR/usr/bin/gitext-core"
 chmod +x "$APPDIR/usr/bin/gitext-core"
 
@@ -120,22 +125,23 @@ cp -r "$OUT/icons/hicolor" "$APPDIR/usr/share/icons/"
 if [ -f "build/linux/$APP_ID.metainfo.xml" ]; then
     cp "build/linux/$APP_ID.metainfo.xml" "$APPDIR/usr/share/metainfo/"
 
-    # ⚠️ ÖLÇÜLDÜ — appimagetool metainfo.xml adını GÖRMÜYOR ve "AppStream upstream
-    # metadata is missing" uyarısı veriyor; hâlâ eski `.appdata.xml` adını arıyor.
-    # Her iki ad da konuyor: yeni ad standart, eski ad appimagetool'u susturuyor.
+    # ⚠️ MEASURED — appimagetool does NOT recognize the metainfo.xml name and emits
+    # an "AppStream upstream metadata is missing" warning; it still looks for the old
+    # `.appdata.xml` name. Both names are placed: the new name is the standard, the
+    # old name silences appimagetool.
     cp "build/linux/$APP_ID.metainfo.xml" "$APPDIR/usr/share/metainfo/$APP_ID.appdata.xml"
 fi
 
-# appimagetool kökte hem .desktop hem simge ve bir AppRun İSTİYOR (ölçüldü:
-# ikisinden biri eksikse "Desktop file not found" / "icon not found" diyor).
+# appimagetool WANTS both a .desktop file and an icon at the root, plus an AppRun
+# (measured: if either is missing it says "Desktop file not found" / "icon not found").
 cp "build/linux/$APP_ID.desktop" "$APPDIR/"
 cp "$OUT/icons/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/"
-# Kökteki .svg de bekleniyor (ölçeklenebilir ikon tercih ediliyor).
+# A root-level .svg is also expected (the scalable icon is preferred).
 cp "$OUT/icons/hicolor/scalable/apps/$APP_ID.svg" "$APPDIR/" 2>/dev/null || true
 
 cat > "$APPDIR/AppRun" <<'APPRUN'
 #!/bin/sh
-# AppImage giriş noktası. `$APPDIR` çalıştırma anında AppImage tarafından veriliyor.
+# AppImage entry point. `$APPDIR` is provided by the AppImage runtime at run time.
 HERE="$(dirname "$(readlink -f "$0")")"
 exec "$HERE/usr/bin/gitext-core" "$@"
 APPRUN
@@ -144,11 +150,11 @@ chmod +x "$APPDIR/AppRun"
 TOOL="$OUT/appimagetool"
 
 if [ ! -x "$TOOL" ]; then
-    echo "== appimagetool indiriliyor"
+    echo "== downloading appimagetool"
     URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
 
     if ! curl -fsSL -o "$TOOL" "$URL"; then
-        echo "!! appimagetool indirilemedi — AppImage adımı ATLANDI (tarball hazır)."
+        echo "!! could not download appimagetool — AppImage step SKIPPED (tarball is ready)."
         exit 0
     fi
 
@@ -158,7 +164,7 @@ fi
 echo "== AppImage"
 APPIMAGE="$OUT/gitext-core-$VERSION-x86_64.AppImage"
 
-# FUSE yoksa appimagetool'un kendisi de çalışmaz; kendini açıp çalışması söyleniyor.
+# Without FUSE, appimagetool itself won't run either; it's told to extract itself and run.
 if [ -e /dev/fuse ] && [ -r /dev/fuse ]; then
     RUN=("$TOOL")
 else
@@ -168,6 +174,6 @@ fi
 if ARCH=x86_64 "${RUN[@]}" "$APPDIR" "$APPIMAGE"; then
     echo "   $APPIMAGE ($(du -h "$APPIMAGE" | cut -f1))"
 else
-    echo "!! AppImage üretilemedi — tarball yine de hazır."
+    echo "!! could not produce AppImage — tarball is still ready."
     exit 0
 fi

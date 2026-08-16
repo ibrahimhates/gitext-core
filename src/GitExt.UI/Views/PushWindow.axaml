@@ -12,21 +12,22 @@
         CanResize="False">
 
     <!--
-        Yerleşim GitExtensions `FormPush.Designer.cs`'ten (§ 9), sıra birebir:
+        The layout comes from GitExtensions `FormPush.Designer.cs` (§ 9), order verbatim:
           GroupBox2 "Push to" (Remote / Url) →
           TabControlTagBranch (Push branches · Push tags · Push multiple branches) →
-          alt sıra: Pull · Load SSH key · Push.
+          bottom row: Pull · Load SSH key · Push.
 
-        Bizde OLMAYAN: "Url" seçeneği ve "Load SSH key" (yerinde ama devre dışı — ikisi de
-        P06-T09'un kimlik doğrulama akışına bağlı), "Recursive submodules" (alt modüller
-        Faz 08), "Create pull request after push" (depo barındırıcı tümleşmesi kapsam dışı).
+        What we DO NOT have: the "Url" option and "Load SSH key" (in place but disabled — both
+        depend on P06-T09's authentication flow), "Recursive submodules" (submodules are Phase
+        08), "Create pull request after push" (repository host integration is out of scope).
 
-        DEVRE DISI ve GEREKCESI YAZILI: "Force push". Plan kararı — çıplak zorlama bayrağı
-        sunulmuyor. Kutunun yerini boş bırakmak "bu program zorlayamıyor" izlenimi verirdi.
-        (Bayrağın kendisi burada YAZILAMIYOR: XML yorumu iki tire içeremiyor. Aynı tuzak
-        Faz 01'de Directory.Build.props'ta ve P06-T05'te de çıkmıştı.)
+        DISABLED, WITH THE REASON WRITTEN OUT: "Force push". A plan decision — the bare force flag
+        is not offered. Leaving the box out entirely would give the impression that this program
+        cannot force at all.
+        (The flag itself CANNOT BE WRITTEN here: an XML comment may not contain two hyphens. The
+        same trap came up in Phase 01 in Directory.Build.props and again in P06-T05.)
 
-        EKLENEN: kiranın hangi uca göre karar vereceği ve çalıştırılacak KOMUT.
+        ADDED: which end the lease will be judged against, and the COMMAND that will run.
     -->
     <StackPanel Margin="16" Spacing="10">
 
@@ -49,7 +50,7 @@
                         Margin="8,0,0,0"
                         Click="OnManageRemotesClick" />
 
-                <!-- Yerinde ama devre dışı (§ 9): URL'ye gönderim P06-T09'a bağlı. -->
+                <!-- In place but disabled (§ 9): pushing to a URL depends on P06-T09. -->
                 <RadioButton Name="ToUrlRadio"
                              Grid.Row="1" Grid.Column="0"
                              GroupName="PushTo"
@@ -110,7 +111,7 @@
                                   Content="{loc:Translate push.force_with_lease}"
                                   IsChecked="{Binding ForceWithLease}" />
 
-                        <!-- Yerinde ama devre dışı: plan kararı, aşağıdaki satır nedenini yazıyor. -->
+                        <!-- In place but disabled: a plan decision, the line below states why. -->
                         <CheckBox Name="ForcePushBox"
                                   Content="{loc:Translate push.force_push}"
                                   IsEnabled="False" />
@@ -166,10 +167,10 @@
             <TabItem Name="MultipleTab" Header="{loc:Translate push.multiple_branches}" IsSelected="{Binding IsMultipleTab}">
                 <StackPanel Margin="8" Spacing="6">
                     <!--
-                        GitExtensions burada bir `DataGridView` kullanıyor. Avalonia'nın
-                        `DataGrid`i ayrı bir NuGet paketi; tek bir ekran için bağımlılık
-                        eklemek ADR-0006'nın kilit dosyasını da genişletirdi. Sütun sırası
-                        ve başlıkları birebir korunarak `ItemsControl` ile kuruldu.
+                        GitExtensions uses a `DataGridView` here. Avalonia's `DataGrid` is a
+                        separate NuGet package; adding a dependency for a single screen would also
+                        widen ADR-0006's lock file. It was built with an `ItemsControl` while
+                        keeping the column order and headers verbatim.
                     -->
                     <Grid Name="BranchGridHeader" ColumnDefinitions="*,*,90,70,110" Margin="2,0">
                         <TextBlock Grid.Column="0" Text="{loc:Translate push.local_branch}" FontWeight="SemiBold" FontSize="11" />
@@ -215,7 +216,7 @@
             </TabItem>
         </TabControl>
 
-        <!-- "Komutu göster" ilkesi: düğmeye basmadan ne olacağı okunabilmeli. -->
+        <!-- The "show the command" principle: what will happen must be readable before the button is pressed. -->
         <StackPanel Spacing="3">
             <TextBlock Text="{loc:Translate push.command_to_run}" FontSize="11" Opacity="0.8" />
             <TextBox Name="CommandPreviewBox"
@@ -247,9 +248,9 @@
         </StackPanel>
 
         <!--
-            İlerleme + iptal (P06-T10). Ölçüldü: git ilerleme satırlarını taşıma dönüşüyle
-            yazıyor, bu yüzden stderr akış hâlinde okunuyor. İptal düğmesi süreci gerçekten
-            öldürüyor; yarıda kesilen fetch geride kilit bırakmıyor.
+            Progress and cancel (P06-T10). Measured: git writes its progress lines with a carriage
+            return, which is why stderr is read as a stream. The cancel button really does kill the
+            process; a fetch interrupted halfway leaves no lock behind.
         -->
         <StackPanel Name="ProgressPanel" Spacing="4" IsVisible="{Binding IsBusy}">
             <TextBlock Name="ProgressText"

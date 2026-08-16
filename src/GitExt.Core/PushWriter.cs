@@ -4,167 +4,169 @@ using GitExt.Core.Model;
 
 namespace GitExt.Core;
 
-/// <summary>Push sırasında etiketlerin nasıl gönderileceği (P06-T08).</summary>
+/// <summary>How tags are sent during push (P06-T08).</summary>
 public enum PushTagMode
 {
-    /// <summary>Etiket gönderme (git'in varsayılanı).</summary>
+    /// <summary>Don't send tags (git's default).</summary>
     None,
 
     /// <summary>
-    /// <c>--follow-tags</c>: gönderilen commit'lere ulaşan <b>annotated</b> etiketler.
+    /// <c>--follow-tags</c>: <b>annotated</b> tags reachable from the sent commits.
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>ÖLÇÜLDÜ — hafif (lightweight) etiketleri ATLIYOR.</b> Yerelde <c>v3</c> (hafif) ve
-    /// <c>v4</c> (annotated) varken <c>--follow-tags</c> yalnızca <c>v4</c>'ü gönderdi.
-    /// Kullanıcı "etiketleri de gönder" deyip v3'ün gitmediğini fark etmezse, etiketin
-    /// uzakta olduğunu sanır. Arayüz bunu yazmak zorunda.
+    /// ⚠️ <b>MEASURED — SKIPS lightweight tags.</b> With <c>v3</c> (lightweight) and
+    /// <c>v4</c> (annotated) present locally, <c>--follow-tags</c> only sent <c>v4</c>.
+    /// If the user says "also send tags" and doesn't notice v3 didn't go, they'll assume
+    /// the tag is on the remote. The UI has to spell this out.
     /// </remarks>
     FollowAnnotated,
 
-    /// <summary><c>--tags</c>: yereldeki <b>tüm</b> etiketler.</summary>
+    /// <summary><c>--tags</c>: <b>all</b> local tags.</summary>
     All,
 }
 
 /// <summary>
-/// Tek bir ref gönderimi (P06-T08).
+/// A single ref push (P06-T08).
 /// </summary>
 /// <param name="Source">
-/// Yerel kaynak (<c>main</c>, <c>refs/tags/v1</c>). Silmede <b>boş</b>.
+/// Local source (<c>main</c>, <c>refs/tags/v1</c>). <b>Empty</b> when deleting.
 /// </param>
-/// <param name="Destination">Uzaktaki hedef dal/etiket kısa adı.</param>
-/// <param name="Delete">Uzaktaki ref silinecek mi (<c>--delete</c>)?</param>
+/// <param name="Destination">Short name of the remote destination branch/tag.</param>
+/// <param name="Delete">Should the remote ref be deleted (<c>--delete</c>)?</param>
 public sealed record PushSpec(string Source, string Destination, bool Delete = false)
 {
     /// <summary>
-    /// <c>--force-with-lease</c> için <b>beklenen</b> uzak uç.
+    /// <b>Expected</b> remote tip for <c>--force-with-lease</c>.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>Bu alan olmadan force-with-lease KORUMUYOR — ölçüldü.</b> Ayrıntı:
+    /// 🔴 <b>Without this field, force-with-lease does NOT PROTECT — measured.</b> Details:
     /// <see cref="PushOptions.ForceWithLease"/>.
     /// </remarks>
     public string? ExpectedRemoteObjectId { get; init; }
 
-    /// <summary>git'e verilecek refspec.</summary>
+    /// <summary>The refspec to hand to git.</summary>
     internal string ToRefspec() => Delete ? Destination : $"{Source}:{Destination}";
 }
 
-/// <summary>Push seçenekleri (P06-T08).</summary>
+/// <summary>Push options (P06-T08).</summary>
 public sealed record PushOptions
 {
-    /// <summary>Hedef uzak depo adı.</summary>
+    /// <summary>Target remote name.</summary>
     public required string Remote { get; init; }
 
-    /// <summary>Gönderilecek ref'ler. Boşsa git'in varsayılanı çalışır.</summary>
+    /// <summary>Refs to send. If empty, git's default runs.</summary>
     public IReadOnlyList<PushSpec> Refs { get; init; } = [];
 
     /// <summary>
-    /// <c>--set-upstream</c>: gönderim sonrası yerel dalın upstream'ini kur.
+    /// <c>--set-upstream</c>: set the local branch's upstream after the push.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: <c>-u</c> sonrası <c>branch.&lt;dal&gt;.remote</c> ve
-    /// <c>branch.&lt;dal&gt;.merge</c> gerçekten yazılıyor. Upstream'i olmayan bir dalda
-    /// çıplak <c>git push</c> ise <b>çalışmıyor</b> (çıkış kodu 128).
+    /// MEASURED: after <c>-u</c>, <c>branch.&lt;branch&gt;.remote</c> and
+    /// <c>branch.&lt;branch&gt;.merge</c> are actually written. A bare
+    /// <c>git push</c> on a branch without an upstream <b>fails</b> (exit code 128).
     /// </remarks>
     public bool SetUpstream { get; init; }
 
     /// <summary>
-    /// <c>--force-with-lease</c>: uzak uç beklenenden farklıysa reddet.
+    /// <c>--force-with-lease</c>: reject if the remote tip differs from what's expected.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 🔴 <b>ÖLÇÜLDÜ — çıplak <c>--force-with-lease</c> güvenli DEĞİL.</b> git'in örtük
-    /// kirası, dalın <b>uzak izleme ref'inin</b> o anki değeridir. Yani araya giren <b>herhangi
-    /// bir fetch</b> kirayı tazeler ve gönderim, başkasının commit'lerini görmediğimiz hâlde
-    /// geçer. Ölçümde: <c>b</c> deposu <c>a</c>'nın commit'ini hiç görmeden bir
-    /// <c>git fetch</c> yaptı ve ardından <c>--force-with-lease</c> <b>başarıyla</b> o
-    /// commit'i sildi. Bu projede fetch'i kullanıcı istemeden de yapabiliriz (P05'in
-    /// otomatik tazelemesi, Pull/Fetch ekranı) — yani koruma tam da bizim yüzümüzden
-    /// çökerdi.
+    /// 🔴 <b>MEASURED — bare <c>--force-with-lease</c> is NOT safe.</b> git's implicit
+    /// lease is the branch's <b>remote-tracking ref</b> at that moment. So <b>any
+    /// fetch</b> in between refreshes the lease, and the push then goes through even
+    /// though we haven't seen someone else's commits. In the measurement: repo <c>b</c>
+    /// did a <c>git fetch</c> without ever seeing <c>a</c>'s commit, and then
+    /// <c>--force-with-lease</c> <b>successfully</b> deleted that commit. This project can
+    /// do a fetch without the user asking (P05's auto-refresh, the Pull/Fetch screen) —
+    /// meaning the protection would collapse precisely because of us.
     /// </para>
     /// <para>
-    /// → Bu yüzden kira <b>her zaman açık biçimde</b> yazılıyor:
-    /// <c>--force-with-lease=&lt;hedef&gt;:&lt;kullanıcının GÖRDÜĞÜ sha&gt;</c>. Çıpa
-    /// <see cref="IPushWriter.PlanAsync"/> ile ekran açılırken okunur ve kullanıcıya
-    /// gösterilir. Ölçümde aynı senaryo bu biçimle <c>[rejected] (stale info)</c> verdi.
+    /// → So the lease is <b>always written explicitly</b>:
+    /// <c>--force-with-lease=&lt;target&gt;:&lt;sha the user SAW&gt;</c>. The anchor is
+    /// read by <see cref="IPushWriter.PlanAsync"/> when the screen opens and shown to the
+    /// user. In the measurement, the same scenario gave <c>[rejected] (stale info)</c>
+    /// with this form.
     /// </para>
     /// <para>
-    /// <b>Çıplak <c>--force</c> hiç sunulmuyor</b> (plan kararı): başkasının commit'lerini
-    /// sessizce siler. Gerçekten isteyen terminale gidebilir.
+    /// <b>Bare <c>--force</c> is never offered</b> (plan decision): it silently deletes
+    /// someone else's commits. Anyone who really wants it can go to the terminal.
     /// </para>
     /// </remarks>
     public bool ForceWithLease { get; init; }
 
-    /// <summary>Etiket davranışı.</summary>
+    /// <summary>Tag behavior.</summary>
     public PushTagMode Tags { get; init; }
 
-    /// <summary><c>--dry-run</c>: hiçbir şey gönderme, ne olacağını söyle.</summary>
+    /// <summary><c>--dry-run</c>: don't send anything, just report what would happen.</summary>
     public bool DryRun { get; init; }
 
     /// <summary>
-    /// Kullanıcının verdiği HTTPS kimlik bilgisi (P06-T09).
+    /// HTTPS credentials supplied by the user (P06-T09).
     /// </summary>
     /// <remarks>
-    /// <see langword="null"/> ise git kendi kanallarını (credential helper, SSH agent)
-    /// kullanır — ölçüldü, ikisi de bizim ortamımızda sorunsuz çalışıyor. Dolu olduğunda
-    /// değer <c>GIT_ASKPASS</c> üzerinden geçiriliyor, komut satırına <b>yazılmıyor</b>.
+    /// If <see langword="null"/>, git uses its own channels (credential helper, SSH agent)
+    /// — measured, both work fine in our environment. When set, the value is passed via
+    /// <c>GIT_ASKPASS</c>, <b>never</b> written to the command line.
     /// </remarks>
     public GitCredentials? Credentials { get; init; }
 
-    /// <summary>Canlı ilerleme bildirimi (P06-T10).</summary>
+    /// <summary>Live progress notification (P06-T10).</summary>
     public IProgress<GitProgress>? Progress { get; init; }
 }
 
-/// <summary>Bir ref'in push sonrası durumu (P06-T08).</summary>
+/// <summary>Post-push status of a ref (P06-T08).</summary>
 public enum PushRefStatus
 {
-    /// <summary>Uzakta yoktu, oluşturuldu (<c>*</c>).</summary>
+    /// <summary>Didn't exist on the remote, was created (<c>*</c>).</summary>
     Created,
 
-    /// <summary>İleri sarıldı (<c>' '</c> — bayrak alanı <b>boşluk</b>).</summary>
+    /// <summary>Fast-forwarded (<c>' '</c> — the flag field is <b>a space</b>).</summary>
     FastForward,
 
-    /// <summary>Zorla değiştirildi (<c>+</c>).</summary>
+    /// <summary>Force-changed (<c>+</c>).</summary>
     Forced,
 
-    /// <summary>Uzaktan silindi (<c>-</c>).</summary>
+    /// <summary>Deleted on the remote (<c>-</c>).</summary>
     Deleted,
 
-    /// <summary>Zaten aynıydı (<c>=</c>).</summary>
+    /// <summary>Already up to date (<c>=</c>).</summary>
     UpToDate,
 
-    /// <summary>Reddedildi (<c>!</c>).</summary>
+    /// <summary>Rejected (<c>!</c>).</summary>
     Rejected,
 }
 
 /// <summary>
-/// Reddin sebebi (P06-T08).
+/// Reason for a rejection (P06-T08).
 /// </summary>
 /// <remarks>
-/// Sebep, porcelain özet alanının parantez içindeki kısmından geliyor — <b>stderr'deki
-/// <c>hint:</c> satırlarından değil.</b> GitExtensions bu tespiti insan-okunur çıktıya
-/// düzenli ifade uygulayarak yapıyor (<c>FormPush.cs</c>); ADR-0002 bunu yasaklıyor.
+/// The reason comes from the parenthesized part of the porcelain summary field — <b>not
+/// from the <c>hint:</c> lines on stderr.</b> GitExtensions derives this by applying a
+/// regular expression to the human-readable output (<c>FormPush.cs</c>); ADR-0002 forbids
+/// that.
 /// </remarks>
 public enum PushRejectionKind
 {
-    /// <summary>Tanınmayan sebep; ham metin gösterilmeli.</summary>
+    /// <summary>Unrecognized reason; the raw text should be shown.</summary>
     Unknown,
 
-    /// <summary>Uzakta bizde olmayan commit'ler var (<c>fetch first</c> / <c>non-fast-forward</c>).</summary>
+    /// <summary>There are commits on the remote we don't have (<c>fetch first</c> / <c>non-fast-forward</c>).</summary>
     Behind,
 
-    /// <summary>Kira tutmadı: uzak uç, kullanıcının gördüğünden farklı (<c>stale info</c>).</summary>
+    /// <summary>The lease didn't hold: the remote tip differs from what the user expected (<c>stale info</c>).</summary>
     StaleLease,
 
-    /// <summary>Uzak taraf reddetti — kanca, korumalı dal, yetki (<c>remote rejected</c>).</summary>
+    /// <summary>The remote side rejected it — a hook, a protected branch, permissions (<c>remote rejected</c>).</summary>
     RemoteRejected,
 }
 
-/// <summary>Tek bir ref'in gönderim sonucu (P06-T08).</summary>
-/// <param name="Flag">Porcelain bayrağı: <c>* + - = !</c> ya da boşluk.</param>
-/// <param name="Source">Kaynak ref; silmede <c>(delete)</c> ya da boş.</param>
-/// <param name="Destination">Uzaktaki tam ref adı.</param>
-/// <param name="Summary">Özet alanı (<c>abc..def</c>, <c>[new branch]</c>, <c>[rejected]</c>).</param>
-/// <param name="Reason">Özetin parantez içindeki sebebi; yoksa <see langword="null"/>.</param>
+/// <summary>Push result for a single ref (P06-T08).</summary>
+/// <param name="Flag">Porcelain flag: <c>* + - = !</c> or a space.</param>
+/// <param name="Source">Source ref; <c>(delete)</c> or empty on delete.</param>
+/// <param name="Destination">Full ref name on the remote.</param>
+/// <param name="Summary">Summary field (<c>abc..def</c>, <c>[new branch]</c>, <c>[rejected]</c>).</param>
+/// <param name="Reason">The reason in the summary's parentheses; <see langword="null"/> if absent.</param>
 public sealed record PushRefResult(
     char Flag,
     string Source,
@@ -172,7 +174,7 @@ public sealed record PushRefResult(
     string Summary,
     string? Reason)
 {
-    /// <summary>Bayraktan türetilen durum.</summary>
+    /// <summary>Status derived from the flag.</summary>
     public PushRefStatus Status => Flag switch
     {
         '*' => PushRefStatus.Created,
@@ -183,7 +185,7 @@ public sealed record PushRefResult(
         _ => PushRefStatus.FastForward,
     };
 
-    /// <summary>Hedefin kısa adı (<c>main</c>, <c>v1.0</c>).</summary>
+    /// <summary>Short name of the destination (<c>main</c>, <c>v1.0</c>).</summary>
     public string ShortDestination =>
         Destination.StartsWith(BranchName.HeadsPrefix, StringComparison.Ordinal)
             ? Destination[BranchName.HeadsPrefix.Length..]
@@ -191,14 +193,14 @@ public sealed record PushRefResult(
                 ? Destination[RefChange.TagsPrefix.Length..]
                 : Destination;
 
-    /// <summary>Bu bir etiket mi?</summary>
+    /// <summary>Is this a tag?</summary>
     public bool IsTag => Destination.StartsWith(RefChange.TagsPrefix, StringComparison.Ordinal);
 
-    /// <summary>Uzak depo gerçekten değişti mi?</summary>
+    /// <summary>Did the remote actually change?</summary>
     public bool Changed => Status is PushRefStatus.Created or PushRefStatus.FastForward
         or PushRefStatus.Forced or PushRefStatus.Deleted;
 
-    /// <summary>Red sebebi; reddedilmediyse <see langword="null"/>.</summary>
+    /// <summary>Rejection reason; <see langword="null"/> if not rejected.</summary>
     public PushRejectionKind? Rejection => Status != PushRefStatus.Rejected
         ? null
         : Reason switch
@@ -215,54 +217,54 @@ public sealed record PushRefResult(
         };
 }
 
-/// <summary>Push sonucu (P06-T08).</summary>
+/// <summary>Push result (P06-T08).</summary>
 public sealed record PushResult
 {
-    /// <summary>Gönderilen her ref için bir satır.</summary>
+    /// <summary>One line for each ref sent.</summary>
     public IReadOnlyList<PushRefResult> Refs { get; init; } = [];
 
     /// <summary>
-    /// Uzak tarafın <c>remote:</c> ön ekiyle yazdığı satırlar.
+    /// Lines the remote side wrote with a <c>remote:</c> prefix.
     /// </summary>
     /// <remarks>
-    /// Korumalı dal kancasının gerekçesi (<i>"korumalı dal, push yasak"</i>) yalnızca burada.
-    /// Porcelain satırı sadece <c>(pre-receive hook declined)</c> diyor — <b>neden</b>
-    /// olduğunu söylemiyor.
+    /// The reason for a protected-branch hook rejection (<i>"protected branch, push
+    /// forbidden"</i>) lives only here. The porcelain line just says
+    /// <c>(pre-receive hook declined)</c> — it doesn't say <b>why</b>.
     /// </remarks>
     public IReadOnlyList<string> RemoteMessages { get; init; } = [];
 
-    /// <summary>Yalnızca deneme miydi?</summary>
+    /// <summary>Was this only a dry run?</summary>
     public bool DryRun { get; init; }
 
     /// <summary>
-    /// git bir şey yazmadan çuvalladı mı (çıkış kodu 128)?
+    /// Did git fail without writing anything (exit code 128)?
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: remote yoksa ya da adrese ulaşılamıyorsa <c>--porcelain</c> stdout'a
-    /// <b>hiçbir şey</b> yazmıyor. Yani "satır yok" ≠ "değişiklik yok".
+    /// MEASURED: if the remote doesn't exist or is unreachable, <c>--porcelain</c> writes
+    /// <b>nothing</b> to stdout. So "no lines" ≠ "no changes".
     /// </remarks>
     public bool Aborted { get; init; }
 
-    /// <summary>Reddedilen ref'ler.</summary>
+    /// <summary>Rejected refs.</summary>
     public IReadOnlyList<PushRefResult> Rejected =>
         [.. Refs.Where(item => item.Status == PushRefStatus.Rejected)];
 
-    /// <summary>Uzak depoyu gerçekten değiştiren ref'ler.</summary>
+    /// <summary>Refs that actually changed the remote.</summary>
     public IReadOnlyList<PushRefResult> Applied => [.. Refs.Where(item => item.Changed)];
 
     /// <summary>
-    /// Bir kısmı gitti, bir kısmı reddedildi mi?
+    /// Did some refs go through while others were rejected?
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ:</b> iki dal gönderilip biri reddedildiğinde çıkış kodu <b>1</b>, ama
-    /// diğer dal <b>gerçekten gitti</b>. Çıkış koduna bakıp "push başarısız" demek, kullanıcıya
-    /// hiçbir şeyin gitmediğini düşündürürdü.
+    /// 🔴 <b>MEASURED:</b> when two branches are pushed and one is rejected, the exit code
+    /// is <b>1</b>, but the other branch <b>really did go through</b>. Looking at the exit
+    /// code alone and saying "push failed" would make the user think nothing was sent.
     /// </remarks>
     public bool IsPartial => Applied.Count > 0 && Rejected.Count > 0;
 }
 
 /// <summary>
-/// Gönderim öncesi durum — ekranı doldurmak ve <b>kirayı çıpalamak</b> için (P06-T08).
+/// Pre-push state — to populate the screen and <b>anchor the lease</b> (P06-T08).
 /// </summary>
 public sealed record PushPlan
 {
@@ -270,81 +272,83 @@ public sealed record PushPlan
 
     public required string LocalBranch { get; init; }
 
-    /// <summary>Varsayılan hedef dal adı.</summary>
+    /// <summary>Default destination branch name.</summary>
     public required string RemoteBranch { get; init; }
 
     /// <summary>
-    /// Uzak izleme ref'inin <b>şu anki</b> ucu — <c>--force-with-lease</c> çıpası.
+    /// <b>Current</b> tip of the remote-tracking ref — the <c>--force-with-lease</c> anchor.
     /// </summary>
     /// <remarks>
-    /// Ekran açılırken okunur ve kullanıcıya gösterilir. Arada bir fetch olsa bile kira bu
-    /// değerde kalır; <see cref="PushOptions.ForceWithLease"/>'in gerekçesi.
+    /// Read when the screen opens and shown to the user. Even if a fetch happens in
+    /// between, the lease stays at this value; the reason for
+    /// <see cref="PushOptions.ForceWithLease"/>.
     /// </remarks>
     public string? RemoteTipObjectId { get; init; }
 
-    /// <summary>Uzakta bu dal var mı (izleme ref'ine göre)?</summary>
+    /// <summary>Does this branch exist on the remote (based on the tracking ref)?</summary>
     public bool RemoteBranchExists => RemoteTipObjectId is not null;
 
-    /// <summary>Yerel dalın upstream'i kurulu mu?</summary>
+    /// <summary>Is the local branch's upstream set up?</summary>
     public bool HasUpstream { get; init; }
 
-    /// <summary>Upstream'e göre konum.</summary>
+    /// <summary>Position relative to the upstream.</summary>
     public UpstreamTracking Tracking { get; init; } = UpstreamTracking.None;
 
-    /// <summary>Uzakta yeni bir dal oluşacak mı?</summary>
+    /// <summary>Will a new branch be created on the remote?</summary>
     public bool WouldCreateBranch => !RemoteBranchExists;
 
-    /// <summary>Yerelde gönderilebilecek etiketler.</summary>
+    /// <summary>Local tags available to send.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 
-    /// <summary>Uzaktaki dallar (silme sekmesi için).</summary>
+    /// <summary>Remote branches (for the delete tab).</summary>
     public IReadOnlyList<string> RemoteBranches { get; init; } = [];
 }
 
-/// <summary>Push işlemleri (P06-T08).</summary>
+/// <summary>Push operations (P06-T08).</summary>
 public interface IPushWriter
 {
     /// <summary>
-    /// Gönderim öncesi durumu okur — ekranı doldurur ve kirayı çıpalar.
+    /// Reads the pre-push state — populates the screen and anchors the lease.
     /// </summary>
-    /// <remarks>Ağa çıkmaz; yalnızca yereldeki izleme ref'lerine bakar.</remarks>
+    /// <remarks>Doesn't reach the network; only looks at local tracking refs.</remarks>
     Task<PushPlan> PlanAsync(
         string workingDirectory,
         string remote,
         string localBranch,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Gönderir ve <b>her ref için ne olduğunu</b> döndürür.</summary>
+    /// <summary>Pushes and returns <b>what happened for each ref</b>.</summary>
     Task<PushResult> PushAsync(
         string workingDirectory,
         PushOptions options,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Çalıştırılacak komutu üretir ("komutu göster" ilkesi).</summary>
+    /// <summary>Produces the command that will run ("show the command" principle).</summary>
     string DescribeCommand(PushOptions options);
 }
 
 /// <summary>
-/// <c>git push</c> sarmalayıcısı (P06-T08).
+/// <c>git push</c> wrapper (P06-T08).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Sonuç <c>--porcelain</c> ile stdout'tan okunuyor.</b> Fetch'te bu mümkün değildi
-/// (bayrak git 2.41'de eklendi, projenin tabanı 2.30) ama <c>push --porcelain</c> git'in
-/// en eski bayraklarından. Ölçülen biçim, sekmeyle ayrılmış üç alan:
-/// <c>&lt;bayrak&gt;\t&lt;kaynak&gt;:&lt;hedef&gt;\t&lt;özet&gt;</c>.
+/// <b>The result is read from stdout via <c>--porcelain</c>.</b> This wasn't possible for
+/// fetch (the flag was added in git 2.41, the project's baseline is 2.30), but
+/// <c>push --porcelain</c> is one of git's oldest flags. The measured format is three
+/// tab-separated fields:
+/// <c>&lt;flag&gt;\t&lt;source&gt;:&lt;destination&gt;\t&lt;summary&gt;</c>.
 /// </para>
 /// <para>
-/// 🔴 <b>ÖLÇÜLDÜ — porcelain stdout'u SAF DEĞİL.</b> Arasına insan-okunur satırlar
-/// karışıyor: <c>To ../remote.git</c>, <c>branch 'x' set up to track 'origin/x'.</c>
-/// (<c>-u</c> ile), <c>Would set upstream of …</c> (<c>push.autoSetupRemote</c> ile) ve
-/// kapanışta <c>Done</c>. Satırları sırayla ayrıştıran bir kod bunlarda sessizce
-/// saçmalardı. Ayraç: <b>ref satırının tam iki sekmesi vardır</b>, diğerlerinin hiç yok.
+/// 🔴 <b>MEASURED — porcelain stdout is NOT pure.</b> Human-readable lines get mixed in:
+/// <c>To ../remote.git</c>, <c>branch 'x' set up to track 'origin/x'.</c>
+/// (with <c>-u</c>), <c>Would set upstream of …</c> (with <c>push.autoSetupRemote</c>) and
+/// <c>Done</c> at the end. Code that parses lines sequentially would silently choke on
+/// these. The separator: <b>the ref line has exactly two tabs</b>, the others have none.
 /// </para>
 /// <para>
-/// 🔴 <b>ÖLÇÜLDÜ — bayrak alanı BOŞLUK olabilir.</b> Normal ileri sarmada bayrak
-/// <c>' '</c>; satır <c>Trim()</c>'lenirse alanlar kayar ve her ileri sarma yanlış
-/// sınıflandırılırdı.
+/// 🔴 <b>MEASURED — the flag field CAN be a SPACE.</b> On a normal fast-forward the flag
+/// is <c>' '</c>; if the line is <c>Trim()</c>'d, fields shift and every fast-forward
+/// would be misclassified.
 /// </para>
 /// </remarks>
 public sealed class PushWriter : IPushWriter
@@ -410,9 +414,10 @@ public sealed class PushWriter : IPushWriter
             }
             else if (name.StartsWith(prefix, StringComparison.Ordinal))
             {
-                // Sembolik `origin/HEAD` atlanıyor: uzakta `refs/heads/HEAD` diye bir dal
-                // yok, silme listesine girseydi kullanıcıya olmayan bir dal sunulurdu.
-                // Aynı ref bu projede dördüncü kez tuzak kuruyor (P03-T12, P06-T05, P06-T06).
+                // The symbolic `origin/HEAD` is skipped: there's no `refs/heads/HEAD`
+                // branch on the remote; putting it in the delete list would offer the
+                // user a branch that doesn't exist. The same ref sets this trap for the
+                // fourth time in this project (P03-T12, P06-T05, P06-T06).
                 if (fields[2].Length > 0)
                 {
                     continue;
@@ -472,11 +477,12 @@ public sealed class PushWriter : IPushWriter
         }
         catch (GitException error)
         {
-            // 🔴 Çıkış kodu 1 "hiçbir şey gitmedi" demek DEĞİL: ölçümde iki dal gönderildi,
-            // biri reddedildi, diğeri gerçekten gitti — kod yine 1'di. Gerçek sonuç
-            // porcelain satırlarında; onları atarsak kullanıcı gitmiş bir push'u tekrar
-            // dener. Satır hiç yoksa (kod 128, remote yok / ulaşılamıyor) hata gerçekten
-            // ölümcül demektir ve olduğu gibi yukarı gider.
+            // 🔴 Exit code 1 does NOT mean "nothing went through": in the measurement two
+            // branches were pushed, one was rejected, the other really did go through —
+            // the code was still 1. The real result is in the porcelain lines; discarding
+            // them would make the user retry a push that already succeeded. If there are
+            // no lines at all (code 128, remote missing / unreachable) the failure really
+            // is fatal and is rethrown as-is.
             standardOutput = error.StandardOutput;
             standardError = error.StandardError;
 
@@ -499,7 +505,7 @@ public sealed class PushWriter : IPushWriter
 
     public string DescribeCommand(PushOptions options) => Describe(options);
 
-    /// <summary>Çalıştırılacak komutu üretir ("komutu göster" ilkesi).</summary>
+    /// <summary>Produces the command that will run ("show the command" principle).</summary>
     public static string Describe(PushOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -508,9 +514,9 @@ public sealed class PushWriter : IPushWriter
     }
 
     /// <remarks>
-    /// <c>--porcelain</c> her zaman veriliyor: sonucun tek makine-okunur kanalı o.
-    /// <c>--</c> ayracı da her zaman — <c>-</c> ile başlayan bir dal adı aksi hâlde bayrak
-    /// sanılırdı (P06-T01'in dersi).
+    /// <c>--porcelain</c> is always passed: it's the only machine-readable channel for the
+    /// result. The <c>--</c> separator is always passed too — a branch name starting with
+    /// <c>-</c> would otherwise be mistaken for a flag (the lesson from P06-T01).
     /// </remarks>
     private static IReadOnlyList<string> BuildArguments(PushOptions options)
     {
@@ -530,8 +536,9 @@ public sealed class PushWriter : IPushWriter
         {
             foreach (PushSpec spec in options.Refs)
             {
-                // Çıpa yoksa kirayı git'in örtük hâline bırakmıyoruz: ölçümde o hâl bir
-                // fetch'ten sonra korumayı tamamen bırakıyor. Çıpasız ref zorlanmaz.
+                // If there's no anchor, we don't fall back to git's implicit form: measured,
+                // that form drops the protection entirely after a fetch. A ref without an
+                // anchor is not forced.
                 if (spec.ExpectedRemoteObjectId is { Length: > 0 } expected)
                 {
                     arguments.Add($"--force-with-lease={spec.Destination}:{expected}");
@@ -568,7 +575,7 @@ public sealed class PushWriter : IPushWriter
         return arguments;
     }
 
-    /// <summary>Uzak tarafın <c>remote:</c> satırlarını toplar.</summary>
+    /// <summary>Collects the remote side's <c>remote:</c> lines.</summary>
     private static IReadOnlyList<string> ParseRemoteMessages(string standardError)
     {
         if (string.IsNullOrEmpty(standardError))
@@ -588,7 +595,7 @@ public sealed class PushWriter : IPushWriter
                 continue;
             }
 
-            // Ölçüldü: git satırı sabit genişliğe kadar boşlukla dolduruyor.
+            // Measured: git pads the line with spaces up to a fixed width.
             string text = line[marker.Length..].Trim();
 
             if (text.Length > 0)
@@ -602,7 +609,7 @@ public sealed class PushWriter : IPushWriter
 }
 
 /// <summary>
-/// <c>git push --porcelain</c> stdout ayrıştırıcısı (P06-T08).
+/// <c>git push --porcelain</c> stdout parser (P06-T08).
 /// </summary>
 internal static class PushPorcelainParser
 {
@@ -619,11 +626,11 @@ internal static class PushPorcelainParser
         {
             string line = raw.TrimEnd('\r');
 
-            // ⚠️ Trim YOK: normal ileri sarmada bayrak alanı tek bir BOŞLUK.
+            // ⚠️ NO Trim: on a normal fast-forward the flag field is a single SPACE.
             string[] fields = line.Split('\t');
 
             // `To …`, `Done`, `branch 'x' set up to track …`, `Would set upstream of …`
-            // satırlarının hiç sekmesi yok — ayraç bu.
+            // lines have no tabs at all — that's the separator.
             if (fields.Length != 3 || fields[0].Length != 1)
             {
                 continue;
@@ -650,11 +657,11 @@ internal static class PushPorcelainParser
     }
 
     /// <summary>
-    /// Özetin sonundaki <c>(sebep)</c> kısmını ayırır.
+    /// Splits off the trailing <c>(reason)</c> part of the summary.
     /// </summary>
     /// <remarks>
-    /// Ölçülen biçimler: <c>[rejected] (fetch first)</c>, <c>[rejected] (stale info)</c>,
-    /// <c>[remote rejected] (pre-receive hook declined)</c>, <c>abc..def</c> (sebepsiz),
+    /// Measured forms: <c>[rejected] (fetch first)</c>, <c>[rejected] (stale info)</c>,
+    /// <c>[remote rejected] (pre-receive hook declined)</c>, <c>abc..def</c> (no reason),
     /// <c>abc...def (forced update)</c>.
     /// </remarks>
     private static (string Summary, string? Reason) SplitReason(string field)
@@ -671,7 +678,7 @@ internal static class PushPorcelainParser
             : (field[..open].TrimEnd(), field[(open + 1)..^1]);
     }
 
-    /// <summary>Sayısal özet — testlerin okunurluğu için.</summary>
+    /// <summary>Numeric summary — for test readability.</summary>
     public static string Describe(PushRefResult result) => string.Create(
         CultureInfo.InvariantCulture,
         $"{result.Flag} {result.Source}:{result.Destination} {result.Summary}");

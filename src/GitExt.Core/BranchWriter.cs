@@ -4,149 +4,149 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Dal oluşturma seçenekleri (P06-T01).
+/// Branch creation options (P06-T01).
 /// </summary>
 public sealed record BranchCreateOptions
 {
-    /// <summary>Oluşturulacak dalın adı.</summary>
+    /// <summary>Name of the branch to create.</summary>
     public required string Name { get; init; }
 
     /// <summary>
-    /// Başlangıç noktası: commit hash'i, dal veya etiket adı. <see langword="null"/> ise
+    /// Starting point: commit hash, branch, or tag name. <see langword="null"/> means
     /// <c>HEAD</c>.
     /// </summary>
     public string? StartPoint { get; init; }
 
     /// <summary>
-    /// Oluşturduktan sonra dala geçilsin mi? Varsayılan <see langword="true"/> —
-    /// GitExtensions'ta <c>chkCheckoutAfterCreate</c> da işaretli geliyor (§ 9).
+    /// Switch to the branch after creating it? Defaults to <see langword="true"/> —
+    /// GitExtensions also comes with <c>chkCheckoutAfterCreate</c> checked (§ 9).
     /// </summary>
     public bool Checkout { get; init; } = true;
 }
 
 /// <summary>
-/// Dal oluşturmanın sonucu (P06-T01).
+/// Result of creating a branch (P06-T01).
 /// </summary>
-/// <param name="Name">Oluşturulan dalın adı.</param>
-/// <param name="CheckedOut">Dala geçildi mi?</param>
+/// <param name="Name">Name of the created branch.</param>
+/// <param name="CheckedOut">Was the branch switched to?</param>
 /// <param name="Upstream">
-/// git'in <b>kendiliğinden</b> kurduğu upstream, kurulmadıysa <see langword="null"/>.
+/// Upstream that git set up <b>on its own</b>, or <see langword="null"/> if none was set up.
 /// </param>
 public sealed record BranchCreateResult(string Name, bool CheckedOut, string? Upstream);
 
 
 /// <summary>
-/// Dal değiştirirken yerel değişikliklere ne yapılacağı (P06-T02).
+/// What to do with local changes when switching branches (P06-T02).
 /// </summary>
 /// <remarks>
-/// Sıra GitExtensions'ın <c>FormCheckoutBranch</c> "Local changes" grubundan (§ 9):
+/// Order follows GitExtensions' <c>FormCheckoutBranch</c> "Local changes" group (§ 9):
 /// <i>Don't change · Merge · Stash · Reset</i>.
 /// </remarks>
 public enum LocalChangesAction
 {
-    /// <summary>Dokunma. git değişiklikleri taşıyabilirse taşır, taşıyamazsa reddeder.</summary>
+    /// <summary>Don't touch. git carries changes over if it can, and refuses otherwise.</summary>
     Keep,
 
     /// <summary>
-    /// <c>--merge</c>: değişiklikleri hedefe birleştirmeyi dene.
+    /// <c>--merge</c>: try to merge the changes into the target.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ:</b> bu yol çakışmada <b>çıkış kodu 0</b> veriyor ve ağacı
-    /// <b>birleşmemiş</b> bırakıyor (üstelik gizli bir autostash bırakarak). Çıkış koduna
-    /// bakan bir arayüz "başarıyla geçildi" derdi.
+    /// 🔴 <b>MEASURED:</b> on conflict this path returns <b>exit code 0</b> and leaves the tree
+    /// <b>unmerged</b> (while also leaving behind a hidden autostash). A UI that looks only at
+    /// the exit code would say "switched successfully".
     /// </remarks>
     Merge,
 
     /// <summary>
-    /// <c>git stash push -u</c> ile kenara al.
+    /// Set aside with <c>git stash push -u</c>.
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ — en yetenekli seçenek bu.</b> <c>-u</c> ile takip edilmeyen dosyalar da
-    /// alındığı için <i>"takip edilmeyen dosya üzerine yazılacaktı"</i> çakışmasını da
-    /// çözüyor; <see cref="Discard"/> ise o durumda <b>reddediyor</b>. Üstelik yıkıcı değil.
+    /// <b>MEASURED — this is the most capable option.</b> Because <c>-u</c> also picks up
+    /// untracked files, it resolves the <i>"an untracked file would be overwritten"</i> conflict
+    /// too; <see cref="Discard"/> <b>refuses</b> in that case. It's also not destructive.
     /// </remarks>
     Stash,
 
     /// <summary>
-    /// <c>--discard-changes</c>: yerel değişiklikleri at.
+    /// <c>--discard-changes</c>: throw away local changes.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>YIKICI ve ÖLÇÜMLE DOĞRULANDI:</b> stage'lenmiş içerik nesne veritabanında
-    /// dangling blob olarak kalıyor ama <b>stage'lenmemiş içeriğin hiçbir izi yok</b> —
-    /// tam olarak P05-T15'teki <c>git clean</c> durumu. Bu yüzden önce yedek alınır.
+    /// 🔴 <b>DESTRUCTIVE AND CONFIRMED BY MEASUREMENT:</b> staged content survives in the object
+    /// database as a dangling blob, but <b>unstaged content leaves no trace whatsoever</b> —
+    /// exactly the <c>git clean</c> situation from P05-T15. This is why a backup is taken first.
     /// </remarks>
     Discard,
 }
 
 /// <summary>
-/// Dal değiştirme seçenekleri (P06-T02).
+/// Branch switch options (P06-T02).
 /// </summary>
 public sealed record BranchSwitchOptions
 {
-    /// <summary>Hedef: dal adı veya commit.</summary>
+    /// <summary>Target: branch name or commit.</summary>
     public required string Target { get; init; }
 
-    /// <summary>Dal yerine doğrudan commit'e geç (detached HEAD).</summary>
+    /// <summary>Go straight to the commit instead of a branch (detached HEAD).</summary>
     public bool Detach { get; init; }
 
-    /// <summary>Yerel değişikliklere ne yapılacak?</summary>
+    /// <summary>What to do with local changes?</summary>
     public LocalChangesAction LocalChanges { get; init; } = LocalChangesAction.Keep;
 
     /// <summary>
-    /// <see cref="LocalChangesAction.Discard"/> için <b>zorunlu</b> açık onay.
+    /// <b>Required</b> explicit confirmation for <see cref="LocalChangesAction.Discard"/>.
     /// </summary>
     public bool UserConfirmed { get; init; }
 }
 
 /// <summary>
-/// Dal değiştirmenin sonucu (P06-T02).
+/// Result of switching branches (P06-T02).
 /// </summary>
 public sealed record BranchSwitchResult
 {
     public required string Target { get; init; }
 
     /// <summary>
-    /// Ağaç <b>birleşmemiş</b> dosyalarla mı kaldı?
+    /// Did the tree end up with <b>unmerged</b> files?
     /// </summary>
     /// <remarks>
-    /// Çıkış kodu bunu söylemiyor (ölçüldü); durum ayrıca okunuyor.
+    /// The exit code doesn't say (measured); status is read separately.
     /// </remarks>
     public bool HasConflicts { get; init; }
 
-    /// <summary>Yerel değişiklikler bir stash'e alındı mı?</summary>
+    /// <summary>Were local changes moved into a stash?</summary>
     public bool StashCreated { get; init; }
 
-    /// <summary>Atılan içeriğin yedekleri (yalnızca <see cref="LocalChangesAction.Discard"/>).</summary>
+    /// <summary>Backups of discarded content (only for <see cref="LocalChangesAction.Discard"/>).</summary>
     public IReadOnlyList<DiscardBackup> Backups { get; init; } = [];
 }
 
 
 /// <summary>
-/// Dal silmenin sonucu (P06-T03).
+/// Result of deleting a branch (P06-T03).
 /// </summary>
 public sealed record BranchDeleteResult
 {
     public required string Name { get; init; }
 
     /// <summary>
-    /// Silinen dalın son işaret ettiği commit.
+    /// Last commit the deleted branch pointed to.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>Kurtarmanın tek güvenilir yolu bu.</b> ÖLÇÜLDÜ: dal silinince <b>kendi
-    /// reflog'u da siliniyor</b>, ve HEAD reflog'unda iz olması yalnızca o dalda
-    /// <b>bu çalışma ağacında</b> çalışılmışsa geçerli. Bağlı bir worktree'de üretilmiş
-    /// dal silindiğinde <b>hiçbir reflog izi kalmıyor</b> — commit'e yalnızca
-    /// <c>fsck --unreachable</c> ile ulaşılıyor. Bu yüzden hash silmeden <b>önce</b>
-    /// okunuyor ve kullanıcıya veriliyor.
+    /// 🔴 <b>This is the only reliable way to recover it.</b> MEASURED: deleting a branch also
+    /// deletes <b>its own reflog</b>, and having a trace in the HEAD reflog only holds if that
+    /// branch was worked on <b>in this working tree</b>. When a branch produced in a linked
+    /// worktree is deleted, <b>no reflog trace remains at all</b> — the commit can only be
+    /// reached via <c>fsck --unreachable</c>. This is why the hash is read <b>before</b>
+    /// deleting and handed back to the user.
     /// </remarks>
     public required string LastCommitId { get; init; }
 
-    /// <summary>Dal <c>--force</c> gerektirdi mi (yani merge edilmemişti)?</summary>
+    /// <summary>Did the branch need <c>--force</c> (i.e. it wasn't merged)?</summary>
     public bool WasUnmerged { get; init; }
 }
 
 /// <summary>
-/// Dal silme reddedildiğinde, nedeni ayırt etmek için (P06-T03).
+/// Used to distinguish the reason when branch deletion is refused (P06-T03).
 /// </summary>
 public sealed class BranchNotMergedException : Exception
 {
@@ -159,21 +159,22 @@ public sealed class BranchNotMergedException : Exception
 
     public string Name { get; }
 
-    /// <summary>Dalın ucu — kullanıcıya kurtarma yolu olarak gösterilir.</summary>
+    /// <summary>Tip of the branch — shown to the user as the recovery path.</summary>
     public string LastCommitId { get; }
 }
 
 /// <summary>
-/// Dal yazma işlemleri (P06-T01).
+/// Branch write operations (P06-T01).
 /// </summary>
 public interface IBranchWriter
 {
     /// <summary>
-    /// Yeni bir dal oluşturur, istenirse ona geçer.
+    /// Creates a new branch, switching to it if requested.
     /// </summary>
-    /// <exception cref="ArgumentException">Ad geçersiz.</exception>
+    /// <exception cref="ArgumentException">Name is invalid.</exception>
     /// <exception cref="GitException">
-    /// Dal zaten var, ad çakışıyor, başlangıç noktası çözümlenemedi ya da çalışma ağacı kirli.
+    /// The branch already exists, the name conflicts, the starting point could not be
+    /// resolved, or the working tree is dirty.
     /// </exception>
     Task<BranchCreateResult> CreateAsync(
         string workingDirectory,
@@ -181,27 +182,27 @@ public interface IBranchWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Başka bir dala veya commit'e geçer (P06-T02).
+    /// Switches to another branch or commit (P06-T02).
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// <see cref="LocalChangesAction.Discard"/> seçildi ama onay verilmedi.
+    /// <see cref="LocalChangesAction.Discard"/> was selected but not confirmed.
     /// </exception>
-    /// <exception cref="GitException">Hedef çözümlenemedi ya da geçiş reddedildi.</exception>
+    /// <exception cref="GitException">The target could not be resolved or the switch was refused.</exception>
     Task<BranchSwitchResult> SwitchAsync(
         string workingDirectory,
         BranchSwitchOptions options,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Dalı yeniden adlandırır (P06-T03).
+    /// Renames the branch (P06-T03).
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>Zorla (<c>-M</c>) yeniden adlandırma SUNULMUYOR.</b> ÖLÇÜLDÜ: var olan bir ada
-    /// <c>-M</c> ile yeniden adlandırmak o dalı <b>sessizce eziyor</b> — ölçümde hedef dal
-    /// hiçbir uyarı olmadan yok oldu. Ad çakışması hata olarak bildirilir.
+    /// ⚠️ <b>Forced (<c>-M</c>) renaming is NOT offered.</b> MEASURED: renaming with <c>-M</c>
+    /// onto an existing name <b>silently overwrites</b> that branch — in the measurement the
+    /// target branch vanished with no warning at all. A name collision is reported as an error.
     /// </remarks>
-    /// <exception cref="ArgumentException">Yeni ad geçersiz.</exception>
-    /// <exception cref="GitException">Ad zaten var ya da dal bulunamadı.</exception>
+    /// <exception cref="ArgumentException">New name is invalid.</exception>
+    /// <exception cref="GitException">Name already exists, or the branch was not found.</exception>
     Task RenameAsync(
         string workingDirectory,
         string oldName,
@@ -209,17 +210,17 @@ public interface IBranchWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Dalı siler (P06-T03).
+    /// Deletes the branch (P06-T03).
     /// </summary>
-    /// <param name="workingDirectory">Depo çalışma dizini.</param>
-    /// <param name="name">Silinecek dalın adı.</param>
-    /// <param name="cancellationToken">İptal belirteci.</param>
+    /// <param name="workingDirectory">Repository working directory.</param>
+    /// <param name="name">Name of the branch to delete.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="force">
-    /// Birleştirilmemiş dal da silinsin mi? <see langword="false"/> iken git reddederse
-    /// <see cref="BranchNotMergedException"/> fırlatılır.
+    /// Delete even an unmerged branch? While <see langword="false"/>, if git refuses,
+    /// <see cref="BranchNotMergedException"/> is thrown.
     /// </param>
-    /// <exception cref="BranchNotMergedException">Dal birleştirilmemiş ve zorlama yok.</exception>
-    /// <exception cref="GitException">Dal bir çalışma ağacında checkout edilmiş.</exception>
+    /// <exception cref="BranchNotMergedException">The branch is unmerged and force was not set.</exception>
+    /// <exception cref="GitException">The branch is checked out in a working tree.</exception>
     Task<BranchDeleteResult> DeleteAsync(
         string workingDirectory,
         string name,
@@ -228,30 +229,32 @@ public interface IBranchWriter
 }
 
 /// <summary>
-/// <c>git branch</c> / <c>git switch -c</c> sarmalayıcısı (P06-T01).
+/// Wrapper around <c>git branch</c> / <c>git switch -c</c> (P06-T01).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ — neden iki ayrı komut?</b> Fark yalnızca kolaylık değil, <b>güvenlik</b>:
+/// <b>MEASURED — why two separate commands?</b> The difference isn't just convenience, it's
+/// <b>safety</b>:
 /// </para>
 /// <list type="bullet">
 ///   <item><description>
-///     <c>git branch</c> çalışma ağacına <b>hiç dokunmuyor</b>; kirli ağaçta bile her zaman
-///     başarılı oluyor.
+///     <c>git branch</c> <b>never touches</b> the working tree; it always succeeds even on a
+///     dirty tree.
 ///   </description></item>
 ///   <item><description>
-///     <c>git switch -c</c> ise checkout yapıyor ve kirli ağaçta <b>reddedebiliyor</b>
-///     (çıkış kodu <b>1</b>, ad hatalarının <b>128</b>'inden farklı). Reddettiğinde
-///     <b>dalı da oluşturmuyor</b> — ölçümde doğrulandı: ne dal kaldı ne de dal değişti.
-///     Yani kısmi bir sonuç yok, kullanıcı bir şey kaybetmiyor.
+///     <c>git switch -c</c>, on the other hand, performs a checkout and <b>can refuse</b> on a
+///     dirty tree (exit code <b>1</b>, distinct from the <b>128</b> of name errors). When it
+///     refuses, <b>it doesn't create the branch either</b> — confirmed by measurement: neither
+///     did the branch remain nor did it change. So there is no partial result; the user loses
+///     nothing.
 ///   </description></item>
 /// </list>
 /// <para>
-/// <b>ÖLÇÜLDÜ — upstream kendiliğinden kuruluyor.</b> Başlangıç noktası bir uzak izleme dalıysa
-/// (<c>origin/x</c>) git upstream'i kendisi ayarlıyor (<c>branch.autoSetupMerge</c>
-/// varsayılanı); yerel bir daldan oluşturulduğunda <b>ayarlamıyor</b>. Bunu biz taklit
-/// etmiyoruz — sonuçta ne olduğunu <b>okuyup</b> bildiriyoruz, çünkü kullanıcının ayarı
-/// bunu değiştirebilir.
+/// <b>MEASURED — upstream gets set up automatically.</b> If the starting point is a remote
+/// tracking branch (<c>origin/x</c>), git sets up the upstream itself (the
+/// <c>branch.autoSetupMerge</c> default); when created from a local branch it <b>does not</b>
+/// set it up. We don't imitate this — we <b>read</b> the actual outcome and report it, because
+/// the user's configuration can change it.
 /// </para>
 /// </remarks>
 public sealed class BranchWriter : IBranchWriter
@@ -260,12 +263,12 @@ public sealed class BranchWriter : IBranchWriter
     private readonly IGitProcessRunner _runner;
     private readonly IWorkingTreeWriter? _backup;
 
-    /// <param name="writer">Yazma kuyruğuna giren git çağrıları için.</param>
-    /// <param name="runner">Salt okunur git çağrıları için.</param>
+    /// <param name="writer">For git calls that go through the write queue.</param>
+    /// <param name="runner">For read-only git calls.</param>
     /// <param name="backup">
-    /// Yıkıcı geçişten önce yedek alan yazıcı. <see langword="null"/> ise
-    /// <see cref="LocalChangesAction.Discard"/> <b>reddedilir</b> — güvenlik ağı olmadan
-    /// geri getirilemez içerik silinmez (P05-T15 kuralı).
+    /// Writer that takes a backup before a destructive switch. If <see langword="null"/>,
+    /// <see cref="LocalChangesAction.Discard"/> is <b>refused</b> — content that can't be
+    /// recovered is never deleted without a safety net (P05-T15 rule).
     /// </param>
     public BranchWriter(
         IGitWriter writer,
@@ -287,17 +290,17 @@ public sealed class BranchWriter : IBranchWriter
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        // Ad doğrulaması git'e bırakılmıyor: git'in cevabı çıkış kodu 128 ve serbest metin,
-        // oysa arayüz kullanıcı YAZARKEN "neden geçersiz" diyebilmeli.
+        // Name validation isn't left to git: git's answer is exit code 128 plus free-form
+        // text, whereas the UI needs to be able to say "why it's invalid" WHILE the user types.
         if (BranchName.Validate(options.Name) is { } problem)
         {
             throw new ArgumentException(
                 $"'{options.Name}' is not a valid branch name ({problem}).", nameof(options));
         }
 
-        // Doğmamış HEAD'i önce eliyoruz: git'in mesajı ("not a valid object name: 'main'")
-        // UnknownRevision'a düşer ve kullanıcıya "dal bulunamadı" der — oysa sorun deponun
-        // boş olması (ölçüldü).
+        // Unborn HEAD is filtered out first: git's message ("not a valid object name: 'main'")
+        // would fall into UnknownRevision and tell the user "branch not found" — when the real
+        // problem is that the repository is empty (measured).
         if (options.StartPoint is null
             && !await HasCommitsAsync(workingDirectory, cancellationToken).ConfigureAwait(false))
         {
@@ -309,8 +312,9 @@ public sealed class BranchWriter : IBranchWriter
                 standardError: string.Empty);
         }
 
-        // ⚠️ `--` ayracı: adın tire ile başlamadığını doğruladık ama başlangıç noktası
-        // kullanıcıdan geliyor; ayraç olmadan `-x` bir seçenek sanılırdı.
+        // ⚠️ `--` separator: we already validated the name doesn't start with a dash, but the
+        // starting point comes from the user; without the separator a `-x` would be mistaken
+        // for an option.
         IReadOnlyList<string> arguments = options.Checkout
             ? ["switch", "--create", options.Name, .. StartPointArgument(options)]
             : ["branch", "--", options.Name, .. StartPointArgument(options)];
@@ -337,8 +341,8 @@ public sealed class BranchWriter : IBranchWriter
                 $"'{newName}' is not a valid branch name ({problem}).", nameof(newName));
         }
 
-        // ⚠️ `-m`, ASLA `-M`: ölçümde `-M` var olan hedef dalı sessizce yok etti.
-        // Upstream ve dalın kendi reflog'u `-m` ile korunuyor (ölçüldü).
+        // ⚠️ `-m`, NEVER `-M`: measured that `-M` silently wiped out an existing target branch.
+        // The upstream and the branch's own reflog are preserved with `-m` (measured).
         await _writer
             .RunAsync(workingDirectory, ["branch", "-m", "--", oldName, newName], cancellationToken)
             .ConfigureAwait(false);
@@ -352,8 +356,9 @@ public sealed class BranchWriter : IBranchWriter
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        // 🔴 Hash silmeden ÖNCE okunuyor: silme sonrası dalın kendi reflog'u da gidiyor ve
-        // bağlı worktree'de üretilmiş bir dalda HİÇBİR reflog izi kalmıyor (ölçüldü).
+        // 🔴 Read the hash BEFORE deleting: after deletion the branch's own reflog is also
+        // gone, and a branch produced in a linked worktree leaves NO reflog trace at all
+        // (measured).
         string lastCommit = await RunTextAsync(
                 workingDirectory, ["rev-parse", "--verify", "--quiet", BranchName.HeadsPrefix + name],
                 cancellationToken)
@@ -370,10 +375,10 @@ public sealed class BranchWriter : IBranchWriter
         }
         catch (GitException error) when (!force && IsNotFullyMerged(error))
         {
-            // 🔑 Birleşmişliği KENDİMİZ hesaplamıyoruz. ÖLÇÜLDÜ: `-d`, dalı HEAD'e değil
-            // **upstream'ine** birleşmiş olsa da siliyor (uyarıyla, çıkış kodu 0).
-            // `merge-base --is-ancestor … HEAD` ile karar verseydik bu dallar için
-            // yanlış "birleştirilmemiş" alarmı üretirdik. Kararı git veriyor.
+            // 🔑 We do NOT compute "merged" ourselves. MEASURED: `-d` deletes a branch that's
+            // merged into its **upstream** even if not into HEAD (with a warning, exit code 0).
+            // Deciding with `merge-base --is-ancestor … HEAD` would produce a false
+            // "not merged" alarm for such branches. git makes the call.
             throw new BranchNotMergedException(name, lastCommit);
         }
 
@@ -426,8 +431,8 @@ public sealed class BranchWriter : IBranchWriter
                     "Local changes cannot be discarded without a backup writer.");
             }
 
-            // 🔴 Stage'lenmemiş içeriğin nesne veritabanında HİÇBİR izi kalmıyor (ölçüldü);
-            // yedek, bu yolun tek geri dönüş imkânı.
+            // 🔴 Unstaged content leaves NO trace at all in the object database (measured);
+            // the backup is the only way back from this path.
             backups = await _backup
                 .BackupPathsAsync(
                     workingDirectory,
@@ -438,8 +443,8 @@ public sealed class BranchWriter : IBranchWriter
         }
         else if (options.LocalChanges == LocalChangesAction.Stash)
         {
-            // `-u` ŞART: onsuz takip edilmeyen dosyalar çalışma ağacında kalır ve
-            // "takip edilmeyen dosya üzerine yazılacaktı" çakışması çözülmez (ölçüldü).
+            // `-u` IS REQUIRED: without it untracked files stay in the working tree and the
+            // "an untracked file would be overwritten" conflict doesn't get resolved (measured).
             stashed = await TryStashAsync(workingDirectory, options.Target, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -470,8 +475,8 @@ public sealed class BranchWriter : IBranchWriter
         }
         catch (GitException)
         {
-            // Stash'ledikten sonra geçiş başarısızsa kullanıcı, kendi istemediği bir
-            // stash'in içinde kalmış olurdu. Durumu olduğu gibi geri veriyoruz.
+            // If the switch fails after stashing, the user would be left inside a stash they
+            // never asked for. We hand the state back as-is.
             if (stashed)
             {
                 await PopStashAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
@@ -480,8 +485,8 @@ public sealed class BranchWriter : IBranchWriter
             throw;
         }
 
-        // 🔴 Çıkış kodu 0 ÇAKIŞMA OLMADIĞI ANLAMINA GELMİYOR (`--merge` ölçümü); durum
-        // ayrıca okunuyor.
+        // 🔴 EXIT CODE 0 DOES NOT MEAN NO CONFLICT (measured for `--merge`); status is read
+        // separately.
         bool conflicts = await HasUnmergedPathsAsync(workingDirectory, cancellationToken)
             .ConfigureAwait(false);
 
@@ -494,10 +499,10 @@ public sealed class BranchWriter : IBranchWriter
         };
     }
 
-    /// <summary>Değişmiş <b>takip edilen</b> yollar — yedeklenecek olanlar.</summary>
+    /// <summary>Changed <b>tracked</b> paths — the ones to back up.</summary>
     /// <remarks>
-    /// Takip edilmeyen dosyalar dışarıda: <c>--discard-changes</c> onlara <b>dokunmuyor</b>
-    /// (ölçüldü), dolayısıyla yedeklemek gereksiz iş olurdu.
+    /// Untracked files are excluded: <c>--discard-changes</c> <b>doesn't touch</b> them
+    /// (measured), so backing them up would be wasted work.
     /// </remarks>
     private async Task<IReadOnlyList<RepositoryPath>> DirtyTrackedPathsAsync(
         string workingDirectory,
@@ -524,8 +529,8 @@ public sealed class BranchWriter : IBranchWriter
         string workingDirectory,
         CancellationToken cancellationToken)
     {
-        // `diff --name-only --diff-filter=U` yalnızca birleşmemiş yolları verir; insan
-        // okunur çıktı ayrıştırılmıyor.
+        // `diff --name-only --diff-filter=U` returns only unmerged paths; the human-readable
+        // output isn't parsed.
         GitResult result = await _runner.RunCheckedAsync(
             new GitCommand
             {
@@ -537,7 +542,7 @@ public sealed class BranchWriter : IBranchWriter
         return result.SplitStandardOutputAtNul().Any(value => value.Length > 0);
     }
 
-    /// <summary>Stash oluşturur; atılacak bir şey yoksa <see langword="false"/> döner.</summary>
+    /// <summary>Creates a stash; returns <see langword="false"/> if there was nothing to set aside.</summary>
     private async Task<bool> TryStashAsync(
         string workingDirectory,
         string target,
@@ -556,8 +561,8 @@ public sealed class BranchWriter : IBranchWriter
             },
             cancellationToken).ConfigureAwait(false);
 
-        // Temiz ağaçta `stash push` hata vermiyor ama stash de oluşturmuyor; sonucu
-        // stash listesinden okumak, çıktı metnini ayrıştırmaktan güvenli.
+        // On a clean tree `stash push` doesn't error but doesn't create a stash either; reading
+        // the result from the stash list is safer than parsing the output text.
         _ = result;
 
         return await HasStashAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
@@ -586,10 +591,11 @@ public sealed class BranchWriter : IBranchWriter
         options.StartPoint is { Length: > 0 } start ? [start] : [];
 
     /// <summary>
-    /// git'in upstream'i kendiliğinden kurup kurmadığını <b>okur</b>.
+    /// <b>Reads</b> whether git set up the upstream on its own.
     /// </summary>
     /// <remarks>
-    /// Boş dize ile "upstream yok" aynı şey; <c>for-each-ref</c> ikisini de boş döndürür.
+    /// An empty string means the same thing as "no upstream"; <c>for-each-ref</c> returns empty
+    /// for both cases.
     /// </remarks>
     private async Task<string?> ReadUpstreamAsync(
         string workingDirectory,
@@ -624,7 +630,7 @@ public sealed class BranchWriter : IBranchWriter
                 WorkingDirectory = workingDirectory,
                 Arguments = ["rev-parse", "--verify", "--quiet", "HEAD"],
 
-                // Doğmamış HEAD hata değil, bilgidir.
+                // Unborn HEAD isn't an error, it's information.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);

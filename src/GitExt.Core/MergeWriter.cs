@@ -2,172 +2,173 @@ using GitExt.Core.Git;
 
 namespace GitExt.Core;
 
-/// <summary>Birleştirme biçimi (P06-T11).</summary>
+/// <summary>Merge strategy (P06-T11).</summary>
 /// <remarks>
-/// Sıra GitExtensions <c>FormMergeBranch</c>'ten (§ 9): <i>Keep single branch (fast forward)</i>
+/// Order follows GitExtensions' <c>FormMergeBranch</c> (§ 9): <i>Keep single branch (fast forward)</i>
 /// · <i>Always create a new merge commit</i> · <i>Squash commits</i>.
 /// </remarks>
 public enum MergeStrategy
 {
-    /// <summary>Mümkünse ileri sar, değilse birleştirme commit'i (git'in varsayılanı).</summary>
+    /// <summary>Fast-forward when possible, otherwise a merge commit (git's default).</summary>
     Default,
 
-    /// <summary><c>--no-ff</c>: her zaman birleştirme commit'i.</summary>
+    /// <summary><c>--no-ff</c>: always create a merge commit.</summary>
     NoFastForward,
 
     /// <summary>
-    /// <c>--squash</c>: değişiklikler tek bir değişiklik gibi hazırlanır.
+    /// <c>--squash</c>: changes are staged as a single change.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — commit YAPMIYOR.</b> git <i>"Squash commit -- not updating HEAD"</i>
-    /// yazıp çıkış kodu <b>0</b> veriyor; <c>HEAD</c> yerinde kalıyor ve değişiklikler
-    /// index'te bekliyor. "Başarılı" deyip bırakmak, kullanıcının birleştirdiğini sanıp
-    /// commit'lememesi demekti. <see cref="MergeResult.RequiresCommit"/> bunun için var.
+    /// 🔴 <b>MEASURED — does NOT commit.</b> git prints <i>"Squash commit -- not updating HEAD"</i>
+    /// and returns exit code <b>0</b>; <c>HEAD</c> stays put and the changes sit
+    /// in the index. Reporting "success" and leaving it there would mean the user thinks
+    /// they've merged and fails to commit. <see cref="MergeResult.RequiresCommit"/> exists for this.
     /// </remarks>
     Squash,
 
-    /// <summary><c>--ff-only</c>: ileri sarılamıyorsa hiç yapma.</summary>
+    /// <summary><c>--ff-only</c>: don't do anything if it can't fast-forward.</summary>
     FastForwardOnly,
 }
 
-/// <summary>Birleştirmenin nasıl sonuçlandığı (P06-T11).</summary>
+/// <summary>How the merge concluded (P06-T11).</summary>
 public enum MergeOutcome
 {
-    /// <summary>Yapacak bir şey yoktu.</summary>
+    /// <summary>There was nothing to do.</summary>
     AlreadyUpToDate,
 
-    /// <summary>İleri sarıldı; yeni commit oluşmadı.</summary>
+    /// <summary>Fast-forwarded; no new commit was created.</summary>
     FastForward,
 
-    /// <summary>Birleştirme commit'i oluştu.</summary>
+    /// <summary>A merge commit was created.</summary>
     MergeCommit,
 
-    /// <summary>Değişiklikler hazırlandı ama <b>commit'lenmedi</b>.</summary>
+    /// <summary>Changes were staged but <b>not committed</b>.</summary>
     Staged,
 
-    /// <summary>Çakışmayla durdu.</summary>
+    /// <summary>Stopped with a conflict.</summary>
     Conflicted,
 }
 
-/// <summary>Birleştirme seçenekleri (P06-T11).</summary>
+/// <summary>Merge options (P06-T11).</summary>
 public sealed record MergeOptions
 {
-    /// <summary>Birleştirilecek dal ya da commit.</summary>
+    /// <summary>Branch or commit to merge.</summary>
     public required string Source { get; init; }
 
     public MergeStrategy Strategy { get; init; }
 
-    /// <summary>Özel birleştirme mesajı; <see langword="null"/> ise git'in varsayılanı.</summary>
+    /// <summary>Custom merge message; <see langword="null"/> uses git's default.</summary>
     /// <remarks>
-    /// Mesaj argüman olarak değil <b>stdin</b> ile geçirilebilirdi, ama <c>git merge</c>
-    /// mesajı yalnızca <c>-m</c> ile alıyor. Satır sonu içeren mesajlar için <c>-m</c>
-    /// birden çok kez veriliyor (git bunları paragraf olarak birleştiriyor).
+    /// The message could have been passed via <b>stdin</b> instead of as an argument, but
+    /// <c>git merge</c> only accepts the message via <c>-m</c>. For messages containing
+    /// newlines, <c>-m</c> is given multiple times (git joins them as paragraphs).
     /// </remarks>
     public string? Message { get; init; }
 
-    /// <summary><c>--no-commit</c>: birleştir ama commit'leme.</summary>
+    /// <summary><c>--no-commit</c>: merge but don't commit.</summary>
     public bool NoCommit { get; init; }
 
     /// <summary><c>--allow-unrelated-histories</c>.</summary>
     public bool AllowUnrelatedHistories { get; init; }
 }
 
-/// <summary>Birleştirme sonucu (P06-T11).</summary>
+/// <summary>Merge result (P06-T11).</summary>
 public sealed record MergeResult
 {
     public required MergeOutcome Outcome { get; init; }
 
-    /// <summary>Birleştirme öncesi <c>HEAD</c>.</summary>
+    /// <summary><c>HEAD</c> before the merge.</summary>
     public required string HeadBefore { get; init; }
 
-    /// <summary>Birleştirme sonrası <c>HEAD</c>.</summary>
+    /// <summary><c>HEAD</c> after the merge.</summary>
     public required string HeadAfter { get; init; }
 
-    /// <summary>Çözülmemiş dosyalar.</summary>
+    /// <summary>Unresolved files.</summary>
     public IReadOnlyList<string> ConflictedPaths { get; init; } = [];
 
     public bool HasConflicts => ConflictedPaths.Count > 0;
 
     /// <summary>
-    /// Kullanıcının hâlâ commit'lemesi gerekiyor mu?
+    /// Does the user still need to commit?
     /// </summary>
     /// <remarks>
-    /// 🔴 <c>--squash</c> ve <c>--no-commit</c> "başarılı" dönüyor ama <c>HEAD</c>
-    /// ilerlemiyor. Bunu söylemeyen bir ekran, kullanıcıyı yarım bir işle bırakırdı.
+    /// 🔴 <c>--squash</c> and <c>--no-commit</c> return "success" but <c>HEAD</c> does not
+    /// advance. A screen that doesn't say so would leave the user with a half-finished operation.
     /// </remarks>
     public bool RequiresCommit => Outcome == MergeOutcome.Staged;
 
-    /// <summary>git'in hazırladığı commit mesajı taslağı (<c>SQUASH_MSG</c>/<c>MERGE_MSG</c>).</summary>
+    /// <summary>Commit message draft prepared by git (<c>SQUASH_MSG</c>/<c>MERGE_MSG</c>).</summary>
     public string? SuggestedMessage { get; init; }
 
     /// <summary>
-    /// Yapılanı geri alan komut; <c>HEAD</c> ilerlemediyse <see langword="null"/>.
+    /// Command that undoes what was done; <see langword="null"/> if <c>HEAD</c> did not advance.
     /// </summary>
     /// <remarks>
-    /// <c>ORIG_HEAD</c> değil <b>hash</b> yazılıyor: sonraki bir merge/reset onu ezer ve
-    /// kullanıcı komutu daha sonra çalıştırırsa bambaşka bir yere dönerdi (P06-T07'nin dersi).
+    /// The <b>hash</b> is written, not <c>ORIG_HEAD</c>: a later merge/reset overwrites it, and
+    /// if the user ran the command afterward it would return them to somewhere else entirely
+    /// (the lesson from P06-T07).
     /// </remarks>
     public string? RecoveryCommand => string.Equals(HeadBefore, HeadAfter, StringComparison.Ordinal)
         ? null
         : $"git reset --hard {HeadBefore}";
 }
 
-/// <summary>Birleştirmenin ne yapacağının önizlemesi (P06-T11).</summary>
+/// <summary>Preview of what the merge will do (P06-T11).</summary>
 public sealed record MergePreview
 {
-    /// <summary>Yapacak bir şey var mı?</summary>
+    /// <summary>Is there anything to do?</summary>
     public required bool HasChanges { get; init; }
 
-    /// <summary>İleri sarılabilir mi (ortak ata = <c>HEAD</c>)?</summary>
+    /// <summary>Can it fast-forward (common ancestor = <c>HEAD</c>)?</summary>
     public required bool CanFastForward { get; init; }
 
-    /// <summary>Ortak ata var mı? Yoksa geçmişler ilgisiz.</summary>
+    /// <summary>Is there a common ancestor? If not, the histories are unrelated.</summary>
     public required bool HasCommonAncestor { get; init; }
 
-    /// <summary>Kaynağın <c>HEAD</c>'e göre önündeki commit sayısı.</summary>
+    /// <summary>Number of commits the source is ahead of <c>HEAD</c>.</summary>
     public int Ahead { get; init; }
 }
 
-/// <summary>Birleştirme işlemleri (P06-T11, P06-T12).</summary>
+/// <summary>Merge operations (P06-T11, P06-T12).</summary>
 public interface IMergeWriter
 {
-    /// <summary>Birleştirir ve <b>ne olduğunu</b> döndürür.</summary>
+    /// <summary>Merges and returns <b>what happened</b>.</summary>
     Task<MergeResult> MergeAsync(
         string workingDirectory,
         MergeOptions options,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Birleştirme öncesi durumu okur — ekranı doldurmak için.</summary>
+    /// <summary>Reads the pre-merge state — to populate the screen.</summary>
     Task<MergePreview> PreviewAsync(
         string workingDirectory,
         string source,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Süren birleştirmeyi iptal eder (<c>git merge --abort</c>, P06-T12).
+    /// Aborts an in-progress merge (<c>git merge --abort</c>, P06-T12).
     /// </summary>
     Task<string> AbortAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Çalıştırılacak komutu üretir ("komutu göster" ilkesi).</summary>
+    /// <summary>Produces the command that will be run ("show the command" principle).</summary>
     string DescribeCommand(MergeOptions options);
 }
 
 /// <summary>
-/// <c>git merge</c> sarmalayıcısı (P06-T11, P06-T12).
+/// <c>git merge</c> wrapper (P06-T11, P06-T12).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>ÖLÇÜLDÜ — çakışma metni <c>stdout</c>'ta.</b> <c>CONFLICT (content): …</c> ve
-/// <c>Automatic merge failed…</c> satırları stdout'a yazılıyor, stderr <b>boş</b>. Hata
-/// sınıflandırıcı yalnızca stderr'e baktığı için <c>Unknown</c> diyor — P06-T07'de pull'da
-/// aynı tuzağa düşülmüştü.
+/// 🔴 <b>MEASURED — conflict text is on <c>stdout</c>.</b> The <c>CONFLICT (content): …</c> and
+/// <c>Automatic merge failed…</c> lines are written to stdout, stderr is <b>empty</b>. Since the
+/// error classifier only looks at stderr it says <c>Unknown</c> — the same trap was hit with
+/// pull in P06-T07.
 /// </para>
 /// <para>
-/// → Çakışma kararı <b>metne değil duruma</b> bakıyor: <c>diff --diff-filter=U</c>. Aynı
-/// gerekçe sonucun tamamı için geçerli; ne olduğu <c>HEAD</c>'in önce/sonrası ve index'in
-/// durumundan hesaplanıyor.
+/// → The conflict decision looks at <b>state, not text</b>: <c>diff --diff-filter=U</c>. The
+/// same rationale applies to the whole result; what happened is computed from <c>HEAD</c>'s
+/// before/after and the index state.
 /// </para>
 /// </remarks>
 public sealed class MergeWriter : IMergeWriter
@@ -202,9 +203,9 @@ public sealed class MergeWriter : IMergeWriter
         }
         catch (GitException)
         {
-            // Çakışma bir hata değil, bir DURUM. Ama gerçek hatalar (kirli ağaç, bilinmeyen
-            // ref, ilgisiz geçmişler) olduğu gibi yukarı gitmeli — ayrım index'e bakarak
-            // yapılıyor, git'in metnine değil.
+            // A conflict is not an error, it's a STATE. But real errors (dirty tree, unknown
+            // ref, unrelated histories) must still propagate up — the distinction is made by
+            // looking at the index, not git's text.
             if (await ReadConflictsAsync(workingDirectory, cancellationToken).ConfigureAwait(false)
                 is not { Count: > 0 } conflicts)
             {
@@ -225,8 +226,8 @@ public sealed class MergeWriter : IMergeWriter
         string after = await ReadHeadAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
         bool moved = !string.Equals(before, after, StringComparison.Ordinal);
 
-        // 🔴 `--squash` ve `--no-commit` çıkış kodu 0 veriyor ama HEAD yerinde. Hazırlanan
-        // değişiklik var mı diye index'e bakılıyor; yoksa gerçekten yapacak bir şey yoktu.
+        // 🔴 `--squash` and `--no-commit` return exit code 0 but HEAD stays put. The index is
+        // checked for staged changes; if there are none there was truly nothing to do.
         bool staged = !moved
             && await HasStagedChangesAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
 
@@ -300,7 +301,7 @@ public sealed class MergeWriter : IMergeWriter
 
     public string DescribeCommand(MergeOptions options) => Describe(options);
 
-    /// <summary>Çalıştırılacak komutu üretir ("komutu göster" ilkesi).</summary>
+    /// <summary>Produces the command that will be run ("show the command" principle).</summary>
     public static string Describe(MergeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -309,8 +310,8 @@ public sealed class MergeWriter : IMergeWriter
     }
 
     /// <remarks>
-    /// <c>--</c> ayracı her zaman: <c>-</c> ile başlayan bir dal adı aksi hâlde bayrak
-    /// sanılırdı (P06-T01'in dersi).
+    /// The <c>--</c> separator is always used: a branch name starting with <c>-</c> would
+    /// otherwise be mistaken for a flag (the lesson from P06-T01).
     /// </remarks>
     private static IReadOnlyList<string> BuildArguments(MergeOptions options)
     {
@@ -334,7 +335,7 @@ public sealed class MergeWriter : IMergeWriter
 
         if (options.NoCommit && options.Strategy != MergeStrategy.Squash)
         {
-            // `--squash` zaten commit'lemiyor; ikisini birlikte vermek gereksiz.
+            // `--squash` already doesn't commit; giving both together is redundant.
             arguments.Add("--no-commit");
         }
 
@@ -364,7 +365,7 @@ public sealed class MergeWriter : IMergeWriter
             GitCommand.Create(workingDirectory, "rev-parse", "HEAD"),
             cancellationToken).ConfigureAwait(false);
 
-        // Doğmamış depoda `rev-parse HEAD` başarısız; birleştirilecek bir şey de yok.
+        // `rev-parse HEAD` fails in an unborn repository; there's also nothing to merge.
         return result.IsSuccess ? result.GetStandardOutputText().Trim() : string.Empty;
     }
 
@@ -385,7 +386,7 @@ public sealed class MergeWriter : IMergeWriter
         string workingDirectory,
         CancellationToken cancellationToken)
     {
-        // `--quiet` fark varsa 1 döner; bu bir hata değil (P02'de beyan edilen kalıp).
+        // `--quiet` returns 1 when there's a difference; that's not an error (the pattern declared in P02).
         GitResult result = await _runner.RunAsync(
             new GitCommand
             {
@@ -407,11 +408,11 @@ public sealed class MergeWriter : IMergeWriter
             GitCommand.Create(workingDirectory, "rev-list", "--parents", "-1", commit),
             cancellationToken).ConfigureAwait(false);
 
-        // "<commit> <ebeveyn1> <ebeveyn2>" — iki ebeveyn varsa birleştirme commit'i.
+        // "<commit> <parent1> <parent2>" — two parents means a merge commit.
         return parents.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length > 2;
     }
 
-    /// <summary>git'in bıraktığı mesaj taslağını okur.</summary>
+    /// <summary>Reads the message draft left behind by git.</summary>
     private async Task<string?> ReadDraftAsync(
         string workingDirectory,
         string fileName,
@@ -430,7 +431,7 @@ public sealed class MergeWriter : IMergeWriter
 
         string text = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
 
-        // Yorum satırları kullanıcıya gösterilmiyor; git zaten commit'te atıyor.
+        // Comment lines are not shown to the user; git strips them at commit time anyway.
         return string.Join(
             '\n',
             text.Split('\n').Where(line => !line.StartsWith('#'))).Trim();

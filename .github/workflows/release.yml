@@ -1,6 +1,6 @@
 name: Release
 
-# Sürüm etiketi itildiğinde çalışır: v1.0.0, v1.0.0-rc.1 …
+# Runs when a version tag is pushed: v1.0.0, v1.0.0-rc.1 …
 on:
   push:
     tags:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Sürüm (etiketsiz deneme için)'
+        description: 'Version (for tagless trial run)'
         required: true
 
 permissions:
@@ -21,13 +21,13 @@ env:
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
-  # Sürüm bir kez belirlenir ve tüm işlere buradan dağıtılır.
+  # The version is determined once and distributed to all jobs from here.
   #
-  # ⚠️ ÖLÇÜLDÜ (P10-T00) — sığ klonda MinVer sessizce 0.0.0-alpha.0 üretiyor ve
-  # `v1.0.0` tag'ine basmak "0.0.0-alpha.0" adlı bir sürüm yayınlardı; hiçbir adım
-  # kırmızıya dönmezdi. fetch-depth: 0 + version.sh --check bunu kapatıyor.
+  # ⚠️ MEASURED (P10-T00) — in a shallow clone MinVer silently produces 0.0.0-alpha.0,
+  # and pushing the `v1.0.0` tag would publish a version named "0.0.0-alpha.0"; no step
+  # would turn red. fetch-depth: 0 + version.sh --check closes this off.
   version:
-    name: Sürümü belirle
+    name: Determine version
     runs-on: ubuntu-latest
     outputs:
       value: ${{ steps.derive.outputs.value }}
@@ -35,36 +35,36 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0   # ŞART: tag'ler olmadan MinVer sürümü türetemiyor
+          fetch-depth: 0   # REQUIRED: MinVer can't derive a version without tags
 
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
-      - name: Sürümü türet ve doğrula
+      - name: Derive and verify version
         id: derive
         env:
           MINVER_VERSION_OVERRIDE: ${{ inputs.version }}
         run: |
-          # ⚠️ `set -o pipefail` ŞART. Ölçüldü: `version.sh --check | sed` biçiminde
-          # yazıldığında betiğin çıkış kodu SED'inkiyle değişiyor ve doğrulama
-          # başarısız olsa bile adım YEŞİL kalıyordu — boş bir sürümle devam ederek.
-          # Tam da bu adımın engellemek için var olduğu sessiz hata.
+          # ⚠️ `set -o pipefail` is REQUIRED. Measured: written as `version.sh --check |
+          # sed`, the script's exit code gets replaced by SED's, and the step stays
+          # GREEN even when validation fails — carrying on with an empty version.
+          # This is exactly the silent failure this step exists to prevent.
           set -euo pipefail
 
           version="$(build/version.sh --check)"
           version="${version#OK: }"
 
           if [ -z "$version" ]; then
-            echo "::error::Sürüm boş — yayın durduruluyor." >&2
+            echo "::error::Version is empty — halting release." >&2
             exit 1
           fi
 
           echo "value=$version" >> "$GITHUB_OUTPUT"
-          echo "Sürüm: $version"
+          echo "Version: $version"
 
-  # Yayın öncesi testler ŞART: yayınlanmış bir paketi geri çekmek, çıkmasını
-  # engellemekten çok daha pahalı.
+  # Pre-release tests are REQUIRED: pulling back a published package is far more
+  # expensive than stopping it from going out.
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -85,7 +85,7 @@ jobs:
 
   # ───────────────────────────────────────────────────────────────────────────
   linux:
-    name: Linux paketleri
+    name: Linux packages
     runs-on: ubuntu-latest
     needs: [version, test]
 
@@ -98,19 +98,19 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # İkon üretimi ve metadata doğrulaması için.
-      - name: Araçlar
+      # For icon generation and metadata validation.
+      - name: Tools
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin imagemagick desktop-file-utils appstream
 
-      - name: Metadata doğrula
+      - name: Validate metadata
         run: |
           desktop-file-validate build/linux/io.github.ibrahimhates.GitExtCore.desktop
           appstreamcli validate build/linux/io.github.ibrahimhates.GitExtCore.metainfo.xml
 
-      # AppImage'ın kendi çalıştırılması FUSE istiyor; runner'da yok, bu yüzden
-      # appimagetool `--appimage-extract-and-run` ile çalışıyor (betik kendisi seçiyor).
+      # Running the AppImage itself needs FUSE; the runner doesn't have it, so
+      # appimagetool runs with `--appimage-extract-and-run` (the script picks this itself).
       - name: Tarball + AppImage
         env:
           MINVER_VERSION_OVERRIDE: ${{ needs.version.outputs.value }}
@@ -121,9 +121,9 @@ jobs:
           MINVER_VERSION_OVERRIDE: ${{ needs.version.outputs.value }}
         run: build/linux/package-deb-rpm.sh
 
-      # Üretilen ikili GERÇEKTEN çalışmalı: paketleme başarılı olup çalıştırılabilir
-      # bozuk çıkabilir (trimming eksik bir bağımlılığı atabiliyor).
-      - name: Duman testi
+      # The produced binary must ACTUALLY run: packaging can succeed while the
+      # executable comes out broken (trimming can drop a needed dependency).
+      - name: Smoke test
         env:
           V: ${{ needs.version.outputs.value }}
         run: |
@@ -131,9 +131,9 @@ jobs:
           tar -xzf dist/gitext-core-"$V"-linux-x64.tar.gz -C /tmp
           /tmp/gitext-core/gitext-core --version
 
-      # Paketlerin GERÇEKTEN kurulabildiği, o dağıtımın temiz konteynerinde
-      # doğrulanıyor (P10-T24). Geliştirme makinesinde çalışması hiçbir şey kanıtlamaz.
-      - name: Temiz sistem doğrulaması
+      # That the packages ACTUALLY install is verified in a clean container of that
+      # distro (P10-T24). Working on the dev machine proves nothing.
+      - name: Clean-system verification
         env:
           V: ${{ needs.version.outputs.value }}
         run: |
@@ -159,7 +159,7 @@ jobs:
 
   # ───────────────────────────────────────────────────────────────────────────
   windows:
-    name: Windows paketleri
+    name: Windows packages
     runs-on: windows-latest
     needs: [version, test]
 
@@ -172,17 +172,18 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # package.sh bash betiği; Windows runner'ında Git Bash mevcut.
-      # rsvg-convert yok, bu yüzden ikonlar önceden üretilmiş .ico'dan geliyor —
-      # betik ikon üretimini atlıyorsa build kırılmıyor (koşullu ApplicationIcon).
-      - name: ZIP + Inno Setup betiği
+      # package.sh is a bash script; Git Bash is available on the Windows runner.
+      # rsvg-convert isn't, so the icons come from a pre-generated .ico — the build
+      # doesn't break if the script skips icon generation (conditional ApplicationIcon).
+      - name: ZIP + Inno Setup script
         shell: bash
         env:
           MINVER_VERSION_OVERRIDE: ${{ needs.version.outputs.value }}
         run: build/windows/package.sh
 
-      # Windows çıktısı GERÇEKTEN çalıştırılıyor — bu, projede yalnızca burada mümkün.
-      - name: Duman testi
+      # The Windows output is ACTUALLY run — the only place in the project where
+      # that's possible.
+      - name: Smoke test
         shell: pwsh
         env:
           V: ${{ needs.version.outputs.value }}
@@ -190,13 +191,13 @@ jobs:
           $output = & "./dist/win-x64/gitext-core/gitext-core.exe" --version
           Write-Host $output
           if ($output -notmatch [regex]::Escape($env:V)) {
-            throw "Sürüm uyuşmuyor: '$output' içinde '$($env:V)' yok"
+            throw "Version mismatch: '$output' does not contain '$($env:V)'"
           }
 
-      - name: Kurulum paketini derle
+      - name: Build installer
         shell: pwsh
         run: |
-          # Inno Setup runner imajında kurulu değil; chocolatey ile geliyor.
+          # Inno Setup is not installed on the runner image; it comes via chocolatey.
           choco install innosetup --no-progress -y
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" dist/gitext-core.iss
 
@@ -209,7 +210,7 @@ jobs:
 
   # ───────────────────────────────────────────────────────────────────────────
   macos:
-    name: macOS paketleri (${{ matrix.rid }})
+    name: macOS packages (${{ matrix.rid }})
     runs-on: macos-latest
     needs: [version, test]
     strategy:
@@ -226,7 +227,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Araçlar
+      - name: Tools
         run: brew install librsvg imagemagick
 
       - name: .app bundle
@@ -235,10 +236,10 @@ jobs:
           RID: ${{ matrix.rid }}
         run: build/macos/package.sh
 
-      # macOS çıktısı GERÇEKTEN çalıştırılıyor — yalnızca burada mümkün.
-      # arm64 runner'da x64 ikili Rosetta olmadan çalışmayabilir; bu yüzden
-      # yalnızca kendi mimarisinde deneniyor.
-      - name: Duman testi
+      # The macOS output is ACTUALLY run — only possible here.
+      # The x64 binary may not run without Rosetta on the arm64 runner, so it's
+      # only exercised on its own architecture.
+      - name: Smoke test
         if: matrix.rid == 'osx-arm64'
         env:
           V: ${{ needs.version.outputs.value }}
@@ -247,7 +248,7 @@ jobs:
           echo "$output"
           echo "$output" | grep -qF "$V"
 
-      # hdiutil YALNIZCA macOS'ta var (P10-T21); .dmg burada üretiliyor.
+      # hdiutil is ONLY available on macOS (P10-T21); the .dmg is built here.
       - name: .dmg
         env:
           V: ${{ needs.version.outputs.value }}
@@ -266,7 +267,7 @@ jobs:
 
   # ───────────────────────────────────────────────────────────────────────────
   release:
-    name: GitHub Release taslağı
+    name: GitHub Release draft
     runs-on: ubuntu-latest
     needs: [version, linux, windows, macos]
     if: startsWith(github.ref, 'refs/tags/')
@@ -280,14 +281,14 @@ jobs:
         with:
           path: artifacts
 
-      - name: Çıktıları topla
+      - name: Collect outputs
         run: |
           mkdir -p dist
           find artifacts -type f -exec mv {} dist/ \;
           ls -la dist/
 
-      # Bütünlük dosyası: her çıktı için SHA256 (P10-T04).
-      # GPG imzası yalnızca anahtar tanımlıysa; yoksa ATLANDIĞI SÖYLENİYOR.
+      # Integrity file: SHA256 for every output (P10-T04).
+      # GPG signing only if a key is defined; otherwise the SKIP is announced.
       - name: SHA256SUMS
         env:
           GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
@@ -297,9 +298,9 @@ jobs:
           fi
           build/checksums.sh
 
-      # Sürüm notları COMMIT'lerden üretiliyor (P10-T03): bu depoda PR akışı yok,
-      # GitHub'ın kendi üreteci neredeyse boş bir not verirdi.
-      - name: Sürüm notları
+      # Release notes are generated from COMMITS (P10-T03): this repo has no PR
+      # flow, so GitHub's own generator would give an almost-empty note.
+      - name: Release notes
         run: build/release-notes.sh "${GITHUB_REF_NAME}" > release-notes.md
 
       - uses: softprops/action-gh-release@v2

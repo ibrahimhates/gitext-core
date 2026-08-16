@@ -7,32 +7,32 @@ using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
-/// <summary>Ekrandaki eylem seçimi (P06-T07).</summary>
+/// <summary>Action selection on the screen (P06-T07).</summary>
 /// <remarks>
-/// Sıra GitExtensions <c>FormPull</c>'un <c>GroupMergeOptions</c>'ından (§ 9):
-/// <i>Merge · Rebase · Do not merge, only fetch</i>. Fetch'in ayrı bir ekranı yok —
-/// bu yüzden P06-T06'nın arayüzü de burada.
+/// Order follows GitExtensions' <c>FormPull</c>'s <c>GroupMergeOptions</c> (§ 9):
+/// <i>Merge · Rebase · Do not merge, only fetch</i>. Fetch has no separate screen —
+/// so P06-T06's UI is here too.
 /// </remarks>
 public enum PullAction
 {
-    /// <summary>Uzak dalı mevcut dala birleştir.</summary>
+    /// <summary>Merge the remote branch into the current branch.</summary>
     Merge,
 
-    /// <summary>Yerel commit'leri uzak dalın üstüne taşı.</summary>
+    /// <summary>Replay local commits on top of the remote branch.</summary>
     Rebase,
 
-    /// <summary>Yalnızca fetch: çalışma ağacına dokunma.</summary>
+    /// <summary>Fetch only: don't touch the working tree.</summary>
     FetchOnly,
 }
 
 /// <summary>
-/// Pull / Fetch ekranı (P06-T06 + P06-T07).
+/// Pull / Fetch screen (P06-T06 + P06-T07).
 /// </summary>
 /// <remarks>
-/// 🔑 <b>Ne çalışacağı her zaman ekranda.</b> Planın maddesi ("pull düğmesinin ne yaptığı
-/// belirsiz kalmamalı") ve README'nin "komutu göster" ilkesi: hem çalıştırılacak komut
-/// (<see cref="CommandPreview"/>) hem de stratejinin <b>nereden geldiği</b>
-/// (<see cref="StrategyNotice"/>) yazılı.
+/// 🔑 <b>What will run is always on screen.</b> The plan's point ("what the pull button does
+/// must never stay ambiguous") and the README's "show the command" principle: both the command
+/// that will run (<see cref="CommandPreview"/>) and <b>where the strategy came from</b>
+/// (<see cref="StrategyNotice"/>) are written out.
 /// </remarks>
 public sealed class PullViewModel : ViewModelBase
 {
@@ -81,10 +81,10 @@ public sealed class PullViewModel : ViewModelBase
         CancelCommand = new RelayCommand(Cancel, () => CanCancel);
     }
 
-    /// <summary>Yapılandırılmış uzak depolar.</summary>
+    /// <summary>Configured remote repositories.</summary>
     public ObservableCollection<string> Remotes { get; } = [];
 
-    /// <summary>Seçili remote'un uzak dalları.</summary>
+    /// <summary>Remote branches of the selected remote.</summary>
     public ObservableCollection<string> RemoteBranches { get; } = [];
 
     public string? SelectedRemote
@@ -112,7 +112,7 @@ public sealed class PullViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Üzerinde bulunulan yerel dal (salt okunur gösterilir).</summary>
+    /// <summary>Currently checked-out local branch (shown read-only).</summary>
     public string CurrentBranch
     {
         get => _currentBranch;
@@ -135,8 +135,8 @@ public sealed class PullViewModel : ViewModelBase
         }
     }
 
-    // XAML'de radyo düğmeleri için: bileşik koşullar ViewModel'de tutuluyor (Faz 03'te
-    // bağlamada hesaplama yapmanın sessizce yanlış davrandığı ölçülmüştü).
+    // For the radio buttons in XAML: compound conditions are kept in the ViewModel (it was
+    // measured in Phase 03 that computing in the binding silently misbehaves).
     public bool IsMerge
     {
         get => Action == PullAction.Merge;
@@ -155,7 +155,7 @@ public sealed class PullViewModel : ViewModelBase
         set { if (value) { Action = PullAction.FetchOnly; } }
     }
 
-    /// <summary>Etiket seçimi (<c>GroupTagOptions</c>).</summary>
+    /// <summary>Tag selection (<c>GroupTagOptions</c>).</summary>
     public FetchTagMode Tags
     {
         get => _tags;
@@ -198,8 +198,8 @@ public sealed class PullViewModel : ViewModelBase
             {
                 if (!value)
                 {
-                    // GitExtensions'ta da `PruneTags` yalnızca `Prune` işaretliyken etkin;
-                    // git zaten `--prune-tags`i tek başına kabul etmiyor (ölçüldü).
+                    // In GitExtensions too `PruneTags` is only active while `Prune` is checked;
+                    // git itself doesn't accept `--prune-tags` on its own (measured).
                     PruneTags = false;
                 }
 
@@ -227,7 +227,7 @@ public sealed class PullViewModel : ViewModelBase
     /// <c>--autostash</c>.
     /// </summary>
     /// <remarks>
-    /// Yalnızca fetch seçiliyken anlamsız: fetch çalışma ağacına dokunmuyor.
+    /// Meaningless while only fetch is selected: fetch doesn't touch the working tree.
     /// </remarks>
     public bool AutoStash
     {
@@ -258,14 +258,14 @@ public sealed class PullViewModel : ViewModelBase
         }
     }
 
-    /// <summary>İşlemin sonucu.</summary>
+    /// <summary>Result of the operation.</summary>
     public string? Notice
     {
         get => _notice;
         private set => SetProperty(ref _notice, value);
     }
 
-    /// <summary>Dikkat çekilmesi gereken durum (çakışma, kısmi başarı).</summary>
+    /// <summary>State that needs attention (conflict, partial success).</summary>
     public string? Warning
     {
         get => _warning;
@@ -280,7 +280,7 @@ public sealed class PullViewModel : ViewModelBase
 
     public bool HasWarning => !string.IsNullOrEmpty(Warning);
 
-    /// <summary>Yapılanı geri alan komut; yalnızca <c>HEAD</c> ilerlediyse dolu.</summary>
+    /// <summary>Command that undoes what was done; only populated if <c>HEAD</c> advanced.</summary>
     public string? RecoveryCommand
     {
         get => _recoveryCommand;
@@ -296,7 +296,7 @@ public sealed class PullViewModel : ViewModelBase
     public bool HasRecoveryCommand => !string.IsNullOrEmpty(RecoveryCommand);
 
     /// <summary>
-    /// Kullanıcının ayarlarının ne söylediği — <b>seçim değişse bile</b> görünür kalır.
+    /// What the user's settings say — stays visible <b>even if the selection changes</b>.
     /// </summary>
     public string? StrategyNotice => _configured is not { } resolved
         ? null
@@ -313,12 +313,12 @@ public sealed class PullViewModel : ViewModelBase
         };
 
     /// <summary>
-    /// Çalıştırılacak komut.
+    /// Command that will run.
     /// </summary>
     /// <remarks>
-    /// "Komutu göster" ilkesi: kullanıcı düğmeye basmadan <b>ne olacağını</b> okuyabilmeli.
-    /// Metin gerçek argümanlardan üretiliyor, elle yazılmıyor — yoksa zamanla koddan
-    /// sapardı.
+    /// "Show the command" principle: the user must be able to read <b>what will happen</b>
+    /// before pressing the button. The text is generated from the actual arguments, not
+    /// hand-written — otherwise it would drift from the code over time.
     /// </remarks>
     public string CommandPreview
     {
@@ -378,7 +378,7 @@ public sealed class PullViewModel : ViewModelBase
 
     public IAsyncRelayCommand RunCommand { get; }
 
-    /// <summary>Canlı ilerleme metni; işlem yokken boş.</summary>
+    /// <summary>Live progress text; empty when there's no operation running.</summary>
     public string? ProgressText
     {
         get => _progressText;
@@ -393,7 +393,7 @@ public sealed class PullViewModel : ViewModelBase
 
     public bool HasProgress => !string.IsNullOrEmpty(ProgressText);
 
-    /// <summary>Yüzde; git yüzde vermiyorsa <see langword="null"/> (belirsiz çubuk).</summary>
+    /// <summary>Percentage; <see langword="null"/> if git doesn't report one (indeterminate bar).</summary>
     public double? ProgressPercent
     {
         get => _progressPercent;
@@ -409,12 +409,12 @@ public sealed class PullViewModel : ViewModelBase
     public bool IsProgressIndeterminate => ProgressPercent is null;
 
     /// <summary>
-    /// Çalışan işlemi iptal eder (P06-T10).
+    /// Cancels a running operation (P06-T10).
     /// </summary>
     /// <remarks>
-    /// 🔑 Süreç <b>gerçekten öldürülüyor</b> (<c>Kill(entireProcessTree: true)</c>) —
-    /// yalnızca beklemeyi bırakmak, arkada çalışmaya devam eden bir git bırakırdı.
-    /// Ölçüldü: yarıda kesilen bir fetch geride kilit bırakmıyor ve <c>fsck</c> temiz.
+    /// 🔑 The process is <b>actually killed</b> (<c>Kill(entireProcessTree: true)</c>) —
+    /// merely giving up waiting would leave a git process running in the background.
+    /// Measured: a fetch cut off mid-way leaves no lock behind and <c>fsck</c> is clean.
     /// </remarks>
     public IRelayCommand CancelCommand { get; }
 
@@ -429,7 +429,7 @@ public sealed class PullViewModel : ViewModelBase
     });
 
 
-    /// <summary>Ekranı bir depo için doldurur.</summary>
+    /// <summary>Populates the screen for a repository.</summary>
     public async Task LoadAsync(
         string workingDirectory,
         string currentBranch,
@@ -455,8 +455,8 @@ public sealed class PullViewModel : ViewModelBase
             .ResolveStrategyAsync(workingDirectory, PullStrategy.Default, cancellationToken)
             .ConfigureAwait(true);
 
-        // Ekran, kullanıcının ayarının söylediği seçenekle AÇILIYOR — başka bir seçenekle
-        // açmak, ayarını bilen kullanıcıya sessizce farklı bir şey yaptırırdı.
+        // The screen OPENS with the option the user's setting says — opening with a different
+        // option would silently make a user who knows their setting get something else.
         Action = _configured.Strategy switch
         {
             PullStrategy.Rebase => PullAction.Rebase,
@@ -491,7 +491,7 @@ public sealed class PullViewModel : ViewModelBase
             }
         }
 
-        // Mevcut dalın adıyla aynı olan uzak dal en olası hedef.
+        // The remote branch with the same name as the current branch is the most likely target.
         SelectedBranch = RemoteBranches.FirstOrDefault(name =>
             string.Equals(name, CurrentBranch, StringComparison.Ordinal))
             ?? RemoteBranches.FirstOrDefault();
@@ -534,7 +534,7 @@ public sealed class PullViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            // İptal bir hata değil; kullanıcı zaten ne olduğunu biliyor.
+            // Cancellation is not an error; the user already knows what happened.
             Notice = Loc.T("pull.the_operation_was_cancelled");
         }
         catch (GitException error) when (error.Kind == GitFailureKind.AuthenticationRequired)
@@ -559,9 +559,9 @@ public sealed class PullViewModel : ViewModelBase
             : RunPullAsync(credentials);
 
     /// <summary>
-    /// Kimlik doğrulama hatasını ele alır (P06-T09).
+    /// Handles an authentication error (P06-T09).
     /// </summary>
-    /// <remarks>Gerekçe ve sınırları: <see cref="PushViewModel"/> üzerindeki not.</remarks>
+    /// <remarks>Rationale and limits: see the note on <see cref="PushViewModel"/>.</remarks>
     private async Task HandleAuthenticationAsync(GitException error)
     {
         if (_diagnostics is null || _authentication is null)
@@ -613,7 +613,7 @@ public sealed class PullViewModel : ViewModelBase
 
         if (result.Failures.Count > 0)
         {
-            // 🔴 Kısmi başarı: bazı remote'lar güncellendi, bazıları güncellenmedi.
+            // 🔴 Partial success: some remotes were updated, some weren't.
             Warning = Loc.T("pull.these_remotes_could_not_be_fetched")
                 + string.Join(", ", result.Failures.Select(failure => failure.Remote));
         }
@@ -645,8 +645,8 @@ public sealed class PullViewModel : ViewModelBase
             RecoveryCommand = result.RecoveryCommand;
         }
 
-        // 🔴 Çıkış kodu 0 olsa bile çakışma olabiliyor (ölçüldü); sessiz kalmak
-        // "başarıyla güncellendi" demek olurdu.
+        // 🔴 There can be a conflict even with exit code 0 (measured); staying silent would
+        // mean saying "updated successfully".
         if (result.AutoStashConflict)
         {
             Warning = Loc.T("pull.the_fetch_succeeded_but_your_uncommitted_cha")
@@ -685,7 +685,7 @@ public sealed class PullViewModel : ViewModelBase
 
         if (deleted > 0)
         {
-            // Budama yıkıcı: sayıyı yutmak kullanıcının haberi olmadan ref kaybetmesi olurdu.
+            // Pruning is destructive: swallowing the count would mean the user loses refs without knowing.
             parts.Add($"{deleted} removed");
         }
 

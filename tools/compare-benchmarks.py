@@ -1,39 +1,39 @@
 #!/usr/bin/env python3
-"""P09-T16 — benchmark sonuçlarını temel çizgiyle karşılaştırır.
+"""P09-T16 — compares benchmark results against a baseline.
 
-Kullanım:
+Usage:
     python3 tools/compare-benchmarks.py <baseline.json> <current.json> [--threshold 25]
 
-Çıkış kodu HER ZAMAN 0 — bu araç CI'yı kırmaz, uyarır.
+Exit code is ALWAYS 0 — this tool warns, it doesn't fail CI.
 
-    Planın maddesi: "Kırmızı yapmak değil, uyarmak — CI makinelerinin gürültüsü
-    yanlış alarm üretir."
+    From the plan: "Not to turn it red, but to warn — CI machine noise produces
+    false alarms."
 
-Gerekçe ölçümle biliniyor: P09-T02'nin `--fast` koşusunda (N=3) aynı benchmark'ın
-iki koşusu arasında %10'a varan fark görüldü. Paylaşımlı CI makineleri komşu
-işlerle CPU paylaşıyor; orada dalgalanma daha da büyük. Bir eşiği kırmızı yapmak,
-gerçek regresyonları da görmezden gelinen bir gürültü akışına gömerdi.
+The rationale is known from measurement: in P09-T02's `--fast` run (N=3), a
+difference of up to 10% was seen between two runs of the same benchmark. Shared CI
+machines share CPU with neighboring jobs; the fluctuation there is even larger.
+Turning a threshold red would bury real regressions in a noise stream that gets ignored.
 """
 
 import argparse
 import json
 import sys
 
-# CI gürültüsünün üstünde kalan, ama gerçek bir yavaşlamayı kaçırmayan eşik.
-# %25: P09-T02'de gözlenen koşular arası dalgalanmanın (~%10) iki katından fazla.
+# A threshold that stays above CI noise but doesn't miss a real slowdown.
+# 25%: more than double the run-to-run fluctuation (~10%) observed in P09-T02.
 DEFAULT_THRESHOLD = 25.0
 
 
 def load(path):
-    """BenchmarkDotNet'in `-report-brief.json` dosyasından ad → ortalama (ns)."""
+    """Name → mean (ns) from BenchmarkDotNet's `-report-brief.json` file."""
     with open(path, encoding="utf-8") as handle:
         document = json.load(handle)
 
     results = {}
 
     for benchmark in document.get("Benchmarks", []):
-        # Tam ad kullanılıyor: iki sınıfta aynı adlı metot olabilir ve kısa adla
-        # eşleştirmek yanlış çifti karşılaştırırdı.
+        # The full name is used: two classes can have a method with the same name,
+        # and matching by the short name would compare the wrong pair.
         name = benchmark.get("FullName") or benchmark.get("Method")
         statistics = benchmark.get("Statistics") or {}
         mean = statistics.get("Mean")

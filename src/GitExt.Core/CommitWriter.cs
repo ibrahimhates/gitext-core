@@ -4,133 +4,135 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Commit oluşturma seçenekleri (P05-T06).
+/// Commit creation options (P05-T06).
 /// </summary>
 public sealed record CommitOptions
 {
     public static CommitOptions Default { get; } = new();
 
-    /// <summary>Son commit'in üzerine yaz (<c>--amend</c>).</summary>
+    /// <summary>Overwrite the last commit (<c>--amend</c>).</summary>
     /// <remarks>
-    /// ⚠️ Yayınlanmış bir commit'te geçmişi yeniden yazar. Arayüz bunu kullanıcıya
-    /// bildirmeli (P05-T15).
+    /// ⚠️ Rewrites history on a published commit. The UI should inform the user of this
+    /// (P05-T15).
     /// </remarks>
     public bool Amend { get; init; }
 
-    /// <summary>Mesajın sonuna <c>Signed-off-by</c> satırı ekle.</summary>
+    /// <summary>Append a <c>Signed-off-by</c> line to the message.</summary>
     public bool SignOff { get; init; }
 
-    /// <summary>Değişiklik olmasa da commit oluştur (<c>--allow-empty</c>).</summary>
+    /// <summary>Create a commit even with no changes (<c>--allow-empty</c>).</summary>
     public bool AllowEmpty { get; init; }
 
-    /// <summary>Boş mesaja izin ver (<c>--allow-empty-message</c>).</summary>
+    /// <summary>Allow an empty message (<c>--allow-empty-message</c>).</summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> boş mesajla <c>git commit</c> çıkış <b>1</b> veriyor
-    /// (<i>Aborting commit due to empty commit message</i>). Bu bayrak olmadan mesajsız
-    /// commit oluşturulamaz.
+    /// <b>MEASURED:</b> <c>git commit</c> with an empty message exits with <b>1</b>
+    /// (<i>Aborting commit due to empty commit message</i>). Without this flag, a commit
+    /// without a message cannot be created.
     /// </remarks>
     public bool AllowEmptyMessage { get; init; }
 
     /// <summary>
-    /// Doğrulama hook'larını atla (<c>--no-verify</c>). <b>Varsayılan kapalı.</b>
+    /// Skip validation hooks (<c>--no-verify</c>). <b>Off by default.</b>
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> başarısız bir <c>pre-commit</c> hook'u commit'i çıkış 1 ile
-    /// durduruyor ve çıktısını <c>stderr</c>'e yazıyor. Bu, kullanıcının kurduğu doğrulamayı
-    /// devre dışı bırakmak demek — arayüz açıkken görünür bir uyarı göstermeli (plan gereği).
+    /// <b>MEASURED:</b> a failing <c>pre-commit</c> hook stops the commit with exit code 1 and
+    /// writes its output to <c>stderr</c>. This means disabling validation the user set up —
+    /// the UI should show a visible warning while it's on (per the plan).
     /// </para>
     /// <para>
-    /// ⚠️ <b>"Hook'ları atla" DEĞİL.</b> Ölçüldü (P05-T07): <c>--no-verify</c> yalnızca
-    /// <c>pre-commit</c> ve <c>commit-msg</c>'i atlıyor; <c>prepare-commit-msg</c> ve
-    /// <c>post-commit</c> <b>yine çalışıyor</b>. Yani bu bayrak açıkken bile mesaj
-    /// değişebilir (<see cref="CommitResult.MessageChanged"/>) ve çıktı gelebilir.
+    /// ⚠️ <b>NOT "skip all hooks".</b> Measured (P05-T07): <c>--no-verify</c> only skips
+    /// <c>pre-commit</c> and <c>commit-msg</c>; <c>prepare-commit-msg</c> and
+    /// <c>post-commit</c> <b>still run</b>. So even with this flag on, the message can still
+    /// change (<see cref="CommitResult.MessageChanged"/>) and output can still appear.
     /// </para>
     /// </remarks>
     public bool SkipHooks { get; init; }
 
-    /// <summary>Yazarı değiştir; biçim <c>Ad Soyad &lt;eposta&gt;</c>.</summary>
+    /// <summary>Override the author; format is <c>Name Surname &lt;email&gt;</c>.</summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> yalnızca <i>author</i> alanını değiştiriyor; <i>committer</i>
-    /// kullanıcının kendi kimliği olarak kalıyor — git'in doğru davranışı budur.
+    /// <b>MEASURED:</b> only changes the <i>author</i> field; the <i>committer</i> stays the
+    /// user's own identity — this is git's correct behavior.
     /// </remarks>
     public string? Author { get; init; }
 
-    /// <summary>Commit'i GPG/SSH ile imzala (<c>-S</c>).</summary>
+    /// <summary>Sign the commit with GPG/SSH (<c>-S</c>).</summary>
     public bool Sign { get; init; }
 
-    /// <summary>İmzalamada kullanılacak anahtar; boşsa git'in yapılandırması geçerli.</summary>
+    /// <summary>Key to use for signing; if empty, git's configuration applies.</summary>
     public string? SigningKey { get; init; }
 }
 
 /// <summary>
-/// Tamamlanmış bir commit'in sonucu (P05-T07).
+/// Result of a completed commit (P05-T07).
 /// </summary>
 /// <remarks>
-/// Yalnızca <see cref="CommitId"/> döndürmek iki bilgiyi <b>sessizce</b> yutuyordu:
-/// hook'ların yazdıkları ve hook'ların mesajda yaptığı değişiklik.
+/// Returning only a <see cref="CommitId"/> was <b>silently</b> swallowing two pieces of
+/// information: what the hooks wrote, and what the hooks changed in the message.
 /// </remarks>
 public sealed record CommitResult
 {
-    /// <summary>Oluşan commit'in kimliği.</summary>
+    /// <summary>Id of the resulting commit.</summary>
     public required CommitId Id { get; init; }
 
-    /// <summary>Commit'e gerçekten giren mesaj (<c>%B</c> ile geri okundu).</summary>
+    /// <summary>The message that actually went into the commit (read back via <c>%B</c>).</summary>
     public required string Message { get; init; }
 
-    /// <summary>Çağıranın verdiği mesaj.</summary>
+    /// <summary>The message the caller supplied.</summary>
     public required string RequestedMessage { get; init; }
 
     /// <summary>
-    /// <c>git commit</c>'in tanı çıktısı — <b>hook çıktısı dahil</b>.
+    /// Diagnostic output of <c>git commit</c> — <b>including hook output</b>.
     /// </summary>
     /// <remarks>
-    /// Ham metin. Gösterilmeden önce <see cref="GitOutputText.CleanForDisplay"/> ile
-    /// geçirilmeli (ANSI kodları ve <c>\r</c> ilerleme satırları geliyor).
+    /// Raw text. Should be passed through <see cref="GitOutputText.CleanForDisplay"/> before
+    /// showing (ANSI codes and <c>\r</c> progress lines come through).
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> commit <b>başarılı</b> olsa bile hook'lar buraya yazıyor — başarılı bir
-    /// <c>pre-commit</c>'in uyarıları, <c>post-commit</c>'in çıktısı. Eskiden bu sonuç hiç
-    /// döndürülmediği için hepsi kayboluyordu.
+    /// <b>MEASURED:</b> even when the commit <b>succeeds</b>, hooks write here — warnings from
+    /// a successful <c>pre-commit</c>, output from <c>post-commit</c>. Previously this result
+    /// was never returned, so all of it was lost.
     /// </para>
     /// </remarks>
     public required string Output { get; init; }
 
-    /// <summary>Gösterilecek bir çıktı var mı?</summary>
+    /// <summary>Is there any output to show?</summary>
     public bool HasOutput => Output.Length > 0;
 
     /// <summary>
-    /// Kullanıcıya anlatılacak bir şey var mı? (çıktı ya da değişmiş mesaj)
+    /// Is there anything worth telling the user? (output, or a changed message)
     /// </summary>
     /// <remarks>
-    /// Hook'suz bir depoda her commit'ten sonra boş bir pencere açmak, kullanıcının kapatmayı
-    /// öğrendiği ve sonra gerçekten önemli olanı da kapattığı bir gürültü olurdu. Ölçüldü:
-    /// hook'suz başarılı commit'te çıktı <b>tamamen boş</b>, yani bu ayrım pratikte çalışıyor.
+    /// Popping up an empty window after every commit in a hook-free repository would be noise
+    /// the user learns to dismiss, and then dismisses the truly important case along with it.
+    /// Measured: in a hook-free successful commit, output is <b>completely empty</b>, so this
+    /// distinction works in practice.
     /// </remarks>
     public bool NeedsReporting => HasOutput || MessageChanged;
 
     /// <summary>
-    /// Commit'e giren mesaj, istenen mesajdan farklı mı?
+    /// Does the message that went into the commit differ from the requested message?
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> <c>prepare-commit-msg</c> ve <c>commit-msg</c> hook'ları mesaj dosyasını
-    /// yerinde düzenleyebiliyor (<c>Change-Id</c> eklemek en yaygın örnek) ve sonuç doğrudan
-    /// commit'e giriyor. Kullanıcı yazdığından farklı bir mesajın kaydedildiğini
-    /// <b>görmeli</b>.
+    /// <b>MEASURED:</b> <c>prepare-commit-msg</c> and <c>commit-msg</c> hooks can edit the
+    /// message file in place (adding a <c>Change-Id</c> is the most common example), and the
+    /// result goes straight into the commit. The user <b>should see</b> that a message
+    /// different from what they wrote was recorded.
     /// </para>
     /// <para>
-    /// ⚠️ Fark yalnız hook'lardan gelmeyebilir: <c>--signoff</c> de mesaja satır ekliyor.
-    /// Bu yüzden ad "hook değiştirdi" değil "mesaj değişti" — sebebi iddia etmiyoruz.
-    /// Yalnızca <c>--cleanup=whitespace</c>'in kendi normalleştirmesi (satır sonu boşlukları,
-    /// baştaki/sondaki boş satırlar) fark sayılmaz; o bizim istediğimiz davranış.
+    /// ⚠️ The difference doesn't necessarily come from hooks: <c>--signoff</c> also appends a
+    /// line to the message. That's why this is named "message changed", not "hook changed it"
+    /// — we're not asserting the cause. Only <c>--cleanup=whitespace</c>'s own normalization
+    /// (trailing line whitespace, leading/trailing blank lines) does not count as a difference;
+    /// that's the behavior we want.
     /// </para>
     /// </remarks>
     public bool MessageChanged =>
         !string.Equals(Normalize(Message), Normalize(RequestedMessage), StringComparison.Ordinal);
 
     /// <summary>
-    /// <c>--cleanup=whitespace</c>'in yaptığı normalleştirmenin aynısı: her satırın sonundaki
-    /// boşluk ve baştaki/sondaki boş satırlar atılır.
+    /// The same normalization <c>--cleanup=whitespace</c> performs: trailing whitespace on each
+    /// line and leading/trailing blank lines are dropped.
     /// </summary>
     private static string Normalize(string message) =>
         string.Join(
@@ -143,17 +145,17 @@ public sealed record CommitResult
 }
 
 /// <summary>
-/// Commit oluşturur (P05-T06).
+/// Creates commits (P05-T06).
 /// </summary>
 public interface ICommitWriter
 {
     /// <summary>
-    /// Index'teki değişikliklerden bir commit oluşturur ve yeni commit'in kimliğini döndürür.
+    /// Creates a commit from the changes in the index and returns the new commit's id.
     /// </summary>
-    /// <param name="workingDirectory">Depo çalışma dizini.</param>
-    /// <param name="message">Commit mesajı; <b>stdin</b> ile geçirilir.</param>
-    /// <param name="options">Seçenekler; <see langword="null"/> ise varsayılanlar.</param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="workingDirectory">Repository working directory.</param>
+    /// <param name="message">Commit message; passed via <b>stdin</b>.</param>
+    /// <param name="options">Options; <see langword="null"/> means defaults.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     Task<CommitResult> CommitAsync(
         string workingDirectory,
         string message,
@@ -187,14 +189,14 @@ public sealed class CommitWriter : ICommitWriter
 
         options ??= CommitOptions.Default;
 
-        // `-F -`: mesaj stdin'den. Argüman olarak geçirmek uzunluk sınırına takılır ve
-        // kullanıcı metnini kabuk yorumlamasına açardı (ADR-0002).
+        // `-F -`: message from stdin. Passing it as an argument would hit length limits and
+        // expose the user's text to shell interpretation (ADR-0002).
         List<string> arguments = ["commit", "-F", "-"];
 
-        // ⚠️ `--cleanup=whitespace` AÇIKÇA veriliyor: kullanıcının `commit.cleanup` ayarı
-        // davranışı değiştirebilir ve mesajı beklenmedik biçimde kırpabilirdi. Ölçüldü:
-        // bu modda `#` ile başlayan satırlar KORUNUYOR (issue referansları kaybolmuyor),
-        // yalnızca baştaki/sondaki fazla boşluk temizleniyor.
+        // ⚠️ `--cleanup=whitespace` is given EXPLICITLY: the user's `commit.cleanup` setting
+        // could change behavior and trim the message unexpectedly. Measured: in this mode,
+        // lines starting with `#` are PRESERVED (issue references aren't lost), only excess
+        // leading/trailing whitespace is cleaned up.
         arguments.Add("--cleanup=whitespace");
 
         if (options.Amend)
@@ -233,8 +235,8 @@ public sealed class CommitWriter : ICommitWriter
             arguments.Add(options.SigningKey is { Length: > 0 } key ? $"-S{key}" : "-S");
         }
 
-        // Süreç sınırı burada verilmiyor: hook'ların keyfi uzun sürebilmesi tek bir komutun
-        // değil YAZMA YOLUNUN özelliği (bkz. GitWriter.DefaultWriteTimeout).
+        // No process timeout is given here: hooks being able to run arbitrarily long is a
+        // property of the WRITE PATH, not of a single command (see GitWriter.DefaultWriteTimeout).
         GitResult result = await _writer.RunAsync(
                 workingDirectory, arguments, message, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
@@ -248,26 +250,27 @@ public sealed class CommitWriter : ICommitWriter
             Message = storedMessage,
             RequestedMessage = message,
 
-            // ⚠️ Komut BAŞARILI olsa da çıktı taşınıyor: hook'lar başarı yolunda da yazıyor
-            // (uyarılar, `post-commit`). Bunu atmak, kullanıcının kurduğu doğrulamanın
-            // söylediklerini yutmak olurdu — ADR-0002'de CLI'ın seçilme gerekçesi buydu.
+            // ⚠️ Output is carried even when the command SUCCEEDS: hooks also write on the
+            // success path (warnings, `post-commit`). Discarding this would mean swallowing
+            // what the user's validation is saying — this was ADR-0002's rationale for
+            // choosing the CLI.
             Output = result.StandardError,
         };
     }
 
     /// <summary>
-    /// Yeni commit'in kimliğini <b>ve</b> kaydedilen mesajını okur.
+    /// Reads the new commit's id <b>and</b> its stored message.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <c>git commit</c> çıktısı <b>insan-okunur</b> (<c>[main ec6c0d6] konu</c>) ve
-    /// ayrıştırılmaz (proje kuralı). Kimlik ayrı bir okumayla alınıyor.
+    /// <c>git commit</c> output is <b>human-readable</b> (<c>[main ec6c0d6] subject</c>) and
+    /// unparsed (project rule). The id is obtained with a separate read.
     /// </para>
     /// <para>
-    /// Mesaj da <b>geri okunuyor</b>: <c>prepare-commit-msg</c> ve <c>commit-msg</c> hook'ları
-    /// mesajı değiştirebiliyor, dolayısıyla gönderdiğimiz metin commit'e girenle aynı
-    /// olmayabilir. İkisi tek çağrıda alınıyor — ayraç <c>%x00</c>, çünkü commit mesajı NUL
-    /// baytı <b>içeremez</b> (P02-T04'te ölçüldü, git reddediyor).
+    /// The message is also <b>read back</b>: <c>prepare-commit-msg</c> and <c>commit-msg</c>
+    /// hooks can change the message, so the text we sent might not match what went into the
+    /// commit. Both are obtained in one call — separator <c>%x00</c>, because a commit message
+    /// <b>cannot contain</b> a NUL byte (measured in P02-T04, git rejects it).
     /// </para>
     /// </remarks>
     private async Task<(CommitId Id, string Message)> ReadHeadAsync(
@@ -294,7 +297,7 @@ public sealed class CommitWriter : ICommitWriter
                 result.StandardError);
         }
 
-        // `git log` biçimin sonuna kendi satır sonunu ekliyor; mesajın kendi sonu da var.
+        // `git log` appends its own line ending after the format; the message has its own end too.
         return (CommitId.Parse(fields[0].Trim()), fields[1].TrimEnd('\n'));
     }
 }

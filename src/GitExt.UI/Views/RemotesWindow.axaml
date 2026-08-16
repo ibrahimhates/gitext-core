@@ -12,19 +12,20 @@
         WindowStartupLocation="CenterOwner">
 
     <!--
-        Yerleşim GitExtensions `FormRemotes.Designer.cs`'ten (§ 9):
+        The layout comes from GitExtensions `FormRemotes.Designer.cs` (§ 9):
           · TabControl: "Remote repositories" / "Default pull behavior"
-          · solda liste (panel1, Dock=Left), sağda yönetim paneli (pnlManagementContainer)
-          · düğme şeridi listenin sağında dikey: New · Delete
-          · alan sırası: Url → Name → (Separate Push Url) → Push Url
-          · en altta "Save changes"
+          · the list on the left (panel1, Dock=Left), the management panel on the right
+            (pnlManagementContainer)
+          · the button strip vertical, to the right of the list: New · Delete
+          · field order: Url → Name → (Separate Push Url) → Push Url
+          · "Save changes" at the very bottom
 
-        Bizde OLMAYANLAR ve nedenleri:
-          · Prefix / Color  → GitExtensions'a özel görsel ayarlar
-          · PuTTY SSH paneli → Linux'ta PuTTY yok; kimlik doğrulama P06-T09
-          · btnToggleState (etkinleştir/devre dışı bırak) → git'te karşılığı yok,
-            GitExtensions bunu kendi ayar dosyasında tutuyor
-        İkinci sekme YERİNDE ama devre dışı: içeriği P06-T07'nin (pull) konusu.
+        What we DO NOT have, and why:
+          · Prefix / Color  → visual settings specific to GitExtensions
+          · the PuTTY SSH panel → there is no PuTTY on Linux; authentication is P06-T09
+          · btnToggleState (enable/disable) → it has no counterpart in git, GitExtensions keeps
+            it in its own settings file
+        The second tab is IN PLACE but disabled: its content is P06-T07's (pull) subject.
     -->
     <TabControl Margin="8">
 
@@ -39,7 +40,7 @@
                         <DataTemplate DataType="vm:RemoteRowViewModel">
                             <StackPanel Spacing="1">
                                 <TextBlock Text="{Binding Name}" />
-                                <!-- Parola MASKELİ: yalnızca gösterim, düzenleme kutusu ham. -->
+                                <!-- The password is MASKED: display only, the edit box is raw. -->
                                 <TextBlock Text="{Binding DisplayUrl}" FontSize="11" Opacity="0.7" />
                             </StackPanel>
                         </DataTemplate>
@@ -64,7 +65,7 @@
                       ColumnDefinitions="Auto,*"
                       Margin="4,0,0,0">
 
-                    <!-- Satır 0: Url (FormRemotes'ta da ilk satır) -->
+                    <!-- Row 0: Url (the first row in FormRemotes too) -->
                     <TextBlock Grid.Row="0" Grid.Column="0"
                                Text="{loc:Translate remotes.url}"
                                Margin="0,0,8,6"
@@ -74,7 +75,7 @@
                              Margin="0,0,0,6"
                              Text="{Binding Url}" />
 
-                    <!-- Satır 1: Name -->
+                    <!-- Row 1: Name -->
                     <TextBlock Grid.Row="1" Grid.Column="0"
                                Text="{loc:Translate remotes.name}"
                                Margin="0,0,8,2"
@@ -92,14 +93,14 @@
                                IsVisible="{Binding NameProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
 
-                    <!-- Satır 3: Separate Push Url (FormRemotes'taki checkBoxSepPushUrl) -->
+                    <!-- Row 3: Separate Push Url (checkBoxSepPushUrl in FormRemotes) -->
                     <CheckBox Name="SeparatePushBox"
                               Grid.Row="3" Grid.Column="1"
                               Content="{loc:Translate remotes.separate_url_for_push}"
                               Margin="0,0,0,6"
                               IsChecked="{Binding SeparatePushUrl}" />
 
-                    <!-- Satır 4: Push Url -->
+                    <!-- Row 4: Push Url -->
                     <TextBlock Grid.Row="4" Grid.Column="0"
                                Text="{loc:Translate remotes.push_url}"
                                Margin="0,0,8,6"
@@ -151,7 +152,7 @@
             </Grid>
         </TabItem>
 
-        <!-- Sıra bozulmasın diye YERİNDE ama devre dışı: içeriği P06-T07. -->
+        <!-- IN PLACE but disabled so the order is not broken: its content is P06-T07. -->
         <TabItem Name="PullBehaviorTab" Header="{loc:Translate remotes.default_pull_behaviour}" IsEnabled="False">
             <TextBlock Margin="12"
                        TextWrapping="Wrap"

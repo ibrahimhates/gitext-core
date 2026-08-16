@@ -8,14 +8,14 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// "Mesaj ▾" menüsündeki tek bir geçmiş girdisi (P05-T13).
+/// A single history entry in the "Message ▾" menu (P05-T13).
 /// </summary>
 public sealed class CommitMessageHistoryItem
 {
-    /// <summary>Menüde gösterilen etiketin üst sınırı.</summary>
+    /// <summary>Upper bound of the label shown in the menu.</summary>
     /// <remarks>
-    /// GitExtensions'ta da 72 (<c>maxLabelLength</c>). Menü öğesi tek satır olmak zorunda;
-    /// çok satırlı bir mesaj menüyü ekranın dışına taşırırdı.
+    /// 72 in GitExtensions too (<c>maxLabelLength</c>). A menu item must be a single line;
+    /// a multi-line message would push the menu off screen.
     /// </remarks>
     public const int LabelLimit = 72;
 
@@ -35,10 +35,10 @@ public sealed class CommitMessageHistoryItem
             : firstLine;
     }
 
-    /// <summary>Mesajın tamamı — seçilince kutuya bu giriyor.</summary>
+    /// <summary>The full message — this is what goes into the box when selected.</summary>
     public string Message { get; }
 
-    /// <summary>Menüde görünen tek satırlık etiket.</summary>
+    /// <summary>Single-line label shown in the menu.</summary>
     public string Label { get; }
 
     public ICommand ApplyCommand { get; }
@@ -47,42 +47,43 @@ public sealed class CommitMessageHistoryItem
 }
 
 /// <summary>
-/// Commit mesajı kutusunun durumu (P05-T12) ve yardımcıları (P05-T13).
+/// State of the commit message box (P05-T12) and its helpers (P05-T13).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Konu satırı ≤ <b>50</b>, gövde satırları ≤ <b>72</b> — git topluluğunun yerleşik geleneği
-/// (<c>git log --oneline</c> ve e-posta yamaları bu genişliklere göre biçimlenmiş).
+/// Subject line ≤ <b>50</b>, body lines ≤ <b>72</b> — the git community's established
+/// convention (<c>git log --oneline</c> and email patches are formatted for these widths).
 /// </para>
 /// <para>
-/// <b>GitExtensions'ta karşılığı ölçüldü:</b> orada da sınırlar var
+/// <b>The GitExtensions equivalent was measured:</b> it too has limits
 /// (<c>CommitValidationMaxCntCharsFirstLine</c>, <c>…PerLine</c>,
-/// <c>CommitValidationSecondLineMustBeEmpty</c>) ama <b>varsayılanları 0 / kapalı</b> ve
-/// denetim commit <i>anında</i> bir onay diyaloğu olarak çıkıyor. Burada tersi seçildi:
-/// sınır <b>yazarken</b> görünüyor, hiçbir şeyi engellemiyor. Mesaj yazılıp bitirildikten
-/// sonra "şunu düzelt" demek, kullanıcıyı zaten yaptığı işi geri almaya zorlamak olurdu.
+/// <c>CommitValidationSecondLineMustBeEmpty</c>) but <b>their defaults are 0 / off</b> and
+/// the check appears as a confirmation dialog <i>at</i> commit time. The opposite was chosen
+/// here: the limit is shown <b>while typing</b>, it blocks nothing. Saying "fix this" after
+/// the message is written and finished would mean forcing the user to undo work they already did.
 /// </para>
 /// <para>
-/// ⚠️ <b>Hiçbir sınır commit'i ENGELLEMİYOR.</b> Uzun konu satırı bir tercih olabilir;
-/// uygulamanın kullanıcıyı kendi deposunda kısıtlaması doğru değil.
+/// ⚠️ <b>No limit BLOCKS the commit.</b> A long subject line can be a deliberate choice; it's
+/// not right for the app to restrict the user in their own repository.
 /// </para>
 /// <para>
-/// 🔑 <b>P05-T13'ün değişmez kuralı: kullanıcının yazdığı metnin üzerine hiçbir kaynak
-/// yazmaz.</b> Taslak, şablon, <c>MERGE_MSG</c> ve <c>--amend</c> mesajı yalnızca kutu
-/// <b>boşken</b> yükleniyor. Geçmişten bir mesaj seçmek tek istisna — orada kullanıcı
-/// değiştirmeyi kendisi istiyor (GitExtensions'ın <c>ReplaceMessage</c>'ı da böyle).
+/// 🔑 <b>P05-T13's invariant rule: no source ever overwrites text the user has typed.</b>
+/// The draft, the template, <c>MERGE_MSG</c> and the <c>--amend</c> message are only loaded
+/// while the box is <b>empty</b>. Picking a message from history is the one exception —
+/// there the user explicitly wants to replace it (same as GitExtensions'
+/// <c>ReplaceMessage</c>).
 /// </para>
 /// </remarks>
 public sealed partial class CommitMessageViewModel : ViewModelBase
 {
-    /// <summary>Konu satırı için önerilen üst sınır.</summary>
+    /// <summary>Suggested upper bound for the subject line.</summary>
     public const int SubjectLimit = 50;
 
-    /// <summary>Gövde satırları için önerilen üst sınır.</summary>
+    /// <summary>Suggested upper bound for body lines.</summary>
     public const int BodyLimit = 72;
 
-    /// <summary>Menüde gösterilecek en fazla geçmiş mesaj.</summary>
-    /// <remarks>GitExtensions'ın varsayılanı da 6 (<c>CommitDialogNumberOfPreviousMessages</c>).</remarks>
+    /// <summary>Maximum number of history messages to show in the menu.</summary>
+    /// <remarks>GitExtensions' default is also 6 (<c>CommitDialogNumberOfPreviousMessages</c>).</remarks>
     public const int HistoryCount = 6;
 
     private readonly ICommitMessageReader? _reader;
@@ -90,7 +91,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
 
     private string? _workingDirectory;
 
-    /// <summary>Yükleme sırasında metin değişimi taslak kaydını tetiklemesin.</summary>
+    /// <summary>Text changes during loading must not trigger a draft save.</summary>
     private bool _loading;
 
     private CancellationTokenSource? _draftSave;
@@ -111,14 +112,13 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         });
     }
 
-    /// <summary>Kılavuz çizgilerinin sütunları.</summary>
+    /// <summary>Columns for the guide lines.</summary>
     public static IReadOnlyList<int> GuideColumns { get; } = [SubjectLimit, BodyLimit];
 
-    /// <summary>XAML bağlaması için örnek üzerinden erişim.</summary>
+    /// <summary>Instance-based access for XAML binding.</summary>
     /// <remarks>
-    /// Avalonia bağlaması <c>static</c> üyeyi <c>{Binding}</c> ile göremiyor; kılavuz
-    /// sütunlarını sabit bir dizi olarak XAML'e yazmak ise sınırların iki yerde durması
-    /// demek olurdu.
+    /// Avalonia binding can't see a <c>static</c> member via <c>{Binding}</c>; writing the guide
+    /// columns as a fixed array into XAML instead would mean the limits live in two places.
     /// </remarks>
     public IReadOnlyList<int> GuideColumnsForBinding => GuideColumns;
 
@@ -138,10 +138,10 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         ScheduleDraftSave();
     }
 
-    /// <summary>Mesaj boş mu? (yalnızca boşluk da boş sayılır)</summary>
+    /// <summary>Is the message empty? (whitespace-only also counts as empty)</summary>
     public bool IsEmpty => string.IsNullOrWhiteSpace(Text);
 
-    /// <summary>İlk satır — commit'in konusu.</summary>
+    /// <summary>First line — the commit's subject.</summary>
     private string Subject
     {
         get
@@ -154,18 +154,18 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
 
     public int SubjectLength => Subject.Length;
 
-    /// <summary>Sayaç metni; kullanıcı sınırı yazarken görüyor.</summary>
+    /// <summary>Counter text; the user sees this while typing near the limit.</summary>
     public string SubjectCounter => $"{SubjectLength} / {SubjectLimit}";
 
     public bool IsSubjectTooLong => SubjectLength > SubjectLimit;
 
     /// <summary>
-    /// İkinci satır dolu mu? (konu ile gövde arasında boş satır olmalı)
+    /// Is the second line non-empty? (there should be a blank line between subject and body)
     /// </summary>
     /// <remarks>
-    /// git bu ayrımı <b>anlamlı</b> sayıyor: <c>%s</c> ilk satırı, <c>%b</c> boş satırdan
-    /// sonrasını veriyor. İkinci satır doluysa gövde konuya yapışıyor ve <c>git log</c>
-    /// çıktısı bozuk görünüyor.
+    /// git treats this distinction as <b>meaningful</b>: <c>%s</c> gives the first line, <c>%b</c>
+    /// gives everything after the blank line. If the second line is non-empty, the body sticks
+    /// to the subject and <c>git log</c> output looks broken.
     /// </remarks>
     public bool HasNonEmptySecondLine
     {
@@ -177,7 +177,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Kullanıcıya gösterilecek biçim önerisi; sorun yoksa boş.</summary>
+    /// <summary>Formatting suggestion shown to the user; empty if there's no issue.</summary>
     public string Hint => this switch
     {
         { HasNonEmptySecondLine: true } => Loc.T("commit_message.leave_a_blank_line_between_the_subject_and_t"),
@@ -187,17 +187,17 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
 
     public bool HasHint => Hint.Length > 0;
 
-    // ---- Geçmiş (P05-T13) ----
+    // ---- History (P05-T13) ----
 
-    /// <summary>"Mesaj ▾" menüsünün içeriği.</summary>
+    /// <summary>Contents of the "Message ▾" menu.</summary>
     public ObservableCollection<CommitMessageHistoryItem> RecentMessages { get; } = [];
 
     /// <summary>
-    /// Yalnızca kullanıcının kendi commit'lerinin mesajları listelensin mi?
+    /// List only messages from the user's own commits?
     /// </summary>
     /// <remarks>
-    /// GitExtensions'taki <c>ShowOnlyMyMessages</c>'ın karşılığı. Ortak bir depoda son altı
-    /// commit'in tamamı başkalarının olabilir ve menü işe yaramaz hâle gelir.
+    /// Corresponds to GitExtensions' <c>ShowOnlyMyMessages</c>. In a shared repository, the
+    /// last six commits could all belong to someone else, making the menu useless.
     /// </remarks>
     [ObservableProperty]
     public partial bool OnlyMyMessages { get; set; }
@@ -205,12 +205,12 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     partial void OnOnlyMyMessagesChanged(bool value) => _ = LoadRecentAsync();
 
     /// <summary>
-    /// Geçmiş mesajları okur.
+    /// Reads past messages.
     /// </summary>
     /// <remarks>
-    /// Menü <b>açılırken</b> çağrılıyor, depo açılırken değil: her depo açılışında bir
-    /// <c>git log</c> daha çalıştırmak, kullanıcının hiç açmayacağı bir menü için ödenen
-    /// bedel olurdu.
+    /// Called when the menu <b>opens</b>, not when the repository opens: running one more
+    /// <c>git log</c> on every repository open would be a cost paid for a menu the user might
+    /// never open.
     /// </remarks>
     public async Task LoadRecentAsync(CancellationToken cancellationToken = default)
     {
@@ -229,7 +229,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         }
         catch (Core.Git.GitException)
         {
-            // Geçmiş okunamadıysa menü boş kalır; commit ekranı çalışmaya devam etmeli.
+            // If history can't be read, the menu stays empty; the commit screen must keep working.
             return;
         }
 
@@ -241,16 +241,16 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Geçmişten seçilen mesajı kutuya koyar.</summary>
+    /// <summary>Puts the selected history message into the box.</summary>
     /// <remarks>
-    /// Bu <b>tek</b> yerde var olan metnin üzerine yazılıyor — kullanıcı menüden seçerek
-    /// tam olarak bunu istedi (GitExtensions'ın <c>ReplaceMessage</c>'ı da böyle).
+    /// This is the <b>one</b> place where existing text is overwritten — the user asked for
+    /// exactly that by selecting from the menu (same as GitExtensions' <c>ReplaceMessage</c>).
     /// </remarks>
     public IRelayCommand<CommitMessageHistoryItem> ApplyHistoryCommand { get; }
 
-    // ---- Şablon (P05-T13) ----
+    // ---- Template (P05-T13) ----
 
-    /// <summary><c>commit.template</c> ile yapılandırılmış şablon; yoksa <see langword="null"/>.</summary>
+    /// <summary>Template configured via <c>commit.template</c>; <see langword="null"/> if there is none.</summary>
     [ObservableProperty]
     public partial CommitTemplate? Template { get; private set; }
 
@@ -261,19 +261,19 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         OnPropertyChanged(nameof(TemplateLabel));
     }
 
-    /// <summary>Depoda bir şablon yapılandırılmış mı? (dosya bulunamamış olabilir)</summary>
+    /// <summary>Is a template configured for the repository? (the file may be missing)</summary>
     public bool HasTemplate => Template is not null;
 
-    /// <summary>Şablon gerçekten uygulanabilir mi?</summary>
+    /// <summary>Can the template actually be applied?</summary>
     public bool CanApplyTemplate => Template is { IsMissing: false };
 
     /// <summary>
-    /// Menüde gösterilecek şablon satırı.
+    /// Template line shown in the menu.
     /// </summary>
     /// <remarks>
-    /// Bulunamayan şablon <b>gizlenmiyor</b>: git'in kendisi bu durumda commit'i
-    /// <c>fatal: could not read</c> ile reddediyor (ölçüldü), yani kullanıcının
-    /// yapılandırması gerçekten bozuk. Boş bir menü göstermek sorunu saklamak olurdu.
+    /// A missing template is <b>not hidden</b>: in that situation git itself rejects the commit
+    /// with <c>fatal: could not read</c> (measured), meaning the user's configuration is
+    /// genuinely broken. Showing an empty menu would hide the problem.
     /// </remarks>
     public string TemplateLabel => Template switch
     {
@@ -283,12 +283,12 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     };
 
     /// <summary>
-    /// Şablonu kutuya yükler.
+    /// Loads the template into the box.
     /// </summary>
     /// <remarks>
-    /// 🔴 Yorum satırları <b>temizlenerek</b> yükleniyor (<see cref="CommitMessageText"/>):
-    /// git'in editör yolu onları commit'e sokmuyor, bizim <c>--cleanup=whitespace</c>
-    /// yolumuz sokardı. Kutuda görünen ne ise commit'lenen odur.
+    /// 🔴 Comment lines are loaded <b>stripped</b> (<see cref="CommitMessageText"/>): git's
+    /// editor path doesn't let them into the commit, but our <c>--cleanup=whitespace</c> path
+    /// would. Whatever appears in the box is what gets committed.
     /// </remarks>
     public async Task ApplyTemplateAsync(CancellationToken cancellationToken = default)
     {
@@ -309,23 +309,23 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         SetLoadedText(CommitMessageText.PrepareForEditing(text, commentCharacter));
     }
 
-    // ---- Taslak ve yükleme (P05-T13) ----
+    // ---- Draft and loading (P05-T13) ----
 
     /// <summary>
-    /// Taslak diske yazılmadan önce beklenen süre.
+    /// Time to wait before the draft is written to disk.
     /// </summary>
     /// <remarks>
-    /// Her tuş vuruşunda dosyaya yazmak yerine sonuncusundan sonra bir kez yazılıyor.
-    /// Testlerde sıfırlanabilsin diye ayarlanabilir.
+    /// Instead of writing to the file on every keystroke, it's written once after the last one.
+    /// Adjustable so it can be reset in tests.
     /// </remarks>
     public TimeSpan DraftSaveDelay { get; set; } = TimeSpan.FromMilliseconds(750);
 
-    /// <summary>Kutuya yüklenen metnin kaynağı; kullanıcı yazdıysa <see cref="CommitMessageSource.None"/>.</summary>
+    /// <summary>Source of the text loaded into the box; <see cref="CommitMessageSource.None"/> if the user typed it.</summary>
     [ObservableProperty]
     public partial CommitMessageSource Source { get; private set; }
 
     /// <summary>
-    /// Depoyu bağlar ve yüklenecek bir mesaj varsa kutuya koyar.
+    /// Binds to a repository and, if there is a message to load, puts it in the box.
     /// </summary>
     public async Task OpenAsync(string? workingDirectory, CancellationToken cancellationToken = default)
     {
@@ -362,8 +362,8 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         PendingCommitMessage pending = await _store.ReadAsync(directory, cancellationToken)
             .ConfigureAwait(true);
 
-        // Kullanıcının yazmakta olduğu metnin üzerine yazılmıyor. Ekran yeniden açıldığında
-        // kutu zaten boş olur; dolu olduğu tek durum ekranın açık kalmasıdır.
+        // Text the user is currently typing is never overwritten. When the screen is reopened
+        // the box is already empty; the only case it's non-empty is when the screen stayed open.
         if (pending.HasText && IsEmpty)
         {
             SetLoadedText(pending.Text);
@@ -372,11 +372,11 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// <c>HEAD</c>'in mesajını yükler (<c>--amend</c> işaretlenince).
+    /// Loads <c>HEAD</c>'s message (when <c>--amend</c> is checked).
     /// </summary>
     /// <remarks>
-    /// Yalnızca kutu boşken. GitExtensions'ta da koşul bu: kullanıcı yeni bir mesaj yazmaya
-    /// başladıysa amend kutusunu işaretlemesi onu silmek anlamına gelmemeli.
+    /// Only while the box is empty. Same condition as GitExtensions: if the user already
+    /// started typing a new message, checking the amend box shouldn't mean erasing it.
     /// </remarks>
     public async Task LoadHeadMessageAsync(CancellationToken cancellationToken = default)
     {
@@ -404,11 +404,11 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Bekleyen taslak kaydını hemen diske yazar.
+    /// Writes a pending draft save to disk immediately.
     /// </summary>
     /// <remarks>
-    /// Pencere kapanırken çağrılıyor: gecikmeli kayıt henüz çalışmamış olabilir ve
-    /// kullanıcının son yazdığı satır kaybolurdu.
+    /// Called while the window is closing: the delayed save might not have run yet and the
+    /// user's last-typed line would be lost.
     /// </remarks>
     public async Task FlushDraftAsync(CancellationToken cancellationToken = default)
     {
@@ -423,12 +423,11 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Başarılı commit sonrası: kutu ve taslak temizlenir.
+    /// After a successful commit: the box and the draft are cleared.
     /// </summary>
     /// <remarks>
-    /// Taslağı silmek <b>şart</b>: commit'lenen mesaj diskte kalsaydı ekran bir daha
-    /// açıldığında az önce commit'lenmiş metin geri gelir ve ikinci bir commit'e davet
-    /// ederdi.
+    /// Deleting the draft is <b>mandatory</b>: if the committed message stayed on disk, the
+    /// text just committed would come back the next time the screen opens and invite a second commit.
     /// </remarks>
     public async Task OnCommittedAsync(CancellationToken cancellationToken = default)
     {
@@ -442,7 +441,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         await _store.ClearDraftAsync(directory, cancellationToken).ConfigureAwait(true);
     }
 
-    /// <summary>Mesajı temizler.</summary>
+    /// <summary>Clears the message.</summary>
     public void Clear()
     {
         CancelPendingSave();
@@ -460,7 +459,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Dışarıdan gelen metni kutuya koyar; taslak kaydını tetiklemez.</summary>
+    /// <summary>Puts externally provided text into the box; does not trigger a draft save.</summary>
     private void SetLoadedText(string text)
     {
         _loading = true;
@@ -476,12 +475,12 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Taslak kaydını erteler.
+    /// Defers the draft save.
     /// </summary>
     /// <remarks>
-    /// ⚠️ İptal ile yeni jetonun atanması arasında <c>await</c> <b>yok</b> — P04-T08'de
-    /// ölçülmüştü: arada bir <c>await</c> olduğunda art arda gelen çağrılar birbirini
-    /// iptal edemiyor ve her biri ayrı bir iş başlatıyordu.
+    /// ⚠️ There is <b>no</b> <c>await</c> between cancelling and assigning the new token — this
+    /// was measured in P04-T08: when there's an <c>await</c> in between, back-to-back calls
+    /// can't cancel each other and each one starts a separate job.
     /// </remarks>
     private void ScheduleDraftSave()
     {
@@ -513,7 +512,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            // Kullanıcı yazmaya devam etti; bir sonraki kayıt zaten planlandı.
+            // The user kept typing; the next save is already scheduled.
         }
     }
 

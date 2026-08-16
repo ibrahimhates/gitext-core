@@ -9,9 +9,9 @@
         CanResize="False">
 
     <!--
-        P06-T15. Onay HER ZAMAN soruluyor: kazara sürükleme gerçek bir risk ve geçmişi
-        sessizce değiştiren bir işlem tek bir fare kaymasıyla başlamamalı.
-        Sürükleme eşiği (6 piksel) ilk savunma hattı, bu ekran ikincisi.
+        P06-T15. Confirmation is ALWAYS asked for: an accidental drag is a real risk, and an
+        operation that silently rewrites history must not start from a single slip of the mouse.
+        The drag threshold (6 pixels) is the first line of defence, this screen the second.
     -->
     <StackPanel Margin="16" Spacing="10">
         <TextBlock Name="QuestionText" TextWrapping="Wrap" />

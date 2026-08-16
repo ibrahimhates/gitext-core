@@ -2,85 +2,85 @@ using GitExt.Core.Git;
 
 namespace GitExt.Core;
 
-/// <summary>Uzak depoya hangi yolla bağlanılıyor (P06-T09)?</summary>
+/// <summary>Which transport is used to connect to the remote repository (P06-T09)?</summary>
 public enum RemoteTransport
 {
-    /// <summary>Tanınmayan biçim.</summary>
+    /// <summary>Unrecognized format.</summary>
     Unknown,
 
-    /// <summary>Dosya sistemi yolu — kimlik doğrulama yok.</summary>
+    /// <summary>File system path — no authentication.</summary>
     Local,
 
-    /// <summary><c>https://…</c> — kullanıcı adı + token.</summary>
+    /// <summary><c>https://…</c> — username + token.</summary>
     Https,
 
-    /// <summary><c>git@host:yol</c> ya da <c>ssh://…</c> — anahtar.</summary>
+    /// <summary><c>git@host:path</c> or <c>ssh://…</c> — key.</summary>
     Ssh,
 }
 
-/// <summary>SSH agent'ın durumu (P06-T09).</summary>
+/// <summary>State of the SSH agent (P06-T09).</summary>
 /// <remarks>
-/// <b>ÖLÇÜLDÜ — <c>ssh-add -l</c>'in çıkış kodu temiz bir teşhis kanalı:</b>
-/// <c>2</c> agent yok · <c>1</c> agent var ama boş · <c>0</c> agent var ve anahtar yüklü.
+/// <b>MEASURED — <c>ssh-add -l</c>'s exit code is a clean diagnostic channel:</b>
+/// <c>2</c> no agent · <c>1</c> agent present but empty · <c>0</c> agent present with a key loaded.
 /// </remarks>
 public enum SshAgentState
 {
-    /// <summary><c>ssh-add</c> çalıştırılamadı ya da beklenmedik bir kod döndü.</summary>
+    /// <summary><c>ssh-add</c> could not be run or returned an unexpected code.</summary>
     Unknown,
 
-    /// <summary>Agent çalışmıyor (<c>SSH_AUTH_SOCK</c> yok).</summary>
+    /// <summary>The agent is not running (<c>SSH_AUTH_SOCK</c> is missing).</summary>
     NotRunning,
 
-    /// <summary>Agent çalışıyor ama hiç anahtar yüklü değil.</summary>
+    /// <summary>The agent is running but has no key loaded.</summary>
     Empty,
 
-    /// <summary>Agent çalışıyor ve en az bir anahtar yüklü.</summary>
+    /// <summary>The agent is running and has at least one key loaded.</summary>
     HasKeys,
 }
 
 /// <summary>
-/// Kimlik doğrulama başarısızlığının <b>neden</b> olduğu (P06-T09).
+/// <b>Why</b> authentication failed (P06-T09).
 /// </summary>
 public sealed record AuthenticationDiagnosis
 {
-    /// <summary>Bağlantı yolu.</summary>
+    /// <summary>Connection transport.</summary>
     public required RemoteTransport Transport { get; init; }
 
-    /// <summary>Uzak depo URL'si (parola maskelenmiş).</summary>
+    /// <summary>Remote repository URL (password masked).</summary>
     public string? Url { get; init; }
 
-    /// <summary>Kullanıcının <c>credential.helper</c> ayarı var mı?</summary>
+    /// <summary>Does the user have a <c>credential.helper</c> configured?</summary>
     public bool HasCredentialHelper { get; init; }
 
-    /// <summary>SSH agent durumu; HTTPS'te <see cref="SshAgentState.Unknown"/>.</summary>
+    /// <summary>SSH agent state; <see cref="SshAgentState.Unknown"/> for HTTPS.</summary>
     public SshAgentState Agent { get; init; }
 
     /// <summary>
-    /// Kimlik bilgisi sorup <b>tekrar denemek</b> anlamlı mı?
+    /// Does it make sense to prompt for credentials and <b>retry</b>?
     /// </summary>
     /// <remarks>
-    /// Yalnızca HTTPS'te. SSH'ta sorulacak şey bir parola değil, <b>anahtar</b>; onu bir
-    /// diyalogla çözemeyiz (ölçüm: agent'a anahtar eklemek ayrı bir iş ve kullanıcının
-    /// kendi anahtar dosyasını gerektiriyor).
+    /// Only for HTTPS. Over SSH what's needed isn't a password but a <b>key</b>; a dialog
+    /// can't fix that (measurement: adding a key to the agent is a separate task that requires
+    /// the user's own key file).
     /// </remarks>
     public bool CanRetryWithCredentials => Transport == RemoteTransport.Https;
 
-    /// <summary>Kullanıcıya gösterilecek açıklama.</summary>
+    /// <summary>Explanation shown to the user.</summary>
     public required string Explanation { get; init; }
 
-    /// <summary>Çalıştırılabilir öneriler (komut ya da adım).</summary>
+    /// <summary>Actionable suggestions (a command or a step).</summary>
     public IReadOnlyList<string> Suggestions { get; init; } = [];
 }
 
-/// <summary>Kullanıcıdan alınan HTTPS kimlik bilgisi (P06-T09).</summary>
-/// <param name="Username">Kullanıcı adı.</param>
-/// <param name="Secret">Parola ya da kişisel erişim token'ı.</param>
+/// <summary>HTTPS credentials obtained from the user (P06-T09).</summary>
+/// <param name="Username">Username.</param>
+/// <param name="Secret">Password or personal access token.</param>
 public sealed record GitCredentials(string Username, string Secret);
 
-/// <summary>Kimlik doğrulama teşhisi (P06-T09).</summary>
+/// <summary>Authentication diagnostics (P06-T09).</summary>
 public interface IAuthenticationDiagnostics
 {
-    /// <summary>Başarısız bir uzak işlemin <b>neden</b> başarısız olduğunu söyler.</summary>
+    /// <summary>Says <b>why</b> a failed remote operation failed.</summary>
     Task<AuthenticationDiagnosis> DiagnoseAsync(
         string workingDirectory,
         string? remote,
@@ -88,19 +88,19 @@ public interface IAuthenticationDiagnostics
 }
 
 /// <summary>
-/// Kimlik doğrulama teşhisi (P06-T09).
+/// Authentication diagnostics (P06-T09).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Teşhis olmadan mesaj YANLIŞTI.</b> SSH tarafında git, kimlik ve ağ hatalarının
-/// hepsine <c>Could not read from remote repository.</c> satırını ekliyor; sınıflandırıcı
-/// bu satıra önce baktığı için <b>eksik SSH anahtarı</b> kullanıcıya <i>"uzak depo
-/// bulunamadı"</i> diye gösteriliyordu. Sınıflandırma sırası düzeltildi; bu sınıf da
-/// <b>ne yapılacağını</b> söylüyor.
+/// 🔴 <b>Without diagnostics the message was WRONG.</b> On the SSH side git appends the line
+/// <c>Could not read from remote repository.</c> to all authentication and network errors;
+/// because the classifier looked at this line first, a <b>missing SSH key</b> was shown to
+/// the user as <i>"remote repository not found"</i>. The classification order was fixed; this
+/// class also says <b>what to do</b>.
 /// </para>
 /// <para>
-/// Teşhis git'in metnine değil <b>ortama</b> bakıyor: uzak URL'nin biçimi, kullanıcının
-/// <c>credential.helper</c> ayarı ve <c>ssh-add -l</c>'in çıkış kodu.
+/// Diagnosis looks at the <b>environment</b>, not git's text: the format of the remote URL,
+/// the user's <c>credential.helper</c> setting, and <c>ssh-add -l</c>'s exit code.
 /// </para>
 /// </remarks>
 public sealed class AuthenticationDiagnostics : IAuthenticationDiagnostics
@@ -140,11 +140,11 @@ public sealed class AuthenticationDiagnostics : IAuthenticationDiagnostics
         };
     }
 
-    /// <summary>Uzak URL'nin biçimine bakarak bağlantı yolunu belirler.</summary>
+    /// <summary>Determines the transport by looking at the shape of the remote URL.</summary>
     /// <remarks>
-    /// <c>git@host:yol</c> biçimi bir şema içermiyor; şeması olmayan ve <c>:</c> içeren
-    /// adresler SCP kısayolu sayılıyor. Windows sürücü harfleri (<c>C:\…</c>) bu kurala
-    /// takılmasın diye tek harfli önek ayrıca eleniyor.
+    /// The <c>git@host:path</c> form has no scheme; addresses with no scheme that contain
+    /// <c>:</c> are treated as an SCP shorthand. Windows drive letters (<c>C:\…</c>) are
+    /// additionally excluded via a single-letter prefix check so they don't trip this rule.
     /// </remarks>
     internal static RemoteTransport ClassifyTransport(string? url)
     {
@@ -210,8 +210,9 @@ public sealed class AuthenticationDiagnostics : IAuthenticationDiagnostics
             GitCommand.Create(workingDirectory, "config", "--get-all", "credential.helper"),
             cancellationToken).ConfigureAwait(false);
 
-        // ÖLÇÜLDÜ: ayar yoksa çıkış kodu 1 ve çıktı boş. Boş DEĞER de anlamlı — kullanıcı
-        // `credential.helper=` yazarak devralınan helper'ı bilerek iptal etmiş olabilir.
+        // MEASURED: if the setting is absent, the exit code is 1 and the output is empty. An
+        // empty VALUE is also meaningful — the user may have deliberately cancelled an inherited
+        // helper by writing `credential.helper=`.
         return result.IsSuccess
             && result.GetStandardOutputText()
                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -260,13 +261,13 @@ public sealed class AuthenticationDiagnostics : IAuthenticationDiagnostics
                 SshAgentState.Empty => ["ssh-add ~/.ssh/id_ed25519"],
                 SshAgentState.HasKeys =>
                 [
-                    "ssh -T git@<sunucu>",
+                    "ssh -T git@<server>",
                     "ssh-add -l",
                 ],
                 _ => ["ssh-add -l"],
             },
 
-            // ⚠️ Bilinçli olarak `store` önerilmiyor: parolayı düz metin olarak diske yazar.
+            // ⚠️ `store` is deliberately not suggested: it writes the password to disk in plain text.
             RemoteTransport.Https when !helper =>
             [
                 "git config --global credential.helper libsecret",
@@ -277,21 +278,21 @@ public sealed class AuthenticationDiagnostics : IAuthenticationDiagnostics
         };
 }
 
-/// <summary>SSH agent'ı yoklayan taraf (P06-T09).</summary>
-/// <remarks>Ayrı bir arayüz: agent süreç dışında ve testte taklit edilmesi gerekiyor.</remarks>
+/// <summary>The side that probes the SSH agent (P06-T09).</summary>
+/// <remarks>A separate interface: the agent lives outside the process and needs to be mocked in tests.</remarks>
 public interface ISshAgentProbe
 {
     Task<SshAgentState> ProbeAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// <c>ssh-add -l</c> ile agent durumunu okur (P06-T09).
+/// Reads agent state via <c>ssh-add -l</c> (P06-T09).
 /// </summary>
 public sealed class SshAgentProbe : ISshAgentProbe
 {
     public async Task<SshAgentState> ProbeAsync(CancellationToken cancellationToken = default)
     {
-        // `SSH_AUTH_SOCK` yoksa süreci hiç başlatmaya gerek yok.
+        // No point starting the process at all if `SSH_AUTH_SOCK` is missing.
         if (System.Environment.GetEnvironmentVariable("SSH_AUTH_SOCK") is not { Length: > 0 })
         {
             return SshAgentState.NotRunning;
@@ -320,7 +321,7 @@ public sealed class SshAgentProbe : ISshAgentProbe
 
             await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
-            // ÖLÇÜLDÜ: 2 agent yok · 1 agent boş · 0 anahtar var.
+            // MEASURED: 2 no agent · 1 agent empty · 0 key present.
             return process.ExitCode switch
             {
                 0 => SshAgentState.HasKeys,
@@ -331,15 +332,15 @@ public sealed class SshAgentProbe : ISshAgentProbe
         }
         catch (System.ComponentModel.Win32Exception)
         {
-            // `ssh-add` kurulu değil.
+            // `ssh-add` is not installed.
             return SshAgentState.Unknown;
         }
     }
 }
 
-/// <summary>Uzak URL yardımcıları.</summary>
+/// <summary>Remote URL helpers.</summary>
 internal static class GitRemoteUrl
 {
-    /// <summary>URL'deki parolayı maskeler.</summary>
+    /// <summary>Masks the password in the URL.</summary>
     internal static string? Mask(string? url) => Model.GitRemote.MaskCredentials(url);
 }

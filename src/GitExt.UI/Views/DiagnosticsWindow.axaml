@@ -10,11 +10,11 @@
         WindowStartupLocation="CenterOwner">
 
     <!--
-        P09-T03. Gizli panel: menüde yok, yalnızca kısayolla açılıyor.
-        Toplama her zaman açık; gizli olan gösterim.
+        P09-T03. A hidden panel: not in the menu, opened only by shortcut.
+        Collection is always on; what is hidden is the display.
 
-        Üstte özet (bellek, kare, çalışma süresi), altta komut başına istatistik.
-        Kare bölümü yalnızca ölçüm varsa görünüyor.
+        A summary at the top (memory, frames, uptime), per-command statistics below.
+        The frame section appears only when there is a measurement.
     -->
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="10">
 
@@ -52,7 +52,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- Kare ölçümü yalnızca bir pencereye bağlıysa var. -->
+        <!-- Frame measurement exists only when it is attached to a window. -->
         <StackPanel Grid.Row="1" Spacing="3" Margin="0,0,0,8" IsVisible="{Binding HasFrameStatistics}">
             <TextBlock Text="{loc:Translate diagnostics.frame_time}" FontWeight="SemiBold" FontSize="11" />
             <Grid ColumnDefinitions="110,*">

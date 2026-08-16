@@ -15,12 +15,12 @@
         WindowStartupLocation="CenterOwner">
 
     <!--
-        Karşılaştırma penceresi MODELESS ve aynı anda birden fazla açılabilir; kullanıcının
-        asıl ihtiyacı buydu — tek gömülü panel iki değişikliği yan yana koymayı imkânsız
-        kılıyordu. GitExtensions'ta da `FormDiff` `Show()` ile açılıyor.
+        The comparison window is MODELESS and more than one can be open at a time; that was the
+        user's real need — a single embedded panel made it impossible to put two changes side by
+        side. In GitExtensions too, `FormDiff` is opened with `Show()`.
 
-        İçerik `DiffView`: P04-T08'de bilinçli olarak bağımsız yazıldı, ikinci kez
-        yazılmıyor.
+        The content is `DiffView`: it was deliberately written standalone in P04-T08, and is not
+        written a second time.
     -->
 
     <Grid RowDefinitions="Auto,*">
@@ -45,7 +45,7 @@
                                FontSize="12"
                                VerticalAlignment="Center" />
 
-                    <!-- Çalışma ağacı karşılaştırmasında sağ taraf bir revizyon değil. -->
+                    <!-- In a working tree comparison the right-hand side is not a revision. -->
                     <TextBlock Text="{loc:Translate compare.working_tree}"
                                IsVisible="{Binding !!!ToRevision.Length}"
                                FontSize="12"

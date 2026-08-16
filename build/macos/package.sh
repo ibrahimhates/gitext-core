@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 #
-# macOS paketleme (P10-T20, P10-T21): .app bundle + dağıtım arşivi.
+# macOS packaging (P10-T20, P10-T21): .app bundle + distribution archive.
 #
-# Kullanım:
+# Usage:
 #   build/macos/package.sh                              # osx-arm64 (Apple Silicon)
 #   RID=osx-x64 build/macos/package.sh                  # Intel
 #   MINVER_VERSION_OVERRIDE=1.0.0-test build/macos/package.sh
 #
-# Linux'tan çapraz derleniyor. Üretilen .app bu makinede ÇALIŞTIRILAMAZ — README
-# bunu dürüstçe söylemeli (P10-T25).
+# Cross-compiled from Linux. The resulting .app CANNOT BE RUN on this machine —
+# the README should say so honestly (P10-T25).
 #
-# ⚠️ ÖLÇÜLDÜ — `iconutil` (macOS'a özgü), `hdiutil` (macOS'a özgü), `png2icns` ve
-# `icnsutil` bu makinede YOK. Bu yüzden:
-#   - .icns kendi betiğimizle üretiliyor (build/macos/make-icns.py)
-#   - .dmg ÜRETİLMİYOR; yerine .app'i taşıyan bir tar.gz üretiliyor. DMG yalnızca
-#     macOS'ta (veya macOS runner'ında) üretilebilir; sahte bir DMG üretmektense
-#     çalışan bir arşiv vermek dürüst olan.
+# ⚠️ MEASURED — `iconutil` (macOS-specific), `hdiutil` (macOS-specific), `png2icns`
+# and `icnsutil` are NOT on this machine. So:
+#   - the .icns is produced with our own script (build/macos/make-icns.py)
+#   - the .dmg is NOT PRODUCED; a tar.gz carrying the .app is produced instead. A
+#     DMG can only be produced on macOS (or a macOS runner); giving a working
+#     archive is more honest than producing a fake DMG.
 
 set -euo pipefail
 
@@ -38,7 +38,7 @@ echo "== gitext-core $VERSION ($RID)"
 rm -rf "$OUT/$RID"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-echo "== yayın (self-contained, tek dosya)"
+echo "== publish (self-contained, single file)"
 dotnet publish src/GitExt.Desktop \
     -c Release \
     -r "$RID" \
@@ -51,18 +51,19 @@ dotnet publish src/GitExt.Desktop \
 
 rm -f "$APP/Contents/MacOS"/*.pdb
 
-# Sürüm doğrulaması: ikili burada çalıştırılamıyor (Mach-O), bu yüzden gömülü
-# sürüm dizesi aranıyor. Paket adı ile içerideki sürümün ayrışmasını yakalar.
+# Version verification: the binary can't be run here (Mach-O), so the embedded
+# version string is searched for instead. This catches the package name and the
+# version inside it diverging.
 if ! grep -aq "$VERSION" "$APP/Contents/MacOS/gitext-core"; then
-    echo "!! SÜRÜM UYUŞMAZLIĞI: '$VERSION' ikilinin içinde bulunamadı." >&2
+    echo "!! VERSION MISMATCH: '$VERSION' not found inside the binary." >&2
     exit 1
 fi
 
-echo "   sürüm ikilide bulundu: $VERSION"
+echo "   version found in binary: $VERSION"
 
-# ---------------------------------------------------------------- ikon
+# ---------------------------------------------------------------- icon
 
-echo "== ikon (.icns)"
+echo "== icon (.icns)"
 build/icons/generate.sh "$OUT/icons" >/dev/null
 
 ICON_ARGS=()
@@ -74,9 +75,9 @@ build/macos/make-icns.py "$APP/Contents/Resources/gitext-core.icns" "${ICON_ARGS
 
 # ---------------------------------------------------------------- Info.plist
 
-# CFBundleShortVersionString kullanıcıya gösterilen sürüm ve SemVer ön sürüm ekini
-# ("-rc.1") kabul etmiyor — Apple yalnızca noktalı sayı bekliyor. Ön sürüm eki
-# kırpılıyor; tam sürüm CFBundleVersion'da duruyor.
+# CFBundleShortVersionString is the version shown to the user and doesn't accept
+# the SemVer pre-release suffix ("-rc.1") — Apple only expects a dotted number. The
+# pre-release suffix is stripped; the full version stays in CFBundleVersion.
 SHORT_VERSION="${VERSION%%-*}"
 
 cat > "$APP/Contents/Info.plist" <<EOF
@@ -107,15 +108,15 @@ cat > "$APP/Contents/Info.plist" <<EOF
     <key>NSHumanReadableCopyright</key>
     <string>Copyright (C) 2026 gitext-core contributors. GPL-3.0-or-later.</string>
 
-    <!-- Retina ekranlarda ölçeklenmiş bitmap yerine gerçek çözünürlük. -->
+    <!-- True resolution instead of a scaled bitmap on Retina displays. -->
     <key>NSHighResolutionCapable</key>
     <true/>
 
-    <!-- Menü çubuğu olan olağan bir uygulama (arka plan ajanı değil). -->
+    <!-- A regular app with a menu bar (not a background agent). -->
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.developer-tools</string>
 
-    <!-- Klasör sürükle-bırak ile depo açma. -->
+    <!-- Open a repository via folder drag-and-drop. -->
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
@@ -133,29 +134,29 @@ cat > "$APP/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
-# Bundle'ın sürüm bilgisi taşıyan ikinci bir yeri yok; Info.plist tek kaynak.
+# The bundle has no second place carrying version info; Info.plist is the single source.
 python3 -c "
 import plistlib, sys
 with open('$APP/Contents/Info.plist', 'rb') as handle:
     plistlib.load(handle)
-print('   Info.plist geçerli')
+print('   Info.plist is valid')
 "
 
 cp LICENSE "$APP/Contents/Resources/"
 
-# ---------------------------------------------------------------- arşiv
+# ---------------------------------------------------------------- archive
 
-# DMG macOS'ta üretilecek (CI'ın macos runner'ı). Burada .app'i koruyan bir tar.gz:
-# zip, çalıştırılabilir bitini ve sembolik bağları güvenilir taşımıyor.
-echo "== arşiv"
+# The DMG will be produced on macOS (CI's macos runner). Here, a tar.gz preserving
+# the .app: zip doesn't reliably carry the executable bit and symlinks.
+echo "== archive"
 ARCHIVE="$OUT/gitext-core-$VERSION-$RID.tar.gz"
 tar -czf "$ARCHIVE" -C "$OUT/$RID" gitext-core.app
 echo "   $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
 
 cat <<EOF
 
--- .dmg ATLANDI: hdiutil yalnızca macOS'ta var.
-   CI'ın macOS runner'ında şu komutla üretiliyor (P10-T21):
+-- .dmg SKIPPED: hdiutil only exists on macOS.
+   It's produced on CI's macOS runner with (P10-T21):
      hdiutil create -volname gitext-core -srcfolder "$APP" -ov -format UDZO \\
        "$OUT/gitext-core-$VERSION-$RID.dmg"
 EOF

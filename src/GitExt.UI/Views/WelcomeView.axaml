@@ -11,22 +11,22 @@
              x:DataType="vm:MainWindowViewModel">
 
     <!--
-        Karşılama ekranı — YERLEŞİM GitExtensions'ın `Dashboard`'ından alındı (P08-T25):
-        solda sabit genişlikte bir panel, üstte "Start" bağlantıları
-        (Create new repository · Open repository · Clone repository), altta "Contribute";
-        ortada/sağda son açılan depoların listesi.
+        The welcome screen — the LAYOUT was taken from GitExtensions' `Dashboard` (P08-T25):
+        a fixed-width panel on the left, "Start" links at the top
+        (Create new repository · Open repository · Clone repository), "Contribute" below;
+        the list of recently opened repositories in the middle/right.
 
-        Kullanıcının kuralı: görsel birebir aynı olmak zorunda değil ama BUTONLARIN YERİ
-        aynı olmalı — GitExtensions'a alışkın bir kullanıcı aynı yere bakabilmeli.
+        The user's rule: it does not have to look identical, but the BUTTONS MUST BE IN THE SAME
+        PLACE — someone used to GitExtensions must be able to look in the same spot.
     -->
 
     <UserControl.Styles>
-        <!-- Klasörü artık var olmayan girdi soluk görünür ama listede kalır. -->
+        <!-- An entry whose folder no longer exists looks dimmed but stays in the list. -->
         <Style Selector="Button.missing">
             <Setter Property="Opacity" Value="0.45" />
         </Style>
 
-        <!-- Sol paneldeki bağlantılar: düz metin gibi görünen düğmeler. -->
+        <!-- The links in the left panel: buttons that look like plain text. -->
         <Style Selector="Button.link">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -58,20 +58,20 @@
 
             <Grid RowDefinitions="Auto,*,Auto" Margin="16,18">
 
-                <!-- Logo alanı (`pnlLogo`) -->
+                <!-- Logo area (`pnlLogo`) -->
                 <StackPanel Grid.Row="0" Spacing="2" Margin="4,0,0,18">
                     <TextBlock Text="{loc:Translate welcome.gitext_core}" FontSize="20" FontWeight="SemiBold" />
                     <TextBlock Text="{loc:Translate welcome.git_extensions_core}" FontSize="11" Opacity="0.55" />
                 </StackPanel>
 
-                <!-- Start bağlantıları (`flpnlStart`) — GitExtensions'taki sırayla -->
+                <!-- Start links (`flpnlStart`) — in GitExtensions' order -->
                 <StackPanel Grid.Row="1" Spacing="2">
                     <TextBlock Text="{loc:Translate welcome.start}" Classes="section" />
 
                     <!--
-                        Henüz uygulanmamış komutlar KALDIRILMIYOR, devre dışı bırakılıyor:
-                        sırayı bozmak, sonradan araya sokmaktan daha kötü (kas hafızası).
-                        Depo oluşturma ve klonlama Faz 06'da geliyor.
+                        Commands that are not implemented yet are NOT REMOVED, they are disabled:
+                        breaking the order is worse than slotting one in later (muscle memory).
+                        Creating and cloning a repository arrive in Phase 06.
                     -->
                     <Button Name="CreateRepositoryButton"
                             Classes="link"
@@ -114,14 +114,14 @@
             </Grid>
         </Border>
 
-        <!-- SAĞ/ORTA — son açılan depolar (`userRepositoriesList`) -->
+        <!-- RIGHT/MIDDLE — recently opened repositories (`userRepositoriesList`) -->
         <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" Margin="20,18">
 
             <TextBlock Grid.Row="0"
                        Text="{loc:Translate welcome.recently_opened_repositories}"
                        Classes="section" />
 
-            <!-- Açma başarısız olduysa sebebi burada; ekrandan ayrılmadan görünür. -->
+            <!-- If opening failed, the reason is here; visible without leaving the screen. -->
             <Border Grid.Row="1"
                     IsVisible="{Binding Commits.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Background="{DynamicResource GitExtErrorBackgroundBrush}"
@@ -137,8 +137,9 @@
                                TextWrapping="Wrap" />
 
                     <!--
-                        P05-T07 — git'in asıl çıktısı. Bu, en SIK hata yolu ("bu klasör bir
-                        Git deposu değil"); özet tek başına teşhis ettirmiyor.
+                        P05-T07 — git's actual output. This is the MOST FREQUENT error path
+                        ("this folder is not a Git repository"); the summary alone does not let
+                        anyone diagnose it.
                     -->
                     <views:GitErrorDetailsButton Details="{Binding Commits.ErrorDetails}"
                                                  HorizontalAlignment="Left" />
@@ -146,8 +147,8 @@
             </Border>
 
             <!--
-                ⚠️ `IsVisible="{Binding …Count}"` Avalonia'da sessizce çalışmıyor (Faz 03'te
-                ölçüldü); ayrı bir bool özellik kullanılıyor.
+                ⚠️ `IsVisible="{Binding …Count}"` silently does not work in Avalonia (measured in
+                Phase 03); a separate bool property is used.
             -->
             <TextBlock Grid.Row="2"
                        Text="{loc:Translate welcome.no_repository_open_yet_start_with_open_repos}"
@@ -173,8 +174,8 @@
                                     <TextBlock Text="{Binding Name}" FontSize="13" />
 
                                     <!--
-                                        Kayıp klasör silinmiyor, soluk gösteriliyor: bağlı
-                                        olmayan bir disk listeyi budamak için sebep değil.
+                                        A missing folder is not removed, it is shown dimmed: a
+                                        drive that is not mounted is no reason to prune the list.
                                     -->
                                     <TextBlock Text="{Binding Path}"
                                                FontSize="11"

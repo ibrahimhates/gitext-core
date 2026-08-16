@@ -1,27 +1,28 @@
 #!/usr/bin/env bash
 #
-# Sürüm türetme — TÜM paketleme betiklerinin ortak kaynağı (P10-T01, ADR-0006).
+# Version derivation — the shared source for ALL packaging scripts (P10-T01, ADR-0006).
 #
-# Kullanım:
+# Usage:
 #   source build/version.sh
 #   VERSION="$(gitext_version)"
 #
-# veya doğrudan:
-#   build/version.sh          → sürümü yazdırır
-#   build/version.sh --check  → sürümün yayınlanabilir olduğunu doğrular
+# or directly:
+#   build/version.sh          → prints the version
+#   build/version.sh --check  → verifies the version is releasable
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# NEDEN BU DOSYA VAR
+# WHY THIS FILE EXISTS
 #
-# Sürüm git tag'inden MinVer ile türetiliyor. Betiklerin bunu KENDİ başına
-# hesaplaması (git describe, dosyadan okuma…) ikinci bir kaynak yaratır ve iki
-# kaynak er ya da geç ayrışır: paketin adı 1.0.0, içindeki ikili 0.9.1 der.
-# Bu yüzden sürüm MSBuild'e sorulur — ikiliye gömülen değerin ta kendisine.
+# The version is derived from the git tag via MinVer. If scripts computed it ON
+# THEIR OWN (git describe, reading from a file…) that creates a second source, and
+# two sources eventually diverge: the package says 1.0.0, the binary inside says
+# 0.9.1. So the version is asked from MSBuild — the very value embedded in the binary.
 #
-# ⚠️ ÖLÇÜLDÜ (P10-T00) — MinVer `-p:Version=` parametresini EZİYOR. `-p:Version=7.7.7`
-# verilse bile çıktı tag'den türetilen sürüm oluyor, uyarı yok. Eski package.sh tam da
-# bunu kullanıyordu; MinVer eklendiği an o parametre sessizce etkisiz kaldı.
-# Sürümü dışarıdan dayatmanın TEK geçerli yolu MinVerVersionOverride.
+# ⚠️ MEASURED (P10-T00) — MinVer OVERRIDES the `-p:Version=` parameter. Even if
+# `-p:Version=7.7.7` is passed, the output is still the version derived from the tag,
+# with no warning. The old package.sh used exactly this; the moment MinVer was
+# added, that parameter silently became a no-op. MinVerVersionOverride is the ONLY
+# valid way to impose a version from outside.
 
 set -euo pipefail
 
@@ -29,48 +30,48 @@ _gitext_root() {
     cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd
 }
 
-# Yayınlanamaz sürüm: tag yokken MinVer'in ürettiği varsayılan.
-# Bir paketin adında bunu görmek, tag'in gelmediği anlamına gelir.
+# Unreleasable version: the default MinVer produces when there is no tag.
+# Seeing this in a package's name means the tag never arrived.
 GITEXT_UNRELEASABLE_PREFIX="0.0.0-alpha.0"
 
 gitext_version() {
     local root
     root="$(_gitext_root)"
 
-    # MinVerVersionOverride verilmişse ona uy — CI'da workflow_dispatch ile etiketsiz
-    # deneme sürümü üretmenin tek yolu bu.
+    # If MinVerVersionOverride is given, obey it — this is the only way to produce
+    # a tagless trial version in CI via workflow_dispatch.
     if [ -n "${MINVER_VERSION_OVERRIDE:-}" ]; then
         printf '%s\n' "$MINVER_VERSION_OVERRIDE"
         return 0
     fi
 
-    # MSBuild'e sor: ikiliye gömülecek değerin aynısı.
-    # `-t:MinVer` şart — sürüm bir target içinde hesaplanıyor, property olarak
-    # değerlendirilmiyor; target çalıştırılmazsa boş/varsayılan dönüyor.
+    # Ask MSBuild: the same value that will be embedded in the binary.
+    # `-t:MinVer` is required — the version is computed inside a target, not
+    # evaluated as a property; if the target doesn't run, it returns empty/default.
     #
-    # Tek property istendiğinde MSBuild düz metin döndürüyor (birden çok istenirse JSON).
-    # Ölçüldü: çıktı tam olarak "0.0.0-alpha.0.49\n".
+    # MSBuild returns plain text when a single property is requested (JSON if
+    # multiple are requested). Measured: the output was exactly "0.0.0-alpha.0.49\n".
     local version
     version="$(dotnet msbuild "$root/src/GitExt.Desktop/GitExt.Desktop.csproj" \
         -t:MinVer -getProperty:MinVerVersion -nologo 2>/dev/null | tr -d '\r\n')" || {
-        echo "HATA: sürüm MSBuild'den okunamadı." >&2
+        echo "ERROR: could not read version from MSBuild." >&2
         return 1
     }
 
     if [ -z "$version" ]; then
-        echo "HATA: MinVerVersion boş döndü. MinVer paketi eksik olabilir." >&2
+        echo "ERROR: MinVerVersion returned empty. The MinVer package may be missing." >&2
         return 1
     fi
 
     printf '%s\n' "$version"
 }
 
-# Sürümün gerçekten yayınlanabilir olduğunu doğrular.
+# Verifies the version is actually releasable.
 #
-# ⚠️ ÖLÇÜLDÜ (P10-T00) — actions/checkout varsayılanı `fetch-depth: 1`; sığ klonda
-# tag'ler HİÇ gelmiyor ve MinVer sessizce 0.0.0-alpha.0 üretiyor. Bu koruma olmadan
-# `v1.0.0` tag'ine basmak "0.0.0-alpha.0" adlı bir sürüm yayınlar ve hiçbir adım
-# kırmızıya dönmez. Sessiz yanlış sürüm, kırık build'den çok daha pahalı.
+# ⚠️ MEASURED (P10-T00) — actions/checkout defaults to `fetch-depth: 1`; in a shallow
+# clone tags NEVER arrive and MinVer silently produces 0.0.0-alpha.0. Without this
+# guard, pushing the `v1.0.0` tag would publish a version named "0.0.0-alpha.0" and
+# no step would turn red. A silent wrong version is far more expensive than a broken build.
 gitext_require_releasable_version() {
     local version="${1:-}"
     [ -n "$version" ] || version="$(gitext_version)"
@@ -78,17 +79,17 @@ gitext_require_releasable_version() {
     case "$version" in
         "$GITEXT_UNRELEASABLE_PREFIX"*)
             cat >&2 <<EOF
-HATA: sürüm '$version' — bu yayınlanabilir bir sürüm DEĞİL.
+ERROR: version '$version' — this is NOT a releasable version.
 
-MinVer geçerli bir sürüm tag'i bulamadı ve varsayılana düştü. Olası nedenler:
+MinVer could not find a valid version tag and fell back to the default. Possible causes:
 
-  1. Sığ klon (en yaygın): CI'da tag'ler getirilmemiş.
-     → actions/checkout adımına 'fetch-depth: 0' ekleyin.
-  2. Depoda hiç 'v*' tag'i yok.
+  1. Shallow clone (most common): tags were not fetched in CI.
+     → Add 'fetch-depth: 0' to the actions/checkout step.
+  2. There is no 'v*' tag in the repository at all.
      → git tag v1.0.0 && git push --tags
-  3. Tag 'v' öneksiz atılmış (ADR-0006 'v' önekli tanımlıyor).
+  3. The tag was pushed without the 'v' prefix (ADR-0006 defines the 'v' prefix).
 
-Etiketsiz deneme sürümü üretmek istiyorsanız açıkça belirtin:
+If you want to produce a tagless trial version, state it explicitly:
   MINVER_VERSION_OVERRIDE=1.0.0-test build/linux/package.sh
 EOF
             return 1
@@ -98,12 +99,13 @@ EOF
     printf '%s\n' "$version"
 }
 
-# Doğrudan çalıştırıldıysa (source edilmediyse)
+# If run directly (not sourced)
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     case "${1:-}" in
         --check)
-            # `local` yok (fonksiyon dışı) ve atama ile komut ayrı satırda:
-            # `v="$(...)"` biçimi alt kabuğun çıkış kodunu YUTAR ve set -e devreye girmez.
+            # No `local` (outside a function), and the assignment and command are on
+            # separate lines: the `v="$(...)"` form SWALLOWS the subshell's exit code
+            # and set -e does not kick in.
             v="$(gitext_require_releasable_version)" || exit 1
             echo "OK: $v"
             ;;

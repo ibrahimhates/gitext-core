@@ -14,9 +14,9 @@
                  Margin="0,0,0,8" />
 
         <!--
-            Çakışma uyarısı listenin ÜSTÜNDE: P08-T00/M10'da ölçüldü, Avalonia çakışan
-            ikinci kaydı sessizce hiç çalıştırmıyor. Kullanıcı "kısayolum çalışmıyor" der
-            ve sebebini göremez — o yüzden uyarı göz hizasında.
+            The conflict warning sits ABOVE the list: measured in P08-T00/M10, Avalonia silently
+            never runs the second, conflicting registration. The user says "my shortcut does not
+            work" and cannot see why — so the warning is at eye level.
         -->
         <ItemsControl Grid.Row="1"
                       Name="ConflictList"
@@ -83,8 +83,8 @@
         </StackPanel>
 
         <!--
-            Yakalama katmanı listenin ÜSTÜNÜ kaplıyor: yakalama sırasında listeye basılan
-            tuş listede gezinmemeli, kısayol olarak okunmalı.
+            The capture layer covers the TOP of the list: a key pressed on the list while capturing
+            must not navigate the list, it must be read as a shortcut.
         -->
         <Border Grid.Row="2"
                 Name="CaptureOverlay"

@@ -6,65 +6,66 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Commit geçmişini okumak için sorgu (P02-T08).
+/// Query for reading commit history (P02-T08).
 /// </summary>
 public sealed record CommitLogQuery
 {
     /// <summary>
-    /// Başlangıç noktası: dal adı, tag, SHA veya <c>HEAD</c>. Boşsa mevcut <c>HEAD</c>.
+    /// Starting point: branch name, tag, SHA, or <c>HEAD</c>. If empty, the current <c>HEAD</c>.
     /// </summary>
     public string? Revision { get; init; }
 
-    /// <summary>Tüm ref'lerden geçmişi oku (<c>--all</c>).</summary>
+    /// <summary>Read history from all refs (<c>--all</c>).</summary>
     public bool IncludeAllRefs { get; init; }
 
-    /// <summary>Merge'lerde yalnızca ilk ebeveyni izle (<c>--first-parent</c>).</summary>
+    /// <summary>Follow only the first parent on merges (<c>--first-parent</c>).</summary>
     public bool FirstParentOnly { get; init; }
 
     /// <summary>
-    /// Topolojik sıra (<c>--topo-order</c>): her çocuk, ebeveyninden <b>önce</b> gelir.
+    /// Topological order (<c>--topo-order</c>): every child comes <b>before</b> its parent.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Varsayılan <see langword="true"/> ve öyle kalmalı.</b> <c>git log</c>'un varsayılan
-    /// (tarih) sırası bu garantiyi vermez: çarpık tarihli bir depoda ebeveyn çocuğundan önce
-    /// gelebilir. Ölçüldü — rebase, içe aktarma ve saat kayması bunu gerçek depolarda üretiyor.
+    /// <b>Defaults to <see langword="true"/> and must stay that way.</b> <c>git log</c>'s
+    /// default (date) order doesn't give this guarantee: in a repository with skewed dates a
+    /// parent can come before its child. Measured — rebase, imports, and clock drift produce
+    /// this in real repositories.
     /// </para>
     /// <para>
-    /// Grafik yerleşimi (ADR-0007) tek geçişli ileri tarama yapar ve bu sıraya <b>bağımlıdır</b>;
-    /// ihlal edilirse kenarlar yukarı bakar. Kapatmak yalnızca sıranın önemsiz olduğu
-    /// durumlarda (ör. tek bir dosyanın geçmişini listelemek) ve bilinçli olarak yapılmalı.
+    /// Graph layout (ADR-0007) does a single-pass forward scan and <b>depends on</b> this
+    /// order; if violated, edges point upward. Turning it off should only happen when order
+    /// truly doesn't matter (e.g. listing a single file's history) and deliberately.
     /// </para>
     /// <para>
-    /// Maliyeti: git tüm grafiği yürümek zorunda kalır. Depoda <c>commit-graph</c> dosyası
-    /// varsa bu maliyet pratikte sıfırdır (200k commit'te 600 ms → 1 ms, ölçüldü).
+    /// Cost: git has to walk the entire graph. If the repository has a <c>commit-graph</c>
+    /// file, this cost is practically zero (600 ms → 1 ms at 200k commits, measured).
     /// </para>
     /// </remarks>
     public bool TopologicalOrder { get; init; } = true;
 
-    /// <summary>En fazla kaç commit okunacak. <see langword="null"/> ise sınırsız.</summary>
+    /// <summary>Maximum number of commits to read. <see langword="null"/> means unlimited.</summary>
     public int? MaxCount { get; init; }
 
-    /// <summary>Baştan kaç commit atlanacak.</summary>
+    /// <summary>Number of commits to skip from the start.</summary>
     public int Skip { get; init; }
 
-    /// <summary>Yalnızca bu yolları etkileyen commit'ler.</summary>
+    /// <summary>Only commits affecting these paths.</summary>
     public IReadOnlyList<RepositoryPath> Paths { get; init; } = [];
 
-    /// <summary>Commit mesajında arama (<c>--grep</c>).</summary>
+    /// <summary>Search within the commit message (<c>--grep</c>).</summary>
     public string? MessageContains { get; init; }
 
-    /// <summary>Yazara göre filtre (<c>--author</c>).</summary>
+    /// <summary>Filter by author (<c>--author</c>).</summary>
     public string? Author { get; init; }
 }
 
 /// <summary>
-/// Commit geçmişini okur.
+/// Reads commit history.
 /// </summary>
 public interface ICommitLogReader
 {
     /// <summary>
-    /// Geçmişi baştan sona okur ve listeler.
+    /// Reads the entire history and returns it as a list.
     /// </summary>
     Task<IReadOnlyList<CommitInfo>> ReadAsync(
         string workingDirectory,
@@ -72,10 +73,10 @@ public interface ICommitLogReader
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Geçmişi akış hâlinde okur — <c>git</c> tamamlanmadan ilk commit'ler üretilir.
+    /// Reads history as a stream — the first commits are produced before <c>git</c> finishes.
     /// </summary>
     /// <remarks>
-    /// Büyük depolarda arayüzün ilk ekranı hemen çizebilmesi için (P02-T04).
+    /// So the UI can render its first screen right away in large repositories (P02-T04).
     /// </remarks>
     IAsyncEnumerable<CommitInfo> StreamAsync(
         string workingDirectory,
@@ -95,19 +96,19 @@ public sealed class CommitLogReader : ICommitLogReader
     }
 
     /// <summary>
-    /// Alan sırası. <b>Bu sıra <see cref="FieldCount"/> ve ayrıştırıcıyla birlikte değişmeli.</b>
+    /// Field order. <b>This order must change together with <see cref="FieldCount"/> and the parser.</b>
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Alan ayracı <c>%x00</c>; <c>-z</c> ile kayıtlar da NUL ile ayrılır. Bu belirsizlik
-    /// yaratmaz çünkü <b>hiçbir alan NUL içeremez</b> — git commit mesajında NUL baytını
-    /// açıkça reddediyor (<c>a NUL byte in commit log message not allowed</c>, ölçüldü).
-    /// Dolayısıyla tüm akış düz bir NUL ayraçlı parça dizisidir ve sabit alan sayısıyla
-    /// güvenle gruplanır.
+    /// Field separator is <c>%x00</c>; with <c>-z</c> records are also separated by NUL. This
+    /// creates no ambiguity because <b>no field can contain a NUL</b> — git explicitly rejects
+    /// a NUL byte in a commit message (<c>a NUL byte in commit log message not allowed</c>,
+    /// measured). So the whole stream is a flat sequence of NUL-separated chunks and can safely
+    /// be grouped by a fixed field count.
     /// </para>
     /// <para>
-    /// <c>%aI</c> / <c>%cI</c> katı ISO-8601, saat dilimi ofsetiyle:
-    /// commit'in atıldığı yerel saat korunur.
+    /// <c>%aI</c> / <c>%cI</c> are strict ISO-8601, with a timezone offset:
+    /// the local time the commit was made is preserved.
     /// </para>
     /// </remarks>
     private const string Format =
@@ -126,8 +127,8 @@ public sealed class CommitLogReader : ICommitLogReader
             .RunCheckedAsync(BuildCommand(workingDirectory, query), cancellationToken)
             .ConfigureAwait(false);
 
-        // Boş parçaları KORUYAN bölme şart: gövdesiz bir commit boş bir alan üretir ve
-        // atılırsa sonraki tüm alanlar kayar.
+        // A split that PRESERVES empty chunks is required: a commit with no body produces an
+        // empty field, and dropping it would shift every field after it.
         string[] fields = result.SplitStandardOutputAtNulPreservingEmpty();
 
         List<CommitInfo> commits = new(fields.Length / FieldCount);
@@ -167,8 +168,8 @@ public sealed class CommitLogReader : ICommitLogReader
             yield return ParseRecord(window, pool);
         }
 
-        // filled > 0 ise akış yarım bir kayıtla bitmiş demektir. Bu, format dizesiyle
-        // FieldCount'un uyuşmadığı anlamına gelir — sessizce yutmak yerine haber ver.
+        // If filled > 0 the stream ended with a partial record. This means the format string
+        // and FieldCount don't match — report it instead of silently swallowing it.
         if (filled > 0)
         {
             throw new InvalidOperationException(
@@ -224,8 +225,8 @@ public sealed class CommitLogReader : ICommitLogReader
             arguments.Add(query.Revision);
         }
 
-        // `--` ayracı zorunlu: tire ile başlayan veya bir ref adıyla çakışan dosya yolları
-        // aksi halde revizyon sanılır.
+        // The `--` separator is mandatory: file paths starting with a dash or colliding with a
+        // ref name would otherwise be mistaken for a revision.
         if (query.Paths.Count > 0)
         {
             arguments.Add("--");
@@ -236,7 +237,7 @@ public sealed class CommitLogReader : ICommitLogReader
         {
             WorkingDirectory = workingDirectory,
             Arguments = arguments,
-            // Büyük geçmişler uzun sürebilir; varsayılan 2 dakika yetersiz kalabilir.
+            // Large histories can take a while; the default 2-minute timeout may not be enough.
             Timeout = TimeSpan.FromMinutes(10),
         };
     }
@@ -250,30 +251,30 @@ public sealed class CommitLogReader : ICommitLogReader
         Refs = ParseRefs(fields[8]),
         Encoding = pool.Intern(fields[9]),
         Subject = fields[10],
-        // git son alandan sonra kayıt ayracı koyar; gövde satır sonuyla bitebilir.
+        // git puts the record separator after the last field; the body can end with a newline.
         Body = fields[11].TrimEnd('\n'),
     };
 
     /// <summary>
-    /// Bir okuma boyunca tekrar eden kısa metinleri tek örneğe indirger (P09-T08).
+    /// Collapses short strings repeated over the course of a read to a single instance (P09-T08).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Ölçüm neden bunu gösterdi:</b> 500.000 commit'lik bir depoda yazar ve
-    /// committer alanları <b>46 MB</b> tutuyordu, ama benzersiz değer sayısı yalnızca
-    /// <b>2</b>'ydi (P09-T04 ölçümü, `--bench` çıktısının "metin (MB)" satırı). Gerçek
-    /// depolarda da bu sayı onlarca mertebesinde — bir projenin yazarları commit'leri
-    /// kadar çeşitlenmiyor.
+    /// <b>Why the measurement showed this was needed:</b> in a repository with 500,000 commits,
+    /// the author and committer fields held <b>46 MB</b>, but the number of unique values was
+    /// only <b>2</b> (P09-T04 measurement, the "text (MB)" line of the `--bench` output). In
+    /// real repositories this number is on the order of tens too — a project's authors don't
+    /// vary as much as its commits.
     /// </para>
     /// <para>
-    /// ⚠️ <c>string.Intern</c> KULLANILMIYOR: çalışma zamanının intern havuzu süreç
-    /// ömrü boyunca yaşıyor ve hiç boşaltılmıyor. Depo kapatıldığında serbest kalması
-    /// gereken metinleri oraya koymak, düzeltmeye çalıştığımız şeyin daha kötüsünü —
-    /// geri alınamaz bir sızıntıyı — üretirdi. Bu havuz okuma bitince çöp oluyor.
+    /// ⚠️ <c>string.Intern</c> is NOT USED: the runtime's intern pool lives for the entire
+    /// process lifetime and is never freed. Putting text there that should be freed when the
+    /// repository closes would produce a worse version of the thing we're trying to fix — an
+    /// unrecoverable leak. This pool becomes garbage once the read is done.
     /// </para>
     /// <para>
-    /// Konu ve gövde interning'e girmiyor: onlar commit başına gerçekten benzersiz,
-    /// havuz yalnızca hiç isabet etmeyen bir sözlük olurdu.
+    /// Subject and body are not interned: they are genuinely unique per commit, and the pool
+    /// would just be a dictionary with zero hits.
     /// </para>
     /// </remarks>
     private sealed class StringPool
@@ -319,11 +320,12 @@ public sealed class CommitLogReader : ICommitLogReader
     }
 
     /// <summary>
-    /// <c>%D</c> alanını ayrıştırır — virgülle ayrılmış ref adları.
+    /// Parses the <c>%D</c> field — comma-separated ref names.
     /// </summary>
     /// <remarks>
-    /// Örnek: <c>HEAD -> main, origin/main, tag: v1.0</c>. Sembolik ok ve <c>tag:</c> öneki
-    /// yalnızca gösterim içindir; burada ham ad korunuyor, yorumlama Faz 03'ün işi.
+    /// Example: <c>HEAD -> main, origin/main, tag: v1.0</c>. The symbolic arrow and the
+    /// <c>tag:</c> prefix are display-only; the raw name is preserved here, interpretation is
+    /// Phase 03's job.
     /// </remarks>
     private static IReadOnlyList<string> ParseRefs(string value)
     {
@@ -337,9 +339,9 @@ public sealed class CommitLogReader : ICommitLogReader
 
     private static DateTimeOffset ParseTimestamp(string value)
     {
-        // %aI katı ISO-8601 üretir. Ayrıştırılamazsa istisna fırlatmak yerine Unix epoch
-        // dönüyoruz: tek bir bozuk tarih yüzünden tüm geçmişin okunamaması, o commit'in
-        // tarihinin yanlış görünmesinden daha kötü. (Gerçek depolarda bozuk tarihler var.)
+        // %aI produces strict ISO-8601. If it can't be parsed, we return the Unix epoch instead
+        // of throwing: failing to read the entire history over one bad date is worse than that
+        // one commit's date looking wrong. (Real repositories do have bad dates.)
         return DateTimeOffset.TryParse(
             value,
             CultureInfo.InvariantCulture,

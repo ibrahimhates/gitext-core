@@ -53,7 +53,7 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- Boş sonuç sessiz kalmıyor: kullanıcı yazdığını mı yanlış yazdı, komut mu yok? -->
+                <!-- An empty result does not stay silent: did the user mistype, or is there no such command? -->
                 <TextBlock Name="EmptyLabel"
                            Text="{loc:Translate command_palette.no_matching_command}"
                            IsVisible="{Binding IsEmpty}"

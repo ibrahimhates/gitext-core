@@ -48,7 +48,7 @@ internal static class GraphBenchmark
         bool headOnly = args.Contains("--head-only", StringComparer.Ordinal);
 
         Console.WriteLine($"depo        : {location.WorkingDirectory}");
-        Console.WriteLine($"kapsam      : {(headOnly ? "yalnızca HEAD" : "tüm ref'ler (--all)")}");
+        Console.WriteLine($"scope       : {(headOnly ? "HEAD only" : "all refs (--all)")}");
 
         await MeasureAsync(runner, location.WorkingDirectory, headOnly, cancellationToken)
             .ConfigureAwait(false);
@@ -142,19 +142,19 @@ internal static class GraphBenchmark
         CultureInfo c = CultureInfo.InvariantCulture;
 
         Console.WriteLine($"commit      : {rowCount.ToString("N0", c)}");
-        Console.WriteLine($"ilk satır   : {firstRow.TotalMilliseconds.ToString("F1", c)} ms");
-        Console.WriteLine($"tamamı      : {total.TotalMilliseconds.ToString("F0", c)} ms");
+        Console.WriteLine($"first row   : {firstRow.TotalMilliseconds.ToString("F1", c)} ms");
+        Console.WriteLine($"total       : {total.TotalMilliseconds.ToString("F0", c)} ms");
 
         if (total.TotalSeconds > 0)
         {
             double perSecond = rowCount / total.TotalSeconds;
-            Console.WriteLine($"hız         : {perSecond.ToString("N0", c)} commit/sn");
+            Console.WriteLine($"rate        : {perSecond.ToString("N0", c)} commits/s");
         }
 
         laneCounts.Sort();
 
         Console.WriteLine(
-            "şerit       : "
+            "lanes       : "
             + $"p50={Percentile(laneCounts, 0.50)}  "
             + $"p90={Percentile(laneCounts, 0.90)}  "
             + $"p99={Percentile(laneCounts, 0.99)}  "
@@ -166,7 +166,7 @@ internal static class GraphBenchmark
         if (rowCount > 0)
         {
             double perRow = (double)retainedBytes / rowCount;
-            Console.WriteLine($"satır başına: {perRow.ToString("F0", c)} bayt");
+            Console.WriteLine($"per row     : {perRow.ToString("F0", c)} bytes");
         }
     }
 
@@ -178,7 +178,7 @@ internal static class GraphBenchmark
         nodeLanes.Sort();
 
         Console.WriteLine(
-            "düğüm şeridi: "
+            "node lanes  : "
             + $"p50={Percentile(nodeLanes, 0.50)}  "
             + $"p90={Percentile(nodeLanes, 0.90)}  "
             + $"p99={Percentile(nodeLanes, 0.99)}  "
@@ -190,7 +190,7 @@ internal static class GraphBenchmark
             double share = nodeLanes.Count == 0 ? 0 : 100.0 * visible / nodeLanes.Count;
 
             Console.WriteLine(
-                $"  sınır {cap,2}   : düğümlerin %{share.ToString("F2", CultureInfo.InvariantCulture)}'i görünür");
+                $"  cap {cap,2}     : {share.ToString("F2", CultureInfo.InvariantCulture)}% of nodes visible");
         }
     }
 
@@ -213,7 +213,7 @@ internal static class GraphBenchmark
         sortedUsed.Sort();
 
         Console.WriteLine(
-            "dolu şerit  : "
+            "used lanes  : "
             + $"p50={Percentile(sortedUsed, 0.50)}  "
             + $"p90={Percentile(sortedUsed, 0.90)}  max={sortedUsed[^1]}  "
             + $"· doluluk %{(100 * totalUsed / totalLanes).ToString("F1", CultureInfo.InvariantCulture)}");
@@ -267,8 +267,8 @@ internal static class GraphBenchmark
         // In .NET a char is 2 bytes.
         Console.WriteLine(
             "metin (MB)  : "
-            + $"konu={Mb(subject)}  gövde={Mb(body)}  "
-            + $"kişi={Mb(people)} (benzersiz {Mb(peopleUnique)}, {uniquePeople.Count.ToString("N0", c)} değer)");
+            + $"subject={Mb(subject)}  body={Mb(body)}  "
+            + $"people={Mb(people)} (unique {Mb(peopleUnique)}, {uniquePeople.Count.ToString("N0", c)} values)");
 
         static string Mb(long chars) =>
             (chars * 2.0 / 1024 / 1024).ToString("F0", CultureInfo.InvariantCulture);

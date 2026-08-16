@@ -4,35 +4,36 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Dosya seviyesinde stage / unstage işlemleri (P05-T03).
+/// File-level stage / unstage operations (P05-T03).
 /// </summary>
 public interface IStagingWriter
 {
-    /// <summary>Verilen yolları index'e alır (<c>git add</c>).</summary>
-    /// <remarks>Silinmiş dosyalar da alınır: silme işlemi de bir değişikliktir.</remarks>
+    /// <summary>Adds the given paths to the index (<c>git add</c>).</summary>
+    /// <remarks>Deleted files are included too: deletion is a change as well.</remarks>
     Task StageAsync(
         string workingDirectory,
         IReadOnlyList<RepositoryPath> paths,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Verilen yolları index'ten çıkarır; çalışma ağacına dokunmaz.</summary>
+    /// <summary>Removes the given paths from the index; doesn't touch the working tree.</summary>
     Task UnstageAsync(
         string workingDirectory,
         IReadOnlyList<RepositoryPath> paths,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Seçilen satırları/hunk'ları index'e taşır — <b>kısmi stage</b> (P05-T04).
+    /// Moves the selected lines/hunks into the index — <b>partial stage</b> (P05-T04).
     /// </summary>
-    /// <param name="workingDirectory">Depo çalışma dizini.</param>
+    /// <param name="workingDirectory">Repository working directory.</param>
     /// <param name="diff">
-    /// Çalışma ağacı ile index arasındaki fark (<c>git diff</c>). Yama bundan üretilir.
+    /// Difference between the working tree and the index (<c>git diff</c>). The patch is
+    /// generated from this.
     /// </param>
-    /// <param name="selection">Uygulanacak satırlar.</param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="selection">Lines to apply.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="contentEncoding">
-    /// Dosyanın kodlaması; varsayılan UTF-8. Diff <c>DiffOptions.ContentEncoding</c> ile
-    /// okunduysa aynısı verilmelidir.
+    /// Encoding of the file; defaults to UTF-8. If the diff was read with
+    /// <c>DiffOptions.ContentEncoding</c>, the same one should be given here.
     /// </param>
     Task StagePartialAsync(
         string workingDirectory,
@@ -42,16 +43,16 @@ public interface IStagingWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Seçilen satırları/hunk'ları index'ten geri alır — <b>kısmi unstage</b> (P05-T04).
+    /// Reverts the selected lines/hunks out of the index — <b>partial unstage</b> (P05-T04).
     /// </summary>
-    /// <param name="workingDirectory">Depo çalışma dizini.</param>
+    /// <param name="workingDirectory">Repository working directory.</param>
     /// <param name="diff">
-    /// Index ile <c>HEAD</c> arasındaki fark (<c>git diff --cached</c>). Yama bundan
-    /// üretilip <b>ters</b> uygulanır.
+    /// Difference between the index and <c>HEAD</c> (<c>git diff --cached</c>). The patch is
+    /// generated from this and applied <b>in reverse</b>.
     /// </param>
-    /// <param name="selection">Geri alınacak satırlar.</param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
-    /// <param name="contentEncoding">Dosyanın kodlaması; varsayılan UTF-8.</param>
+    /// <param name="selection">Lines to revert.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="contentEncoding">Encoding of the file; defaults to UTF-8.</param>
     Task UnstagePartialAsync(
         string workingDirectory,
         FileDiff diff,
@@ -60,13 +61,13 @@ public interface IStagingWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Dosyayı takipten çıkarır ama <b>diskte bırakır</b> (<c>git rm --cached</c>).
+    /// Stops tracking the file but <b>leaves it on disk</b> (<c>git rm --cached</c>).
     /// </summary>
     /// <remarks>
-    /// Bu <b>unstage değildir</b>: takip edilen bir dosyada sonuç, dosyanın <i>silinmiş</i>
-    /// olarak stage'lenmesidir. Ayrı bir komut olarak duruyor çünkü kullanıcının bilinçli
-    /// olarak isteyebileceği bir işlem (ör. yanlışlıkla eklenmiş bir yapılandırma dosyasını
-    /// depodan çıkarmak).
+    /// This is <b>not unstage</b>: for a tracked file the result is the file being staged as
+    /// <i>deleted</i>. It stands as a separate command because it's an operation the user might
+    /// deliberately want (e.g. removing a config file that was added by mistake from the
+    /// repository).
     /// </remarks>
     Task UntrackAsync(
         string workingDirectory,
@@ -77,22 +78,22 @@ public interface IStagingWriter
 /// <inheritdoc cref="IStagingWriter"/>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ (P05-T03) — unstage tek bir komutla yapılamıyor:</b>
+/// <b>MEASURED (P05-T03) — unstage cannot be done with a single command:</b>
 /// </para>
 /// <list type="table">
 /// <item>
-/// <term>HEAD yok (ilk commit öncesi)</term>
-/// <description><c>git restore --staged</c> <b>çöküyor</b>:
-/// <c>fatal: could not resolve 'HEAD'</c> (çıkış 128). <c>git rm --cached</c> gerekiyor.</description>
+/// <term>No HEAD (before the first commit)</term>
+/// <description><c>git restore --staged</c> <b>crashes</b>:
+/// <c>fatal: could not resolve 'HEAD'</c> (exit 128). <c>git rm --cached</c> is required.</description>
 /// </item>
 /// <item>
-/// <term>HEAD var, dosya HEAD'de yok</term>
-/// <description><c>restore --staged</c> doğru: dosya untracked'e döner.</description>
+/// <term>HEAD exists, file not in HEAD</term>
+/// <description><c>restore --staged</c> is correct: the file goes back to untracked.</description>
 /// </item>
 /// <item>
-/// <term>HEAD var, dosya HEAD'de var</term>
-/// <description><c>restore --staged</c> doğru. <c>rm --cached</c> <b>yanlış</b> olurdu:
-/// dosya <i>silinmiş</i> olarak stage'lenir — kullanıcı unstage isterken silme görür.</description>
+/// <term>HEAD exists, file in HEAD</term>
+/// <description><c>restore --staged</c> is correct. <c>rm --cached</c> would be <b>wrong</b>:
+/// the file gets staged as <i>deleted</i> — the user asks for unstage and sees a deletion instead.</description>
 /// </item>
 /// </list>
 /// </remarks>
@@ -120,7 +121,8 @@ public sealed class StagingWriter : IStagingWriter
             return Task.CompletedTask;
         }
 
-        // `-A`: dosya silinmişse silmeyi de al. Onsuz silinen dosyalar sessizce atlanırdı.
+        // `-A`: also pick up a deletion if the file was removed. Without it, deleted files
+        // would be silently skipped.
         return _writer.RunAsync(
             workingDirectory,
             ["add", "-A", "--", .. Values(paths)],
@@ -140,8 +142,9 @@ public sealed class StagingWriter : IStagingWriter
         bool hasHead = await HasCommitsAsync(workingDirectory, cancellationToken)
             .ConfigureAwait(false);
 
-        // HEAD yoksa `restore --staged` çöküyor (ölçüldü); tek çare `rm --cached`. O durumda
-        // dosya zaten HEAD'de olmadığı için "silinmiş olarak stage'leme" riski de yok.
+        // If there's no HEAD, `restore --staged` crashes (measured); the only fix is
+        // `rm --cached`. In that case the file isn't in HEAD to begin with, so there's also no
+        // risk of "staging as deleted".
         IReadOnlyList<string> arguments = hasHead
             ? ["restore", "--staged", "--", .. Values(paths)]
             : ["rm", "--cached", "--quiet", "--", .. Values(paths)];
@@ -169,19 +172,19 @@ public sealed class StagingWriter : IStagingWriter
             workingDirectory, diff, selection, PatchDirection.Unstage, contentEncoding, cancellationToken);
 
     /// <summary>
-    /// Yamayı üretir ve <c>git apply --cached</c> ile uygular.
+    /// Builds the patch and applies it with <c>git apply --cached</c>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <c>--cached</c>: yama <b>yalnızca index'e</b> uygulanır, çalışma ağacına dokunulmaz —
-    /// kısmi stage'in tanımı bu.
+    /// <c>--cached</c>: the patch is applied <b>only to the index</b>; the working tree is not
+    /// touched — that's the definition of partial stage.
     /// </para>
     /// <para>
-    /// Yama <b>stdin</b> ile geçiriliyor; geçici dosya yok, kabuk yorumlaması yok.
+    /// The patch is passed via <b>stdin</b>; no temp file, no shell interpretation.
     /// </para>
     /// <para>
-    /// ⚠️ <c>--recount</c> <b>kullanılmıyor</b>: yanlış sayıları düzeltip yamayı kabul
-    /// ettiriyor ve git'in bize sunduğu tek doğrulamayı kapatırdı (ölçüldü).
+    /// ⚠️ <c>--recount</c> is <b>not used</b>: it corrects wrong counts and makes the patch get
+    /// accepted anyway, closing off the one verification git offers us (measured).
     /// </para>
     /// </remarks>
     private async Task ApplyPatchAsync(
@@ -198,7 +201,7 @@ public sealed class StagingWriter : IStagingWriter
 
         if (patch is null)
         {
-            // Seçilen bir şey yok: sessizce hiçbir şey yapma.
+            // Nothing was selected: silently do nothing.
             return;
         }
 
@@ -211,8 +214,9 @@ public sealed class StagingWriter : IStagingWriter
 
         arguments.Add("-");
 
-        // Yama, diff'in okunduğu kodlamayla baytlanmalı: git onu çalışma ağacındaki
-        // baytlarla karşılaştırıyor (P04-T07'deki kodlama mimarisinin yazma tarafı).
+        // The patch must be byte-encoded with the same encoding the diff was read with: git
+        // compares it against the bytes in the working tree (the write side of the encoding
+        // architecture from P04-T07).
         await _writer
             .RunAsync(workingDirectory, arguments, patch, contentEncoding, cancellationToken)
             .ConfigureAwait(false);
@@ -235,11 +239,11 @@ public sealed class StagingWriter : IStagingWriter
     }
 
     /// <summary>
-    /// Depoda en az bir commit var mı?
+    /// Does the repository have at least one commit?
     /// </summary>
     /// <remarks>
-    /// Hata mesajına bakıp karar vermek yerine önden soruluyor: mesaj metni git sürümüne
-    /// göre değişebilir, <c>rev-parse</c> ise ~1 ms.
+    /// Asked up front rather than deciding by inspecting an error message: the message text can
+    /// vary by git version, whereas <c>rev-parse</c> costs about ~1 ms.
     /// </remarks>
     private async Task<bool> HasCommitsAsync(
         string workingDirectory,
@@ -251,7 +255,7 @@ public sealed class StagingWriter : IStagingWriter
                 WorkingDirectory = workingDirectory,
                 Arguments = ["rev-parse", "--verify", "--quiet", "HEAD"],
 
-                // Doğmamış HEAD hata değil, bilgidir.
+                // Unborn HEAD isn't an error, it's information.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);
@@ -263,8 +267,8 @@ public sealed class StagingWriter : IStagingWriter
     {
         ArgumentNullException.ThrowIfNull(paths);
 
-        // Yol verilmeden `git add -A --` çalıştırmak TÜM depoyu stage'lerdi; boş liste
-        // "hiçbir şey yapma" demektir.
+        // Running `git add -A --` with no path would stage the ENTIRE repository; an empty
+        // list means "do nothing".
         return paths.Count == 0;
     }
 

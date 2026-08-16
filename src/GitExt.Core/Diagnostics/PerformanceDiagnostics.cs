@@ -5,55 +5,56 @@ using GitExt.Core.Git;
 namespace GitExt.Core.Diagnostics;
 
 /// <summary>
-/// Çalışan bir oturumun performans göstergeleri (P09-T03).
+/// Performance indicators for a running session (P09-T03).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kullanıcıdan gelen "yavaş" şikâyetini teşhis etmenin tek pratik yolu, yavaşlığın
-/// yaşandığı makinede ne olup bittiğini görebilmek. Benchmark'lar (P09-T02) geliştirici
-/// makinesinde kontrollü girdiyle ölçüyor; buradaki sayılar gerçek depoda, gerçek
-/// donanımda oluşuyor.
+/// The only practical way to diagnose a "it's slow" complaint from a user is to see what's
+/// happening on the machine where the slowness occurs. Benchmarks (P09-T02) measure with
+/// controlled input on the developer's machine; the numbers here occur in a real repository,
+/// on real hardware.
 /// </para>
 /// <para>
-/// Toplayıcı <b>her zaman açık</b>: ölçüm maliyeti komut başına birkaç alan güncellemesi,
-/// ama sorun ortaya çıktığında geriye dönük veri toplamanın başka yolu yok. Panelin
-/// kendisi gizli (P09-T03), toplama değil.
+/// The collector is <b>always on</b>: the measurement cost is a few field updates per
+/// command, but there's no other way to gather retrospective data once a problem shows up.
+/// It's the panel itself that's hidden (P09-T03), not the collection.
 /// </para>
 /// </remarks>
 public interface IPerformanceDiagnostics
 {
-    /// <summary>O an devam eden uzun işlerin adları.</summary>
+    /// <summary>Names of long-running operations currently in progress.</summary>
     IReadOnlyList<string> ActiveOperations { get; }
 
-    /// <summary>Komut adına göre toplanmış çalıştırma istatistikleri.</summary>
+    /// <summary>Execution statistics aggregated by command name.</summary>
     IReadOnlyList<GitCommandStatistics> CommandStatistics { get; }
 
-    /// <summary>Anlık bellek durumu.</summary>
+    /// <summary>Current memory state.</summary>
     MemorySnapshot Memory { get; }
 
-    /// <summary>Uygulamanın başlamasından bu yana geçen süre.</summary>
+    /// <summary>Time elapsed since the application started.</summary>
     TimeSpan Uptime { get; }
 
     /// <summary>
-    /// Uzun süren bir işi "aktif" olarak işaretler; dönen nesne <c>Dispose</c> edilince biter.
+    /// Marks a long-running operation as "active"; ends when the returned object is disposed.
     /// </summary>
     /// <remarks>
-    /// Aktif iş listesi donmuş bir arayüzü teşhis etmenin en doğrudan yolu: ekran yanıt
-    /// vermiyorsa ve burada saatlerdir duran bir <c>fetch</c> varsa, sebep bellidir.
+    /// The active operation list is the most direct way to diagnose a frozen UI: if the
+    /// screen isn't responding and there's a <c>fetch</c> that's been sitting here for hours,
+    /// the cause is obvious.
     /// </remarks>
     IDisposable TrackOperation(string name);
 
-    /// <summary>Toplanan tüm sayıları sıfırlar.</summary>
+    /// <summary>Resets all collected counters.</summary>
     void Reset();
 }
 
 /// <summary>
-/// Tek bir git komutunun (alt komut adına göre) toplu istatistiği.
+/// Aggregated statistics for a single git command (grouped by subcommand name).
 /// </summary>
 /// <remarks>
-/// Alt komut adına göre gruplanıyor, tam komut satırına göre değil: <c>log -n 50</c> ile
-/// <c>log -n 100</c> ayrı satırlar olsaydı liste yüzlerce benzersiz satıra dağılır ve
-/// "hangi komut pahalı" sorusu görünmez olurdu.
+/// Grouped by subcommand name, not the full command line: if <c>log -n 50</c> and
+/// <c>log -n 100</c> were separate lines, the list would spread across hundreds of unique
+/// lines and the question "which command is expensive" would become invisible.
 /// </remarks>
 public sealed record GitCommandStatistics
 {
@@ -73,13 +74,13 @@ public sealed record GitCommandStatistics
 }
 
 /// <summary>
-/// Bellek kullanımının bir anlık görüntüsü.
+/// A snapshot of memory usage.
 /// </summary>
-/// <param name="ManagedBytes">GC'nin yönettiği yığın.</param>
-/// <param name="ProcessBytes">İşletim sisteminin sürece ayırdığı çalışma kümesi.</param>
-/// <param name="Gen0">Gen 0 toplama sayısı.</param>
-/// <param name="Gen1">Gen 1 toplama sayısı.</param>
-/// <param name="Gen2">Gen 2 toplama sayısı — pahalı olan bu.</param>
+/// <param name="ManagedBytes">Heap managed by the GC.</param>
+/// <param name="ProcessBytes">Working set the OS has allocated to the process.</param>
+/// <param name="Gen0">Gen 0 collection count.</param>
+/// <param name="Gen1">Gen 1 collection count.</param>
+/// <param name="Gen2">Gen 2 collection count — this is the expensive one.</param>
 public readonly record struct MemorySnapshot(
     long ManagedBytes,
     long ProcessBytes,
@@ -88,17 +89,17 @@ public readonly record struct MemorySnapshot(
     int Gen2);
 
 /// <summary>
-/// Git komut günlüğünü dinleyerek istatistik toplayan varsayılan uygulama.
+/// Default implementation that collects statistics by listening to the git command log.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kaynak olarak <see cref="IGitCommandLog"/> seçildi çünkü ADR-0002 gereği her git
-/// çağrısı zaten oradan geçiyor — ayrı bir ölçüm noktası eklemek, eklenmeyi unutulan
-/// yollar üretirdi.
+/// <see cref="IGitCommandLog"/> was chosen as the source because, per ADR-0002, every git
+/// call already passes through it — adding a separate measurement point would risk producing
+/// paths where someone forgot to add it.
 /// </para>
 /// <para>
-/// ⚠️ Kayıtlar <b>havuz iş parçacıklarından</b> geliyor; bütün durum eşzamanlı
-/// koleksiyonlarda ve <see cref="Interlocked"/> ile güncelleniyor.
+/// ⚠️ Records arrive from <b>pool threads</b>; all state is updated with concurrent
+/// collections and <see cref="Interlocked"/>.
 /// </para>
 /// </remarks>
 public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposable
@@ -130,8 +131,8 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
     {
         get
         {
-            // forceFullCollection: false — teşhis paneli açıkken tam toplama tetiklemek
-            // ölçtüğü şeyi değiştirir ve arayüzü duraklatır.
+            // forceFullCollection: false — triggering a full collection while the diagnostics
+            // panel is open would change the very thing being measured and stall the UI.
             long managed = GC.GetTotalMemory(forceFullCollection: false);
 
             long process;
@@ -142,7 +143,8 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
             }
             catch (PlatformNotSupportedException)
             {
-                // Kısıtlı ortamlarda süreç bilgisi okunamayabilir; yönetilen sayı yine değerli.
+                // Process info may be unreadable in restricted environments; the managed
+                // number is still valuable.
                 process = 0;
             }
 
@@ -171,8 +173,9 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
     {
         _counters.Clear();
 
-        // Aktif işler silinmiyor: hâlâ çalışıyorlar ve listeden düşerlerse bittikleri
-        // sanılır. Sıfırlanan, tamamlanmış çalıştırmaların istatistiği.
+        // Active operations are not cleared: they're still running, and dropping them from
+        // the list would make them look finished. What's reset is the statistics of
+        // completed runs.
     }
 
     public void Dispose()
@@ -195,17 +198,17 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
     }
 
     /// <summary>
-    /// Komut satırından alt komut adını çıkarır: <c>git -c foo=bar log --oneline</c> → <c>log</c>.
+    /// Extracts the subcommand name from the command line: <c>git -c foo=bar log --oneline</c> → <c>log</c>.
     /// </summary>
     /// <remarks>
-    /// <c>-c key=value</c> gibi genel seçenekler alt komuttan ÖNCE geliyor; ilk kelimeyi
-    /// almak bu komutları <c>-c</c> diye gruplardı ve istatistik okunmaz olurdu.
+    /// Global options like <c>-c key=value</c> come BEFORE the subcommand; taking the first
+    /// word would group these commands under <c>-c</c> and the statistics would become unreadable.
     /// </remarks>
     internal static string ExtractCommandName(string commandLine)
     {
         if (string.IsNullOrWhiteSpace(commandLine))
         {
-            return "(bilinmiyor)";
+            return "(unknown)";
         }
 
         string[] parts = commandLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -219,7 +222,7 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
                 continue;
             }
 
-            // `-c key=value` iki parça: seçeneğin kendisi ve değeri.
+            // `-c key=value` is two parts: the option itself and its value.
             if (part.Equals("-c", StringComparison.Ordinal))
             {
                 i++;
@@ -234,7 +237,7 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
             return part;
         }
 
-        return "(bilinmiyor)";
+        return "(unknown)";
     }
 
     private void EndOperation(long id) => _active.TryRemove(id, out _);
@@ -256,11 +259,12 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
     }
 
     /// <summary>
-    /// Tek bir komut adının sayaçları.
+    /// Counters for a single command name.
     /// </summary>
     /// <remarks>
-    /// Alanlar <see cref="Interlocked"/> ile güncelleniyor; kilit almak, saniyede yüzlerce
-    /// komut çalışan bir kaydırma sırasında ölçümün kendisini darboğaza çevirirdi.
+    /// Fields are updated with <see cref="Interlocked"/>; taking a lock would turn the
+    /// measurement itself into a bottleneck during a scroll where hundreds of commands run
+    /// per second.
     /// </remarks>
     private sealed class CommandCounter
     {
@@ -279,8 +283,8 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
                 Interlocked.Increment(ref _failures);
             }
 
-            // En büyüğü yazana kadar dene: araya giren bir başkası daha büyük yazmışsa
-            // onu ezmemek gerekiyor.
+            // Retry until the largest value is written: if someone else wrote a larger value
+            // in between, it must not be overwritten.
             long ticks = duration.Ticks;
             long current = Interlocked.Read(ref _maxTicks);
 
@@ -309,7 +313,7 @@ public sealed class PerformanceDiagnostics : IPerformanceDiagnostics, IDisposabl
 }
 
 /// <summary>
-/// Hiçbir şey toplamayan teşhis — testlerde ve teşhis kapalıyken.
+/// Diagnostics that collect nothing — used in tests and when diagnostics are off.
 /// </summary>
 public sealed class NullPerformanceDiagnostics : IPerformanceDiagnostics
 {

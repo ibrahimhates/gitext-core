@@ -2,15 +2,15 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-        Renk körlüğü uyumlu diff renkleri (P08-T09).
+        Colour-blind safe diff colours (P08-T09).
 
-        Bu sözlük varsayılan paletin ÜSTÜNE bindiriliyor; yalnızca kırmızı/yeşil ayrımına
-        dayanan anahtarları değiştiriyor. Ötekiler olduğu gibi kalıyor — hepsini yeniden
-        tanımlamak, birinin unutulup iki palet arasında sessizce ayrışması demekti.
+        This dictionary is layered ON TOP of the default palette; it changes only the keys that
+        rely on a red/green distinction. The rest stay as they are — redefining all of them
+        meant one being forgotten and silently diverging between the two palettes.
 
-        Ayrım kırmızı/yeşil yerine MAVİ/TURUNCU: deuteranopi ve protanopide kırmızı ile
-        yeşil aynı görünüyor, mavi ile turuncu ayrışıyor. Renk tek başına da taşımıyor —
-        eklenen/çıkarılan satırın `+`/`-` öneki zaten var (P04).
+        The distinction is BLUE/ORANGE instead of red/green: under deuteranopia and protanopia
+        red and green look the same, blue and orange stay apart. Colour does not carry it alone
+        either — an added/removed line already has its `+`/`-` prefix (P04).
     -->
 
     <ResourceDictionary.ThemeDictionaries>

@@ -13,7 +13,7 @@
     <UserControl.Styles>
         <StyleInclude Source="avares://GitExt.UI/Styles/RefBadgeStyles.axaml" />
 
-        <!-- Alan etiketleri: sabit genişlik, değerler hizalansın. -->
+        <!-- Field labels: fixed width, so the values line up. -->
         <Style Selector="TextBlock.label">
             <Setter Property="Width" Value="70" />
             <Setter Property="FontSize" Value="12" />
@@ -26,7 +26,7 @@
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
 
-        <!-- Orijinal saat dilimi ikincil bilgi: yerel saatin gölgesinde dursun. -->
+        <!-- The original time zone is secondary information: it stands in the local time's shadow. -->
         <Style Selector="TextBlock.secondary">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Opacity" Value="0.6" />
@@ -41,7 +41,7 @@
                        FontWeight="SemiBold"
                        TextWrapping="Wrap" />
 
-            <!-- Ref rozetleri: listedeki satırla aynı stiller (P03-T12). -->
+            <!-- Ref badges: the same styles as the row in the list (P03-T12). -->
             <ItemsControl ItemsSource="{Binding Badges}" IsVisible="{Binding HasBadges}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -63,7 +63,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <!-- Tam SHA seçilebilir olmalı: kullanıcı kopyalayıp başka yerde kullanır. -->
+            <!-- The full SHA must be selectable: the user copies it and uses it elsewhere. -->
             <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock Classes="label" Text="{loc:Translate commit_details.sha}" />
                 <SelectableTextBlock Text="{Binding FullId}"
@@ -85,9 +85,9 @@
             </StackPanel>
 
             <!--
-                Kaydeden yalnızca yazardan FARKLIYSA gösterilir. Aynı olduğunda göstermek,
-                %95 durumda iki özdeş satır demek; farklı olduğunda ise (rebase, cherry-pick,
-                yama) bu fark önemli bilgidir.
+                Shown only when the committer DIFFERS from the author. Showing it when they are
+                the same means two identical lines in 95% of cases; when they differ (rebase,
+                cherry-pick, a patch) that difference is important information.
             -->
             <StackPanel Orientation="Horizontal" Spacing="6"
                         IsVisible="{Binding CommitterDiffersFromAuthor}">
@@ -153,7 +153,7 @@
                 </StackPanel>
             </StackPanel>
 
-            <!-- Gövde tek boşlukla sıkıştırılmadan, git'teki haliyle gösterilir. -->
+            <!-- The body is shown as it is in git, not collapsed to single spaces. -->
             <SelectableTextBlock Text="{Binding Body}"
                                  IsVisible="{Binding HasBody}"
                                  FontFamily="{DynamicResource ContentControlThemeFontFamily}"

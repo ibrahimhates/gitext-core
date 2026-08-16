@@ -8,16 +8,16 @@
              x:Class="GitExt.UI.Views.GitErrorDetailsButton">
 
     <!--
-        P05-T07 — hata şeridinin yanındaki "Ayrıntılar".
+        P05-T07 — the "Details" next to the error strip.
 
-        Ayrı bir kontrol, çünkü aynı hata İKİ farklı yerde gösteriliyor: depo açıkken
-        `CommitListView`'daki şerit, depo hiç açılamadıysa `WelcomeView`'daki kutu. İkincisi
-        **en sık** hata yolu ("bu klasör bir Git deposu değil") — düğmeyi yalnızca birine
-        koymak, kullanıcının git'in asıl çıktısını tam da en çok ihtiyaç duyduğu anda
-        görememesi demekti.
+        A separate control, because the same error is shown in TWO different places: the strip in
+        `CommitListView` when a repository is open, and the box in `WelcomeView` when no
+        repository could be opened at all. The second is the **most frequent** error path ("this
+        folder is not a Git repository") — putting the button on only one of them meant the user
+        could not see git's actual output at exactly the moment they needed it most.
 
-        Şeridin görünümü iki yerde bilinçli olarak farklı (biri kutu, biri satır); paylaşılan
-        olan **davranış**, o yüzden yalnızca düğme ortak.
+        The strip looks deliberately different in the two places (one a box, one a line); what is
+        shared is the **behaviour**, so only the button is common.
     -->
 
     <Button Name="DetailsButton"

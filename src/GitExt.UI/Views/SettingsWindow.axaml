@@ -11,17 +11,17 @@
 
     <TabControl Name="Sections" Margin="6">
 
-        <!-- ============================================================ Görünüm -->
+        <!-- ============================================================ Appearance -->
         <TabItem Header="{loc:Translate settings.view}">
             <StackPanel Margin="12" Spacing="14">
 
                 <StackPanel Spacing="4">
                     <TextBlock Text="{loc:Translate settings.language}" FontWeight="SemiBold" />
                     <!--
-                        Tema/Palet listelerinden farklı olarak DisplayMemberBinding var:
-                        onlar enum'ın ham ToString()'ini gösteriyor, burada kullanıcıya
-                        "tr" değil "Türkçe" gösterilmeli. Ad dil dosyasının _meta.name
-                        alanından geliyor (P11-T01).
+                        Unlike the Theme/Palette lists, this one has a DisplayMemberBinding:
+                        those show the enum's raw ToString(), whereas here the user must be
+                        shown "Türkçe", not "tr". The name comes from the language file's
+                        _meta.name field (P11-T01).
                     -->
                     <ComboBox Name="LanguageBox"
                               ItemsSource="{Binding Languages}"
@@ -90,7 +90,7 @@
             </StackPanel>
         </TabItem>
 
-        <!-- ========================================================== Kısayollar -->
+        <!-- ========================================================== Shortcuts -->
         <TabItem Header="{loc:Translate settings.shortcuts}">
             <views:ShortcutSettingsView Name="ShortcutSection" DataContext="{Binding Shortcuts}" />
         </TabItem>
@@ -127,9 +127,9 @@
                     </StackPanel>
 
                     <!--
-                        🔴 Depo açık değilken yerel alanlar DEVRE DIŞI: git config -local
-                        depo dışında fatal veriyor (ölçüldü, çıkış kodu 128). Etkin
-                        bırakmak, kullanıcıya kaydedilmeyecek bir kutu sunmak olurdu.
+                        🔴 With no repository open the local fields are DISABLED: git config
+                        -local is fatal outside a repository (measured, exit code 128). Leaving
+                        them enabled would offer the user a box that will not be saved.
                     -->
                     <StackPanel Spacing="6" IsEnabled="{Binding CanEditLocal}">
                         <TextBlock Text="{loc:Translate settings.local_open_repository_only}" FontWeight="SemiBold" />

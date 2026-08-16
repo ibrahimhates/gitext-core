@@ -5,52 +5,53 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// <c>git diff --raw -z --patch</c> çıktısını ayrıştırır (P04-T02).
+/// Parses <c>git diff --raw -z --patch</c> output (P04-T02).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden tek çağrıda hem <c>--raw</c> hem <c>--patch</c>?</b> Ölçüldü:
-/// <c>diff --git a/… b/…</c> başlığı genel olarak <b>ayrıştırılamıyor</b> — boşluk içeren
-/// yollarda iki yolu ayırmanın güvenli yolu yok (<c>a/alt dizin/b -&gt; c.txt b/alt dizin/b
-/// -&gt; c.txt</c>) ve ASCII dışı adlar C tarzı sekizlik kaçışla tırnaklanıyor. Bu yüzden
-/// yollar, modlar, blob'lar ve değişim türü <b>yalnızca <c>--raw -z</c> bölümünden</b>
-/// okunuyor; yama bölümü <b>yalnızca hunk içeriği</b> için ayrıştırılıyor.
+/// <b>Why both <c>--raw</c> and <c>--patch</c> in a single call?</b> Measured:
+/// the <c>diff --git a/… b/…</c> header <b>cannot be parsed</b> in general — for paths
+/// containing spaces there's no safe way to split the two paths (<c>a/sub dir/b -&gt; c.txt
+/// b/sub dir/b -&gt; c.txt</c>), and non-ASCII names get quoted with C-style octal escapes. So
+/// paths, modes, blobs, and the change type are read <b>only from the <c>--raw -z</c>
+/// section</b>; the patch section is parsed <b>only for hunk content</b>.
 /// </para>
 /// <para>
-/// <b>Eşleme iki aşamalı.</b> Sayılar eşitse <b>sıraya</b> göre — bu ölçülerek doğrulandı:
-/// git/git deposunda <b>700 commit</b> tarandı, sayılar her seferinde uyuştu ve sıralama aynı
-/// çıktı. Sayılar eşit değilse (ölçüldü: <c>--ignore-blank-lines</c> dosyayı ham bölümde
-/// bırakıp yama bloğu üretmiyor) <c>index</c> satırındaki <b>blob kimliklerine</b> göre
-/// eşlenir. İkisi de olmazsa <see cref="DiffParseException"/> — hunk'ları yanlış dosyaya
-/// bağlamak sessiz veri bozulmasıdır.
+/// <b>Matching happens in two stages.</b> When the counts match, matching is done <b>by
+/// order</b> — confirmed by measurement: scanned <b>700 commits</b> in the git/git repository,
+/// the counts matched every single time and the ordering came out the same. When the counts
+/// don't match (measured cause: <c>--ignore-blank-lines</c> leaves the file in the raw section
+/// but produces no patch block), matching falls back to the <b>blob ids</b> in the
+/// <c>index</c> line. If neither works, <see cref="DiffParseException"/> — attaching hunks to
+/// the wrong file is silent data corruption.
 /// </para>
 /// <para>
-/// <b>Kodlama (P04-T07).</b> Girdi <b>kayıpsız</b> okunmuş olmalı
-/// (<see cref="Git.GitResult.GetStandardOutputLossless"/>): <c>git diff</c> çıktısı tek bir
-/// kodlamada değil — başlıklar ASCII, satır içerikleri <b>dosyanın kendi baytları</b>.
-/// Yollar UTF-8 olarak, satır içerikleri verilen kodlamayla yeniden çözülür.
+/// <b>Encoding (P04-T07).</b> The input must have been read <b>losslessly</b>
+/// (<see cref="Git.GitResult.GetStandardOutputLossless"/>): <c>git diff</c> output is not in a
+/// single encoding — headers are ASCII, line content is in the <b>file's own bytes</b>.
+/// Paths are re-decoded as UTF-8, line content with the given encoding.
 /// </para>
 /// </remarks>
 public static class DiffParser
 {
     /// <summary>
-    /// Ham bölümdeki bir kaydın sabit alanları: eski mod, yeni mod, eski blob, yeni blob, durum.
+    /// Fixed fields of a record in the raw section: old mode, new mode, old blob, new blob, status.
     /// </summary>
     private const int RawFieldCount = 5;
 
     /// <summary>
-    /// Birleşik <c>--raw -z --patch</c> çıktısını dosya diff'lerine çevirir.
+    /// Converts combined <c>--raw -z --patch</c> output into file diffs.
     /// </summary>
-    /// <param name="output">Birleşik <c>git diff</c> çıktısı.</param>
+    /// <param name="output">Combined <c>git diff</c> output.</param>
     /// <param name="inlineSegments">
-    /// Satır içi parçalar da hesaplansın mı (P04-T05)?
+    /// Should inline segments also be computed (P04-T05)?
     /// </param>
     /// <param name="maximumChangedLines">
-    /// Bu sayıdan fazla satırı değişen dosyanın <b>içeriği ayrıştırılmaz</b>; 0 veya negatif
-    /// ise sınır yok (P04-T06).
+    /// A file with more changed lines than this <b>has its content skipped</b>; 0 or negative
+    /// means no limit (P04-T06).
     /// </param>
     /// <param name="contentEncoding">
-    /// Satır içeriklerinin kodlaması; <see langword="null"/> ise UTF-8 (P04-T07).
+    /// Encoding of line content; <see langword="null"/> means UTF-8 (P04-T07).
     /// </param>
     public static IReadOnlyList<FileDiff> Parse(
         string output,
@@ -74,8 +75,9 @@ public static class DiffParser
             return [];
         }
 
-        // `--numstat` istenmişse ham bölümden hemen sonra gelir ve içerik üretmeden
-        // dosya başına değişen satır sayısını verir — boyut koruması buna dayanıyor.
+        // When `--numstat` was requested it comes right after the raw section and gives the
+        // number of changed lines per file without producing content — the size guard relies
+        // on this.
         (List<NumStatRecord> stats, int patchStart) = ParseNumStatSection(output, position);
 
         AttachStats(records, stats);
@@ -89,13 +91,13 @@ public static class DiffParser
     }
 
     /// <summary>
-    /// <c>--numstat -z</c> bölümünü okur.
+    /// Reads the <c>--numstat -z</c> section.
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ — yeniden adlandırmada biçim farklı.</b> Normal kayıt
-    /// <c>eklenen⇥silinen⇥yol</c> şeklinde tek jetonken, rename/kopyalamada <b>yol alanı boş
-    /// bırakılıp</b> eski ve yeni yol <b>ayrı NUL jetonları</b> olarak geliyor
-    /// (<c>0⇥0⇥</c> + <c>eski.txt</c> + <c>yeni.txt</c>). Binary dosyada sayılar <c>-</c>.
+    /// <b>MEASURED — the format differs for renames.</b> A normal record is a single token
+    /// shaped like <c>added⇥removed⇥path</c>, whereas for a rename/copy the <b>path field is
+    /// left empty</b> and the old and new paths arrive as <b>separate NUL tokens</b>
+    /// (<c>0⇥0⇥</c> + <c>old.txt</c> + <c>new.txt</c>). Counts are <c>-</c> for a binary file.
     /// </remarks>
     private static (List<NumStatRecord> Stats, int PatchStart) ParseNumStatSection(
         string output,
@@ -116,7 +118,7 @@ public static class DiffParser
 
             if (fields.Length < 3)
             {
-                // numstat istenmemiş: buradan itibarı yama bölümü.
+                // numstat was not requested: from here on it's the patch section.
                 break;
             }
 
@@ -124,7 +126,7 @@ public static class DiffParser
 
             if (fields[2].Length == 0)
             {
-                // Yeniden adlandırma: iki yol ayrı jetonlarda.
+                // Rename: the two paths are separate tokens.
                 TryReadToken(output, ref position, out _);
                 TryReadToken(output, ref position, out _);
             }
@@ -140,16 +142,16 @@ public static class DiffParser
         return (stats, position);
     }
 
-    /// <summary>Binary dosyada <c>-</c> geliyor; sayı yok demektir.</summary>
+    /// <summary>Comes as <c>-</c> for a binary file; means there's no count.</summary>
     private static int? ParseCount(string value) =>
         int.TryParse(value, CultureInfo.InvariantCulture, out int count) ? count : null;
 
     /// <summary>
-    /// numstat kayıtlarını ham kayıtlarla eşler.
+    /// Matches numstat records to raw records.
     /// </summary>
     /// <remarks>
-    /// İkisi de aynı sırada geliyor. Sayılar uyuşmazsa eşleme yapılmaz — uydurma bir hizalama,
-    /// yanlış dosyaya yanlış satır sayısı yazmak olurdu.
+    /// Both arrive in the same order. If the counts don't agree, no matching is done — a
+    /// fabricated alignment would mean writing the wrong line count against the wrong file.
     /// </remarks>
     private static void AttachStats(List<RawRecord> records, List<NumStatRecord> stats)
     {
@@ -165,11 +167,11 @@ public static class DiffParser
     }
 
     /// <summary>
-    /// Sayılar eşitken sıraya göre eşler.
+    /// Matches by order when the counts agree.
     /// </summary>
     /// <remarks>
-    /// Yaygın durum bu ve <b>700 gerçek commit'te doğrulandı</b>: ham kayıt sayısı ile yama
-    /// bloğu sayısı her seferinde uyuştu ve sıralama aynı çıktı.
+    /// This is the common case, <b>confirmed on 700 real commits</b>: the raw record count and
+    /// the patch block count matched every time, and the ordering came out the same.
     /// </remarks>
     private static FileDiff[] MatchByOrder(
         List<RawRecord> records,
@@ -187,19 +189,21 @@ public static class DiffParser
     }
 
     /// <summary>
-    /// Sayılar eşit değilken blob kimliklerine göre eşler.
+    /// Matches by blob ids when the counts don't agree.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>ÖLÇÜLDÜ:</b> <c>--ignore-blank-lines</c> ile git, yalnızca boş satırı değişmiş bir
-    /// dosyayı <b>ham bölümde bırakıyor ama yama bloğu üretmiyor</b>. (Bu, <c>-w</c>'den
-    /// farklı: orada dosya aynılaştığında iki bölümden de düşüyor, yani sayılar hizalı kalıyor.)
+    /// <b>MEASURED:</b> with <c>--ignore-blank-lines</c>, git leaves a file whose only change is
+    /// blank lines <b>in the raw section but produces no patch block for it</b>. (This differs
+    /// from <c>-w</c>: there, once the file becomes identical it drops out of both sections, so
+    /// the counts stay aligned.)
     /// </para>
     /// <para>
-    /// Böyle bir durumda sıraya güvenmek hunk'ları <b>yanlış dosyaya</b> bağlardı. Yama
-    /// bloğundaki <c>index &lt;eski&gt;..&lt;yeni&gt;</c> satırı ham kayıttaki blob'larla
-    /// aynı kimlikleri taşıyor; eşleme buradan yapılıyor. Eşleşmeyen kayıt hunk'sız kalır
-    /// (değişiklik gerçekten yoksayılmış demektir); eşleşemeyen <b>blok</b> varsa durulur.
+    /// Trusting order in that situation would attach hunks to the <b>wrong file</b>. The
+    /// <c>index &lt;old&gt;..&lt;new&gt;</c> line in the patch block carries the same ids as the
+    /// blobs in the raw record; matching is done from there. An unmatched record ends up with
+    /// no hunks (meaning the change was genuinely ignored); if there's an unmatched <b>block</b>
+    /// instead, processing stops.
     /// </para>
     /// </remarks>
     private static FileDiff[] MatchByBlob(
@@ -245,12 +249,12 @@ public static class DiffParser
     }
 
     /// <summary>
-    /// NUL ayraçlı ham bölümü okur ve yama bölümünün başladığı indeksi döndürür.
+    /// Reads the NUL-delimited raw section and returns the index where the patch section starts.
     /// </summary>
     /// <remarks>
-    /// Bölme (<c>Split</c>) yerine elle gezinmek gerekiyor: yama metninin nerede başladığını
-    /// bilmek için <b>bayt konumunu</b> korumak şart. "İlk <c>diff --git</c> geçtiği yer"
-    /// aramak yanlış olurdu — bir dosya adı bu metni içerebilir.
+    /// Manual traversal is needed instead of splitting (<c>Split</c>): knowing where the patch
+    /// text starts requires preserving the <b>byte position</b>. Searching for "where the first
+    /// <c>diff --git</c> occurs" would be wrong — a file name could contain that text.
     /// </remarks>
     private static (List<RawRecord> Records, int PatchStart) ParseRawSection(string output)
     {
@@ -268,13 +272,13 @@ public static class DiffParser
 
             if (fields.Length < RawFieldCount)
             {
-                // Beklenmeyen biçim: sessizce yanlış veri üretmektense dur.
+                // Unexpected format: stop rather than silently producing wrong data.
                 throw new DiffParseException($"Could not parse the raw record: '{meta}'");
             }
 
             string status = fields[4];
 
-            // Yeniden adlandırma ve kopyalama İKİ yol taşır (ölçüldü: `R100<NUL>eski<NUL>yeni`).
+            // Rename and copy carry TWO paths (measured: `R100<NUL>old<NUL>new`).
             int pathCount = status[0] is 'R' or 'C' ? 2 : 1;
 
             string[] paths = new string[pathCount];
@@ -296,7 +300,7 @@ public static class DiffParser
                 Paths: paths));
         }
 
-        // Ham bölümü yamadan ayıran boş jeton(lar).
+        // The empty token(s) separating the raw section from the patch.
         while (position < output.Length && output[position] == '\0')
         {
             position++;
@@ -321,7 +325,7 @@ public static class DiffParser
     }
 
     /// <summary>
-    /// Yama bölümünü <c>diff --git</c> satırlarından bloklara ayırır.
+    /// Splits the patch section into blocks at <c>diff --git</c> lines.
     /// </summary>
     private static List<PatchBlock> SplitPatchBlocks(
         string output,
@@ -366,8 +370,8 @@ public static class DiffParser
 
         return blocks;
 
-        // Sınırı aşan dosyada satırlar HİÇ üretilmez: 800 bin DiffLine nesnesi yaratmak
-        // tam olarak kaçınmak istediğimiz şey (Faz 03'te nesne başı ek yük ölçüldü).
+        // A file over the limit gets NO lines produced at all: creating 800,000 DiffLine
+        // objects is exactly what we want to avoid (per-object overhead measured in Phase 03).
         PatchBlock Create(List<string> lines)
         {
             int index = blocks.Count;
@@ -382,14 +386,14 @@ public static class DiffParser
 
     private static FileDiff Build(RawRecord record, PatchBlock block, int maximumChangedLines)
     {
-        // Yollar YALNIZCA ham bölümden; yama başlığındaki yollar ayrıştırılamaz.
-        // Yollar UTF-8: git `-z` ile ham bayt veriyor ve dosya adları depoda UTF-8'dir.
+        // Paths come ONLY from the raw section; paths in the patch header cannot be parsed.
+        // Paths are UTF-8: git gives raw bytes with `-z` and file names in the repository are UTF-8.
         RepositoryPath newPath = RepositoryPath.Parse(Reencode(record.Paths[^1], Encoding.UTF8));
         RepositoryPath? oldPath = record.Paths.Length > 1
             ? RepositoryPath.Parse(Reencode(record.Paths[0], Encoding.UTF8))
             : null;
 
-        // Silinen dosyada "yeni yol" yoktur; alan eski yolu taşır (modelde belgelendi).
+        // A deleted file has no "new path"; the field carries the old path instead (documented on the model).
         return new FileDiff
         {
             Path = newPath,
@@ -409,12 +413,12 @@ public static class DiffParser
     }
 
     /// <summary>
-    /// Kayıpsız okunmuş metni hedef kodlamayla yeniden çözer.
+    /// Re-decodes losslessly read text with the target encoding.
     /// </summary>
     /// <remarks>
-    /// Girdi <see cref="Git.GitResult.GetStandardOutputLossless"/> ile üretilmiş olmalı:
-    /// her karakter tek bir bayta karşılık gelir. ASCII metin için sonuç değişmez, bu yüzden
-    /// başlıklar ve işaretler etkilenmez.
+    /// The input must have been produced with <see cref="Git.GitResult.GetStandardOutputLossless"/>:
+    /// each character corresponds to exactly one byte. For ASCII text the result is unchanged,
+    /// so headers and markers are unaffected.
     /// </remarks>
     private static string Reencode(string lossless, Encoding target)
     {
@@ -423,7 +427,7 @@ public static class DiffParser
             return lossless;
         }
 
-        // Yalnızca ASCII ise dönüşüm gereksiz — yaygın durum bu.
+        // Conversion is unnecessary when it's pure ASCII — the common case.
         bool ascii = true;
 
         foreach (char c in lossless)
@@ -439,7 +443,7 @@ public static class DiffParser
     }
 
     private static CommitId ParseBlob(string value) =>
-        // Yok olan taraf sıfırlarla gelir (`0000000`); bunu kimlik saymak yanıltıcı olur.
+        // A nonexistent side comes as all zeros (`0000000`); treating that as an id would be misleading.
         value.All(c => c == '0') || !CommitId.TryParse(value, out CommitId id)
             ? default
             : id;
@@ -456,7 +460,7 @@ public static class DiffParser
         _ => FileChangeKind.Unmodified,
     };
 
-    /// <summary>Durum harfinin ardındaki benzerlik yüzdesi (<c>R100</c> → 100).</summary>
+    /// <summary>Similarity percentage following the status letter (<c>R100</c> → 100).</summary>
     private static int? ParseSimilarity(string status) =>
         status.Length > 1 && int.TryParse(status[1..], CultureInfo.InvariantCulture, out int score)
             ? score
@@ -474,18 +478,18 @@ public static class DiffParser
 
         public int? Removed { get; init; }
 
-        /// <summary>Toplam değişen satır; numstat yoksa 0 (sınır uygulanamaz).</summary>
+        /// <summary>Total changed lines; 0 if numstat is missing (limit cannot be applied).</summary>
         public int ChangedLines => (Added ?? 0) + (Removed ?? 0);
     }
 
     private readonly record struct NumStatRecord(int? Added, int? Removed);
 
     /// <summary>
-    /// Tek bir dosyanın yama bloğu — hunk'lar ve binary bayrağı.
+    /// A single file's patch block — hunks and the binary flag.
     /// </summary>
     private sealed class PatchBlock
     {
-        /// <summary>Yama bloğu olmayan kayıtlar için: hunk yok, binary değil.</summary>
+        /// <summary>For records with no patch block: no hunks, not binary.</summary>
         public static PatchBlock Empty { get; } = new([], inlineSegments: false, skipContent: false, Encoding.UTF8);
 
         private readonly bool _inlineSegments;
@@ -498,8 +502,8 @@ public static class DiffParser
         {
             _inlineSegments = inlineSegments;
 
-            // Sınırı aşan dosyada satırlar HİÇ üretilmez: 800 bin DiffLine nesnesi yaratmak
-            // tam olarak kaçınmak istediğimiz şey (Faz 03'te nesne başı ek yük ölçüldü).
+            // A file over the limit gets NO lines produced at all: creating 800,000 DiffLine
+            // objects is exactly what we want to avoid (per-object overhead measured in Phase 03).
             if (skipContent)
             {
                 Hunks = [];
@@ -529,7 +533,7 @@ public static class DiffParser
 
             foreach (string line in lines)
             {
-                // Ölçüldü: binary dosyalarda içerik yerine bu satır gelir ve hunk hiç yoktur.
+                // Measured: for binary files this line appears instead of content, and there are no hunks at all.
                 if (line.StartsWith("Binary files ", StringComparison.Ordinal)
                     || line.StartsWith("GIT binary patch", StringComparison.Ordinal))
                 {
@@ -539,8 +543,7 @@ public static class DiffParser
 
                 if (line.StartsWith("index ", StringComparison.Ordinal))
                 {
-                    // `index <eski>..<yeni> <mod>` — blob kimlikleri, sayı uyuşmazlığında
-                    // eşleme anahtarı olarak kullanılıyor.
+                    // `index <old>..<new> <mode>` — blob ids, used as the matching key when counts disagree.
                     ReadIndexLine(line);
                     continue;
                 }
@@ -594,8 +597,8 @@ public static class DiffParser
                         break;
 
                     case '\\':
-                        // `\ No newline at end of file` — ÖLÇÜLDÜ: kendi başına bir satır değil,
-                        // KENDİNDEN ÖNCEKİ satıra ait ve aynı hunk'ta iki kez çıkabilir.
+                        // `\ No newline at end of file` — MEASURED: not a line of its own, it
+                        // belongs to the PRECEDING line and can appear twice within the same hunk.
                         if (currentLines.Count > 0)
                         {
                             currentLines[^1] = currentLines[^1] with { EndsWithoutNewline = true };
@@ -605,7 +608,7 @@ public static class DiffParser
 
                     default:
                         // `index …`, `old mode`, `new mode`, `--- `, `+++ `, `similarity index`,
-                        // `rename from/to`: bilgi ham bölümden geliyor, burada yok sayılır.
+                        // `rename from/to`: this information comes from the raw section and is ignored here.
                         break;
                 }
             }
@@ -623,11 +626,11 @@ public static class DiffParser
         private string _indexNew = string.Empty;
 
         /// <summary>
-        /// Bu bloğun <c>index</c> satırındaki blob'lar verilen kayıtla uyuşuyor mu?
+        /// Do the blobs in this block's <c>index</c> line match the given record?
         /// </summary>
         /// <remarks>
-        /// Kısaltma uzunlukları iki çıktıda farklı olabileceği için önek karşılaştırması
-        /// yapılıyor. <c>index</c> satırı yoksa (rename/mod değişikliği) eşleme yapılamaz.
+        /// Prefix comparison is used because the abbreviation lengths can differ between the two
+        /// outputs. If there's no <c>index</c> line (rename/mode change), matching can't be done.
         /// </remarks>
         public bool MatchesBlobs(string oldBlob, string newBlob) =>
             _indexOld.Length > 0
@@ -668,8 +671,8 @@ public static class DiffParser
                 return;
             }
 
-            // Satır içi parçalar KESİN satır metinleri üzerinde hesaplanıyor; git'in
-            // --word-diff'i boş satırların hangi tarafa ait olduğunu kaybediyor (ölçüldü).
+            // Inline segments are computed over the EXACT line text; git's --word-diff loses
+            // which side an empty line belongs to (measured).
             IReadOnlyList<DiffLine> finalLines = _inlineSegments ? InlineDiff.Annotate(lines) : lines;
 
             hunks.Add(new DiffHunk
@@ -696,11 +699,11 @@ public static class DiffParser
         string Section);
 
     /// <summary>
-    /// <c>@@ -a,b +c,d @@ bağlam</c> satırını ayrıştırır.
+    /// Parses an <c>@@ -a,b +c,d @@ context</c> line.
     /// </summary>
     /// <remarks>
-    /// Uzunluk <b>yazılmayabilir</b>: tek satırlık hunk'ta git <c>@@ -1 +1 @@</c> yazıyor ve
-    /// eksik uzunluk <c>1</c> demektir. Varsayılanı 0 almak satır numaralarını kaydırırdı.
+    /// The length <b>may be omitted</b>: for a single-line hunk git writes <c>@@ -1 +1 @@</c>,
+    /// and the missing length means <c>1</c>. Defaulting to 0 would shift line numbers.
     /// </remarks>
     private static bool TryParseHunkHeader(string line, out HunkHeader header)
     {
@@ -725,8 +728,8 @@ public static class DiffParser
         (int oldStart, int oldLength) = ParseRange(parts[0][1..]);
         (int newStart, int newLength) = ParseRange(parts[1][1..]);
 
-        // Başlıktaki bağlam metni DOSYADAN geliyor (kapsayan fonksiyon satırı), yani
-        // dosyanın kodlamasında. Ham hâli korunuyor; yeniden kodlama çağıranda yapılıyor.
+        // The context text in the header comes FROM THE FILE (the enclosing function line), i.e.
+        // in the file's encoding. The raw form is kept; re-encoding happens on the caller's side.
         string section = line.Length > close + 3 ? line[(close + 3)..].Trim() : string.Empty;
 
         header = new HunkHeader(line, oldStart, oldLength, newStart, newLength, section);
@@ -739,7 +742,7 @@ public static class DiffParser
 
         if (comma < 0)
         {
-            // Uzunluk yazılmamış → 1 (git tek satırlık hunk'ta böyle yazıyor).
+            // Length not written → 1 (this is how git writes a single-line hunk).
             return (ParseInt(range), 1);
         }
 
@@ -751,11 +754,11 @@ public static class DiffParser
 }
 
 /// <summary>
-/// Diff çıktısı beklenen biçimde değilse fırlatılır.
+/// Thrown when diff output is not in the expected format.
 /// </summary>
 /// <remarks>
-/// Sessizce yanlış veri üretmektense durmak tercih edildi: hunk'ları yanlış dosyaya bağlamak
-/// kullanıcıya <b>başka bir dosyanın değişikliklerini</b> göstermek demektir.
+/// Stopping was chosen over silently producing wrong data: attaching hunks to the wrong file
+/// means showing the user <b>another file's changes</b>.
 /// </remarks>
 public sealed class DiffParseException : Exception
 {

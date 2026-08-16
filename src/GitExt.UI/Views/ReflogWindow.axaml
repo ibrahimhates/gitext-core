@@ -27,7 +27,7 @@
             <TextBlock Grid.Column="1" Text="{Binding Selector}" Opacity="0.7" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
               <TextBlock Text="{Binding Message}" TextTrimming="CharacterEllipsis" />
-              <!-- Kayıp commit'ler öne çıkarılıyor: tarayıcının asıl işi bunları bulmak. -->
+              <!-- Lost commits are brought to the front: finding them is what the browser is actually for. -->
               <Border Background="{DynamicResource GitExtStashBadgeBackgroundBrush}" CornerRadius="3" Padding="4,0"
                       IsVisible="{Binding IsUnreachable}">
                 <TextBlock Text="{loc:Translate reflog.lost}" Foreground="White" FontSize="10" />

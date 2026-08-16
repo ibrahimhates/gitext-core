@@ -18,13 +18,13 @@
     <Grid RowDefinitions="Auto,Auto,*">
 
         <!--
-            ANA MENÜ — sıra ve öğe adları GitExtensions'tan alındı (P08-T26):
+            MAIN MENU — the order and item names were taken from GitExtensions (P08-T26):
             Start · Dashboard · Repository · Commands · Tools · Help.
-            (Plugins ve "Repository hosts" bizde yok.)
+            (We have no Plugins and no "Repository hosts".)
 
-            ⚠️ Henüz uygulanmamış komutlar KALDIRILMIYOR, `IsEnabled="False"` ile yerinde
-            duruyor. Kullanıcının kuralı: GitExtensions'a alışkın biri aynı öğeyi aynı yerde
-            bulmalı; sonradan araya sokmak sırayı bozar.
+            ⚠️ Commands that are not implemented yet are NOT REMOVED, they stay in place with
+            `IsEnabled="False"`. The user's rule: someone used to GitExtensions must find the same
+            item in the same place; slotting one in later breaks the order.
         -->
         <Menu Grid.Row="0" Name="MainMenu">
 
@@ -60,10 +60,10 @@
 
             <MenuItem Header="{loc:Translate main.repository}" IsEnabled="{Binding HasRepository}">
                 <!--
-                    🔴 Buradaki `InputGesture="F5"` KALDIRILDI. P08-T00/M03'te ölçüldü:
-                    `InputGesture` komutu çalıştırmıyor, yalnızca etiket çiziyor — yani
-                    F5 ölü bir tuştu. Hem etiket hem gerçek bağlama artık komut kaydından
-                    geliyor (GlobalShortcuts).
+                    🔴 The `InputGesture="F5"` that was here has been REMOVED. Measured in
+                    P08-T00/M03: `InputGesture` does not run the command, it only draws the label —
+                    so F5 was a dead key. Both the label and the real binding now come from the
+                    command registry (GlobalShortcuts).
                 -->
                 <MenuItem Name="MenuRepositoryRefresh" Header="{loc:Translate main.refresh}" />
                 <MenuItem Name="MenuFileExplorer" Header="{loc:Translate main.file_explorer}" IsEnabled="False" />
@@ -133,8 +133,9 @@
                            VerticalAlignment="Center" />
 
                 <!--
-                    Yükleme göstergesi ve iptal (P03-T17). Çok büyük bir depoda kullanıcı
-                    yanlış klasörü açtığını fark edebilir; bitmesini beklemek zorunda kalmamalı.
+                    Loading indicator and cancel (P03-T17). In a very large repository the user may
+                    realise they opened the wrong folder; they must not have to wait for it to
+                    finish.
                 -->
                 <TextBlock Grid.Column="1"
                            Text="{Binding Commits.LoadedCountText}"
@@ -154,10 +155,10 @@
         </Border>
 
         <!--
-            Dal işlemi şeridi (P06-T01). Modal bir "tamam" kutusu yerine şerit — P05-T15'teki
-            sıfırlama şeridiyle aynı gerekçe: işlemden SONRA gösterilen diyalog yalnızca
-            kapatılmayı bekleyen bir engeldir. Hata da buraya yazılıyor; ham stderr değil,
-            sınıflandırılmış mesaj.
+            The branch operation strip (P06-T01). A strip rather than a modal "OK" box — same
+            reasoning as the reset strip in P05-T15: a dialog shown AFTER the operation is nothing
+            but an obstacle waiting to be dismissed. Errors go here too; not raw stderr, but the
+            classified message.
         -->
         <Border Grid.Row="2"
                 Name="BranchNoticeBar"
@@ -188,10 +189,10 @@
         </Border>
 
         <!--
-            Ayrık HEAD ve süren işlem şeritleri (P06-T04). İkisi birbirini DIŞLIYOR:
-            ölçüldü, rebase ve bisect sırasında HEAD gerçekten ayrık; iki şeridi birden
-            göstermek kullanıcıya "hem ayrıksın hem rebase'desin" demek olurdu ve
-            "buradan dal oluştur" orada yapılması gereken şey değil.
+            The detached HEAD and in-progress operation strips (P06-T04). The two are MUTUALLY
+            EXCLUSIVE: it was measured that during a rebase or a bisect HEAD really is detached;
+            showing both strips would tell the user "you are both detached and mid-rebase", and
+            "create a branch here" is not the thing to do at that point.
         -->
         <Border Grid.Row="2"
                 Name="DetachedBanner"
@@ -233,11 +234,11 @@
                 Margin="10,6"
                 ZIndex="9">
             <!--
-                P07-T11: yarım kalmış HER operasyondan çıkış yolu aynı şeritten.
-                P06-T12'de yalnızca merge sunuluyordu, çünkü diğerlerinin iptali farklı
-                komutlar. Faz 07'de doğru fiili IConflictResolver DURUM DOSYALARINDAN
-                seçiyor, dolayısıyla rebase/cherry-pick/revert de buradan iptal edilebiliyor.
-                Bisect dışarıda: onun bir iptali yok, "reset"i bambaşka bir şey.
+                P07-T11: the way out of EVERY half-finished operation comes from the same strip.
+                In P06-T12 only merge was offered, because aborting the others takes different
+                commands. In Phase 07 IConflictResolver picks the right verb FROM THE STATE FILES,
+                so rebase/cherry-pick/revert can be aborted from here as well.
+                Bisect is left out: it has no abort, and its "reset" is a different thing entirely.
             -->
             <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Name="OperationText"
@@ -261,16 +262,16 @@
             </Grid>
         </Border>
 
-        <!-- Depo açılmadıysa karşılama ekranı; boş pencere göstermek yerine yol gösterilir. -->
+        <!-- With no repository open, the welcome screen; rather than an empty window, a way forward. -->
         <views:WelcomeView Grid.Row="2" IsVisible="{Binding ShowWelcome}" />
 
         <!--
-            Liste üstte, detay altta — GitExtensions'ın yerleşimi. Ayırıcı sürüklenebilir;
-            detay paneli sabit yükseklikte olsaydı uzun commit mesajları okunamazdı.
+            List on top, details below — GitExtensions' layout. The splitter is draggable; with a
+            fixed-height details panel, long commit messages would be unreadable.
         -->
         <!--
-            P06-T13: dal paneli SOLDA, sürüklenebilir ayırıcıyla — GitExtensions'ın
-            RepoObjectsTree'siyle aynı yer (§ 9).
+            P06-T13: the branch panel is on the LEFT with a draggable splitter — the same place as
+            GitExtensions' RepoObjectsTree (§ 9).
         -->
         <Grid Grid.Row="2"
               Name="MainSplitGrid"
@@ -278,9 +279,9 @@
               IsVisible="{Binding !ShowWelcome}">
 
             <!--
-                Odak halkası (P08-T05): odaklı panelin kenarlığı vurgulanıyor. Gösterge
-                olmadan klavye gezinmesi işe yaramaz — kullanıcı tuşların nereye gittiğini
-                göremez.
+                Focus ring (P08-T05): the focused panel's border is highlighted. Without an
+                indicator, keyboard navigation is useless — the user cannot see where their
+                keystrokes are going.
             -->
             <Border Grid.Column="0" Name="BranchPanelHost" Classes="panel" MinWidth="120">
                 <views:RefTreeView Name="BranchPanel" DataContext="{Binding RefTree}" />
@@ -300,7 +301,7 @@
                 <views:CommitListView Name="CommitList" DataContext="{Binding Commits}" />
             </Border>
 
-            <!-- Depo açık ama hiç commit yok: yeni `git init`. Boş ekran değil, açıklama. -->
+            <!-- Repository open but no commits at all: a fresh `git init`. Not a blank screen, an explanation. -->
             <Border Grid.Row="0"
                     IsVisible="{Binding Commits.IsEmptyRepository}"
                     Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
@@ -323,9 +324,9 @@
                           IsVisible="{Binding Commits.Details.HasCommit}" />
 
             <!--
-                Alt alan sekmeli: detay ve değişen dosyalar. GitExtensions'ın yerleşimi de
-                böyle (grid üstte, altta sekmeli alan). Diff bileşeni bağımsız olduğu için
-                aynısı P04-T16'nın ayrı penceresinde de kullanılacak.
+                The lower area is tabbed: details and changed files. GitExtensions' layout is the
+                same (grid on top, tabbed area below). Because the diff component is standalone,
+                the same one will also be used in P04-T16's separate window.
             -->
             <TabControl Grid.Row="2"
                         Name="BottomPanel"

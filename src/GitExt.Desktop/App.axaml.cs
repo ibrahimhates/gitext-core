@@ -35,7 +35,7 @@ public partial class App : Application
         TimeSpan elapsed = DateTime.Now - current.StartTime;
 
         Console.Error.WriteLine(
-            $"[gitext-core] soğuk başlatma: {elapsed.TotalMilliseconds:F0} ms (süreç başlangıcından pencere açılışına)");
+            $"[gitext-core] cold start: {elapsed.TotalMilliseconds:F0} ms (from process start to window shown)");
     }
 
     public override void Initialize()

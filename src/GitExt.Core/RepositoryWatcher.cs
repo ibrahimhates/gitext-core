@@ -1,7 +1,7 @@
 namespace GitExt.Core;
 
 /// <summary>
-/// Depoda bir değişiklik algılandığında taşınan veri.
+/// Data carried when a change is detected in the repository.
 /// </summary>
 public sealed class RepositoryChangedEventArgs : EventArgs
 {
@@ -11,38 +11,39 @@ public sealed class RepositoryChangedEventArgs : EventArgs
 }
 
 /// <summary>
-/// Çalışma ağacını ve git dizinini izleyip değişiklikleri bildirir (P05-T14).
+/// Watches the working tree and git directory and reports changes (P05-T14).
 /// </summary>
 public interface IRepositoryWatcher : IDisposable
 {
     /// <summary>
-    /// Birleştirilmiş bir değişiklik algılandığında tetiklenir.
-    /// <b>UI iş parçacığında değil</b>, zamanlayıcı iş parçacığında çağrılır.
+    /// Fired when a coalesced change is detected.
+    /// Called on the <b>timer thread, not the UI thread</b>.
     /// </summary>
     event EventHandler<RepositoryChangedEventArgs>? Changed;
 
-    /// <summary>İzleme etkin mi? Hata durumunda kendiliğinden kapanabilir.</summary>
+    /// <summary>Is watching active? Can shut itself down automatically on error.</summary>
     bool IsRunning { get; }
 
     /// <summary>
-    /// Verilen depoyu izlemeye başlar. Önceki izleme varsa durdurulur.
+    /// Starts watching the given repository. Any previous watch is stopped first.
     /// </summary>
     /// <returns>
-    /// İzleme kurulabildiyse <see langword="true"/>. <b>Hata fırlatmaz</b> — otomatik
-    /// tazeleme bir kolaylıktır, kurulamadıysa uygulama elle tazelemeyle çalışmaya devam eder.
+    /// <see langword="true"/> if watching could be set up. <b>Does not throw</b> — automatic
+    /// refresh is a convenience; if it couldn't be set up, the app keeps working with manual
+    /// refresh.
     /// </returns>
     bool Start(string workingTreeRoot, string gitDirectory, string commonDirectory);
 
-    /// <summary>İzlemeyi durdurur ve bekleyen değişikliği atar.</summary>
+    /// <summary>Stops watching and discards any pending change.</summary>
     void Stop();
 
     /// <summary>
-    /// İzlemeyi geçici olarak askıya alır; dönen nesne bırakıldığında devam eder.
+    /// Temporarily suspends watching; resumes when the returned object is disposed.
     /// </summary>
     /// <remarks>
-    /// Kendi yazma işlemlerimiz sırasında kullanılır: stage/commit zaten kendi tazelemesini
-    /// yapıyor, izleyicinin aynı işi bir kez daha tetiklemesi boşuna <c>git status</c> demek.
-    /// İç içe çağrılabilir.
+    /// Used during our own write operations: stage/commit already does its own refresh, and
+    /// having the watcher trigger the same work again would just be a pointless
+    /// <c>git status</c>. Can be called nested.
     /// </remarks>
     IDisposable Suspend();
 }
@@ -50,39 +51,41 @@ public interface IRepositoryWatcher : IDisposable
 /// <inheritdoc cref="IRepositoryWatcher"/>
 /// <remarks>
 /// <para>
-/// <b>⚠️ ÖLÇÜLDÜ — iki ayrı izleyici gerekiyor.</b> Normal bir depoda <c>.git</c> çalışma
-/// ağacının altındadır ve tek izleyici yeter. Bağlı çalışma ağacında (<c>git worktree</c>)
-/// ve alt modülde git dizini <b>başka yerdedir</b>; ikinci izleyici yalnızca o durumda
-/// kuruluyor, aksi halde her olay iki kez gelirdi.
+/// <b>⚠️ MEASURED — two separate watchers are needed.</b> In a normal repository <c>.git</c>
+/// is under the working tree and one watcher is enough. In a linked working tree
+/// (<c>git worktree</c>) and in a submodule, the git directory is <b>elsewhere</b>; the
+/// second watcher is only set up in that case, otherwise every event would arrive twice.
 /// </para>
 /// <para>
-/// <b>⚠️ ÖLÇÜLDÜ — <c>EnableRaisingEvents</c> istisna fırlatabilir.</b> Linux'ta her izleyici
-/// bir <c>inotify</c> örneği tüketiyor ve kullanıcı başına sınır bu makinede 1024; ölçümde
-/// <b>949. izleyicide <c>IOException</c></b> alındı. Sarmalanmazsa uygulama depo açarken
-/// çöker. İzlenen dizin sayısı da doğrudan maliyet: 11.512 dizinlik bir ağaçta 11.512
-/// <c>inotify</c> izlemesi, 104 ms kurulum ve ~30 MB bellek ölçüldü.
+/// <b>⚠️ MEASURED — <c>EnableRaisingEvents</c> can throw.</b> On Linux each watcher consumes
+/// one <c>inotify</c> instance, and the per-user limit on this machine is 1024; measurement
+/// hit an <b><c>IOException</c> on the 949th watcher</b>. If not wrapped, the app would crash
+/// while opening a repository. The number of watched directories is also a direct cost: an
+/// 11,512-directory tree measured 11,512 <c>inotify</c> watches, 104 ms setup time, and
+/// ~30 MB of memory.
 /// </para>
 /// </remarks>
 public sealed class RepositoryWatcher : IRepositoryWatcher
 {
-    /// <summary>Son olaydan sonra beklenen sessizlik.</summary>
+    /// <summary>Quiet period expected after the last event.</summary>
     public static readonly TimeSpan DefaultDebounceDelay = TimeSpan.FromMilliseconds(500);
 
-    /// <summary>İlk bekleyen olaydan sonraki üst sınır.</summary>
+    /// <summary>Upper bound after the first pending event.</summary>
     public static readonly TimeSpan DefaultMaximumDelay = TimeSpan.FromSeconds(2);
 
-    /// <summary>İki tazeleme arasındaki en kısa süre.</summary>
+    /// <summary>Shortest time between two refreshes.</summary>
     public static readonly TimeSpan DefaultMinimumInterval = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// Kaçan olaylara karşı güvenlik ağı olarak yapılan periyodik tazeleme.
+    /// Periodic refresh done as a safety net against missed events.
     /// </summary>
     /// <remarks>
-    /// <b>⚠️ ÖLÇÜLDÜ:</b> hızla oluşan derin bir dizin ağacında ara olaylar kaybolabiliyor —
-    /// <c>yeni/derin</c> iki seviyesi tek çağrıda oluşturulduğunda <c>derin</c> için
-    /// <c>Created</c> hiç gelmedi (izleme eklenene kadar dizin çoktan oluşmuştu). Ağ
-    /// dosya sistemleri ve WSL'de kayıp çok daha yaygın. Periyodik tazeleme bu boşluğu
-    /// kapatıyor; sıklığı düşük çünkü asıl yol izleyicidir.
+    /// <b>⚠️ MEASURED:</b> intermediate events can be lost in a deep directory tree created
+    /// quickly — when the two levels <c>new/deep</c> were created in a single call,
+    /// <c>Created</c> for <c>deep</c> never arrived (the directory already existed by the
+    /// time the watch was added). The loss is far more common on network file systems and
+    /// under WSL. Periodic refresh closes this gap; its frequency is low because the watcher
+    /// is the primary path.
     /// </remarks>
     public static readonly TimeSpan DefaultPeriodicInterval = TimeSpan.FromMinutes(5);
 
@@ -148,16 +151,17 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
                 _workTreeWatcher = CreateWatcher(
                     root, RepositoryChangeClassifier.ClassifyWorkingTreePath);
 
-                // Git dizini çalışma ağacının ALTINDAYSA zaten izleniyor; ikinci izleyici
-                // yalnızca bağlı çalışma ağacı / alt modül durumunda gerekli.
+                // If the git directory is UNDER the working tree it's already watched; the
+                // second watcher is only needed for a linked working tree / submodule.
                 if (!IsInside(gitDir, root))
                 {
                     _gitDirectoryWatcher = CreateWatcher(
                         gitDir, RepositoryChangeClassifier.ClassifyGitDirectoryPath);
                 }
 
-                // ⚠️ Bağlı çalışma ağacında ref'ler burada; git dizininde DEĞİL. Yalnızca
-                // git dizinine bakılsaydı o ağaçtaki commit hiç görülmezdi (ölçüldü).
+                // ⚠️ In a linked working tree, refs live here; NOT in the git directory. If
+                // only the git directory were watched, commits in that tree would never be
+                // seen (measured).
                 if (!PathsEqual(commonDir, gitDir) && !IsInside(commonDir, root) && !IsInside(commonDir, gitDir))
                 {
                     _commonDirectoryWatcher = CreateWatcher(
@@ -166,8 +170,8 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
             {
-                // inotify sınırı, izin hatası veya silinmiş dizin. Otomatik tazeleme
-                // kolaylıktır; uygulamayı çökertmemeli.
+                // inotify limit, permission error, or a deleted directory. Automatic refresh
+                // is a convenience; it must not crash the app.
                 DisposeWatchers();
                 return false;
             }
@@ -228,18 +232,18 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
             StringComparison.Ordinal);
 
     /// <summary>
-    /// Bir dizini izleyen <see cref="FileSystemWatcher"/> kurar.
+    /// Sets up a <see cref="FileSystemWatcher"/> watching a directory.
     /// </summary>
     /// <param name="root">
-    /// İzlenecek dizin. Olay yolları buna göre <b>göreli</b> hâle getirilip
-    /// <paramref name="classifier"/>'a veriliyor.
+    /// Directory to watch. Event paths are made <b>relative</b> to this before being passed to
+    /// <paramref name="classifier"/>.
     /// </param>
-    /// <param name="classifier">Göreli yolu sınıflandıran kural.</param>
+    /// <param name="classifier">Rule that classifies the relative path.</param>
     /// <remarks>
-    /// Kök, alan yerine <b>kapanışta</b> tutuluyor: izleyici ile kökü aynı anda doğuyor ve
-    /// birlikte ölüyorlar, yani ayrı bir alan tutmak olay başına gereksiz bir kilit
-    /// alışı demekti — tek bir dal değişimi 2102 olay üretiyor (ölçüldü). Kapanış
-    /// yalnızca bir <see cref="string"/> yakalıyor.
+    /// The root is captured in the <b>closure</b> rather than a field: the watcher and the
+    /// root are born and die together, so keeping a separate field would mean an unnecessary
+    /// lock acquisition per event — a single branch switch produces 2102 events (measured).
+    /// The closure only captures one <see cref="string"/>.
     /// </remarks>
     private FileSystemWatcher CreateWatcher(
         string root,
@@ -257,9 +261,9 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
         {
             IncludeSubdirectories = true,
 
-            // LastWrite + Size: içerik değişimi. FileName + DirectoryName: oluşturma,
-            // silme, yeniden adlandırma. Ref güncellemesi `x.lock → x` yeniden adlandırması
-            // olarak geldiği için DirectoryName/FileName olmadan commit'ler kaçardı.
+            // LastWrite + Size: content changes. FileName + DirectoryName: creation, deletion,
+            // renaming. Ref updates arrive as an `x.lock → x` rename, so commits would be
+            // missed without DirectoryName/FileName.
             NotifyFilter = NotifyFilters.FileName
                 | NotifyFilters.DirectoryName
                 | NotifyFilters.LastWrite
@@ -270,13 +274,12 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
         watcher.Created += (_, e) => Handle(e.FullPath);
         watcher.Deleted += (_, e) => Handle(e.FullPath);
 
-        // Yeniden adlandırmada YENİ ad kullanılıyor: ref güncellemesinin kaynağı
-        // `refs/heads/x.lock`, hedefi `refs/heads/x`. Eski ad kullanılsaydı kilit
-        // filtresi gerçek sinyali yerdi.
+        // The NEW name is used on rename: a ref update's source is `refs/heads/x.lock`, its
+        // target `refs/heads/x`. Using the old name would let the lock filter eat the real signal.
         watcher.Renamed += (_, e) => Handle(e.FullPath);
 
-        // Olay kuyruğu taşarsa hangi dosyaların kaçtığı bilinmiyor; tek doğru cevap
-        // her şeyi yeniden okumak.
+        // If the event queue overflows, which files were missed is unknown; the only correct
+        // answer is to re-read everything.
         watcher.Error += (_, _) => OnRawChange(RepositoryChangeKind.Repository);
 
         watcher.EnableRaisingEvents = true;
@@ -298,7 +301,7 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
 
             if (_suspendCount > 0)
             {
-                // Askıdayken zamanlayıcı kurulmuyor; devam edildiğinde kurulacak.
+                // No timer is set while suspended; it will be set on resume.
                 return;
             }
 
@@ -330,8 +333,8 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
             }
         }
 
-        // Olay kilidin DIŞINDA tetikleniyor: abone tazeleme yapacak ve o tazeleme yeni
-        // olaylar üretecek; kilit tutulsaydı olay işleyicileri birbirini bekletirdi.
+        // The event is fired OUTSIDE the lock: the subscriber will refresh, and that refresh
+        // will produce new events; holding the lock would make event handlers block each other.
         Changed?.Invoke(this, new RepositoryChangedEventArgs(kind.Value));
     }
 

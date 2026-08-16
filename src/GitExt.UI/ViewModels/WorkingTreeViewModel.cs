@@ -9,7 +9,7 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Çalışma dizini listelerindeki tek satır (P05-T09).
+/// A single row in the working directory lists (P05-T09).
 /// </summary>
 public sealed class WorkingTreeFileRow
 {
@@ -23,10 +23,10 @@ public sealed class WorkingTreeFileRow
 
     public FileStatus Status { get; }
 
-    /// <summary>Satır <b>stage'lenmiş</b> listeye mi ait?</summary>
+    /// <summary>Does the row belong to the <b>staged</b> list?</summary>
     /// <remarks>
-    /// Aynı dosya iki listede birden olabilir: bir kısmı stage'lenmiş, kalanı değil.
-    /// Diff okunurken hangi tarafın gösterileceğini bu belirliyor.
+    /// The same file can be in both lists at once: part of it staged, the rest not.
+    /// This determines which side is shown when reading the diff.
     /// </remarks>
     public bool IsStagedSide { get; }
 
@@ -37,11 +37,12 @@ public sealed class WorkingTreeFileRow
     public string Directory => Status.Path.Parent.Value;
 
     /// <summary>
-    /// git'in kendi durum harfi.
+    /// git's own status letter.
     /// </summary>
     /// <remarks>
-    /// Harfler <c>git status</c>'takiyle aynı: kullanıcı zaten onları biliyor, yeni bir
-    /// alfabe öğretmek gereksiz (P04-T08'de değişen dosyalar listesi için de aynı karar).
+    /// The letters are the same as in <c>git status</c>: the user already knows them, so
+    /// teaching a new alphabet is unnecessary (same decision was made for the changed files
+    /// list in P04-T08).
     /// </remarks>
     public string StatusLetter => Status switch
     {
@@ -73,21 +74,21 @@ public sealed class WorkingTreeFileRow
 }
 
 /// <summary>
-/// Çalışma dizini görünümü: stage'lenmemiş ve stage'lenmiş dosyalar (P05-T09).
+/// Working directory view: unstaged and staged files (P05-T09).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Yerleşim GitExtensions'ın <c>FormCommit</c>'inden alındı</b> (CLAUDE.md § 9): solda üstte
-/// <i>Unstaged</i>, altta <i>Staged</i>, aralarındaki araç çubuğunda stage/unstage düğmeleri;
-/// sağda seçili dosyanın diff'i.
+/// <b>Layout taken from GitExtensions' <c>FormCommit</c></b> (CLAUDE.md § 9): <i>Unstaged</i>
+/// top-left, <i>Staged</i> below it, with stage/unstage buttons on the toolbar between them;
+/// the selected file's diff on the right.
 /// </para>
 /// <para>
-/// 🔴 <b>Plandan sapma:</b> plan "staged / unstaged / <b>untracked</b> bölümleri" diyordu.
-/// GitExtensions'ta <b>ayrı bir untracked bölümü YOK</b> — takip edilmeyen dosyalar
-/// <i>Unstaged</i> listesinde duruyor (gizleme seçeneği <c>tsmiShowUntrackedFiles</c>).
-/// Üçüncü bir liste, "değişikliklerim" ile "yeni dosyalarım" arasında kullanıcının
-/// yapmadığı bir ayrım kurar ve stage etmek için iki ayrı yere bakmayı gerektirirdi.
-/// § 9 kuralı gereği yerleşim kazandı.
+/// 🔴 <b>Deviation from the plan:</b> the plan said "staged / unstaged / <b>untracked</b>
+/// sections". GitExtensions has <b>no separate untracked section</b> — untracked files sit
+/// in the <i>Unstaged</i> list (with a hide option, <c>tsmiShowUntrackedFiles</c>). A third
+/// list would establish a distinction between "my changes" and "my new files" that the user
+/// never made, and would require looking in two separate places to stage. Layout won per the
+/// § 9 rule.
 /// </para>
 /// </remarks>
 public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagingHost, IDisposable
@@ -99,31 +100,31 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     private readonly IWorkingTreeWriter? _workingTreeWriter;
 
     /// <summary>
-    /// Kullanıcı "bir daha sorma" dedi mi?
+    /// Did the user say "don't ask again"?
     /// </summary>
     /// <remarks>
-    /// 🔑 <b>Bilinçli olarak OTURUM İÇİ</b> — diske yazılmıyor. Kalıcı olsaydı kullanıcı
-    /// aylar sonra, o kutuyu işaretlediğini çoktan unutmuşken hiç uyarılmadan veri
-    /// kaybederdi. Asıl şikâyet olan "art arda on dosya sıfırlıyorum, her seferinde
-    /// soruyor" durumunu oturum içi bastırma zaten çözüyor.
+    /// 🔑 <b>Deliberately IN-SESSION</b> — not written to disk. If it were persistent, the
+    /// user could lose data months later without any warning, having long forgotten they
+    /// checked that box. The actual complaint — "I'm resetting ten files in a row and it
+    /// asks every time" — is already solved by in-session suppression.
     /// </remarks>
     private bool _suppressResetPrompt;
 
     /// <summary>
-    /// Son sıfırlamanın yedekleri; "geri al" bunları kullanıyor.
+    /// Backups of the last reset; "undo" uses these.
     /// </summary>
     private readonly List<DiscardBackup> _lastResetBackups = [];
 
     private CancellationTokenSource? _refreshing;
 
     /// <summary>
-    /// Yenileme sırasında seçim <b>programatik</b> değişiyor; etkin liste değişmemeli.
+    /// The selection changes <b>programmatically</b> during refresh; the active list must not change.
     /// </summary>
     /// <remarks>
-    /// 🔴 Bir test yakaladı: stage'lenen dosya listeden çıkınca seçim kaydırılıyor, bu da
-    /// karşı listenin indeksini de değiştiriyordu ve etkin liste <b>sessizce</b> karşı tarafa
-    /// atlıyordu — kullanıcı unstaged listesinde çalışırken diff birden staged tarafı
-    /// göstermeye başlıyordu. Etkin listeyi yalnızca <b>kullanıcının</b> seçimi değiştirir.
+    /// 🔴 A test caught this: when a staged file left the list, the selection shifted, which
+    /// also changed the other list's index, and the active list <b>silently</b> jumped to the
+    /// other side — while the user was working in the unstaged list, the diff suddenly started
+    /// showing the staged side. Only the <b>user's</b> selection may change the active list.
     /// </remarks>
     private bool _refreshingSelection;
 
@@ -157,23 +158,22 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
 
         Diff = diff;
 
-        // Dosya listesi bu görünümde SOLDA; diff bileşeninin kendi listesi gizleniyor.
-        // Aynı listeyi iki kez göstermek, kullanıcıya hangisinin seçim kaynağı olduğunu
-        // sordururdu.
+        // The file list is on the LEFT in this view; the diff component's own list is hidden.
+        // Showing the same list twice would make the user wonder which one is the selection
+        // source.
         Diff.ShowFileList = false;
 
-        // Kısmi staging yalnızca burada anlamlı; diff bileşeni bunu dışarıdan alıyor.
+        // Partial staging only makes sense here; the diff component receives it from outside.
         Diff.StagingHost = this;
 
-        // Mesaj boşalıp dolunca commit düğmesinin durumu değişiyor.
+        // The commit button's state changes as the message becomes empty or non-empty.
         Message.PropertyChanged += (_, _) => OnPropertyChanged(nameof(CanCommit));
     }
 
     /// <inheritdoc />
     /// <remarks>
-    /// İki komut birbirini dışlıyor — GitExtensions'ta da öyle: <c>stageSelectedLines</c>
-    /// yalnızca çalışma ağacı tarafında, <c>unstageSelectedLines</c> yalnızca index tarafında
-    /// görünüyor.
+    /// The two commands are mutually exclusive — same as in GitExtensions: <c>stageSelectedLines</c>
+    /// only appears on the working tree side, <c>unstageSelectedLines</c> only on the index side.
     /// </remarks>
     bool IPartialStagingHost.CanStage => SelectedRow is { IsStagedSide: false };
 
@@ -188,8 +188,8 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             return;
         }
 
-        // Kodlama diff'in okunduğu kodlama olmalı: yama git'in çalışma ağacındaki baytlarla
-        // karşılaştırdığı metin (P05-T04'te iki tur hata yapılmıştı).
+        // The encoding must be the one the diff was read with: the patch is compared by git
+        // against the bytes in the working tree (two rounds of mistakes were made in P05-T04).
         if (stage)
         {
             await _staging
@@ -207,39 +207,40 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Commit'te hook doğrulaması atlansın mı (P05-T15)?
+    /// Should hook verification be skipped for the commit (P05-T15)?
     /// </summary>
     /// <remarks>
-    /// ⚠️ <b>ÖLÇÜLDÜ (P05-T07):</b> bu bayrak "hook'ları atla" DEĞİL — yalnızca
-    /// <c>pre-commit</c> ve <c>commit-msg</c> atlanıyor; <c>prepare-commit-msg</c> ve
-    /// <c>post-commit</c> çalışmaya devam ediyor, yani mesaj hâlâ değişebilir.
+    /// ⚠️ <b>MEASURED (P05-T07):</b> this flag does NOT mean "skip hooks" — only
+    /// <c>pre-commit</c> and <c>commit-msg</c> are skipped; <c>prepare-commit-msg</c> and
+    /// <c>post-commit</c> still run, so the message can still change.
     /// <para>
-    /// Onay diyaloğu <b>yok</b>: atlanan hook veri kaybettirmiyor, oluşan commit reflog'da
-    /// duruyor ve geri alınabiliyor (P05-T15'te ölçüldü). Diyalog yalnızca geri
-    /// getirilemeyen işlemler için var.
+    /// There is <b>no</b> confirmation dialog: a skipped hook doesn't lose data, the resulting
+    /// commit stays in the reflog and can be undone (measured in P05-T15). The dialog exists
+    /// only for operations that cannot be recovered.
     /// </para>
     /// </remarks>
     [ObservableProperty]
     public partial bool SkipHooks { get; set; }
 
     /// <summary>
-    /// Yıkıcı işlemler için onay soran taraf (P05-T15).
+    /// The party that asks for confirmation on destructive operations (P05-T15).
     /// </summary>
     /// <remarks>
-    /// Ctor yerine <b>özellik</b>: onay diyaloğu sahip bir pencere istiyor, ViewModel ise
-    /// pencereden önce kuruluyor. Aynı desen <see cref="DiffViewModel.StagingHost"/>'ta da
-    /// kullanıldı (P05-T10).
+    /// A <b>property</b> instead of a ctor parameter: the confirmation dialog needs an owner
+    /// window, but the ViewModel is constructed before the window. The same pattern was used
+    /// in <see cref="DiffViewModel.StagingHost"/> (P05-T10).
     /// <para>
-    /// Atanmamışsa sıfırlama komutları <b>hiçbir şey yapmaz</b>: onaysız yıkıcı işlem
-    /// çalıştırmaktansa hiç çalıştırmamak yeğdir.
+    /// If unset, the reset commands <b>do nothing</b>: running a destructive operation without
+    /// confirmation is worse than not running it at all.
     /// </para>
     /// </remarks>
     public IDestructiveActionConfirmer? Confirmer { get; set; }
 
     /// <inheritdoc />
     /// <remarks>
-    /// Diff panelinden gelen <b>yıkıcı</b> istek: dosya listesindeki sıfırlamayla aynı
-    /// güvenlik ağından geçiyor — onay, yedek, geri alma şeridi. Farkı yalnızca kapsamı.
+    /// A <b>destructive</b> request coming from the diff panel: it goes through the same
+    /// safety net as the reset in the file list — confirmation, backup, undo strip. Only the
+    /// scope differs.
     /// </remarks>
     async Task IPartialStagingHost.DiscardAsync(FileDiff diff, PatchSelection selection)
     {
@@ -255,7 +256,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             ModifiedPaths = [diff.Path],
             UntrackedPaths = [],
 
-            // Yama yalnızca çalışma ağacına uygulanıyor; index'e dokunulmuyor (ölçüldü).
+            // The patch is applied only to the working tree; the index is untouched (measured).
             IncludesStaged = false,
             CanSuppress = true,
         }).ConfigureAwait(true);
@@ -283,16 +284,16 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         await RefreshAsync().ConfigureAwait(true);
     }
 
-    /// <summary>Seçili dosyanın diff'i — sağ paneldeki bileşen.</summary>
+    /// <summary>The selected file's diff — the component in the right panel.</summary>
     public DiffViewModel Diff { get; }
 
-    /// <summary>Stage'lenmemiş değişiklikler; <b>takip edilmeyenler dahil</b>.</summary>
+    /// <summary>Unstaged changes; <b>includes untracked files</b>.</summary>
     public AvaloniaList<WorkingTreeFileRow> Unstaged { get; } = [];
 
-    /// <summary>Stage'lenmiş değişiklikler.</summary>
+    /// <summary>Staged changes.</summary>
     public AvaloniaList<WorkingTreeFileRow> Staged { get; } = [];
 
-    /// <summary>Açık deponun çalışma dizini; depo yoksa <see langword="null"/>.</summary>
+    /// <summary>The open repository's working directory; <see langword="null"/> if none is open.</summary>
     [ObservableProperty]
     public partial string? WorkingDirectory { get; private set; }
 
@@ -303,11 +304,11 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     public partial int SelectedStagedIndex { get; set; } = -1;
 
     /// <summary>
-    /// Odaklı liste <b>stage'lenmiş</b> olan mı?
+    /// Is the focused list the <b>staged</b> one?
     /// </summary>
     /// <remarks>
-    /// İki listede aynı anda seçim olabilir; diff hangisini göstereceğini bilmek zorunda.
-    /// Kullanıcının en son dokunduğu liste kazanır.
+    /// Both lists can have a selection at the same time; the diff needs to know which one to
+    /// show. The list the user last touched wins.
     /// </remarks>
     [ObservableProperty]
     public partial bool IsStagedListActive { get; set; }
@@ -320,38 +321,38 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     [ObservableProperty]
     public partial string? ErrorMessage { get; private set; }
 
-    /// <summary>Hatanın tam git çıktısı (P05-T07).</summary>
+    /// <summary>The error's full git output (P05-T07).</summary>
     [ObservableProperty]
     public partial GitOutputViewModel? ErrorDetails { get; private set; }
 
-    /// <summary>Commit edilecek bir şey var mı?</summary>
+    /// <summary>Is there anything to commit?</summary>
     public bool HasStagedChanges => Staged.Count > 0;
 
-    /// <summary>Hiç değişiklik yok mu?</summary>
+    /// <summary>Are there no changes at all?</summary>
     [ObservableProperty]
     public partial bool IsClean { get; private set; }
 
-    /// <summary>Commit mesajı kutusu (P05-T12) ve yardımcıları (P05-T13).</summary>
+    /// <summary>Commit message box (P05-T12) and its helpers (P05-T13).</summary>
     public CommitMessageViewModel Message { get; }
 
-    /// <summary>Son commit'in üzerine yaz (<c>--amend</c>).</summary>
+    /// <summary>Overwrite the last commit (<c>--amend</c>).</summary>
     /// <remarks>
-    /// ⚠️ Yayınlanmış bir commit'te geçmişi yeniden yazar; uyarı P05-T15'te gelecek.
+    /// ⚠️ Rewrites history on a published commit; a warning will come in P05-T15.
     /// </remarks>
     [ObservableProperty]
     public partial bool Amend { get; set; }
 
     /// <summary>
-    /// Commit oluşturulabilir mi?
+    /// Can a commit be created?
     /// </summary>
     /// <remarks>
-    /// Bileşik koşul XAML'de değil <b>burada</b> (P04-T10 kararı). Mesaj boşken commit
-    /// düğmesini açık bırakmak, git'in reddedeceği bir işlemi sunmak olurdu — boş mesaj
-    /// çıkış 1 veriyor (P05-T06'da ölçüldü).
+    /// The compound condition lives <b>here</b>, not in XAML (P04-T10 decision). Leaving the
+    /// commit button enabled while the message is empty would offer an operation git would
+    /// reject — an empty message exits with 1 (measured in P05-T06).
     /// </remarks>
     public bool CanCommit => !IsBusy && !Message.IsEmpty && (HasStagedChanges || Amend);
 
-    /// <summary>Commit sonrası gösterilecek çıktı; yoksa <see langword="null"/> (P05-T07).</summary>
+    /// <summary>Output to show after commit; <see langword="null"/> if none (P05-T07).</summary>
     [ObservableProperty]
     public partial GitOutputViewModel? CommitOutput { get; set; }
 
@@ -359,9 +360,10 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     {
         OnPropertyChanged(nameof(CanCommit));
 
-        // Amend işaretlenince düzeltilecek mesajı görmek gerekiyor: kutu boşken HEAD'in
-        // mesajı yükleniyor (GitExtensions'ta da koşul bu). Dolu kutuya dokunulmuyor —
-        // kullanıcı yeni bir mesaj yazmaya başladıysa amend'i işaretlemek onu silmemeli.
+        // When amend is checked, the message to fix needs to be visible: HEAD's message is
+        // loaded when the box is empty (same condition as in GitExtensions). A non-empty box
+        // is left untouched — if the user already started typing a new message, checking
+        // amend must not erase it.
         if (value)
         {
             _ = Message.LoadHeadMessageAsync();
@@ -369,12 +371,12 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Stage'lenmiş değişikliklerden commit oluşturur.
+    /// Creates a commit from the staged changes.
     /// </summary>
     /// <remarks>
-    /// Başarıda mesaj <b>temizleniyor</b>: aynı metinle ikinci bir commit atmak neredeyse her
-    /// zaman kazadır. Hook çıktısı veya mesaj değişikliği varsa
-    /// <see cref="CommitOutput"/> doluyor (P05-T07).
+    /// On success the message is <b>cleared</b>: committing a second time with the same text
+    /// is almost always an accident. If there's hook output or a message change,
+    /// <see cref="CommitOutput"/> is populated (P05-T07).
     /// </remarks>
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
@@ -394,12 +396,13 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
                 .CommitAsync(directory, Message.Text, new CommitOptions { Amend = Amend, SkipHooks = SkipHooks }, cancellationToken)
                 .ConfigureAwait(true);
 
-            // Kutu ve TASLAK birlikte temizleniyor: commit'lenen metin diskte kalsaydı ekran
-            // bir daha açıldığında geri gelir ve ikinci bir commit'e davet ederdi (P05-T13).
+            // The box and the DRAFT are cleared together: if the committed text stayed on
+            // disk, it would come back the next time the screen opens and invite a second
+            // commit (P05-T13).
             await Message.OnCommittedAsync(cancellationToken).ConfigureAwait(true);
             Amend = false;
 
-            // Gösterilecek bir şey varsa: hook konuştu ya da mesaj değişti.
+            // If there's something to show: the hook spoke, or the message changed.
             CommitOutput = result.NeedsReporting ? GitOutputViewModel.ForCommit(result) : null;
         }
         catch (GitException ex)
@@ -413,7 +416,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         await RefreshAsync(cancellationToken).ConfigureAwait(true);
     }
 
-    /// <summary>Etkin listedeki seçili satır.</summary>
+    /// <summary>The selected row in the active list.</summary>
     public WorkingTreeFileRow? SelectedRow =>
         IsStagedListActive
             ? Get(Staged, SelectedStagedIndex)
@@ -448,20 +451,20 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     {
         OnPropertyChanged(nameof(SelectedRow));
 
-        // Seçim taraf değiştirdiyse hangi kısmi staging komutunun açık olduğu da değişti.
+        // If the selection changed sides, which partial staging command is available also changed.
         Diff.NotifyStagingAvailabilityChanged();
 
         _ = ShowSelectedDiffAsync();
     }
 
     /// <summary>
-    /// Seçili dosyanın diff'ini sağ panele yükler.
+    /// Loads the selected file's diff into the right panel.
     /// </summary>
     /// <remarks>
-    /// Diff <b>tüm</b> taraf için tek çağrıda okunuyor ve seçim yalnızca hangi dosyanın
-    /// gösterileceğini belirliyor. Dosya başına ayrı <c>git</c> çalıştırmak, kullanıcı ok
-    /// tuşuyla listede gezerken satır başına bir süreç demekti (P04-T08'de aynı hata
-    /// ölçülmüştü).
+    /// The diff is read for <b>the whole</b> side in one call, and the selection only
+    /// determines which file to show. Running a separate <c>git</c> per file would mean one
+    /// process per row while the user arrows through the list (the same mistake was measured
+    /// in P04-T08).
     /// </remarks>
     private async Task ShowSelectedDiffAsync()
     {
@@ -480,14 +483,14 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Depoyu bağlar ve durumu okur.
+    /// Attaches the repository and reads the status.
     /// </summary>
     public async Task OpenAsync(string? workingDirectory, CancellationToken cancellationToken = default)
     {
         WorkingDirectory = workingDirectory;
 
-        // Taslak, git'in hazırladığı mesaj (merge/cherry-pick) ve şablon durumu burada
-        // yükleniyor; kutu doluysa hiçbiri üzerine yazmıyor (P05-T13).
+        // The draft, git-prepared message (merge/cherry-pick), and template status are loaded
+        // here; none of them overwrite a non-empty box (P05-T13).
         await Message.OpenAsync(workingDirectory, cancellationToken).ConfigureAwait(true);
 
         if (string.IsNullOrEmpty(workingDirectory))
@@ -503,28 +506,28 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// İzleyici bir değişiklik bildirdiğinde çalışır (P05-T14).
+    /// Runs when the watcher reports a change (P05-T14).
     /// </summary>
     /// <remarks>
-    /// Olay <b>zamanlayıcı iş parçacığında</b> geliyor; koleksiyonlara ancak UI iş
-    /// parçacığında dokunulabilir.
+    /// The event arrives on a <b>timer thread</b>; collections may only be touched from the
+    /// UI thread.
     /// </remarks>
     private void OnRepositoryChanged(object? sender, RepositoryChangedEventArgs e) =>
         Dispatcher.UIThread.Post(() => _ = AutoRefreshAsync());
 
     /// <summary>
-    /// Dışarıdan gelen değişiklik sonrası kendiliğinden tazeler.
+    /// Refreshes automatically after an external change.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Yazılan commit mesajına <b>dokunmaz</b>: tazeleme yalnızca dosya listelerini ve diff'i
-    /// yeniler. Kullanıcının yazdığı metni bir arka plan olayının silmesi kabul edilemez
-    /// (P05-T13'ün değişmezi).
+    /// Does <b>not touch</b> the typed commit message: refreshing only updates the file lists
+    /// and the diff. A background event erasing the user's typed text would be unacceptable
+    /// (invariant of P05-T13).
     /// </para>
     /// <para>
-    /// <b>Askıya alma şart:</b> ölçümde <c>git status</c> bir depoda ilk çalıştığında
-    /// index'i yeniden yazıyor — yani tazelemenin kendisi yeni bir tazeleme olayı
-    /// doğurabiliyor. Askı bu zinciri kesiyor.
+    /// <b>Suspension is required:</b> measured that <c>git status</c> rewrites the index the
+    /// first time it runs in a repository — meaning the refresh itself can trigger another
+    /// refresh event. The suspension breaks that chain.
     /// </para>
     /// </remarks>
     private async Task AutoRefreshAsync()
@@ -540,12 +543,13 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Çalışma dizini durumunu yeniden okur.
+    /// Re-reads the working directory status.
     /// </summary>
     /// <remarks>
-    /// Seçim <b>korunmaya çalışılır</b>: kullanıcı bir dosyayı stage'ledikten sonra listenin
-    /// başına fırlamak, sıradaki dosyaya her seferinde elle gitmek demek olurdu. Dosya
-    /// listeden çıktıysa seçim <b>aynı konumda</b> kalır (yani sıradaki dosyaya kayar).
+    /// The selection is <b>preserved where possible</b>: jumping to the top of the list after
+    /// the user stages a file would mean manually going to the next file every time. If the
+    /// file left the list, the selection stays <b>at the same position</b> (i.e. shifts to the
+    /// next file).
     /// </remarks>
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
@@ -595,18 +599,18 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
                 _refreshingSelection = false;
             }
 
-            // ⚠️ Etkin liste boşalsa bile KARŞI listeye atlanmıyor. Atlamak cazip görünüyor
-            // ("gösterilecek bir şey kalsın") ama tehlikeli: kullanıcı son dosyasını
-            // stage'ledikten sonra etkin liste staged olurdu ve `Space` tuşu bu kez
-            // az önce stage'lediği dosyayı GERİ ALIRDI. Boş liste boş kalıyor.
+            // ⚠️ Even if the active list becomes empty, it does NOT jump to the OTHER list.
+            // Jumping seems tempting ("leave something to show") but is dangerous: after the
+            // user stages their last file, the active list would become staged, and the
+            // `Space` key would then UNDO the file they just staged. An empty list stays empty.
 
             IsClean = Unstaged.Count == 0 && Staged.Count == 0;
 
             OnPropertyChanged(nameof(HasStagedChanges));
             OnPropertyChanged(nameof(CanCommit));
 
-            // Seçim aynı indekste kalsa bile ARDINDAKİ dosya değişmiş olabilir; diff
-            // yenilenmezse kullanıcı başka bir dosyanın içeriğine bakar.
+            // Even if the selection stays at the same index, the file BEHIND it may have
+            // changed; if the diff isn't refreshed the user looks at another file's content.
             await ShowSelectedDiffAsync().ConfigureAwait(true);
         }
         catch (OperationCanceledException)
@@ -635,11 +639,11 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Seçimi liste sınırları içinde tutar.
+    /// Keeps the selection within the list bounds.
     /// </summary>
     /// <remarks>
-    /// Dosya stage'lendiğinde listeden çıkıyor; indeksi <b>korumak</b> seçimi kendiliğinden
-    /// sıradaki dosyaya taşıyor. Son satırdaysa bir yukarı çekiliyor.
+    /// When a file is staged it leaves the list; <b>preserving</b> the index automatically
+    /// moves the selection to the next file. If it was the last row, it's pulled up by one.
     /// </remarks>
     private static int Clamp(int index, int count)
     {
@@ -652,22 +656,22 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Değişiklikleri sıfırlar — <b>yıkıcı</b> (P05-T15).
+    /// Resets changes — <b>destructive</b> (P05-T15).
     /// </summary>
     /// <param name="scope">
-    /// <see cref="DiscardScope.UnstagedOnly"/> yalnızca çalışma ağacını,
-    /// <see cref="DiscardScope.All"/> stage'lenmiş içeriği de atar.
+    /// <see cref="DiscardScope.UnstagedOnly"/> discards only the working tree,
+    /// <see cref="DiscardScope.All"/> also discards staged content.
     /// </param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <remarks>
     /// <para>
-    /// GitExtensions'ta karşılığı <c>FormCommit</c>'teki *Reset all changes* /
-    /// *Reset unstaged changes* düğmeleri; onlar da <c>FormResetChanges</c> ile
-    /// soruyor ve "yeni dosyaları da sil" seçeneğini aynı diyalogda sunuyor (§ 9).
+    /// The GitExtensions equivalent is the *Reset all changes* / *Reset unstaged changes*
+    /// buttons in <c>FormCommit</c>; those also ask via <c>FormResetChanges</c> and offer the
+    /// "delete new files too" option in the same dialog (§ 9).
     /// </para>
     /// <para>
-    /// 🔑 <b>Onay atlanabilir, güvenlik ağı atlanamaz.</b> Kullanıcı "bir daha sorma"
-    /// dese bile içerik her zaman yedekleniyor ve işlem sonrası geri alma sunuluyor.
+    /// 🔑 <b>Confirmation can be skipped, the safety net cannot.</b> Even if the user says
+    /// "don't ask again", content is always backed up and undo is offered after the operation.
     /// </para>
     /// </remarks>
     public async Task ResetChangesAsync(
@@ -692,7 +696,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
 
         if (scope == DiscardScope.All)
         {
-            // Stage'lenmiş dosyalar da HEAD'e dönecek; kullanıcıya sayısı söylenmeli.
+            // Staged files will also revert to HEAD; the user must be told the count.
             foreach (WorkingTreeFileRow row in Staged)
             {
                 if (!modified.Contains(row.Path))
@@ -713,7 +717,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             UntrackedPaths = untracked,
             IncludesStaged = scope == DiscardScope.All,
 
-            // Her iki yol da yedekleniyor (P05-T15), yani bastırma güvenli.
+            // Both paths are backed up (P05-T15), so suppression is safe.
             CanSuppress = true,
         }).ConfigureAwait(true);
 
@@ -765,15 +769,15 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Yıkıcı bir işlem için onay ister ve "bir daha sorma" seçimini uygular (P05-T15).
+    /// Asks for confirmation on a destructive operation and applies the "don't ask again" choice (P05-T15).
     /// </summary>
     /// <returns>
-    /// Kullanıcının kararı; iptal edildiyse <see langword="null"/>.
+    /// The user's decision; <see langword="null"/> if cancelled.
     /// </returns>
     /// <remarks>
-    /// Dosya listesinden ve diff panelinden gelen iki yıkıcı yol da buradan geçiyor:
-    /// bastırma kuralı tek yerde durmazsa, ikinci yolun onu uygulamayı unutması sessiz
-    /// bir davranış farkı olurdu.
+    /// Both destructive paths — from the file list and from the diff panel — go through here:
+    /// if the suppression rule didn't live in a single place, the second path forgetting to
+    /// apply it would be a silent behavioral difference.
     /// </remarks>
     private async Task<ResetChangesDecision?> RequestResetAsync(ResetChangesRequest request)
     {
@@ -799,7 +803,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Yıkıcı bir işlemin yedeklerini ve özetini kaydeder; şerit bunlardan besleniyor.
+    /// Records a destructive operation's backups and summary; the banner is fed from these.
     /// </summary>
     private void RecordReset(IReadOnlyList<DiscardBackup> backups, string notice)
     {
@@ -812,21 +816,21 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// Son sıfırlamanın özeti; şerit olarak gösteriliyor. Yoksa <see langword="null"/>.
+    /// Summary of the last reset; shown as a banner. <see langword="null"/> if none.
     /// </summary>
     [ObservableProperty]
     public partial string? ResetNotice { get; private set; }
 
-    /// <summary>Son sıfırlama geri alınabilir mi?</summary>
+    /// <summary>Can the last reset be undone?</summary>
     public bool CanUndoReset => _lastResetBackups.Count > 0;
 
     /// <summary>
-    /// Son sıfırlamayı geri alır (P05-T15).
+    /// Undoes the last reset (P05-T15).
     /// </summary>
     /// <remarks>
-    /// 🔑 Güvenlik ağının asıl değeri burada: kullanıcıya blob kimliği verip
-    /// <c>git cat-file</c> yazmasını beklemek panik anında işe yaramaz. Yedeği olmayan bir
-    /// işlem için bu komut hiç görünmüyor.
+    /// 🔑 This is where the safety net actually earns its keep: giving the user a blob id and
+    /// expecting them to type <c>git cat-file</c> is useless in a moment of panic. This
+    /// command doesn't appear at all for an operation with no backup.
     /// </remarks>
     public async Task UndoResetAsync(CancellationToken cancellationToken = default)
     {
@@ -843,9 +847,9 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             .RestoreBackupsAsync(directory, backups, cancellationToken)
             .ConfigureAwait(true);
 
-        // Yedekler tüketildi: aynı geri almayı ikinci kez sunmak anlamsız. Kısmi kurtarma
-        // ise sessizce "başarılı" gösterilmemeli — yedeği budanmış dosyalar
-        // (`gc --prune=now`) geri gelmez ve kullanıcı bunu bilmeli.
+        // The backups are consumed: offering the same undo a second time makes no sense. A
+        // partial recovery must not be silently shown as "success" either — files whose
+        // backup was pruned (`gc --prune=now`) don't come back, and the user must know that.
         RecordReset(
             [],
             restored.Count == backups.Count
@@ -856,7 +860,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         await RefreshAsync(cancellationToken).ConfigureAwait(true);
     }
 
-    /// <summary>Şeridi kapatır.</summary>
+    /// <summary>Closes the banner.</summary>
     public void ClearResetNotice()
     {
         _lastResetBackups.Clear();
@@ -864,28 +868,28 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         OnPropertyChanged(nameof(CanUndoReset));
     }
 
-    /// <summary>Seçili stage'lenmemiş dosyayı stage'ler.</summary>
+    /// <summary>Stages the selected unstaged file.</summary>
     public Task StageSelectedAsync(CancellationToken cancellationToken = default) =>
         RunAsync(
             paths => _staging.StageAsync(WorkingDirectory!, paths, cancellationToken),
             Get(Unstaged, SelectedUnstagedIndex),
             cancellationToken);
 
-    /// <summary>Tüm stage'lenmemiş dosyaları stage'ler.</summary>
+    /// <summary>Stages all unstaged files.</summary>
     public Task StageAllAsync(CancellationToken cancellationToken = default) =>
         RunAsync(
             paths => _staging.StageAsync(WorkingDirectory!, paths, cancellationToken),
             [.. Unstaged],
             cancellationToken);
 
-    /// <summary>Seçili stage'lenmiş dosyayı geri alır.</summary>
+    /// <summary>Unstages the selected staged file.</summary>
     public Task UnstageSelectedAsync(CancellationToken cancellationToken = default) =>
         RunAsync(
             paths => _staging.UnstageAsync(WorkingDirectory!, paths, cancellationToken),
             Get(Staged, SelectedStagedIndex),
             cancellationToken);
 
-    /// <summary>Tüm stage'lenmiş dosyaları geri alır.</summary>
+    /// <summary>Unstages all staged files.</summary>
     public Task UnstageAllAsync(CancellationToken cancellationToken = default) =>
         RunAsync(
             paths => _staging.UnstageAsync(WorkingDirectory!, paths, cancellationToken),
@@ -928,12 +932,12 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
-    /// İzleyici aboneliğini bırakır (P05-T14).
+    /// Unsubscribes from the watcher (P05-T14).
     /// </summary>
     /// <remarks>
-    /// İzleyici <b>uygulama ömrü boyunca yaşayan</b> tek bir nesne; commit penceresi ise
-    /// açılıp kapanıyor. Abonelik bırakılmazsa kapatılmış her pencere olayları almaya devam
-    /// eder ve kapalı bir ekran için <c>git status</c> çalıştırılır.
+    /// The watcher is a single object that <b>lives for the application's lifetime</b>, while
+    /// the commit window opens and closes. If the subscription isn't released, every closed
+    /// window keeps receiving events and <c>git status</c> gets run for a closed screen.
     /// </remarks>
     public void Dispose()
     {

@@ -26,10 +26,10 @@ public class PerformanceDiagnosticsTests
     [InlineData("git -c a=1 -c b=2 status --porcelain=v2", "status")]
     [InlineData("git --no-pager diff", "diff")]
     [InlineData("log -n 50", "log")]
-    [InlineData("", "(bilinmiyor)")]
-    [InlineData("   ", "(bilinmiyor)")]
-    [InlineData("git", "(bilinmiyor)")]
-    [InlineData("git -c only=option", "(bilinmiyor)")]
+    [InlineData("", "(unknown)")]
+    [InlineData("   ", "(unknown)")]
+    [InlineData("git", "(unknown)")]
+    [InlineData("git -c only=option", "(unknown)")]
     public void ShouldExtractSubcommandName(string commandLine, string expected) =>
         PerformanceDiagnostics.ExtractCommandName(commandLine).ShouldBe(expected);
 

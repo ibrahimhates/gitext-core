@@ -10,12 +10,12 @@
         CanResize="False">
 
     <!--
-        Yerleşim GitExtensions `FormCheckoutBranch.Designer.cs`'ten (§ 9).
-        `flpnlLocalOptions` sırası: rbDontChange, rbMerge, rbStash, rbReset.
-        Düğme: cmdOk metni "Checkout".
+        The layout comes from GitExtensions `FormCheckoutBranch.Designer.cs` (§ 9).
+        `flpnlLocalOptions` order: rbDontChange, rbMerge, rbStash, rbReset.
+        Button: cmdOk text "Checkout".
 
-        "Yerel değişiklikler" grubu yalnızca kirli ağaçta gösteriliyor: temiz ağaçta
-        dört seçeneğin hepsi aynı şeyi yapar ve kullanıcıya anlamsız bir karar sordurur.
+        The "Local changes" group is shown only for a dirty tree: on a clean tree all four
+        options do the same thing and make the user answer a meaningless question.
     -->
     <StackPanel Margin="16" Spacing="10">
 

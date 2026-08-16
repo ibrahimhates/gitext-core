@@ -10,15 +10,15 @@
         CanResize="False">
 
     <!--
-        Yerleşim GitExtensions `FormCreateBranch.Designer.cs`'ten (§ 9). TabIndex sırası:
+        The layout comes from GitExtensions `FormCreateBranch.Designer.cs` (§ 9). TabIndex order:
           0/1 label1 "Branch name"        + BranchNameTextBox
           2/3 lblCreateBranch "Create branch at this revision" + commitPicker
-          5   chkCheckoutAfterCreate      (VARSAYILAN İŞARETLİ — GitExtensions'ta da öyle)
+          5   chkCheckoutAfterCreate      (CHECKED BY DEFAULT — as it is in GitExtensions)
               grpOrphan: chkCreateOrphan + chkClearOrphan
           cmdOk
 
-        Orphan grubu yerinde ama DEVRE DIŞI (§ 9 kural 2): P06-T01 kapsamında değil,
-        sonradan araya sokmak sırayı bozardı.
+        The orphan group is in place but DISABLED (§ 9 rule 2): it is out of P06-T01's scope,
+        and slotting it in later would break the order.
     -->
     <StackPanel Margin="16" Spacing="10">
 
@@ -35,9 +35,9 @@
         <StackPanel Spacing="4">
             <TextBlock Name="StartPointLabel" Text="{loc:Translate create_branch.create_branch_at_this_revision}" />
             <!--
-                GitExtensions'ta bu bir commit seçici. Bizde başlangıç noktası çağıran
-                taraftan geliyor (commit listesindeki seçim ya da HEAD), o yüzden salt
-                okunur gösteriliyor; seçici P06-T14'te bağlam menüsüyle birlikte.
+                In GitExtensions this is a commit picker. Here the starting point comes from the
+                caller (the selection in the commit list, or HEAD), so it is shown read-only; the
+                picker arrives in P06-T14 together with the context menu.
             -->
             <TextBox Name="StartPointText" IsReadOnly="True" IsTabStop="False" />
         </StackPanel>
