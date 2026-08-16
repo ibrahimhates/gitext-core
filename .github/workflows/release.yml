@@ -41,6 +41,13 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # ⚠️ REQUIRED. The version is read from MSBuild through the MinVer TARGET, and that
+      # target ships in the NuGet package — without a restore it does not exist and MSBuild
+      # answers "MSB4057: The target 'MinVer' does not exist in the project". This is what
+      # broke the v0.1.0 release: the job read an empty version and stopped.
+      - name: Restore (locked)
+        run: dotnet restore --locked-mode
+
       - name: Derive and verify version
         id: derive
         env:

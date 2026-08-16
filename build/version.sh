@@ -51,12 +51,27 @@ gitext_version() {
     #
     # MSBuild returns plain text when a single property is requested (JSON if
     # multiple are requested). Measured: the output was exactly "0.0.0-alpha.0.49\n".
-    local version
+    #
+    # ⚠️ MEASURED — the MinVer TARGET comes from the NuGet package, so it only exists
+    # after a restore. On a fresh checkout without one, MSBuild fails with
+    # "MSB4057: The target 'MinVer' does not exist in the project" — which is exactly
+    # how the release workflow broke: its version job never restored.
+    local version stderr_file
+    stderr_file="$(mktemp)"
+
     version="$(dotnet msbuild "$root/src/GitExt.Desktop/GitExt.Desktop.csproj" \
-        -t:MinVer -getProperty:MinVerVersion -nologo 2>/dev/null | tr -d '\r\n')" || {
-        echo "ERROR: could not read version from MSBuild." >&2
+        -t:MinVer -getProperty:MinVerVersion -nologo 2>"$stderr_file" | tr -d '\r\n')" || {
+        # ⚠️ MSBuild's own message is PASSED THROUGH. It used to be discarded to
+        # /dev/null and all that reached the log was "could not read version" —
+        # which says nothing about what to do next.
+        echo "ERROR: could not read version from MSBuild:" >&2
+        cat "$stderr_file" >&2
+        echo "Hint: has 'dotnet restore' been run? The MinVer target comes from the package." >&2
+        rm -f "$stderr_file"
         return 1
     }
+
+    rm -f "$stderr_file"
 
     if [ -z "$version" ]; then
         echo "ERROR: MinVerVersion returned empty. The MinVer package may be missing." >&2
@@ -74,7 +89,20 @@ gitext_version() {
 # no step would turn red. A silent wrong version is far more expensive than a broken build.
 gitext_require_releasable_version() {
     local version="${1:-}"
-    [ -n "$version" ] || version="$(gitext_version)"
+
+    # ⚠️ MEASURED — written as `[ -n "$version" ] || version="$(gitext_version)"`, the `||`
+    # SWALLOWS the failure: set -e does not apply on the right-hand side of `||`, the
+    # assignment takes the exit code of the assignment itself, and the function carried on
+    # with an EMPTY version and returned 0. The caller then printed "OK: " and went green
+    # on a version that could not be read. The failure has to be propagated explicitly.
+    if [ -z "$version" ]; then
+        version="$(gitext_version)" || return 1
+    fi
+
+    if [ -z "$version" ]; then
+        echo "ERROR: version came back empty." >&2
+        return 1
+    fi
 
     case "$version" in
         "$GITEXT_UNRELEASABLE_PREFIX"*)
