@@ -16,14 +16,42 @@ public class SettingsStoreTests : IDisposable
     private readonly string _directory =
         Path.Combine(Path.GetTempPath(), "gitext-settings-" + Guid.NewGuid().ToString("N")[..8]);
 
+    /// <summary>
+    /// Every store the test created, so that all of them are shut down before the directory goes.
+    /// </summary>
+    private readonly List<SettingsStore> _stores = [];
+
     private string FilePath => Path.Combine(_directory, "settings.json");
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private SettingsStore Create() => new(FilePath, TimeSpan.Zero);
+    private SettingsStore Create() => Track(new SettingsStore(FilePath, TimeSpan.Zero));
+
+    /// <summary>
+    /// Registers a store for shutdown at the end of the test.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Without this the suite is FLAKY, and it was CI that caught it: the save is debounced, so
+    /// <c>Update</c> only SCHEDULES the write and it runs on the thread pool. A test that left the
+    /// store un-disposed then raced <see cref="Dispose"/>'s recursive delete against that write, and
+    /// the write recreated the directory with its <c>settings.json.tmp</c> mid-delete —
+    /// <c>IOException: Directory not empty</c>, in a test that has nothing to do with saving.
+    /// Disposing the store flushes the pending write and closes the race at its source.
+    /// </remarks>
+    private SettingsStore Track(SettingsStore store)
+    {
+        _stores.Add(store);
+
+        return store;
+    }
 
     public void Dispose()
     {
+        foreach (SettingsStore store in _stores)
+        {
+            store.Dispose();
+        }
+
         if (Directory.Exists(_directory))
         {
             Directory.Delete(_directory, recursive: true);
@@ -206,7 +234,7 @@ public class SettingsStoreTests : IDisposable
     [Fact]
     public async Task Flush_bekleyen_degisikligi_hemen_yazar()
     {
-        SettingsStore store = new(FilePath, TimeSpan.FromSeconds(30));
+        SettingsStore store = Track(new SettingsStore(FilePath, TimeSpan.FromSeconds(30)));
         await store.LoadAsync(Ct);
 
         store.Update(s => s.Layout.BranchPanelWidth = 111);
