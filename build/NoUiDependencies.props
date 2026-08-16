@@ -1,13 +1,14 @@
 <Project>
 
   <!--
-    P01-T11 — Katman ihlali koruması.
+    P01-T11 — The layering violation guard.
 
-    ADR-0003: GitExt.Core ve GitExt.Graph hiçbir UI paketine bağımlı OLAMAZ.
-    ADR-0001: Bu kural, UI framework'ünü değiştirebilme güvencesini ayakta tutan tek mekanizma.
+    ADR-0003: GitExt.Core and GitExt.Graph MUST NOT depend on any UI package.
+    ADR-0001: This rule is the one mechanism keeping the promise that the UI framework can be
+    replaced.
 
-    Disipline değil derleyiciye güveniyoruz: ihlal DERLEME HATASI üretir.
-    ReferencePath çözümlenmiş kapanışı içerdiği için transitif bağımlılıklar da yakalanır.
+    We trust the compiler, not discipline: a violation produces a BUILD ERROR.
+    Because ReferencePath holds the resolved closure, transitive dependencies are caught too.
   -->
 
   <Target Name="EnsureNoUiDependencies" AfterTargets="ResolveReferences">

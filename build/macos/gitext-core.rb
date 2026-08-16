@@ -1,21 +1,21 @@
 # Homebrew cask (P10-T23).
 #
-# ÜRETİLMİŞ ŞABLON: sürüm ve sha256 yayın sırasında doldurulur.
+# GENERATED TEMPLATE: the version and the sha256 are filled in during the release.
 #
-# ⚠️ KENDİ TAP'İMİZ, homebrew-cask DEĞİL (P10-T23 kararı). homebrew-cask imzasız ve
-# notarize edilmemiş uygulamaları kabul etmiyor; notarization ücretli bir Apple
-# Developer hesabı gerektiriyor ve alınmadı (P10-T22).
+# ⚠️ OUR OWN TAP, NOT homebrew-cask (the P10-T23 decision). homebrew-cask does not accept
+# unsigned and un-notarized applications; notarization requires a paid Apple Developer
+# account, which was not obtained (P10-T22).
 #
-# Kurulum:
+# Installation:
 #   brew tap ibrahimhates/tap
 #   brew install --cask gitext-core
 
 cask "gitext-core" do
   version "0.0.0"
 
-  # Apple Silicon ve Intel ayrı derleniyor; Homebrew doğru olanı seçiyor.
-  # Universal binary üretmek iki ikiliyi `lipo` ile birleştirmeyi gerektiriyor ve
-  # bu yalnızca macOS'ta yapılabiliyor — kazancı da yalnızca tek dosya olması.
+  # Apple Silicon and Intel are built separately; Homebrew picks the right one.
+  # Producing a universal binary would mean joining the two with `lipo`, which can only be
+  # done on macOS — and all it buys is a single file.
   on_arm do
     sha256 "0000000000000000000000000000000000000000000000000000000000000000"
     url "https://github.com/ibrahimhates/gitext-core/releases/download/v#{version}/gitext-core-#{version}-osx-arm64.dmg"
@@ -30,18 +30,18 @@ cask "gitext-core" do
   desc "Fast native Git GUI"
   homepage "https://github.com/ibrahimhates/gitext-core"
 
-  # git bir ÇALIŞMA ZAMANI bağımlılığı (ADR-0002): uygulama git'i alt süreç olarak
-  # çalıştırıyor. macOS'ta Xcode Command Line Tools ile gelen git de yeterli.
+  # git is a RUNTIME dependency (ADR-0002): the application runs git as a subprocess.
+  # On macOS the git that comes with the Xcode Command Line Tools is enough.
   depends_on formula: "git"
   depends_on macos: ">= :monterey"
 
   app "gitext-core.app"
 
-  # 🔴 KARANTİNA ÖZNİTELİĞİ KALDIRILIYOR (P10-T22). Uygulama notarize edilmediği için
-  # Gatekeeper onu "hasarlı" diye engelliyor — mesaj yanıltıcı, dosya hasarlı değil,
-  # yalnızca imzasız. Bu satır olmadan kullanıcı elle `xattr -dr com.apple.quarantine`
-  # çalıştırmak zorunda kalır ve çoğu kullanıcı bunu yapmaz, uygulamanın bozuk olduğunu
-  # düşünür. Homebrew bu işlemi kullanıcının açık kurulum onayıyla yapıyor.
+  # 🔴 THE QUARANTINE ATTRIBUTE IS REMOVED (P10-T22). Because the application is not
+  # notarized, Gatekeeper blocks it as "damaged" — the message is misleading, the file is not
+  # damaged, only unsigned. Without this line the user has to run
+  # `xattr -dr com.apple.quarantine` by hand, and most users will not; they conclude the
+  # application is broken. Homebrew does this with the user's explicit consent to install.
   postflight do
     system_command "/usr/bin/xattr",
                    args: ["-dr", "com.apple.quarantine", "#{appdir}/gitext-core.app"],

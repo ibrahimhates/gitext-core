@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""C# tarafındaki kullanıcı metinlerini toplar (P11-T05).
+"""Collects the user-facing texts on the C# side (P11-T05).
 
-    tools/i18n/extract-csharp.py --collect    # catalog-cs.json üretir/günceller
-    tools/i18n/extract-csharp.py --report     # taşınmamış dizeleri listeler
+    tools/i18n/extract-csharp.py --collect    # produces/updates catalog-cs.json
+    tools/i18n/extract-csharp.py --report     # lists the strings not yet moved
 
-⚠️ Bu betik XAML'deki gibi OTOMATİK DEĞİŞTİRME YAPMIYOR. Sebebi ölçülebilir bir fark:
-XAML'de metin bir özniteliğin tamamı, bağlamı belli. C#'ta ise aynı dize
-`Error = "..."` da olabilir, `$"... {x} ..."` içinde de, `throw new(...)` içinde de —
-her biri farklı bir dönüşüm gerektiriyor (indeksleyici mi, Format mı, hiç dokunma mı).
-Kör bir yeniden yazma sessizce yanlış kod üretirdi.
+⚠️ This script DOES NOT REWRITE AUTOMATICALLY the way the XAML one does. The reason is a
+measurable difference: in XAML the text is the whole of an attribute and its context is
+clear. In C# the same string can be `Error = "..."`, or inside `$"... {x} ..."`, or inside
+`throw new(...)` — each needing a different transformation (the indexer? Format? leave it
+alone?). A blind rewrite would silently produce wrong code.
 
-Betiğin işi: hiçbir dizenin ATLANMAMASINI garanti etmek. Değiştirme elle yapılıyor,
-sonra --report ile kalan sıfırlanana kadar kontrol ediliyor.
+The script's job is to guarantee that NO string is MISSED. The replacement is done by hand,
+then checked with --report until nothing is left.
 """
 
 import argparse
@@ -26,7 +26,7 @@ CATALOG = pathlib.Path(__file__).resolve().parent / "catalog-cs.json"
 
 TURKISH = "ğüşıöçĞÜŞİÖÇ"
 
-# Bu dosyalardaki dizeler kullanıcıya gitmiyor.
+# The strings in these files do not reach the user.
 SKIP_FILES = {"Translator.cs", "LanguageInfo.cs", "LocaleFile.cs", "TranslateExtension.cs"}
 
 
@@ -35,7 +35,7 @@ def is_comment(line: str) -> bool:
 
 
 def each_string(path: pathlib.Path):
-    """Türkçe karakter içeren dize sabitlerini (satır no, dize) olarak verir."""
+    """Yields the string literals containing a Turkish character as (line number, string)."""
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if is_comment(line):
             continue
@@ -76,7 +76,7 @@ def collect() -> int:
         encoding="utf-8")
 
     pending = sum(1 for e in catalog.values() if not e["en"])
-    print(f"katalog: {len(catalog)} dize ({added} yeni), {pending} çeviri bekliyor")
+    print(f"catalog: {len(catalog)} strings ({added} new), {pending} awaiting translation")
     return 0
 
 
@@ -98,7 +98,7 @@ def report() -> int:
         if len(found) > 6:
             print(f"  … {len(found) - 6} tane daha")
 
-    print(f"\ntoplam {total} taşınmamış dize")
+    print(f"\n{total} strings not yet moved in total")
     return 0 if total == 0 else 1
 
 

@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-"""XAML'deki kullanıcı metinlerini çeviri anahtarlarına taşır (P11-T04).
+"""Moves the user-facing texts in XAML onto translation keys (P11-T04).
 
-İKİ AŞAMALI, çünkü anahtarlar İngilizce olmalı ama kaynak metinler Türkçe:
+IN TWO STAGES, because the keys have to be English while the source texts are Turkish:
 
     1) tools/i18n/extract-xaml.py --collect
-       Bütün literal metinleri toplar ve tools/i18n/catalog.json üretir.
-       Her girdinin "en" alanı BOŞ gelir; İngilizce çeviriler oraya yazılır.
+       Collects every literal text and produces tools/i18n/catalog.json.
+       Each entry's "en" field arrives EMPTY; the English translations are written there.
 
     2) tools/i18n/extract-xaml.py --apply
-       Anahtarı İNGİLİZCE çeviriden türetir, XAML'leri {loc:Translate ...} ile
-       değiştirir, en.json ve tr.json'u yazar.
+       Derives the key from the ENGLISH translation, rewrites the XAML with
+       {loc:Translate ...}, and writes en.json and tr.json.
 
-⚠️ Anahtar neden İngilizceden türetiliyor: kaynak dil İngilizce (ADR yok ama kural bu).
-Türkçeden türetilseydi anahtarlar 'depo_ac' gibi olurdu ve yarın fr.json yazan biri
-anlamadığı bir dilde anahtarlarla uğraşırdı.
+⚠️ Why the key is derived from the English: the source language is English (there is no ADR
+but that is the rule). Derived from Turkish, the keys would look like 'depo_ac', and someone
+writing fr.json tomorrow would be wrestling with keys in a language they do not read.
 
-⚠️ Neden betik: 37 dosyada 430 öznitelik var. Elle taşımak sessiz hata üretir — atlanan
-bir Text= sonsuza kadar Türkçe kalır ve kimse fark etmez. Betik hiçbirini atlamıyor.
-Tekrar çalıştırılabilir: zaten {loc:Translate ...} olanları görmezden geliyor.
+⚠️ Why a script: there are 430 attributes across 37 files. Moving them by hand produces silent
+mistakes — a missed Text= stays Turkish forever and nobody notices. The script misses none of
+them. It can be re-run: it ignores the ones that are already {loc:Translate ...}.
 """
 
 import argparse
@@ -32,22 +32,22 @@ VIEWS = ROOT / "src" / "GitExt.UI" / "Views"
 LOCALES = ROOT / "src" / "GitExt.UI" / "Locales"
 CATALOG = pathlib.Path(__file__).resolve().parent / "catalog.json"
 
-# Kullanıcıya metin gösteren öznitelikler.
+# The attributes that show text to the user.
 ATTRIBUTES = ["Text", "Header", "Content", "Title", "Watermark", "ToolTip.Tip"]
 
-# Değeri bunlarla BAŞLIYORSA dokunma: bağlama, kaynak veya zaten çevrilmiş.
+# Leave it alone when the value STARTS with one of these: a binding, a resource, or already translated.
 SKIP_PREFIXES = ("{", "$")
 
 
 def slugify(text: str) -> str:
-    """İngilizce metinden anahtar parçası: 'Open repository' -> 'open_repository'."""
+    """The key fragment from the English text: 'Open repository' -> 'open_repository'."""
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     text = re.sub(r"[^a-zA-Z0-9]+", "_", text).strip("_").lower()
     return re.sub(r"_+", "_", text)[:44] or "text"
 
 
 def view_prefix(path: pathlib.Path) -> str:
-    """Dosya adından anahtar öneki: MainWindow.axaml -> main."""
+    """The key prefix from the file name: MainWindow.axaml -> main."""
     name = re.sub(r"(?<!^)(?=[A-Z])", "_", path.stem).lower()
     for suffix in ("_view", "_window", "_dialog", "_button"):
         name = name.removesuffix(suffix)
@@ -55,7 +55,7 @@ def view_prefix(path: pathlib.Path) -> str:
 
 
 def decode_entities(value: str) -> str:
-    """XAML kaçışlarını gerçek karaktere çevirir; JSON'a düz metin yazılıyor."""
+    """Turns the XAML escapes into real characters; plain text is written to the JSON."""
     return (value
             .replace("&quot;", '"')
             .replace("&#10;", "\n")
@@ -66,7 +66,7 @@ def decode_entities(value: str) -> str:
 
 
 def each_literal(source: str):
-    """Dosyadaki çevrilebilir öznitelikleri (attribute, ham değer) olarak verir."""
+    """Yields the file's translatable attributes as (attribute, raw value)."""
     for attribute in ATTRIBUTES:
         for match in re.finditer(rf'(\b{re.escape(attribute)}=")([^"]*)(")', source):
             value = match.group(2)
@@ -74,7 +74,7 @@ def each_literal(source: str):
             if not value.strip() or value.startswith(SKIP_PREFIXES):
                 continue
 
-            # Yalnızca noktalama/simge olan değerler (ikonlar, ayraçlar) çevrilmez.
+            # Values that are only punctuation/symbols (icons, separators) are not translated.
             if not re.search(r"[a-zA-ZğüşıöçĞÜŞİÖÇ]", value):
                 continue
 
@@ -82,7 +82,7 @@ def each_literal(source: str):
 
 
 def collect() -> int:
-    """Metinleri toplar; mevcut çeviriler korunur."""
+    """Collects the texts; existing translations are preserved."""
     catalog: dict[str, dict[str, str]] = {}
 
     if CATALOG.exists():
@@ -107,27 +107,27 @@ def collect() -> int:
         encoding="utf-8")
 
     pending = sum(1 for e in catalog.values() if not e["en"])
-    print(f"katalog: {len(catalog)} girdi ({added} yeni), {pending} çeviri bekliyor")
+    print(f"catalog: {len(catalog)} entries ({added} new), {pending} awaiting translation")
     print(f"  {CATALOG.relative_to(ROOT)}")
     return 0
 
 
 def apply() -> int:
-    """Anahtarları İngilizce çeviriden türetip XAML'leri ve dil dosyalarını yazar."""
+    """Derives the keys from the English translations and writes the XAML and locale files."""
     if not CATALOG.exists():
-        print("HATA: önce --collect çalıştırın.", file=sys.stderr)
+        print("ERROR: run --collect first.", file=sys.stderr)
         return 1
 
     catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
     missing = [k for k, e in catalog.items() if not e["en"]]
 
     if missing:
-        print(f"HATA: {len(missing)} girdinin İngilizcesi yok. İlk beşi:", file=sys.stderr)
+        print(f"ERROR: {len(missing)} entries have no English. The first five:", file=sys.stderr)
         for key in missing[:5]:
             print(f"  {key}", file=sys.stderr)
         return 1
 
-    # identifier -> anahtar. Aynı İngilizce metin aynı anahtarı paylaşıyor.
+    # identifier -> key. The same English text shares the same key.
     keys: dict[str, str] = {}
     english: dict[str, str] = {}
     turkish: dict[str, str] = {}
@@ -193,19 +193,19 @@ def apply() -> int:
     write_locale("en.json", "en", "English", english)
     write_locale("tr.json", "tr", "Türkçe", turkish)
 
-    print(f"\n{total} metin taşındı, {len(english)} anahtar")
+    print(f"\n{total} texts moved, {len(english)} keys")
     return 0
 
 
 def write_locale(filename: str, code: str, name: str, entries: dict[str, str]) -> None:
-    """Dil dosyasını yazar; XAML dışından gelen mevcut anahtarlar korunuyor."""
+    """Writes the locale file; existing keys that came from outside XAML are preserved."""
     path = LOCALES / filename
     existing: dict[str, str] = {}
 
     if path.exists():
         loaded = json.loads(path.read_text(encoding="utf-8"))
         loaded.pop("_meta", None)
-        # test.* anahtarları testlerin kendi sabitleri; korunuyorlar.
+        # The test.* keys are the tests' own constants; they are preserved.
         existing = loaded
 
     merged = {**existing, **entries}

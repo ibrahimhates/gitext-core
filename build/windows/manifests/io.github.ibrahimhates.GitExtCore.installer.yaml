@@ -1,11 +1,11 @@
-# winget manifesti — kurulum paketi (P10-T18).
+# winget manifest — the installer package (P10-T18).
 #
-# ÜRETİLMİŞ ŞABLON: sürüm, URL ve SHA256 yayın sırasında doldurulur.
-# winget-pkgs deposuna gönderim: https://github.com/microsoft/winget-pkgs
+# GENERATED TEMPLATE: the version, the URL and the SHA256 are filled in during the release.
+# Submitted to the winget-pkgs repository: https://github.com/microsoft/winget-pkgs
 #
-# ⚠️ İmzasız paket (P10-T17): winget kurulumu SmartScreen uyarısını ATLAMIYOR ama
-# kullanıcı komut satırında olduğu için deneyim daha az kırılgan. Bu, imzasız
-# yayınlamanın en az zarar veren kanalı.
+# ⚠️ An unsigned package (P10-T17): installing through winget DOES NOT SKIP the SmartScreen
+# warning, but because the user is on the command line the experience is less jarring. This is
+# the least harmful channel for shipping unsigned.
 
 PackageIdentifier: io.github.ibrahimhates.GitExtCore
 PackageVersion: 0.0.0
@@ -17,8 +17,8 @@ InstallModes:
   - silentWithProgress
 UpgradeBehavior: install
 
-# git bir ÇALIŞMA ZAMANI bağımlılığı (ADR-0002). winget bunu kurabiliyor; kullanıcının
-# git'i olmadan uygulama hiç çalışmayacağı için bildirmek doğru.
+# git is a RUNTIME dependency (ADR-0002). winget can install it; because the application will
+# not run at all without the user's git, declaring it is the right thing.
 Dependencies:
   PackageDependencies:
     - PackageIdentifier: Git.Git

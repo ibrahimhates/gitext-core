@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  AppStream metadata (P10-T07). Flathub ve yazılım merkezleri (GNOME Software, KDE
-  Discover, elementary AppCenter) için zorunlu.
+  AppStream metadata (P10-T07). Required by Flathub and by software centres (GNOME Software,
+  KDE Discover, elementary AppCenter).
 
-  Dosya adı uygulama kimliğiyle AYNI olmak zorunda: io.github.ibrahimhates.GitExtCore
-  (P01-T21'de belirlendi, .desktop dosyasıyla da eşleşiyor).
+  The file name must be THE SAME as the application id: io.github.ibrahimhates.GitExtCore
+  (settled in P01-T21, and it matches the .desktop file too).
 
-  ⚠️ Ekran görüntüsü URL'leri P10-T26'da gerçek dosyalarla doldurulacak. AppStream
-  ekran görüntüsünü ZORUNLU tutmuyor ama yazılım merkezleri ekran görüntüsü olmayan
-  uygulamaları listelemekte isteksiz; Flathub'a gönderimden önce şart.
+  ⚠️ The screenshot URLs are filled in with real files in P10-T26. AppStream does not REQUIRE
+  a screenshot, but software centres are reluctant to list applications without one; it is
+  essential before submitting to Flathub.
 -->
 <component type="desktop-application">
   <id>io.github.ibrahimhates.GitExtCore</id>
@@ -75,8 +75,8 @@
   </keywords>
 
   <!--
-    Masaüstü uygulaması: klavye ve işaretçi gerekiyor, dokunmatik desteklenmiyor.
-    Yazılım merkezleri bu bilgiyi cihaz uyumluluğu göstermek için kullanıyor.
+    A desktop application: a keyboard and a pointer are needed, touch is not supported.
+    Software centres use this information to show device compatibility.
   -->
   <supports>
     <control>keyboard</control>
@@ -90,16 +90,16 @@
   <content_rating type="oars-1.1" />
 
   <!--
-    Sürüm geçmişi. Yeni sürümde buraya yeni bir <release> eklenmesi gerekiyor;
-    P10-T29'da yayın kontrol listesinin parçası.
+    The release history. A new <release> has to be added here for every new version;
+    it is part of the release checklist in P10-T29.
   -->
   <!--
-    ⚠️ Her yayında buraya YENİ bir <release> eklenmesi gerekiyor; en yeni EN ÜSTTE.
-    Yazılım merkezleri bu listeyi "neler değişti" olarak gösteriyor ve eksik kalırsa
-    kullanıcı sürüm geçmişini hiç göremiyor.
+    ⚠️ A NEW <release> has to be added here on every release; the newest AT THE TOP.
+    Software centres show this list as "what changed", and when it is missing the user cannot
+    see the release history at all.
 
-    `type="development"`: kararlı sürüm değil. Bunu atlamak, yazılım merkezlerinin
-    0.x bir sürümü kararlı gibi listelemesi demek olurdu.
+    `type="development"`: not a stable release. Leaving it out would mean software centres
+    listing a 0.x version as though it were stable.
   -->
   <releases>
     <release version="0.1.0" date="2026-08-15" type="development">

@@ -1,12 +1,14 @@
 # Maintainer: gitext-core contributors <https://github.com/ibrahimhates/gitext-core>
 #
-# gitext-core — hazır ikiliden kurulum (P10-T13).
+# gitext-core — installation from a prebuilt binary (P10-T13).
 #
-# Bu paket yayınlanmış tarball'ı kullanır; kaynaktan derleyen sürüm için `gitext-core`
-# paketine bakın. Çoğu kullanıcı için önerilen budur: .NET SDK indirmeden kurulur.
+# This package uses the published tarball; for the version that builds from source see the
+# `gitext-core` package. This is the one recommended for most users: it installs without
+# downloading the .NET SDK.
 #
-# Sürüm ve sha256sum YAYIN SIRASINDA doldurulur — build/arch/update.sh bunu yapıyor.
-# Elle güncellemek, sürümün ayrışacağı ikinci bir kaynak yaratırdı (ADR-0006).
+# The version and the sha256sum are filled in DURING THE RELEASE — build/arch/update.sh does
+# that. Updating them by hand would create a second source for the version to diverge from
+# (ADR-0006).
 
 pkgname=gitext-core-bin
 pkgver=0.0.0
@@ -16,14 +18,14 @@ arch=('x86_64')
 url="https://github.com/ibrahimhates/gitext-core"
 license=('GPL-3.0-or-later')
 
-# git bir ÇALIŞMA ZAMANI bağımlılığı, isteğe bağlı değil (ADR-0002): uygulama git'i
-# alt süreç olarak çalıştırıyor. 2.30, ADR-0002'deki minimum.
+# git is a RUNTIME dependency, not an optional one (ADR-0002): the application runs git as a
+# subprocess. 2.30 is the minimum from ADR-0002.
 depends=('git>=2.30')
 
 provides=('gitext-core')
 conflicts=('gitext-core')
 
-# İkili self-contained: .NET runtime içine gömülü, ayrıca dotnet-runtime gerekmiyor.
+# The binary is self-contained: the .NET runtime is embedded, so dotnet-runtime is not needed.
 options=('!strip')
 
 source=("gitext-core-${pkgver}-linux-x64.tar.gz::${url}/releases/download/v${pkgver}/gitext-core-${pkgver}-linux-x64.tar.gz")
@@ -40,7 +42,7 @@ package() {
     install -Dm644 share/metainfo/io.github.ibrahimhates.GitExtCore.metainfo.xml \
         "${pkgdir}/usr/share/metainfo/io.github.ibrahimhates.GitExtCore.metainfo.xml"
 
-    # İkonlar boyut boyut; dizin yapısı korunmalı.
+    # The icons come size by size; the directory structure has to be preserved.
     find share/icons -type f | while read -r icon; do
         install -Dm644 "$icon" "${pkgdir}/usr/${icon}"
     done

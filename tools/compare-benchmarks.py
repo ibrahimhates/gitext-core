@@ -53,14 +53,14 @@ def format_duration(nanoseconds):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Benchmark regresyon karşılaştırması")
-    parser.add_argument("baseline", help="Temel çizgi JSON dosyası")
-    parser.add_argument("current", help="Yeni koşunun JSON dosyası")
+    parser = argparse.ArgumentParser(description="Benchmark regression comparison")
+    parser.add_argument("baseline", help="The baseline JSON file")
+    parser.add_argument("current", help="The new run's JSON file")
     parser.add_argument(
         "--threshold",
         type=float,
         default=DEFAULT_THRESHOLD,
-        help=f"Uyarı eşiği, yüzde (varsayılan {DEFAULT_THRESHOLD})",
+        help=f"Warning threshold, per cent (default {DEFAULT_THRESHOLD})",
     )
     arguments = parser.parse_args()
 
@@ -68,15 +68,15 @@ def main():
         baseline = load(arguments.baseline)
         current = load(arguments.current)
     except (OSError, json.JSONDecodeError) as error:
-        # Dosya yoksa veya bozuksa da kırmıyoruz: karşılaştırılacak bir temel çizgi
-        # olmaması bir regresyon değil.
-        print(f"::warning::Karşılaştırma yapılamadı: {error}")
+        # We do not break on a missing or corrupt file either: having no baseline to compare
+        # against is not a regression.
+        print(f"::warning::Could not compare: {error}")
         return 0
 
     shared = sorted(set(baseline) & set(current))
 
     if not shared:
-        print("::warning::Temel çizgiyle ortak benchmark yok — karşılaştırma atlandı.")
+        print("::warning::No benchmark in common with the baseline — comparison skipped.")
         return 0
 
     regressions = []
@@ -96,31 +96,31 @@ def main():
         elif change <= -arguments.threshold:
             improvements.append((name, before, after, change))
 
-    print(f"Karşılaştırılan benchmark: {len(shared)}  ·  eşik: %{arguments.threshold:.0f}")
+    print(f"Benchmarks compared: {len(shared)}  ·  threshold: {arguments.threshold:.0f}%")
 
-    # Yalnızca temel çizgide veya yalnızca yeni koşuda olanlar sessizce atlanmıyor:
-    # eksik bir benchmark, silinmiş ya da adı değişmiş olabilir ve bunu görmek gerekir.
+    # The ones present only in the baseline or only in the new run are not skipped silently:
+    # a missing benchmark may have been deleted or renamed, and that needs to be seen.
     for name in sorted(set(baseline) - set(current)):
-        print(f"::warning::Temel çizgide var, yeni koşuda YOK: {name}")
+        print(f"::warning::In the baseline, MISSING from the new run: {name}")
 
     for name in sorted(set(current) - set(baseline)):
-        print(f"  yeni benchmark (temel çizgide yok): {name}")
+        print(f"  new benchmark (not in the baseline): {name}")
 
     for name, before, after, change in improvements:
         print(f"  ⚡ {name}: {format_duration(before)} → {format_duration(after)}  ({change:+.1f}%)")
 
     for name, before, after, change in regressions:
         print(
-            f"::warning::Performans gerilemesi: {name} "
+            f"::warning::Performance regression: {name} "
             f"{format_duration(before)} → {format_duration(after)} ({change:+.1f}%)"
         )
 
     if regressions:
-        print(f"\n{len(regressions)} benchmark eşiğin üstünde yavaşladı.")
+        print(f"\n{len(regressions)} benchmark(s) slowed down past the threshold.")
     else:
-        print("\nEşiği aşan gerileme yok.")
+        print("\nNo regression past the threshold.")
 
-    # Kasıtlı: CI'yı kırmıyoruz.
+    # Deliberate: we do not break CI.
     return 0
 
 

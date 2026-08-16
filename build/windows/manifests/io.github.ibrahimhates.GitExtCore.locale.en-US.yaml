@@ -1,5 +1,5 @@
-# winget manifesti — yerelleştirme (P10-T18).
-# ÜRETİLMİŞ ŞABLON: sürüm yayın sırasında doldurulur.
+# winget manifest — localisation (P10-T18).
+# GENERATED TEMPLATE: the version is filled in during the release.
 
 PackageIdentifier: io.github.ibrahimhates.GitExtCore
 PackageVersion: 0.0.0
