@@ -8,18 +8,18 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T03 — dal yeniden adlandırma ve silme akışı (ViewModel tarafı).
+/// P06-T03 — the branch rename and delete flow (ViewModel side).
 /// </summary>
 public class BranchEditTests
 {
-    /// <summary>Seçili commit'in dal rozeti taşıması şart; sahte ref okuyucu onu kuruyor.</summary>
+    /// <summary>The selected commit must carry a branch badge; the fake ref reader sets that up.</summary>
     private const string BranchName = "ozellik";
 
     private static MainWindowViewModel Create(
         FakeBranchWriter writer,
         FakeBranchEditPrompt prompt)
     {
-        // Dal, ÜÇÜNCÜ commit'e (listenin başı) bağlanıyor.
+        // The branch is attached to the THIRD commit (the top of the list).
         RepositoryRefs refs = FakeGitData.Refs(
             localBranches: [FakeGitData.LocalBranch(BranchName, FakeGitData.Sha(3), isCurrent: true)]);
 
@@ -37,7 +37,7 @@ public class BranchEditTests
         };
     }
 
-    /// <summary>Yerel dal rozeti taşıyan satırın indeksi; yoksa -1.</summary>
+    /// <summary>Index of the row carrying a local branch badge; -1 if there is none.</summary>
     private static int RowWithLocalBranch(MainWindowViewModel model)
     {
         for (int i = 0; i < model.Commits.Rows.Count; i++)
@@ -63,7 +63,7 @@ public class BranchEditTests
 
         await model.RenameBranchCommand.ExecuteAsync(null);
 
-        // Sessizce hiçbir şey yapmamak komutu bozuk gösterirdi.
+        // Silently doing nothing would make the command look broken.
         model.BranchNotice.ShouldNotBeNull();
         writer.Renamed.ShouldBeEmpty();
     }
@@ -97,8 +97,8 @@ public class BranchEditTests
         await model.OpenRepositoryAsync("/tmp/depo");
         model.Commits.SelectedIndex = RowWithLocalBranch(model);
 
-        // Diyalog mevcut adla dolu açılıyor; kullanıcı değiştirmeden onaylarsa gereksiz
-        // bir git çağrısı yapmanın anlamı yok.
+        // The dialog opens pre-filled with the current name; if the user confirms without
+        // changing it, there is no point in making a git call.
         MainWindowViewModel same = Create(
             writer,
             new FakeBranchEditPrompt(
@@ -144,7 +144,7 @@ public class BranchEditTests
 
         await model.DeleteBranchCommand.ExecuteAsync(null);
 
-        // İkinci tur AÇILMAMALI: birleştirilmiş dalda zorlama uyarısı yanlış alarm olurdu.
+        // The second round must NOT open: a force warning on a merged branch would be a false alarm.
         prompt.DeleteRequests.Count.ShouldBe(1);
         prompt.DeleteRequests[0].IsUnmerged.ShouldBeFalse();
         writer.Deleted.ShouldHaveSingleItem().Force.ShouldBeFalse();
@@ -153,9 +153,9 @@ public class BranchEditTests
     [AvaloniaFact]
     public async Task Birlestirilmemis_dalda_IKINCI_TUR_kurtarma_hash_i_ile_aciliyor()
     {
-        // 🔴 P06-T03'ün merkezi akışı. Birleşmişliği önden hesaplamıyoruz (ölçüldü: `-d`
-        // upstream'e birleşmiş dalı da siliyor); kararı git veriyor, ikinci tur onun
-        // reddi üzerine açılıyor ve KURTARMA HASH'İ o zaman elimizde oluyor.
+        // 🔴 The central flow of P06-T03. We do not compute merged-ness up front (measured: `-d`
+        // also deletes a branch merged into upstream); git makes the decision, the second round
+        // opens on its refusal, and that is when we have the RECOVERY HASH in hand.
         FakeBranchWriter writer = new()
         {
             UnmergedFailure = new BranchNotMergedException("ozellik", "1234567890abcdef"),
@@ -206,9 +206,9 @@ public class BranchEditTests
     [AvaloniaFact]
     public async Task Zorlanan_silmede_KURTARMA_KOMUTU_bildirimde_kaliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: silinen dalın KENDİ reflog'u da siliniyor; dal bu çalışma ağacında
-        // hiç checkout edilmemişse HEAD reflog'unda da iz yok. Hash bildirimde kalmazsa
-        // kullanıcının geri dönüş yolu kalmaz.
+        // 🔴 MEASURED: the deleted branch's OWN reflog is deleted too; if the branch was never
+        // checked out in this worktree there is no trace in the HEAD reflog either. If the hash
+        // does not stay in the notification, the user has no way back.
         FakeBranchWriter writer = new()
         {
             UnmergedFailure = new BranchNotMergedException("ozellik", "1234567890abcdef"),

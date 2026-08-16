@@ -6,17 +6,17 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Tests.Localization;
 
 /// <summary>
-/// Dil dosyalarının eksiksiz ve tutarlı olduğunu doğrular (P11-T08).
+/// Verifies that the language files are complete and consistent (P11-T08).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bu, yerelleştirmenin <b>asıl</b> korumasıdır. Eksik bir çeviri istisna fırlatmaz, testleri
-/// kırmaz, derlemeyi durdurmaz — yalnızca o satır yanlış dilde görünür. Kullanıcı fark eder,
-/// biz etmeyiz.
+/// This is the <b>real</b> guard for localisation. A missing translation throws nothing, breaks
+/// no test, stops no build — only that one line shows up in the wrong language. The user notices,
+/// we do not.
 /// </para>
 /// <para>
-/// Bir anahtar eklenip yalnızca <c>en.json</c>'a yazıldığında bu testler kırılıyor; yani
-/// çeviriyi unutmak <b>mümkün değil.</b>
+/// When a key is added and written only into <c>en.json</c>, these tests break; that is,
+/// forgetting the translation is <b>not possible.</b>
 /// </para>
 /// </remarks>
 public class LocaleCompletenessTests
@@ -55,8 +55,8 @@ public class LocaleCompletenessTests
     [Fact]
     public void Butun_diller_ayni_anahtar_kumesine_sahip()
     {
-        // 🔴 Asıl koruma bu. Bir anahtarı yalnızca en.json'a eklemek, o satırın Türkçe
-        // arayüzde İngilizce görünmesi demek — ve hiçbir şey bunu haber vermez.
+        // 🔴 This is the real guard. Adding a key only to en.json means that line shows up in
+        // English on the Turkish UI — and nothing tells you about it.
         Dictionary<string, Dictionary<string, string>> locales = LoadAll();
 
         locales.ShouldContainKey(Translator.FallbackLanguage);
@@ -78,8 +78,8 @@ public class LocaleCompletenessTests
     [Fact]
     public void Hicbir_ceviri_bos_degil()
     {
-        // Boş bir değer, arayüzde boş bir etiket demek — eksik anahtardan daha kötü,
-        // çünkü Translator'ın geri düşme yolu bile devreye girmiyor.
+        // An empty value means an empty label in the UI — worse than a missing key, because
+        // not even Translator's fallback path kicks in.
         foreach ((string code, Dictionary<string, string> entries) in LoadAll())
         {
             foreach ((string key, string value) in entries)
@@ -106,9 +106,9 @@ public class LocaleCompletenessTests
     [Fact]
     public void Yer_tutucular_diller_arasinda_ayni()
     {
-        // 🔴 Çeviride "{0}" düşerse metin sessizce eksik bilgiyle görünür; fazladan bir
-        // "{1}" eklenirse FormatException'a en yakın hâli ham şablonun gösterilmesi olur.
-        // İkisi de yalnızca o dili kullanan kullanıcıda ortaya çıkar.
+        // 🔴 If "{0}" is dropped from a translation the text silently shows up with missing
+        // information; if an extra "{1}" is added, the closest thing to a FormatException is
+        // the raw template being displayed. Both only surface for users of that one language.
         Dictionary<string, Dictionary<string, string>> locales = LoadAll();
         Dictionary<string, string> reference = locales[Translator.FallbackLanguage];
 
@@ -142,15 +142,15 @@ public class LocaleCompletenessTests
     [Fact]
     public void Her_GitFailureKind_degeri_icin_ceviri_var()
     {
-        // Enum'a yeni bir değer eklendiğinde bu test kırılıyor: eklemeyi unutmak,
-        // o hata türünde kullanıcıya ham git çıktısı göstermek demek.
+        // This test breaks when a new value is added to the enum: forgetting to add it means
+        // showing the user raw git output for that error kind.
         Dictionary<string, string> english = LoadAll()[Translator.FallbackLanguage];
 
         foreach (GitFailureKind kind in Enum.GetValues<GitFailureKind>())
         {
             if (kind == GitFailureKind.Unknown)
             {
-                // Bilinçli: sınıflandırılamayan hata ham mesaja düşüyor (Loc.GitError).
+                // Deliberate: an unclassifiable error falls back to the raw message (Loc.GitError).
                 continue;
             }
 

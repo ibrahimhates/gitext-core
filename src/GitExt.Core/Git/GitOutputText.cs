@@ -3,61 +3,62 @@ using System.Text;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Bir git komutunun tanı çıktısını (<c>stderr</c>) <b>gösterilebilir</b> metne çevirir (P05-T07).
+/// Converts a git command's diagnostic output (<c>stderr</c>) into <b>displayable</b> text (P05-T07).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ:</b> git, hook'ların <c>stdout</c>'unu da <c>stderr</c>'e yönlendiriyor
-/// (<c>stdout_to_stderr</c>): <c>echo</c> ile yazan bir <c>pre-commit</c> hook'unun satırları
-/// <c>stderr</c>'de çıkıyor. Yani hook çıktısının tamamı tek kanalda toplanıyor ve
-/// <see cref="GitResult.StandardError"/> onu <b>eksiksiz</b> taşıyor.
+/// <b>MEASURED:</b> git also redirects the hooks' <c>stdout</c> to <c>stderr</c>
+/// (<c>stdout_to_stderr</c>): the lines of a <c>pre-commit</c> hook that writes with <c>echo</c>
+/// come out on <c>stderr</c>. That is, all of the hook output is collected in a single channel
+/// and <see cref="GitResult.StandardError"/> carries it <b>in full</b>.
 /// </para>
 /// <para>
-/// ⚠️ <b>Hook çıktısı ile git'in kendi çıktısı ayırt EDİLEMEZ.</b> Karışık gelen tek bir akış
-/// var ve git hook satırlarına bir işaret koymuyor. Bu yüzden arayüz bu metni "hook çıktısı"
-/// diye değil, komutun çıktısı diye sunmalı. (Ölçüldü: hook'suz başarılı bir commit'te
-/// <c>stderr</c> <b>tamamen boş</b> — pratikte dolu <c>stderr</c> hook'a işaret ediyor,
-/// ama bu bir garanti değil.)
+/// ⚠️ <b>Hook output and git's own output CANNOT be told apart.</b> There is a single interleaved
+/// stream and git puts no marker on the hook lines. That is why the UI must present this text as
+/// the command's output, not as "hook output". (Measured: on a successful commit without hooks
+/// <c>stderr</c> is <b>completely empty</b> — in practice a non-empty <c>stderr</c> points to a
+/// hook, but this is not a guarantee.)
 /// </para>
 /// <para>
-/// Metin ham geliyor: hook'lar ANSI renk kodları ve satır üzerine yazan <c>\r</c> ilerleme
-/// çıktısı üretebiliyor (ölçüldü, git ikisini de olduğu gibi geçiriyor). İkisi de bir metin
-/// kutusunda okunaksız görünür.
+/// The text arrives raw: hooks can produce ANSI colour codes and <c>\r</c> progress output that
+/// overwrites the line (measured, git passes both through as they are). Both look unreadable in
+/// a text box.
 /// </para>
 /// </remarks>
 public static class GitOutputText
 {
     /// <summary>
-    /// Gösterilebilir satır sayısı üst sınırı; aşan çıktının <b>sonu</b> tutulur.
+    /// Upper bound on the number of displayable lines; for output above it the <b>tail</b> is kept.
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ:</b> 60.000 satır yazan bir hook, 4,1 MB'lık bir <c>stderr</c> üretti ve
-    /// tamamı sorunsuz yakalandı (167 ms, kilitlenme yok). Yakalamak sorun değil;
-    /// <b>göstermek</b> sorun — bir metin kutusuna 4 MB koymak arayüzü dondurur.
-    /// Sonun tutulmasının sebebi: hook'lar özeti ve asıl hata satırını sona yazıyor.
+    /// <b>MEASURED:</b> a hook writing 60,000 lines produced a 4.1 MB <c>stderr</c> and all of it
+    /// was captured without trouble (167 ms, no deadlock). Capturing is not the problem;
+    /// <b>displaying</b> is — putting 4 MB into a text box freezes the UI.
+    /// The reason the tail is kept: hooks write the summary and the actual error line at the end.
     /// </remarks>
     public const int MaximumDisplayLines = 1000;
 
     /// <summary>
-    /// Ham çıktıyı gösterime hazırlar ve <see cref="MaximumDisplayLines"/> sınırını aşarsa
-    /// <b>sonunu</b> tutup atılan satır sayısını bildirir.
+    /// Prepares the raw output for display and, if it exceeds the
+    /// <see cref="MaximumDisplayLines"/> limit, keeps its <b>tail</b> and reports the number of
+    /// dropped lines.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// ANSI dizileri siliniyor, <c>\r</c> üzerine yazma olarak uygulanıyor, satır sonlarındaki
-    /// boşluk kırpılıyor. Sondaki boş satırlar atılıyor; baştakiler <b>korunuyor</b>
-    /// (hook'un kendi biçimi olabilir).
+    /// ANSI sequences are removed, <c>\r</c> is applied as overwriting, trailing whitespace on
+    /// lines is trimmed. Trailing empty lines are dropped; leading ones are <b>preserved</b>
+    /// (they may be the hook's own formatting).
     /// </para>
     /// <para>
-    /// ⚠️ <b>Kırpma temizlemeden ÖNCE yapılıyor</b> ve bu bir mikro-optimizasyon değil:
-    /// ölçüldü, 60.000 satırlık (4 MB) bir hook çıktısında önce temizleyip sonra kırpmak
-    /// <b>60 ms ve 59,6 MB</b> tüketiyordu — üstelik hata gösterilirken <b>UI iş parçacığında</b>.
-    /// Önce kırpınca aynı sonuç <b>2,1 ms ve 1,0 MB</b>'a düşüyor; %98'i zaten atılacak
-    /// satırlar için harcanıyormuş.
+    /// ⚠️ <b>Truncation happens BEFORE cleaning</b> and this is not a micro-optimisation:
+    /// measured, on a 60,000-line (4 MB) hook output, cleaning first and truncating afterwards
+    /// consumed <b>60 ms and 59.6 MB</b> — and that while showing an error, <b>on the UI
+    /// thread</b>. Truncating first drops the same result to <b>2.1 ms and 1.0 MB</b>; 98% of it
+    /// was being spent on lines that were going to be thrown away anyway.
     /// </para>
     /// </remarks>
-    /// <param name="rawOutput">Ham <c>stderr</c> metni.</param>
-    /// <param name="droppedLines">Atılan satır sayısı; kırpılmadıysa 0.</param>
+    /// <param name="rawOutput">The raw <c>stderr</c> text.</param>
+    /// <param name="droppedLines">Number of dropped lines; 0 if nothing was truncated.</param>
     public static string CleanForDisplay(string? rawOutput, out int droppedLines)
     {
         droppedLines = 0;
@@ -73,11 +74,11 @@ public static class GitOutputText
     }
 
     /// <summary>
-    /// Metnin son <paramref name="maximumLines"/> satırını, kopya üretmeden döndürür.
+    /// Returns the last <paramref name="maximumLines"/> lines of the text without making a copy.
     /// </summary>
     /// <remarks>
-    /// Geriye doğru satır sonu sayan tek geçiş. Satır <b>nesnesi</b> üretilmiyor — asıl
-    /// maliyet buydu.
+    /// A single backwards pass counting newlines. No line <b>objects</b> are produced — that was
+    /// the real cost.
     /// </remarks>
     private static ReadOnlySpan<char> TakeLastLines(
         string text,
@@ -95,7 +96,7 @@ public static class GitOutputText
                 continue;
             }
 
-            // Sondaki satır sonu yapay bir boş satır üretir; onu saymıyoruz.
+            // A trailing newline produces an artificial empty line; we do not count it.
             if (i == text.Length - 1)
             {
                 continue;
@@ -129,12 +130,12 @@ public static class GitOutputText
     }
 
     /// <summary>
-    /// Satırları temizler ve sondaki boş satırları atarak birleştirir.
+    /// Cleans the lines and joins them, dropping trailing empty lines.
     /// </summary>
     /// <remarks>
-    /// <c>\r\n</c> için ayrıca dönüşüm yapılmıyor: <see cref="CleanLine"/> zaten <c>\r</c>'yi
-    /// imleç sıfırlaması sayıyor, dolayısıyla satır sonundaki <c>\r</c> kendiliğinden
-    /// düşüyor. Ölçüldü — 4 MB'lık CRLF çıktıda tam bir dize kopyası daha demekti.
+    /// No separate conversion is done for <c>\r\n</c>: <see cref="CleanLine"/> already treats
+    /// <c>\r</c> as a cursor reset, so a <c>\r</c> at the end of a line falls away on its own.
+    /// Measured — on 4 MB of CRLF output it meant one more full copy of the string.
     /// </remarks>
     private static string CleanLines(ReadOnlySpan<char> text)
     {
@@ -154,7 +155,7 @@ public static class GitOutputText
             text = text[(newline + 1)..];
         }
 
-        // Sondaki boş satırlar: git ve hook'lar sona ayraç satırı bırakıyor.
+        // Trailing empty lines: git and hooks leave a separator line at the end.
         int end = lines.Count;
         while (end > 0 && lines[end - 1].Length == 0)
         {
@@ -165,7 +166,7 @@ public static class GitOutputText
     }
 
     /// <summary>
-    /// Tek satırdan ANSI kaçış dizilerini ve <c>\r</c> üzerine yazmayı temizler.
+    /// Cleans ANSI escape sequences and <c>\r</c> overwriting out of a single line.
     /// </summary>
     private static string CleanLine(ReadOnlySpan<char> line)
     {
@@ -184,9 +185,9 @@ public static class GitOutputText
 
             if (c == '\r')
             {
-                // Terminal davranışı: imleç satır başına döner, sonraki karakterler
-                // öncekilerin ÜZERİNE yazar. Sonu kırpmak yanlış olurdu — "bitti" yazan
-                // bir ilerleme satırı tamamen kaybolurdu.
+                // Terminal behaviour: the cursor returns to the start of the line and the
+                // following characters write OVER the previous ones. Truncating the tail would
+                // be wrong — a progress line saying "done" would disappear entirely.
                 cursor = 0;
                 continue;
             }
@@ -197,7 +198,7 @@ public static class GitOutputText
                 continue;
             }
 
-            // Diğer C0 kontrol karakterleri metin kutusunda çöp gösterir; sekme korunur.
+            // Other C0 control characters show up as garbage in a text box; tab is preserved.
             if (char.IsControl(c) && c != '\t')
             {
                 continue;
@@ -219,7 +220,7 @@ public static class GitOutputText
     }
 
     /// <summary>
-    /// <paramref name="start"/> konumundaki ESC dizisinin <b>son</b> karakterinin indeksini döndürür.
+    /// Returns the index of the <b>last</b> character of the ESC sequence at <paramref name="start"/>.
     /// </summary>
     private static int SkipEscape(ReadOnlySpan<char> line, int start)
     {
@@ -234,7 +235,7 @@ public static class GitOutputText
 
         if (introducer == '[')
         {
-            // CSI: ESC [ parametreler son-bayt(@-~). Renk kodları (SGR) bu gruptadır.
+            // CSI: ESC [ parameters final-byte(@-~). Colour codes (SGR) are in this group.
             i++;
             while (i < line.Length && line[i] is >= ' ' and <= '?')
             {
@@ -246,8 +247,9 @@ public static class GitOutputText
 
         if (introducer is ']' or 'P' or 'X' or '^' or '_')
         {
-            // OSC ve arkadaşları: BEL veya ESC \ ile biter. Satır içinde bitmezse satırın
-            // tamamı yutulur — kalanı göstermek yarım bir kaçış dizisi göstermek olurdu.
+            // OSC and friends: terminated by BEL or ESC \. If it does not terminate within the
+            // line the whole line is swallowed — showing the rest would mean showing half an
+            // escape sequence.
             i++;
             while (i < line.Length)
             {
@@ -267,7 +269,7 @@ public static class GitOutputText
             return line.Length - 1;
         }
 
-        // İki karakterlik basit kaçış (ESC c gibi).
+        // A simple two-character escape (such as ESC c).
         return i;
     }
 }

@@ -8,7 +8,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T09 — kimlik doğrulama akışı (arayüz tarafı).
+/// P06-T09 — the authentication flow (UI side).
 /// </summary>
 public class AuthenticationTests
 {
@@ -61,8 +61,8 @@ public class AuthenticationTests
     [AvaloniaFact]
     public void SSH_te_kimlik_ALANLARI_gosterilmiyor()
     {
-        // 🔑 SSH'ta istenen şey bir parola değil, anahtar. Alan göstermek yanlış bir vaat
-        // olurdu: kullanıcı bir şey yazar, hiçbir işe yaramaz.
+        // 🔑 Over SSH what is being asked for is a key, not a password. Showing a field would be
+        // a false promise: the user types something and it does nothing.
         AuthenticationViewModel model = new(SshDiagnosis());
 
         model.CanEnterCredentials.ShouldBeFalse();
@@ -97,7 +97,7 @@ public class AuthenticationTests
         model.Result.ShouldBeNull();
     }
 
-    // ------------------------------------------------------------- akış
+    // ------------------------------------------------------------- flow
 
     [AvaloniaFact]
     public async Task Kimlik_hatasinda_ekran_ACILIYOR_ve_kimlikle_TEKRAR_deneniyor()
@@ -109,7 +109,7 @@ public class AuthenticationTests
 
         await LoadAsync(model);
 
-        // İlk deneme kimlik hatası verir, ikincisi (kimlikle) başarılı olsun.
+        // The first attempt fails with an auth error, the second (with credentials) succeeds.
         push.FailUntilCredentialsGiven = true;
 
         await model.RunCommand.ExecuteAsync(null);
@@ -125,9 +125,9 @@ public class AuthenticationTests
     [AvaloniaFact]
     public async Task Iptal_edilirse_TESHIS_gosteriliyor_ham_hata_DEGIL()
     {
-        // 🔴 Ham stderr'i göstermek yanlış yönlendirirdi: aynı satır
-        // ("Could not read from remote repository.") hem eksik anahtarda hem çözülemeyen
-        // sunucu adında yazılıyor.
+        // 🔴 Showing the raw stderr would misdirect: the same line
+        // ("Could not read from remote repository.") is printed both for a missing key and for
+        // an unresolvable host name.
         (PushViewModel model, _, FakeAuthenticationPrompt prompt) = Create(SshDiagnosis());
 
         prompt.Credentials = null;
@@ -144,7 +144,7 @@ public class AuthenticationTests
     [AvaloniaFact]
     public async Task Kimlik_ekrani_YOKSA_akis_cokmuyor()
     {
-        // Teşhis bağımlılıkları isteğe bağlı; eksikken eski davranış (ham mesaj) sürüyor.
+        // The diagnostic dependencies are optional; without them the old behaviour (raw message) holds.
         FakeRemoteReader remotes = new();
         remotes.Remotes.Add(new GitRemote { Name = "origin", FetchUrls = ["https://example.com/a.git"] });
 

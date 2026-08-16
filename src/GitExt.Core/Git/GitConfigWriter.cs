@@ -1,30 +1,30 @@
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Bir <c>git config</c> ayarının hangi dosyaya yazılacağı (P08-T15).
+/// Which file a <c>git config</c> setting will be written to (P08-T15).
 /// </summary>
 public enum GitConfigScope
 {
-    /// <summary>Yalnızca bu depo (<c>.git/config</c>).</summary>
+    /// <summary>Only this repository (<c>.git/config</c>).</summary>
     Local,
 
-    /// <summary>Kullanıcının bütün depoları (<c>~/.gitconfig</c>).</summary>
+    /// <summary>All of the user's repositories (<c>~/.gitconfig</c>).</summary>
     Global,
 }
 
 /// <summary>
-/// <c>git config</c> ayarlarını yazar (P08-T15).
+/// Writes <c>git config</c> settings (P08-T15).
 /// </summary>
 public interface IGitConfigWriter
 {
     /// <summary>
-    /// Belirli bir kapsamdaki <b>ham</b> değeri okur (birleşimi değil).
+    /// Reads the <b>raw</b> value in a specific scope (not the combined one).
     /// </summary>
     /// <remarks>
-    /// Ayarlar ekranının "yerel" ve "global" alanlarını doldurmak için gerekli:
-    /// <see cref="IGitConfigReader"/> birleşimi veriyor ve o birleşim, değerin hangi
-    /// dosyadan geldiğini <b>söylemiyor</b>. Kullanıcıya global bir değeri yerel alanda
-    /// göstermek, kaydettiğinde farkında olmadan yerel bir kopya oluşturması demekti.
+    /// Needed to populate the "local" and "global" fields of the settings screen:
+    /// <see cref="IGitConfigReader"/> gives the combined value and that combination does
+    /// <b>not tell</b> which file the value came from. Showing the user a global value in the
+    /// local field meant that on save they would unknowingly create a local copy.
     /// </remarks>
     Task<string?> GetScopedAsync(
         string workingDirectory,
@@ -33,14 +33,14 @@ public interface IGitConfigWriter
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Ayarı yazar; <paramref name="value"/> boşsa ayarı <b>kaldırır</b>.
+    /// Writes the setting; if <paramref name="value"/> is empty it <b>removes</b> the setting.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>Boş değer "sil" demek, "boşa ayarla" değil.</b> Ölçüldü:
-    /// <c>git config user.name ""</c> çıkış kodu 0 veriyor ve ayar <b>var ama boş</b>
-    /// oluyor — <c>--get</c> onu çıkış kodu 0 ve boş çıktıyla döndürüyor. Boş bir
-    /// <c>user.name</c> ile commit atmak, hiç ayarlanmamış olmasından farklı ve daha kötü
-    /// bir hata üretir. Kullanıcı alanı temizlediğinde kastettiği "sil"dir.
+    /// 🔴 <b>An empty value means "delete", not "set to empty".</b> Measured:
+    /// <c>git config user.name ""</c> gives exit code 0 and the setting ends up <b>present but
+    /// empty</b> — <c>--get</c> returns it with exit code 0 and empty output. Committing with an
+    /// empty <c>user.name</c> produces a different and worse error than never having set it at
+    /// all. When the user clears the field, what they mean is "delete".
     /// </remarks>
     Task SetAsync(
         string workingDirectory,
@@ -54,11 +54,11 @@ public interface IGitConfigWriter
 public sealed class GitConfigWriter : IGitConfigWriter
 {
     /// <summary>
-    /// <c>--unset</c>'in "böyle bir anahtar yok" çıkış kodu.
+    /// The "no such key" exit code of <c>--unset</c>.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ:</b> 0 ya da 1 değil, <b>5</b>. Hata sayılsaydı zaten boş olan bir alanı
-    /// temizlemek kullanıcıya hata gösterirdi — hem de hiçbir şey yanlış gitmemişken.
+    /// 🔴 <b>MEASURED:</b> not 0 or 1, but <b>5</b>. If it counted as an error, clearing a field
+    /// that was already empty would show the user an error — while nothing had gone wrong at all.
     /// </remarks>
     private const int UnsetMissingKeyExitCode = 5;
 
@@ -89,10 +89,11 @@ public sealed class GitConfigWriter : IGitConfigWriter
                 WorkingDirectory = workingDirectory,
                 Arguments = ["config", ScopeFlag(scope), "--get", key],
 
-                // 🔴 ÖLÇÜLDÜ. 1 = "ayarlanmamış" — global dosya hiç yokken de 1, hata değil.
-                // 128 = depo dışında `--local` (`fatal: --local can only be used inside a
-                // git repository`); ekran bunu sunmuyor ama komut satırından verilen bir
-                // dizin depo olmayabilir ve bunun için çökmemeliyiz.
+                // 🔴 MEASURED. 1 = "not set" — it is also 1 when the global file does not exist
+                // at all, which is not an error. 128 = `--local` outside a repository
+                // (`fatal: --local can only be used inside a git repository`); the UI does not
+                // offer this, but a directory given on the command line may not be a repository
+                // and we must not crash because of it.
                 SuccessExitCodes = [0, 1, 128],
             },
             cancellationToken).ConfigureAwait(false);
@@ -104,8 +105,8 @@ public sealed class GitConfigWriter : IGitConfigWriter
 
         string value = result.GetStandardOutputText().Trim('\n', '\r');
 
-        // Burada boş dize `null`'a ÇEVRİLMİYOR: "var ama boş" gerçek bir durum ve ekranın
-        // onu gösterip düzeltebilmesi gerekiyor.
+        // An empty string is NOT converted to `null` here: "present but empty" is a real state
+        // and the UI has to be able to show and fix it.
         return value;
     }
 
@@ -141,8 +142,8 @@ public sealed class GitConfigWriter : IGitConfigWriter
         }
         catch (GitException ex) when (ex.ExitCode == UnsetMissingKeyExitCode)
         {
-            // Anahtar zaten yok. İstenen son durum sağlanmış durumda; bunu hata olarak
-            // yukarı taşımak, boş bir alanı temizleyen kullanıcıya sebepsiz hata gösterirdi.
+            // The key does not exist already. The desired end state is satisfied; propagating
+            // this as an error would show a pointless error to a user clearing an empty field.
         }
     }
 

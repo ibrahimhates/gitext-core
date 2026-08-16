@@ -5,8 +5,8 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P02-T06 — Depo keşfi. Dört senaryonun da davranışı gerçek <c>git</c> ile ölçülüp
-/// buna göre yazıldı: normal repo, bare repo, bağlı worktree, submodule.
+/// P02-T06 — Repository discovery. The behaviour of all four scenarios was measured with real
+/// <c>git</c> and written accordingly: normal repo, bare repo, linked worktree, submodule.
 /// </summary>
 public class RepositoryLocatorTests
 {
@@ -30,7 +30,7 @@ public class RepositoryLocatorTests
         location.IsLinkedWorkTree.ShouldBeFalse();
         location.IsSubmodule.ShouldBeFalse();
         RealPath(location.WorkTreeRoot!).ShouldBe(RealPath(repository.Path));
-        // Normal depoda ikisi aynı olmalı.
+        // In a normal repository the two must be the same.
         location.CommonDirectory.ShouldBe(location.GitDirectory);
     }
 
@@ -64,8 +64,8 @@ public class RepositoryLocatorTests
     [Fact]
     public async Task Bare_repo_calisma_agaci_olmadan_bulunur()
     {
-        // Bu senaryo --show-toplevel'ı ana çağrıdan çıkarmamızın sebebi:
-        // bare depoda o bayrak "must be run in a work tree" ile 128 döndürüyor.
+        // This scenario is why --show-toplevel was removed from the main call:
+        // in a bare repository that flag returns 128 with "must be run in a work tree".
         using TestRepository repository = TestRepository.CreateBare();
         RepositoryLocator locator = await CreateLocatorAsync();
 
@@ -80,8 +80,8 @@ public class RepositoryLocatorTests
     [Fact]
     public async Task Bagli_worktree_paylasilan_git_dizinini_ayirt_eder()
     {
-        // Kritik: ref'ler ve nesneler CommonDirectory'de; GitDirectory yalnızca
-        // bu worktree'nin HEAD ve index'ini tutar. Karıştırılırsa ref okuma bozulur.
+        // Critical: refs and objects live in CommonDirectory; GitDirectory only holds this
+        // worktree's HEAD and index. Mixing them up breaks ref reading.
         using TestRepository main = TestRepository.CreateWithSingleCommit();
         using TestRepository worktree = main.AddWorkTree("feature");
 
@@ -93,7 +93,7 @@ public class RepositoryLocatorTests
         location.IsBare.ShouldBeFalse();
         RealPath(location.WorkTreeRoot!).ShouldBe(RealPath(worktree.Path));
 
-        // Paylaşılan dizin ana deponun .git'i olmalı, worktree'ye özel dizin değil.
+        // The shared directory must be the main repository's .git, not the worktree-specific one.
         RealPath(location.CommonDirectory)
             .ShouldBe(RealPath(Path.Combine(main.Path, ".git")));
         location.GitDirectory.ShouldNotBe(location.CommonDirectory);
@@ -123,7 +123,7 @@ public class RepositoryLocatorTests
 
         RepositoryLocation location = await locator.LocateAsync(repository.Path, Ct);
 
-        // --show-superproject-working-tree submodule değilse boş çıktı + 0 döner.
+        // --show-superproject-working-tree returns empty output + 0 when it is not a submodule.
         location.IsSubmodule.ShouldBeFalse();
         location.SuperprojectWorkTree.ShouldBeNull();
     }
@@ -158,12 +158,12 @@ public class RepositoryLocatorTests
     }
 
     /// <summary>
-    /// Sembolik bağları çözer.
+    /// Resolves symbolic links.
     /// </summary>
     /// <remarks>
-    /// macOS'ta <c>/tmp</c> aslında <c>/private/tmp</c>'ye bir semboliktir; git çözülmüş yolu
-    /// döndürürken <see cref="Path.GetTempPath"/> çözülmemişini verir. Karşılaştırmadan önce
-    /// ikisini de aynı biçime getiriyoruz.
+    /// On macOS <c>/tmp</c> is actually a symlink to <c>/private/tmp</c>; git returns the resolved
+    /// path while <see cref="Path.GetTempPath"/> gives the unresolved one. We bring both into the
+    /// same form before comparing.
     /// </remarks>
     private static string RealPath(string path) =>
         Path.TrimEndingDirectorySeparator(

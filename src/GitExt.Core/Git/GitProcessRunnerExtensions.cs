@@ -1,12 +1,12 @@
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// <see cref="IGitProcessRunner"/> için kolaylık uzantıları.
+/// Convenience extensions for <see cref="IGitProcessRunner"/>.
 /// </summary>
 public static class GitProcessRunnerExtensions
 {
     /// <summary>
-    /// Komutu çalıştırır; başarısız olursa sınıflandırılmış bir <see cref="GitException"/> fırlatır.
+    /// Runs the command; if it fails, throws a classified <see cref="GitException"/>.
     /// </summary>
     public static async Task<GitResult> RunCheckedAsync(
         this IGitProcessRunner runner,
@@ -34,10 +34,11 @@ public static class GitProcessRunnerExtensions
     }
 
     /// <summary>
-    /// Komutu çalıştırır ve stdout'u kırpılmış metin olarak döndürür.
+    /// Runs the command and returns stdout as trimmed text.
     /// </summary>
     /// <remarks>
-    /// Tek satırlık çıktı veren komutlar için (<c>rev-parse</c>, <c>config --get</c> gibi).
+    /// For commands that produce a single line of output (such as <c>rev-parse</c>,
+    /// <c>config --get</c>).
     /// </remarks>
     public static async Task<string> RunForTextAsync(
         this IGitProcessRunner runner,
@@ -50,15 +51,15 @@ public static class GitProcessRunnerExtensions
 }
 
 /// <summary>
-/// <c>git</c> hata çıktısını anlamlı bir türe eşler (P02-T12).
+/// Maps <c>git</c> error output to a meaningful kind (P02-T12).
 /// </summary>
 /// <remarks>
-/// Eşleme <c>stderr</c> metnine bakar. Bu kaçınılmaz olarak kırılgandır — bu yüzden
-/// eşleşme bulunamazsa <see cref="GitFailureKind.Unknown"/> döner ve ham metin kullanıcıya
-/// gösterilir. Yanlış sınıflandırmaktansa sınıflandırmamak yeğdir.
+/// The mapping looks at the <c>stderr</c> text. This is inevitably brittle — that is why, if no
+/// match is found, <see cref="GitFailureKind.Unknown"/> is returned and the raw text is shown to
+/// the user. Not classifying is preferable to classifying wrongly.
 /// <para>
-/// <c>LC_ALL=C</c> her çağrıda ayarlandığı için (ADR-0002) bu metinler kullanıcının diline
-/// göre değişmez; aksi halde bu eşleme hiç çalışmazdı.
+/// Because <c>LC_ALL=C</c> is set on every call (ADR-0002) these texts do not change with the
+/// user's language; otherwise this mapping would never work.
 /// </para>
 /// </remarks>
 internal static class GitFailureClassifier
@@ -72,14 +73,14 @@ internal static class GitFailureClassifier
 
         ReadOnlySpan<char> text = standardError.AsSpan();
 
-        // 🔴 SIRA ÖNEMLİ — P06-T09'da düzeltildi. SSH tarafında git, kimlik ve ağ
-        // hatalarının HEPSİNE "Could not read from remote repository." satırını ekliyor
-        // (ölçüldü):
-        //   git@github.com: Permission denied (publickey).      -> KİMLİK
-        //   ssh: Could not resolve hostname …                   -> AĞ
-        // Bu kontrol önce gelseydi (ve P06-T09'a kadar geliyordu) ikisi de
-        // "Uzak depo bulunamadı" diye gösterilirdi: kullanıcı adresini kurcalar, oysa
-        // adres doğru — eksik olan SSH anahtarı.
+        // 🔴 ORDER MATTERS — fixed in P06-T09. On the SSH side git appends the line
+        // "Could not read from remote repository." to ALL authentication and network failures
+        // (measured):
+        //   git@github.com: Permission denied (publickey).      -> AUTHENTICATION
+        //   ssh: Could not resolve hostname …                   -> NETWORK
+        // If that check came first (and it did until P06-T09) both would be shown as
+        // "Remote repository not found": the user fiddles with the address, while the address is
+        // correct — what is missing is the SSH key.
         if (ContainsAny(
                 text,
                 "Authentication failed",
@@ -106,10 +107,10 @@ internal static class GitFailureClassifier
             return GitFailureKind.NetworkFailure;
         }
 
-        // ⚠️ SIRA ÖNEMLİ: bu kontrol aşağıdaki "does not appear to be a git repository"
-        // kalıbından ÖNCE gelmeli. Ulaşılamayan bir remote için git ikisini birden yazıyor
-        // ve genel kalıba düşseydi kullanıcıya "Bu klasör bir Git deposu değil" derdik —
-        // klasör iyiyken (P06-T06'da ölçüldü).
+        // ⚠️ ORDER MATTERS: this check must come BEFORE the "does not appear to be a git
+        // repository" pattern below. For an unreachable remote git writes both, and if it fell
+        // into the generic pattern we would tell the user "This folder is not a Git repository" —
+        // while the folder is fine (measured in P06-T06).
         if (ContainsAny(text, "Could not read from remote repository"))
         {
             return GitFailureKind.RemoteUnreachable;
@@ -120,13 +121,13 @@ internal static class GitFailureClassifier
             return GitFailureKind.NotARepository;
         }
 
-        // ÖLÇÜLDÜ (P05-T02): kilit çakışmasının iki farklı mesaj biçimi var —
+        // MEASURED (P05-T02): a lock collision has two different message shapes —
         //   index:  fatal: Unable to create '…/index.lock': File exists.
         //   ref:    fatal: cannot lock ref 'HEAD': Unable to create '…/main.lock': File exists.
-        // İkincisinde "index.lock" GEÇMİYOR, ama git her ikisine de
-        // "Another git process seems to be running…" satırını ekliyor; bu yüzden aşağıdaki
-        // iki kalıp yetiyor. (Ref kilidi için ayrıca "cannot lock ref" kalıbı denendi ve
-        // GEREKSİZ olduğu görüldü — test onsuz da geçiyor.)
+        // The second one does NOT contain "index.lock", but git appends the line
+        // "Another git process seems to be running…" to both; that is why the two patterns below
+        // are enough. (A separate "cannot lock ref" pattern was also tried for the ref lock and
+        // found to be UNNECESSARY — the test passes without it.)
         if (ContainsAny(
                 text,
                 "index.lock",
@@ -135,8 +136,9 @@ internal static class GitFailureClassifier
             return GitFailureKind.IndexLocked;
         }
 
-        // `unable to access` HTTPS tarafının genel ağ hatası; yukarıdaki kimlik
-        // kalıplarından SONRA bakılıyor, çünkü kimlik hatası da bu satırı içerebiliyor.
+        // `unable to access` is the generic network failure on the HTTPS side; it is checked
+        // AFTER the authentication patterns above, because an authentication failure can contain
+        // this line too.
         if (ContainsAny(text, "unable to access"))
         {
             return GitFailureKind.NetworkFailure;
@@ -147,36 +149,36 @@ internal static class GitFailureClassifier
             return GitFailureKind.Conflict;
         }
 
-        // ⚠️ SIRA ÖNEMLİ: "error: remote origin already exists." aşağıdaki genel
-        // "already exists" kalıbına da uyuyor — remote kontrolü ÖNCE gelmeli, yoksa uzak
-        // depo çakışması kullanıcıya "Bu adda bir dal zaten var." derdi (P06-T05).
+        // ⚠️ ORDER MATTERS: "error: remote origin already exists." also matches the generic
+        // "already exists" pattern below — the remote check must come FIRST, otherwise a remote
+        // name collision would tell the user "A branch with this name already exists." (P06-T05).
         if (ContainsAny(text, "remote ") && ContainsAny(text, "already exists"))
         {
             return GitFailureKind.RemoteAlreadyExists;
         }
 
-        // ÖLÇÜLDÜ (P06-T05): iki yazım da geçiyor — `remove`/`rename` iki nokta üst üste
-        // ile ("No such remote: 'x'"), `get-url`/`set-url` onsuz ("No such remote 'x'").
+        // MEASURED (P06-T05): both spellings occur — `remove`/`rename` with a colon
+        // ("No such remote: 'x'"), `get-url`/`set-url` without it ("No such remote 'x'").
         if (ContainsAny(text, "No such remote"))
         {
             return GitFailureKind.RemoteNotFound;
         }
 
-        // ÖLÇÜLDÜ (P06-T05): "fatal: remote name 'ic/main' is a subset of existing remote 'ic'"
+        // MEASURED (P06-T05): "fatal: remote name 'ic/main' is a subset of existing remote 'ic'"
         if (ContainsAny(text, "is a subset of existing remote", "is a superset of existing remote"))
         {
             return GitFailureKind.RemoteNameConflict;
         }
 
-        // ⚠️ Sıra önemli: aşağıdaki iki kalıp "cannot lock ref" içerebiliyor ama yukarıdaki
-        // kilit kontrolü yalnızca "index.lock" / "Another git process…" arıyor, o yüzden
-        // birbirlerini yemiyorlar (P06-T01'de ölçüldü).
+        // ⚠️ Order matters: the two patterns below can contain "cannot lock ref", but the lock
+        // check above only looks for "index.lock" / "Another git process…", so they do not
+        // swallow each other (measured in P06-T01).
         if (ContainsAny(text, "already exists"))
         {
             return GitFailureKind.BranchAlreadyExists;
         }
 
-        // ÖLÇÜLDÜ: "cannot lock ref 'refs/heads/feature/x': 'refs/heads/feature' exists;
+        // MEASURED: "cannot lock ref 'refs/heads/feature/x': 'refs/heads/feature' exists;
         //           cannot create 'refs/heads/feature/x'"
         if (ContainsAny(text, "cannot create", "is not a valid ref name"))
         {
@@ -190,8 +192,8 @@ internal static class GitFailureClassifier
                 "ambiguous argument",
                 "not a valid object name",
 
-                // ÖLÇÜLDÜ (P06-T02): `git switch` çözümlenemeyen hedefte bu METNİ
-                // kullanıyor, yukarıdakilerin hiçbirini değil.
+                // MEASURED (P06-T02): for an unresolvable target `git switch` uses THIS TEXT,
+                // none of the ones above.
                 "invalid reference"))
         {
             return GitFailureKind.UnknownRevision;

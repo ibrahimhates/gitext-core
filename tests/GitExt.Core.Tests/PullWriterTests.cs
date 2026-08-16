@@ -7,9 +7,9 @@ namespace GitExt.Core.Tests;
 /// P06-T07 — pull.
 /// </summary>
 /// <remarks>
-/// Ölçümün üç sessiz noktası: ayarsız+iraksayan durumda git'in <b>fetch'i yapıp sonra
-/// reddetmesi</b>, çakışmanın çıkış kodundan okunamaması ve <c>--autostash</c> geri
-/// koymasının <b>çıkış kodu 0</b> ile çakışabilmesi.
+/// The three silent points of the measurement: with no configuration and divergent branches git
+/// <b>performs the fetch and only then refuses</b>, a conflict cannot be read from the exit code,
+/// and the <c>--autostash</c> restore can conflict with <b>exit code 0</b>.
 /// </remarks>
 public class PullWriterTests
 {
@@ -32,7 +32,7 @@ public class PullWriterTests
             Upstream.Dispose();
         }
 
-        /// <summary>"Başkası" uzağa bir commit iter.</summary>
+        /// <summary>"Someone else" pushes a commit to the remote.</summary>
         public void RemoteCommit(string content, string file = "f.txt")
         {
             Other.WriteFile(file, content);
@@ -84,7 +84,7 @@ public class PullWriterTests
             queue);
     }
 
-    // ---- Strateji çözümü ----
+    // ---- Strategy resolution ----
 
     [Fact]
     public async Task Ayar_yokken_varsayilan_BIRLESTIR_ve_kaynagi_yaziliyor()
@@ -101,7 +101,7 @@ public class PullWriterTests
     [Fact]
     public async Task Dal_ayari_pull_rebase_i_EZIYOR()
     {
-        // ÖLÇÜLDÜ: `pull.rebase=true` + `branch.main.rebase=false` → git MERGE yaptı.
+        // MEASURED: `pull.rebase=true` + `branch.main.rebase=false` → git did a MERGE.
         using Harness harness = await CreateAsync();
 
         harness.Local.Git("config", "pull.rebase", "true");
@@ -161,7 +161,7 @@ public class PullWriterTests
         strategy.Source.ShouldBe(PullStrategySource.UserChoice);
     }
 
-    // ---- Pull davranışı ----
+    // ---- Pull behaviour ----
 
     [Fact]
     public async Task Guncelken_HEAD_ilerlemiyor()
@@ -193,9 +193,10 @@ public class PullWriterTests
     [Fact]
     public async Task Ayarsiz_IRAKSAYAN_depoda_git_REDDETMIYOR_cunku_bayrak_aciktan_geciliyor()
     {
-        // 🔴 Bu testin varlık sebebi: ayarsız + iraksayan durumda çıplak `git pull`
-        // ÇALIŞMAYI REDDEDİYOR (rc=128, dokuz satır `hint:`) — üstelik reddetmeden ÖNCE
-        // fetch aşamasını tamamlıyor, yani depo değişiyor ama kullanıcı "başarısız" görüyor.
+        // 🔴 The reason this test exists: with no configuration and divergent branches, a bare
+        // `git pull` REFUSES TO RUN (rc=128, nine lines of `hint:`) — and on top of that it
+        // completes the fetch stage BEFORE refusing, so the repository changes while the user sees
+        // "failed".
         using Harness harness = await CreateAsync();
 
         harness.LocalCommit("a");
@@ -211,9 +212,9 @@ public class PullWriterTests
     [Fact]
     public async Task KARSI_KANIT_ciplak_git_pull_ayarsiz_iraksayan_depoda_REDDEDIYOR()
     {
-        // Bu test, `PullWriter`'ın neden her zaman açık bayrak geçtiğini kanıtlıyor.
-        // ⚠️ Ayrı bir depoda: çıplak komut çalışsaydı depoyu değiştirir ve asıl testin
-        // kurulumunu bozardı.
+        // This test proves why `PullWriter` always passes an explicit flag.
+        // ⚠️ In a separate repository: if the bare command did run it would change the repository
+        // and break the setup of the actual test.
         using Harness harness = await CreateAsync();
 
         harness.LocalCommit("a");
@@ -224,7 +225,8 @@ public class PullWriterTests
         exitCode.ShouldNotBe(0);
         error.ShouldContain("divergent branches");
 
-        // Ve ölçümdeki asıl sinsi kısım: reddetmesine rağmen FETCH tamamlanmış oluyor.
+        // And the truly insidious part of the measurement: despite refusing, the FETCH has
+        // completed.
         harness.Local.Git("rev-parse", "origin/main").Trim()
             .ShouldBe(harness.Other.Git("rev-parse", "HEAD").Trim());
     }
@@ -263,8 +265,8 @@ public class PullWriterTests
     [Fact]
     public async Task Cakisma_ISTISNA_degil_SONUC_olarak_bildiriliyor()
     {
-        // Çakışma bir hata değil: depo çakışma durumunda ve yapılacak iş belli. İstisna
-        // olarak yükselseydi arayüz yalnızca kırmızı bir kutu gösterirdi.
+        // A conflict is not an error: the repository is in the conflict state and what to do next
+        // is clear. Raised as an exception, the interface would only show a red box.
         using Harness harness = await CreateAsync();
 
         harness.Local.WriteFile("f.txt", "YEREL\n");
@@ -283,10 +285,10 @@ public class PullWriterTests
     [Fact]
     public async Task AUTOSTASH_geri_koyma_cakismasi_cikis_kodu_0_ILE_geliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: bu durumda `git pull` ÇIKIŞ KODU 0 veriyor, ama çalışma ağacında
-        // `UU` dosya ve dosyanın İÇİNDE çakışma işaretleri var. Yalnızca çıkış koduna
-        // bakan bir arayüz "pull başarılı" derdi — P06-T02'deki `switch --merge` tuzağının
-        // aynısı.
+        // 🔴 MEASURED: in this case `git pull` gives EXIT CODE 0, yet there is a `UU` file in the
+        // working tree and conflict markers INSIDE that file. An interface that looks only at the
+        // exit code would say "pull succeeded" — exactly the same trap as `switch --merge` in
+        // P06-T02.
         using Harness harness = await CreateAsync();
 
         harness.RemoteCommit("UZAK\n");
@@ -300,7 +302,7 @@ public class PullWriterTests
         result.HasConflicts.ShouldBeTrue();
         result.AutoStashConflict.ShouldBeTrue("pull başarılı, çakışan kullanıcının stash'i");
 
-        // Kullanıcının çalışması kayıp değil: stash listede duruyor.
+        // The user's work is not lost: the stash is still in the list.
         harness.Local.Git("stash", "list").ShouldContain("autostash");
 
         harness.Local.Git("reset", "--hard", "-q");

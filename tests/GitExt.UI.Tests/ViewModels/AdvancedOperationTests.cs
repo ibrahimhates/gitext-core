@@ -10,11 +10,11 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P07-T03 · T06 · T07 · T08 · T09 · T10 · T11 · T13 · T14 — ileri operasyon ekranları.
+/// P07-T03 · T06 · T07 · T08 · T09 · T10 · T11 · T13 · T14 — advanced operation screens.
 /// </summary>
 public class AdvancedOperationTests
 {
-    // ============================================ P07-T03 çakışma ekranı
+    // =========================================== P07-T03 conflict screen
 
     private static ConflictedFile Conflict(
         string path = "f.txt",
@@ -48,7 +48,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task COZULMEDEN_devam_dugmesi_ETKIN_DEGIL()
     {
-        // 🔴 Ölçümde çözülmeden `--continue` rc=128 veriyordu.
+        // 🔴 In the measurement, `--continue` returned rc=128 without a resolution.
         FakeConflictReader reader = new([Conflict()]);
         FakeConflictResolver resolver = new(InProgressOperation.Merge, ["f.txt"]);
 
@@ -74,8 +74,8 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task VARLIK_cakismasinda_uc_yollu_gorunum_GIZLENIYOR()
     {
-        // Birleştirilecek iki metin yok; boş bir "theirs" paneli, dosyanın boş olduğu gibi
-        // okunurdu (P07-T02'deki null/boş ayrımının arayüzdeki karşılığı).
+        // There are not two texts to merge; an empty "theirs" panel would read as though the file
+        // were empty (the UI counterpart of the null/empty distinction from P07-T02).
         FakeConflictReader reader = new(
             [Conflict(kind: ConflictKind.DeletedByUs, hasOurs: false)]);
         FakeConflictResolver resolver = new(InProgressOperation.Merge, ["f.txt"]);
@@ -106,7 +106,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task EKSIK_asama_icin_git_show_CAGRILMIYOR()
     {
-        // 🔴 `git show :2:<yol>` eksik aşamada fatal veriyor; okumadan önce soruluyor.
+        // 🔴 `git show :2:<path>` is fatal on a missing stage; we ask before reading.
         FakeConflictReader reader = new(
             [Conflict(kind: ConflictKind.DeletedByUs, hasOurs: false)]);
         FakeConflictResolver resolver = new(InProgressOperation.Merge, ["f.txt"]);
@@ -150,7 +150,7 @@ public class AdvancedOperationTests
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
-        // Yerleşim GitExtensions FormResolveConflicts'i takip ediyor (§ 9).
+        // The layout follows GitExtensions FormResolveConflicts (§ 9).
         window.GetControl<ListBox>("ConflictList").ShouldNotBeNull();
         window.GetControl<TextBox>("BaseBox").ShouldNotBeNull();
         window.GetControl<TextBox>("OursBox").ShouldNotBeNull();
@@ -183,7 +183,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task HARD_ve_KIRLI_agacta_ek_ONAY_isteniyor()
     {
-        // Düşen commit'ler reflog'da; asıl geri alınamayan şey commit'lenmemiş iş.
+        // Dropped commits are in the reflog; the truly unrecoverable thing is uncommitted work.
         FakeResetWriter writer = new(new ResetPreview
         {
             IsTargetValid = true,
@@ -204,7 +204,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task SOFT_modda_kirli_agacta_bile_ONAY_ISTENMIYOR()
     {
-        // --soft çalışma ağacına dokunmuyor; orada onay istemek gereksiz sürtünme.
+        // --soft does not touch the working tree; asking for confirmation there is needless friction.
         FakeResetWriter writer = new(new ResetPreview
         {
             IsTargetValid = true,
@@ -221,7 +221,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task Reset_sonrasi_GERI_ALMA_komutu_gosteriliyor()
     {
-        // Faz kuralı: geri alma bilgisi HER ZAMAN sunulur.
+        // Phase rule: the undo information is ALWAYS offered.
         FakeResetWriter writer = new(new ResetPreview { IsTargetValid = true });
         ResetViewModel model = new("/depo", writer, "abc123");
         await model.LoadAsync();
@@ -274,7 +274,7 @@ public class AdvancedOperationTests
         dialog.Show();
         Dispatcher.UIThread.RunJobs();
 
-        // GitExtensions FormResetCurrentBranch (§ 9): üç radyo düğmesi.
+        // GitExtensions FormResetCurrentBranch (§ 9): three radio buttons.
         dialog.GetControl<RadioButton>("SoftRadio").ShouldNotBeNull();
         dialog.GetControl<RadioButton>("MixedRadio").ShouldNotBeNull();
         dialog.GetControl<RadioButton>("HardRadio").ShouldNotBeNull();
@@ -288,7 +288,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task MERGE_commitinde_EBEVEYN_secimi_gorunuyor()
     {
-        // 🔴 Ölçümde -m olmadan rc=128.
+        // 🔴 In the measurement, rc=128 without -m.
         FakeSequencerWriter writer = new(parentCount: 2);
         SequencerViewModel model = new("/depo", writer, SequencerOperation.Revert, ["abc"]);
         await model.LoadAsync();
@@ -313,7 +313,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task NO_COMMIT_sonucu_KULLANICIYA_soyleniyor()
     {
-        // P06-T11'deki `--squash` dersi: çıkış kodu 0 ama HEAD ilerlemiyor.
+        // The `--squash` lesson from P06-T11: exit code 0 but HEAD does not move.
         FakeSequencerWriter writer = new(requiresCommit: true);
         SequencerViewModel model = new("/depo", writer, SequencerOperation.CherryPick, ["abc"])
         {
@@ -354,7 +354,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public void REVERTte_x_secenegi_GORUNMUYOR()
     {
-        // Revert kaynağı zaten mesajına yazıyor.
+        // Revert already writes its source into the message.
         FakeSequencerWriter writer = new();
 
         new SequencerViewModel("/depo", writer, SequencerOperation.Revert, ["abc"])
@@ -402,7 +402,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task KLAVYEYLE_de_tasinabiliyor()
     {
-        // Sürükle-bırak tek yol olsaydı klavyeyle kullanılamazdı.
+        // If drag-and-drop were the only way, it would be unusable from the keyboard.
         FakeRebaseWriter writer = new(
         [
             new RebaseStep { ObjectId = "aaa1111", Subject = "c1" },
@@ -422,7 +422,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task HEPSI_dusurulurse_rebase_ETKIN_DEGIL()
     {
-        // 🔴 Ölçümde boş todo `error: nothing to do` veriyordu; önceden söylüyoruz.
+        // 🔴 In the measurement an empty todo gave `error: nothing to do`; we say so up front.
         FakeRebaseWriter writer = new([new RebaseStep { ObjectId = "aaa1111", Subject = "c1" }]);
 
         RebaseViewModel model = new("/depo", writer, "main") { IsInteractive = true };
@@ -450,7 +450,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task EDIT_adiminda_durus_CAKISMADAN_ayirt_ediliyor()
     {
-        // Çakışma yok ama rebase yine de durdu; ikisini aynı göstermek yanıltırdı.
+        // No conflict but the rebase stopped anyway; showing the two the same would mislead.
         FakeRebaseWriter writer = new([], RebaseOutcome.StoppedForEdit);
 
         RebaseViewModel model = new("/depo", writer, "main");
@@ -508,7 +508,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task POP_cakisirsa_girdinin_KALDIGI_soyleniyor()
     {
-        // 🔴 Ölçüldü: git girdiyi düşürmüyor. Söylenmezse kullanıcı iki kez uygular.
+        // 🔴 Measured: git does not drop the entry. Unsaid, the user applies it twice.
         FakeStashWriter writer = new([Stash(0, "ilk")])
         {
             ApplyResult = new StashApplyResult
@@ -531,7 +531,7 @@ public class AdvancedOperationTests
     [AvaloniaFact]
     public async Task INDEX_geri_yuklenemediyse_UYARILIYOR()
     {
-        // 🔴 Ölçüldü: `pop` staged/unstaged ayrımını sessizce kaybediyor.
+        // 🔴 Measured: `pop` silently loses the staged/unstaged distinction.
         FakeStashWriter writer = new([Stash(0, "ilk")])
         {
             ApplyResult = new StashApplyResult

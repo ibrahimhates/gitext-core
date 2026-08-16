@@ -4,21 +4,21 @@ using GitExt.Core.Git;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P09-T03 — performans teşhis toplayıcısı.
+/// P09-T03 — the performance diagnostics collector.
 /// </summary>
 /// <remarks>
-/// Teşhis panelinin değeri doğru sayı göstermesinde. Yanlış bir istatistik, "yavaş"
-/// şikâyetini yanlış yere yönlendirir — hiç sayı olmamasından daha kötüdür.
+/// The value of the diagnostics panel lies in showing the right numbers. A wrong statistic points
+/// the "it is slow" complaint at the wrong place — that is worse than having no numbers at all.
 /// </remarks>
 public class PerformanceDiagnosticsTests
 {
-    // ------------------------------------------------------- komut adı çıkarma
+    // ---------------------------------------------------- command-name extraction
 
     /// <remarks>
-    /// 🔴 <c>-c key=value</c> alt komuttan <b>önce</b> geliyor. İlk kelimeyi almak bütün
-    /// bu komutları <c>-c</c> diye gruplardı; istatistik tablosunda "hangi komut pahalı"
-    /// sorusu görünmez olurdu. Değer kısmı da atlanmalı, yoksa <c>core.editor=…</c> komut
-    /// adı sanılır.
+    /// 🔴 <c>-c key=value</c> comes <b>before</b> the subcommand. Taking the first word would group
+    /// all of these commands as <c>-c</c>; the "which command is expensive" question would become
+    /// invisible in the statistics table. The value part must be skipped too, otherwise
+    /// <c>core.editor=…</c> is mistaken for the command name.
     /// </remarks>
     [Theory]
     [InlineData("git log --oneline", "log")]
@@ -57,9 +57,9 @@ public class PerformanceDiagnosticsTests
     }
 
     /// <remarks>
-    /// Sıralama toplam süreye göre: teşhiste aranan şey "zamanın nereye gittiği".
-    /// Adet sıralaması hızlı ama çok çağrılan bir komutu tepeye koyar ve asıl pahalı
-    /// olanı gizlerdi.
+    /// Ordering is by total duration: what is being looked for in diagnostics is "where the time
+    /// goes". Ordering by count would put a fast but frequently called command at the top and hide
+    /// the genuinely expensive one.
     /// </remarks>
     [Fact]
     public void ShouldOrderByTotalDurationDescending()
@@ -67,7 +67,7 @@ public class PerformanceDiagnosticsTests
         InMemoryGitCommandLog log = new();
         using PerformanceDiagnostics diagnostics = new(log);
 
-        // status daha çok çağrılıyor ama toplamda daha ucuz.
+        // status is called more often but is cheaper in total.
         for (int i = 0; i < 10; i++)
         {
             Record(log, TimeSpan.FromMilliseconds(1), success: true, "status");
@@ -95,7 +95,7 @@ public class PerformanceDiagnosticsTests
     }
 
     /// <remarks>
-    /// Sıfır çalıştırmada ortalama hesaplamak sıfıra bölme olurdu.
+    /// Computing an average over zero runs would be a division by zero.
     /// </remarks>
     [Fact]
     public void ShouldReportZeroAverageForEmptyStatistics()
@@ -112,7 +112,7 @@ public class PerformanceDiagnosticsTests
         empty.AverageDuration.ShouldBe(TimeSpan.Zero);
     }
 
-    // ------------------------------------------------------- aktif işler
+    // ---------------------------------------------------------- active operations
 
     [Fact]
     public void ShouldTrackActiveOperationUntilDisposed()
@@ -131,8 +131,8 @@ public class PerformanceDiagnosticsTests
     }
 
     /// <remarks>
-    /// Aynı adla iki iş aynı anda sürebilir (iki uzak depoya paralel fetch). Ada göre
-    /// saklamak birini görünmez yapardı; kimlik sayaçtan geliyor.
+    /// Two operations with the same name can run at once (a parallel fetch to two remotes).
+    /// Keying by name would make one of them invisible; the identity comes from a counter.
     /// </remarks>
     [Fact]
     public void ShouldTrackOperationsWithIdenticalNamesSeparately()
@@ -153,7 +153,7 @@ public class PerformanceDiagnosticsTests
     }
 
     /// <remarks>
-    /// İki kez <c>Dispose</c> etmek başka bir işi listeden düşürmemeli.
+    /// Calling <c>Dispose</c> twice must not drop another operation from the list.
     /// </remarks>
     [Fact]
     public void ShouldIgnoreRepeatedDispose()
@@ -170,11 +170,12 @@ public class PerformanceDiagnosticsTests
         diagnostics.ActiveOperations.ShouldBe(["pull"]);
     }
 
-    // ------------------------------------------------------- sıfırlama
+    // ------------------------------------------------------------------- reset
 
     /// <remarks>
-    /// 🔴 Sıfırlama <b>aktif işleri silmemeli</b>: hâlâ çalışıyorlar. Listeden düşerlerse
-    /// bittikleri sanılır ve donmuş bir arayüzün sebebi tam da o anda görünmez olur.
+    /// 🔴 A reset must <b>not clear the active operations</b>: they are still running. If they drop
+    /// off the list they are assumed to have finished, and the reason for a frozen interface becomes
+    /// invisible at exactly that moment.
     /// </remarks>
     [Fact]
     public void ShouldClearStatisticsButKeepActiveOperations()
@@ -191,11 +192,11 @@ public class PerformanceDiagnosticsTests
         diagnostics.ActiveOperations.ShouldBe(["clone: büyük depo"]);
     }
 
-    // ------------------------------------------------------- yaşam döngüsü
+    // --------------------------------------------------------------- lifecycle
 
     /// <remarks>
-    /// <c>Dispose</c> aboneliği bırakmalı; bırakmazsa günlük teşhis nesnesini süresiz
-    /// canlı tutar ve uzun oturumda sızıntı olur.
+    /// <c>Dispose</c> must release the subscription; if it does not, the log keeps the diagnostics
+    /// object alive indefinitely and a long session leaks.
     /// </remarks>
     [Fact]
     public void ShouldStopCollectingAfterDispose()
@@ -226,11 +227,11 @@ public class PerformanceDiagnosticsTests
         diagnostics.Uptime.ShouldBeGreaterThanOrEqualTo(TimeSpan.Zero);
     }
 
-    // ------------------------------------------------------- boş uygulama
+    // --------------------------------------------------------- null implementation
 
     /// <remarks>
-    /// Teşhis kapalıyken hiçbir çağrı patlamamalı — özellikle <c>TrackOperation</c>'ın
-    /// döndürdüğü nesne <see langword="null"/> olamaz, <c>using</c> içinde kullanılıyor.
+    /// With diagnostics off no call may blow up — in particular the object returned by
+    /// <c>TrackOperation</c> cannot be <see langword="null"/>, it is used inside a <c>using</c>.
     /// </remarks>
     [Fact]
     public void NullDiagnosticsShouldBeSafe()
@@ -247,12 +248,12 @@ public class PerformanceDiagnosticsTests
     }
 
     /// <summary>
-    /// Günlüğe tek bir çalıştırma kaydı yazar.
+    /// Writes a single run record into the log.
     /// </summary>
     /// <remarks>
-    /// <paramref name="arguments"/> <c>git</c> olmadan veriliyor; günlüğe giren metni
-    /// <see cref="GitCommand.ToDisplayString"/> üretiyor — testin ürettiği dize ile
-    /// gerçekte kaydedilen dize aynı yoldan geçsin diye.
+    /// <paramref name="arguments"/> is passed without <c>git</c>; the text that lands in the log is
+    /// produced by <see cref="GitCommand.ToDisplayString"/> — so that the string the test produces
+    /// and the string that is actually recorded go through the same path.
     /// </remarks>
     private static void Record(
         InMemoryGitCommandLog log,

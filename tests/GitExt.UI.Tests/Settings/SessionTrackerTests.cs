@@ -3,7 +3,7 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Tests.Settings;
 
 /// <summary>
-/// P08-T16 — oturum kalıcılığı.
+/// P08-T16 — session persistence.
 /// </summary>
 public class SessionTrackerTests
 {
@@ -25,11 +25,11 @@ public class SessionTrackerTests
     }
 
     /// <summary>
-    /// Depo bilerek kapatıldıysa <b>unutuluyor</b>.
+    /// If the repository was closed deliberately it is <b>forgotten</b>.
     /// </summary>
     /// <remarks>
-    /// Kullanıcı "kapat" derken sonraki açılışta karşılama ekranını kastediyor; aynı depoyu
-    /// geri açmak o kararı yok saymak olurdu.
+    /// When the user says "close" they mean the welcome screen on the next start; reopening the
+    /// same repository would be ignoring that decision.
     /// </remarks>
     [Fact]
     public void Kapatilan_depo_unutuluyor()
@@ -67,11 +67,11 @@ public class SessionTrackerTests
     }
 
     /// <summary>
-    /// Kayıt sayısı sınırlı ve <b>güncel depo hiçbir zaman atılmıyor</b>.
+    /// The number of records is capped and the <b>current repository is never dropped</b>.
     /// </summary>
     /// <remarks>
-    /// Sınırsız bırakılsaydı ayar dosyası, kullanıcının bir kez açtığı her deponun kaydıyla
-    /// zamanla büyürdü.
+    /// Left uncapped, the settings file would grow over time with a record for every repository
+    /// the user ever opened once.
     /// </remarks>
     [Fact]
     public void Kayit_sayisi_sinirli_ve_guncel_depo_korunuyor()

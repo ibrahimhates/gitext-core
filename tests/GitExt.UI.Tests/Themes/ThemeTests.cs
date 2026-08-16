@@ -12,16 +12,16 @@ using GitExt.UI.Themes;
 namespace GitExt.UI.Tests.Themes;
 
 /// <summary>
-/// P08-T07 / P08-T08 — tema altyapısı ve açık/koyu geçişi.
+/// P08-T07 / P08-T08 — theme infrastructure and the light/dark switch.
 /// </summary>
 public class ThemeTests
 {
     /// <summary>
-    /// Palet dosyasında tanımlı bütün anahtarlar.
+    /// Every key defined in the palette file.
     /// </summary>
     /// <remarks>
-    /// Kaynak dosyadan okunuyor, elle listelenmiyor: elle liste tutmak, yeni bir anahtarın
-    /// bir temada eksik kalmasını <b>yakalamayan</b> bir test demek olurdu.
+    /// Read from the source file, not listed by hand: keeping a hand-written list would mean a
+    /// test that <b>does not catch</b> a new key going missing in one theme.
     /// </remarks>
     private static (IReadOnlyList<string> Light, IReadOnlyList<string> Dark) PaletteKeys()
     {
@@ -42,7 +42,7 @@ public class ThemeTests
 
     private static string PaletteFilePath()
     {
-        // Test çalışırken çalışma dizini bin/…; depo köküne çıkılıyor.
+        // While the test runs the working directory is bin/…; we walk up to the repository root.
         DirectoryInfo? directory = new(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);
 
         while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, "src")))
@@ -56,13 +56,13 @@ public class ThemeTests
     }
 
     /// <summary>
-    /// 🔴 Bir anahtar iki temada da tanımlı olmak <b>zorunda</b>.
+    /// 🔴 A key <b>must</b> be defined in both themes.
     /// </summary>
     /// <remarks>
-    /// Yalnızca bir temada tanımlı bir fırça, diğer temada sessizce <b>çizilmez</b>:
-    /// <c>DynamicResource</c> bulamadığında istisna atmaz, değeri atanmamış bırakır.
-    /// Belirti "yazı görünmüyor" olur ve sebebi hiçbir yerde yazmaz. Yarım kalmış bir tema,
-    /// temasızlıktan kötüdür (P08-T08).
+    /// A brush defined in only one theme silently <b>does not render</b> in the other:
+    /// <c>DynamicResource</c> does not throw when it cannot resolve, it leaves the value unset.
+    /// The symptom is "the text is not showing" and the cause is written down nowhere. A
+    /// half-finished theme is worse than no theme at all (P08-T08).
     /// </remarks>
     [Fact]
     public void Her_anahtar_iki_temada_da_tanimli()
@@ -75,11 +75,12 @@ public class ThemeTests
     }
 
     /// <summary>
-    /// Görünümlerde gömülü renk kalmamalı.
+    /// No hard-coded colours may be left in the views.
     /// </summary>
     /// <remarks>
-    /// Gömülü bir renk tema geçişini <b>kısmen</b> bırakır: ekranın çoğu koyulaşır, o bir
-    /// öğe açık kalır. En kötü hâli, koyu zeminde okunmayan açık renkli bir yazıdır.
+    /// A hard-coded colour leaves the theme switch <b>half done</b>: most of the screen goes dark,
+    /// that one element stays light. The worst case is light-coloured text unreadable on a dark
+    /// background.
     /// </remarks>
     [Fact]
     public void Gorunumlerde_gomulu_renk_yok()
@@ -106,7 +107,7 @@ public class ThemeTests
     }
 
     /// <summary>
-    /// Tema değişince kaynak <b>canlı</b> güncelleniyor.
+    /// The resource updates <b>live</b> when the theme changes.
     /// </summary>
     [AvaloniaFact]
     public void Tema_degisince_firca_degisiyor()
@@ -167,12 +168,12 @@ public class ThemeTests
     }
 
     /// <summary>
-    /// "Sistemi takip et" Avalonia'nın <c>Default</c>'una çevriliyor.
+    /// "Follow the system" maps to Avalonia's <c>Default</c>.
     /// </summary>
     /// <remarks>
-    /// P08-T00/M07b'de ölçüldü: <c>Default</c> platformdan somut bir varyanta çözülüyor,
-    /// yani sistemi izlemek için ayrı bir dinleyici yazmaya gerek yok — yazsaydık aynı işi
-    /// ikinci kez, daha kötü yapardık.
+    /// Measured in P08-T00/M07b: <c>Default</c> resolves to a concrete variant from the platform,
+    /// so there is no need to write a separate listener to follow the system — writing one would
+    /// do the same job a second time, worse.
     /// </remarks>
     [Theory]
     [InlineData(ThemePreference.Light, "Light")]
@@ -183,7 +184,7 @@ public class ThemeTests
         ThemeService.ToVariant(preference).Key.ToString().ShouldBe(expected);
     }
 
-    /// <summary>Varsayılan açık — sistem koyu olsa bile (kullanıcı kararı, 2026-07-29).</summary>
+    /// <summary>The default is light — even if the system is dark (user decision, 2026-07-29).</summary>
     [Fact]
     public void Varsayilan_tercih_ACIK()
     {

@@ -4,11 +4,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P06-T01 — dal oluşturma.
+/// P06-T01 — branch creation.
 /// </summary>
 /// <remarks>
-/// Testlerin ağırlığı ölçümde çıkan <b>sessiz</b> davranışlarda: git'in bir şeyi hata
-/// saymadan yanlış yapması (iç içe ref adı) ya da hatayı yanlış anlatması (boş depo).
+/// The weight of these tests is on the <b>silent</b> behaviours found by measurement: git doing
+/// something wrong without calling it an error (nested ref name), or describing the error wrongly
+/// (empty repository).
 /// </remarks>
 public class BranchWriterTests
 {
@@ -112,7 +113,7 @@ public class BranchWriterTests
     [Fact]
     public async Task Kirli_agacta_checkout_SUZ_olusturma_her_zaman_calisir()
     {
-        // ÖLÇÜLDÜ: `git branch` çalışma ağacına hiç dokunmuyor.
+        // MEASURED: `git branch` does not touch the working tree at all.
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile("a.txt", "KIRLI\n");
 
@@ -128,9 +129,9 @@ public class BranchWriterTests
     [Fact]
     public async Task Cakisan_kirli_dosya_varken_switch_REDDEDILIR_ve_dal_OLUSMAZ()
     {
-        // 🔴 Asıl güvence bu: reddedilen bir işlemin YARIM sonucu olmamalı. Dal oluşup
-        // checkout başarısız olsaydı kullanıcı, adı "kullanılmış" ama beklediği yerde
-        // olmayan bir dalla kalırdı.
+        // 🔴 This is the real guarantee: a rejected operation must not leave a HALF result. If the
+        // branch were created and the checkout then failed, the user would be left with a branch
+        // whose name is "taken" but which is not where they expected it to be.
         using Harness harness = await CreateAsync();
         string ilk = harness.Repository.Git("rev-parse", "HEAD").Trim();
 
@@ -138,8 +139,8 @@ public class BranchWriterTests
         harness.Repository.Git("add", "-A");
         harness.Repository.Git("commit", "-m", "ikinci");
 
-        // b.txt yalnızca ikinci commit'te var; onu kirletip ilk commit'e geçmeye çalışmak
-        // çakışma üretir.
+        // b.txt only exists in the second commit; dirtying it and then trying to switch to the
+        // first commit produces a conflict.
         harness.Repository.WriteFile("b.txt", "YEREL DEGISIKLIK\n");
 
         GitException error = await Should.ThrowAsync<GitException>(
@@ -173,8 +174,8 @@ public class BranchWriterTests
     [InlineData("ust/alt", "ust")]
     public async Task Dizin_dosya_cakismasi_ANLAMLI_hatayla_reddediliyor(string first, string second)
     {
-        // 🔴 ÖLÇÜLDÜ, iki yönlü: ad kurallarına TAMAMEN uygun olduğu için doğrulamadan
-        // geçiyor; git dalları dosya gibi sakladığı için yalnızca o söyleyebiliyor.
+        // 🔴 MEASURED, in both directions: it passes validation because it is COMPLETELY valid by
+        // the naming rules; only git can report it, because git stores branches like files.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("branch", first);
 
@@ -190,9 +191,9 @@ public class BranchWriterTests
     [Fact]
     public async Task Bos_depoda_hata_DEPONUN_BOS_oldugunu_soyluyor()
     {
-        // 🔴 ÖLÇÜLDÜ: git'in kendi mesajı "not a valid object name: 'main'" — bu
-        // sınıflandırmada UnknownRevision'a düşüyor ve kullanıcıya "dal bulunamadı" derdi.
-        // Oysa kullanıcı bir dal ADI yazmadı; depo boş.
+        // 🔴 MEASURED: git's own message is "not a valid object name: 'main'" — that falls into
+        // UnknownRevision in this classification and would tell the user "branch not found".
+        // But the user never typed a branch NAME; the repository is empty.
         using Harness harness = await CreateAsync(withCommit: false);
 
         GitException error = await Should.ThrowAsync<GitException>(
@@ -221,9 +222,9 @@ public class BranchWriterTests
     [Fact]
     public async Task Tam_ref_adi_yapistirmak_IC_ICE_dal_olusturmuyor()
     {
-        // 🔴 ÖLÇÜLDÜ: `git branch refs/heads/x` hata VERMİYOR, `refs/heads/refs/heads/x`
-        // oluşturuyor. Kullanıcı `git branch -a` çıktısından bir ad kopyaladığında
-        // sessizce iç içe bir dal elde ederdi.
+        // 🔴 MEASURED: `git branch refs/heads/x` does NOT error, it creates
+        // `refs/heads/refs/heads/x`. When the user copies a name out of `git branch -a` output they
+        // would silently end up with a nested branch.
         using Harness harness = await CreateAsync();
 
         await Should.ThrowAsync<ArgumentException>(
@@ -238,9 +239,9 @@ public class BranchWriterTests
     [Fact]
     public async Task Uzak_daldan_olusturulunca_upstream_BILDIRILIYOR()
     {
-        // ÖLÇÜLDÜ: upstream'i git kendisi kuruyor (`branch.autoSetupMerge` varsayılanı).
-        // Biz taklit etmiyoruz, sonucu OKUYUP bildiriyoruz — kullanıcının ayarı bunu
-        // değiştirebilir ve o zaman uydurmuş oluruz.
+        // MEASURED: git sets the upstream itself (the `branch.autoSetupMerge` default).
+        // We do not imitate it, we READ the result and report it — the user's configuration can
+        // change this, and then we would be making it up.
         using TestRepository upstream = TestRepository.CreateEmpty();
         upstream.WriteFile("a.txt", "a\n");
         upstream.Git("add", "-A");
@@ -263,7 +264,7 @@ public class BranchWriterTests
 
         fromRemote.Upstream.ShouldBe("origin/ozellik");
 
-        // …yerel bir daldan oluşturulunca kurulmuyor.
+        // …and it is not set up when created from a local branch.
         BranchCreateResult fromLocal = await harness.Writer.CreateAsync(
             harness.Path,
             new BranchCreateOptions { Name = "yerelden", Checkout = false },
@@ -272,9 +273,9 @@ public class BranchWriterTests
         fromLocal.Upstream.ShouldBeNull();
     }
 
-    // ---- Dal değiştirme (P06-T02) ----
+    // ---- Branch switching (P06-T02) ----
 
-    /// <summary>İki dal kurar: `main` (main.txt var) ve `ozellik` (main.txt silinmiş).</summary>
+    /// <summary>Sets up two branches: `main` (main.txt present) and `ozellik` (main.txt deleted).</summary>
     private static void SetupTwoBranches(Harness harness)
     {
         harness.Repository.WriteFile("ortak.txt", "ortak\n");
@@ -305,7 +306,7 @@ public class BranchWriterTests
     [Fact]
     public async Task Ilgisiz_kirli_dosya_YENI_DALA_tasiniyor()
     {
-        // ÖLÇÜLDÜ: git taşıyabildiğini taşıyor; bu bir hata değil beklenen davranış.
+        // MEASURED: git carries over what it can; this is expected behaviour, not a bug.
         using Harness harness = await CreateAsync();
         SetupTwoBranches(harness);
         harness.Repository.WriteFile("ortak.txt", "KIRLI\n");
@@ -348,7 +349,7 @@ public class BranchWriterTests
         harness.CurrentBranch.ShouldBe("ozellik");
         result.StashCreated.ShouldBeTrue();
 
-        // İçerik stash'te duruyor: geri dönülüp alınabiliyor.
+        // The content is sitting in the stash: it can be gone back to and retrieved.
         harness.Repository.Git("switch", "main");
         harness.Repository.Git("stash", "pop");
         harness.Read("main.txt").ShouldBe("YEREL\n");
@@ -357,13 +358,14 @@ public class BranchWriterTests
     [Fact]
     public async Task Stash_TAKIP_EDILMEYEN_dosya_cakismasini_da_cozuyor()
     {
-        // 🔴 ÖLÇÜLDÜ: `--discard-changes` bu durumu ÇÖZMÜYOR (reddediyor ve dosyaya
-        // dokunmuyor). Yani "zorla" evrensel bir kaçış yolu değil; stash daha yetenekli.
+        // 🔴 MEASURED: `--discard-changes` does NOT resolve this case (it refuses and leaves the
+        // file alone). So "force" is not a universal escape hatch; stash is more capable.
         using Harness harness = await CreateAsync();
         SetupTwoBranches(harness);
 
-        // `ozellik` dalında `main.txt` yok; `main` dalında takip ediliyor. Ters yönde
-        // çakışma kurmak için `ozellik`e geçip aynı adı takipsiz dosyayla dolduruyoruz.
+        // `main.txt` does not exist on the `ozellik` branch; on `main` it is tracked. To build the
+        // conflict in the reverse direction we switch to `ozellik` and fill that same name with an
+        // untracked file.
         harness.Repository.Git("switch", "ozellik");
         harness.Repository.WriteFile("main.txt", "BENIM YEREL DOSYAM\n");
 
@@ -400,9 +402,9 @@ public class BranchWriterTests
     [Fact]
     public async Task Atilan_icerik_YEDEKTEN_geri_okunabiliyor()
     {
-        // 🔴 P06-T02'nin en önemli güvencesi. ÖLÇÜLDÜ: `--discard-changes` sonrası
-        // STAGE'LENMEMİŞ içeriğin nesne veritabanında hiçbir izi kalmıyor —
-        // `fsck --lost-found` bile bulmuyor. Yedek olmasa geri dönüş yolu YOK.
+        // 🔴 The most important guarantee of P06-T02. MEASURED: after `--discard-changes` there is
+        // no trace whatsoever of the UNSTAGED content in the object database —
+        // not even `fsck --lost-found` finds it. Without a backup there is NO way back.
         using Harness harness = await CreateAsync();
         SetupTwoBranches(harness);
         harness.Repository.WriteFile("ortak.txt", "KAYBOLMAMASI GEREKEN\n");
@@ -429,9 +431,9 @@ public class BranchWriterTests
     [Fact]
     public async Task Merge_yolunda_CIKIS_KODU_0_olsa_bile_cakisma_bildiriliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: `switch --merge` çakışmada çıkış kodu **0** veriyor, ağacı
-        // birleşmemiş bırakıyor ve gizli bir autostash oluşturuyor. Çıkış koduna bakan
-        // bir arayüz "başarıyla geçildi" derdi.
+        // 🔴 MEASURED: on conflict `switch --merge` gives exit code **0**, leaves the tree
+        // unmerged and creates a hidden autostash. An interface that looks at the exit code would
+        // say "switched successfully".
         using Harness harness = await CreateAsync();
         SetupTwoBranches(harness);
         harness.Repository.WriteFile("main.txt", "YEREL SATIR\n");
@@ -447,8 +449,8 @@ public class BranchWriterTests
     [Fact]
     public async Task Temiz_agacta_merge_yolu_cakisma_BILDIRMIYOR()
     {
-        // Yanlış alarm da en az sessiz hata kadar zararlı: her geçişte "çakışma var"
-        // diyen bir arayüzün uyarısı okunmaz olur.
+        // A false alarm is just as harmful as a silent bug: the warning of an interface that says
+        // "there are conflicts" on every switch stops being read.
         using Harness harness = await CreateAsync();
         SetupTwoBranches(harness);
 
@@ -491,7 +493,7 @@ public class BranchWriterTests
         harness.CurrentBranch.ShouldBe("main");
     }
 
-    // ---- Yeniden adlandırma ve silme (P06-T03) ----
+    // ---- Renaming and deleting (P06-T03) ----
 
     [Fact]
     public async Task Dal_yeniden_adlandiriliyor()
@@ -508,7 +510,7 @@ public class BranchWriterTests
     [Fact]
     public async Task Yeniden_adlandirma_UPSTREAM_ve_reflog_u_koruyor()
     {
-        // Upstream kaybolsaydı sonraki `push` sessizce başka bir yere giderdi.
+        // If the upstream were lost, the next `push` would silently go somewhere else.
         using TestRepository upstream = TestRepository.CreateEmpty();
         upstream.WriteFile("a.txt", "a\n");
         upstream.Git("add", "-A");
@@ -533,8 +535,8 @@ public class BranchWriterTests
     [Fact]
     public async Task Var_olan_ada_yeniden_adlandirma_HEDEFI_EZMIYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: `git branch -M <var-olan>` hedef dalı hiçbir uyarı olmadan yok
-        // ediyor. Zorlama sunulmuyor; çakışma hata olarak bildiriliyor.
+        // 🔴 MEASURED: `git branch -M <existing>` destroys the target branch without any warning.
+        // No force option is offered; the conflict is reported as an error.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("branch", "kaynak");
         harness.Repository.WriteFile("b.txt", "b\n");
@@ -592,8 +594,8 @@ public class BranchWriterTests
         BranchNotMergedException error = await Should.ThrowAsync<BranchNotMergedException>(
             harness.Writer.DeleteAsync(harness.Path, "birlesmemis", cancellationToken: Ct));
 
-        // Hata, kurtarma için gereken hash'i TAŞIMALI: kullanıcı zorlamayı seçmeden önce
-        // neyin gideceğini görebilmeli.
+        // The error MUST carry the hash needed for recovery: the user has to be able to see what
+        // would be lost before choosing to force.
         error.LastCommitId.ShouldNotBeNullOrWhiteSpace();
         harness.Branches.ShouldContain("refs/heads/birlesmemis");
     }
@@ -601,10 +603,10 @@ public class BranchWriterTests
     [Fact]
     public async Task Zorlanan_silmede_SON_COMMIT_kullaniciya_veriliyor()
     {
-        // 🔴 P06-T03'ün en önemli güvencesi. ÖLÇÜLDÜ: silinen dalın KENDİ reflog'u da
-        // siliniyor; HEAD reflog'unda iz olması yalnızca o dalda BU çalışma ağacında
-        // çalışılmışsa geçerli. Bağlı worktree'de üretilmiş bir dal silindiğinde hiçbir
-        // reflog izi kalmıyor. Hash, kurtarmanın tek güvenilir yolu.
+        // 🔴 The most important guarantee of P06-T03. MEASURED: the deleted branch's OWN reflog is
+        // deleted too; a trace in the HEAD reflog only exists if that branch was worked on in THIS
+        // working tree. When a branch created in a linked worktree is deleted, no reflog trace is
+        // left at all. The hash is the only reliable way to recover.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("switch", "-c", "birlesmemis");
         harness.Repository.WriteFile("yeni.txt", "iş\n");
@@ -619,7 +621,7 @@ public class BranchWriterTests
         result.LastCommitId.ShouldBe(beklenen);
         result.WasUnmerged.ShouldBeTrue();
 
-        // Verilen hash gerçekten kurtarıyor mu?
+        // Does the returned hash actually recover it?
         harness.Repository.Git("branch", "kurtarilan", result.LastCommitId);
         harness.Repository.Git("rev-parse", "kurtarilan").Trim().ShouldBe(beklenen);
     }
@@ -639,9 +641,10 @@ public class BranchWriterTests
     [Fact]
     public async Task Upstream_e_merge_edilmis_dal_YANLIS_ALARM_uretmiyor()
     {
-        // 🔴 ÖLÇÜLDÜ: `-d`, dalı HEAD'e değil UPSTREAM'ine birleşmiş olsa da siliyor.
-        // Birleşmişliği `merge-base --is-ancestor … HEAD` ile kendimiz hesaplasaydık
-        // bu dal için "birleştirilmemiş" alarmı verirdik — oysa git sorunsuz siliyor.
+        // 🔴 MEASURED: `-d` deletes the branch even when it is merged into its UPSTREAM rather
+        // than into HEAD. If we computed merged-ness ourselves with
+        // `merge-base --is-ancestor … HEAD` we would raise an "unmerged" alarm for this branch —
+        // while git deletes it without complaint.
         using TestRepository upstream = TestRepository.CreateEmpty();
         upstream.WriteFile("a.txt", "a\n");
         upstream.Git("add", "-A");
@@ -659,7 +662,7 @@ public class BranchWriterTests
         harness.Repository.Git("branch", "--set-upstream-to=origin/ust", "ust");
         harness.Repository.Git("switch", "-");
 
-        // HEAD'e birleşmemiş, ama upstream'inde var → git siliyor, biz de sormuyoruz.
+        // Not merged into HEAD, but present in its upstream → git deletes it, so we do not ask.
         BranchDeleteResult result = await harness.Writer.DeleteAsync(
             harness.Path, "ust", cancellationToken: Ct);
 

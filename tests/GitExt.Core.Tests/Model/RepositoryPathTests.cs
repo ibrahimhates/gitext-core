@@ -15,12 +15,12 @@ public class RepositoryPathTests
     [Fact]
     public void Ters_egik_cizgi_YALNIZCA_Windowsta_normallestirilir()
     {
-        // Windows'tan gelen bir yol git'e ters eğik çizgiyle verilirse git onu dosya adının
-        // parçası sanar ve dosya "bulunamaz" — orada çevirmek şart.
+        // If a path coming from Windows is handed to git with backslashes, git thinks they are part
+        // of the file name and the file is "not found" — converting is mandatory there.
         //
-        // 🔴 Ama Linux'ta `\` dosya adında GEÇERLİ bir karakter (P05-T08'de ölçüldü) ve git
-        // onu olduğu gibi bildiriyor. Her platformda çevirmek `ters\slash.txt` adlı bir
-        // dosyanın yolunu SESSİZCE `ters/slash.txt` yapıyordu.
+        // 🔴 But on Linux `\` is a VALID character in a file name (measured in P05-T08) and git
+        // reports it as-is. Converting on every platform SILENTLY turned the path of a file named
+        // `ters\slash.txt` into `ters/slash.txt`.
         RepositoryPath path = RepositoryPath.Parse(@"src\GitExt.Core\Program.cs");
 
         path.Value.ShouldBe(
@@ -57,7 +57,7 @@ public class RepositoryPathTests
     [Fact]
     public void Nokta_ile_baslayan_dosyada_uzanti_bos_kabul_edilir()
     {
-        // ".gitignore" uzantısız bir dosyadır, uzantısı ".gitignore" değildir.
+        // ".gitignore" is a file without an extension; its extension is not ".gitignore".
         RepositoryPath path = RepositoryPath.Parse(".gitignore");
 
         path.Name.ShouldBe(".gitignore");
@@ -95,7 +95,7 @@ public class RepositoryPathTests
         string absolute = path.ToAbsolutePath(root);
 
         absolute.ShouldBe(Path.Combine(root, "src", "dosya.cs"));
-        // Platformun ayracını kullanmalı; Windows'ta ters eğik çizgi.
+        // Must use the platform's separator; on Windows that is the backslash.
         absolute.ShouldContain(Path.DirectorySeparatorChar);
     }
 

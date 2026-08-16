@@ -3,7 +3,7 @@ using GitExt.UI.Storage;
 namespace GitExt.UI.Tests.Storage;
 
 /// <summary>
-/// P03-T16 — Son açılan depolar listesi.
+/// P03-T16 — the recently opened repositories list.
 /// </summary>
 public class RecentRepositoryStoreTests : IDisposable
 {
@@ -37,7 +37,7 @@ public class RecentRepositoryStoreTests : IDisposable
     {
         await Create().AddAsync("/depo/bir", Ct);
 
-        // Yeni bir örnek: gerçekten diske yazıldığını doğrular.
+        // A fresh instance: verifies it really was written to disk.
         (await Create().LoadAsync(Ct)).ShouldBe(["/depo/bir"]);
     }
 
@@ -90,7 +90,7 @@ public class RecentRepositoryStoreTests : IDisposable
 
         recent.Count.ShouldBe(RecentRepositoryStore.MaximumCount);
 
-        // En eskiler düşer, en yeni başta kalır.
+        // The oldest fall off, the newest stays at the top.
         recent[0].ShouldBe($"/depo/{RecentRepositoryStore.MaximumCount + 5}");
         recent.ShouldNotContain("/depo/0");
     }
@@ -110,8 +110,8 @@ public class RecentRepositoryStoreTests : IDisposable
     [Fact]
     public async Task Bozuk_dosya_uygulamayi_durdurmaz()
     {
-        // Son açılanlar bir kolaylıktır; bozuk bir dosya yüzünden açılışta çökmek
-        // kabul edilemez.
+        // The recent list is a convenience; crashing on startup because of a corrupted file
+        // is unacceptable.
         Directory.CreateDirectory(_directory);
         await File.WriteAllTextAsync(FilePath, "{ bu gecerli json degil ]]]", Ct);
 
@@ -119,7 +119,7 @@ public class RecentRepositoryStoreTests : IDisposable
 
         (await store.LoadAsync(Ct)).ShouldBeEmpty();
 
-        // Üstüne yazmak da çalışmalı.
+        // Overwriting must work too.
         await store.AddAsync("/depo/bir", Ct);
         (await store.LoadAsync(Ct)).ShouldBe(["/depo/bir"]);
     }
@@ -127,7 +127,7 @@ public class RecentRepositoryStoreTests : IDisposable
     [Fact]
     public async Task Yazilan_dosya_surum_alani_tasir()
     {
-        // ADR-0006: ayar formatı v1.0.0'da donuyor; sürüm alanı sonradan eklenemez.
+        // ADR-0006: the settings format freezes at v1.0.0; a version field cannot be added later.
         await Create().AddAsync("/depo/bir", Ct);
 
         string json = await File.ReadAllTextAsync(FilePath, Ct);
@@ -138,9 +138,9 @@ public class RecentRepositoryStoreTests : IDisposable
     [Fact]
     public void Yapilandirma_dizini_daima_mutlak_yoldur()
     {
-        // ÖLÇÜLDÜ: XDG_CONFIG_HOME var olmayan bir dizini gösteriyorsa .NET'in
-        // ApplicationData değeri BOŞ DİZE döner. Korumasız bırakılsa Path.Combine
-        // göreli bir yol üretir ve dosya kullanıcının açtığı deponun içine yazılırdı.
+        // MEASURED: if XDG_CONFIG_HOME points at a directory that does not exist, .NET's
+        // ApplicationData value returns an EMPTY STRING. Left unguarded, Path.Combine would
+        // produce a relative path and the file would land inside the repository the user opened.
         string directory = RecentRepositoryStore.ConfigurationDirectory();
 
         directory.ShouldNotBeNullOrWhiteSpace();

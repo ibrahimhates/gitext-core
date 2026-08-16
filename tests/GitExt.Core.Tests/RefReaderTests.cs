@@ -5,7 +5,8 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P02-T09 — Ref okuma. Biçimlerin hepsi gerçek <c>git</c> ile ölçülüp buna göre yazıldı.
+/// P02-T09 — Ref reading. Every one of the formats was measured with real <c>git</c> and written
+/// accordingly.
 /// </summary>
 public class RefReaderTests
 {
@@ -20,7 +21,8 @@ public class RefReaderTests
     [Fact]
     public async Task Dogmamis_repo_cokmeden_okunur()
     {
-        // Kullanıcının ilk açtığı depo bu olabilir: HEAD var olmayan bir dala işaret ediyor.
+        // This may be the first repository the user opens: HEAD points at a branch that does not
+        // exist.
         using TestRepository repository = TestRepository.CreateEmpty();
         RefReader reader = await CreateReaderAsync();
 
@@ -55,8 +57,8 @@ public class RefReaderTests
     [Fact]
     public async Task Detached_HEAD_dogru_raporlanir()
     {
-        // Ölçüldü: detached durumda %(HEAD) HİÇBİR dal için "*" dönmüyor.
-        // Bu yüzden symbolic-ref ile ayrıca soruyoruz.
+        // Measured: when detached, %(HEAD) returns "*" for NO branch at all.
+        // That is why we ask separately with symbolic-ref.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("commit", "--allow-empty", "-m", "ikinci");
         repository.Git("checkout", "--detach", "HEAD~1");
@@ -91,12 +93,12 @@ public class RefReaderTests
         annotated.IsAnnotated.ShouldBeTrue();
         annotated.Subject.ShouldBe("tag mesajı burada");
 
-        // KRİTİK: annotated tag'de ObjectId tag NESNESİdir, commit değil.
-        // TargetCommit ise %(*objectname) ile çözülmüş gerçek commit.
+        // CRITICAL: on an annotated tag ObjectId is the tag OBJECT, not the commit.
+        // TargetCommit is the real commit resolved via %(*objectname).
         annotated.Ref.ObjectId.ShouldNotBe(annotated.Ref.TargetCommit);
         annotated.Ref.TargetCommit.ShouldBe(lightweight.Ref.TargetCommit);
 
-        // Hafif tag'de ikisi aynı olmalı.
+        // On a lightweight tag the two must be the same.
         lightweight.Ref.ObjectId.ShouldBe(lightweight.Ref.TargetCommit);
     }
 
@@ -155,8 +157,9 @@ public class RefReaderTests
     [Fact]
     public async Task Sembolik_uzak_ref_isaret_ettigi_dali_bildirir()
     {
-        // origin/HEAD klonlanan her depoda bulunur ve uzağın varsayılan dalına işaret eder.
-        // UI bunu ayrı bir dal sanarsa aynı commit'te iki özdeş rozet gösterir.
+        // origin/HEAD exists in every cloned repository and points at the remote's default branch.
+        // If the UI mistakes it for a separate branch it shows two identical badges on the same
+        // commit.
         using TestRepository remote = TestRepository.CreateBare();
         using TestRepository local = TestRepository.CreateWithSingleCommit();
 
@@ -174,12 +177,13 @@ public class RefReaderTests
         head.Ref.IsSymbolic.ShouldBeTrue();
         head.Ref.SymbolicTarget.ShouldBe("refs/remotes/origin/main");
 
-        // ÖLÇÜLDÜ: kısa adı "origin/HEAD" DEĞİL, sadece "origin". git bu ref'i tıpkı
-        // refs/heads/main → main gibi kısaltıyor. Elenmezse kullanıcı origin/main'in
-        // yanında "origin" yazan anlamsız bir rozet görürdü.
+        // MEASURED: its short name is NOT "origin/HEAD", just "origin". git abbreviates this ref
+        // exactly like refs/heads/main → main. If it is not filtered out the user would see a
+        // meaningless badge reading "origin" next to origin/main.
         head.Name.ShouldBe("origin");
 
-        // Sıradan dalda alan boş kalmalı — dolu gelirse eleme mantığı yanlış dalı gizler.
+        // On an ordinary branch the field must stay empty — if it is filled the filtering logic
+        // hides the wrong branch.
         refs.RemoteBranches.Single(b => b.Name == "origin/main").Ref.IsSymbolic.ShouldBeFalse();
         refs.LocalBranches.Single(b => b.Name == "main").Ref.IsSymbolic.ShouldBeFalse();
     }
@@ -202,7 +206,8 @@ public class RefReaderTests
     [Fact]
     public async Task Remote_yoksa_bos_liste_doner()
     {
-        // `git config --get-regexp` eşleşme yoksa 1 döner; bu hata sayılmamalı.
+        // `git config --get-regexp` returns 1 when there is no match; that must not count as an
+        // error.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         RefReader reader = await CreateReaderAsync();
 
@@ -236,7 +241,7 @@ public class RefReaderTests
     [Fact]
     public async Task Unicode_ve_egik_cizgili_dal_adlari_okunur()
     {
-        // Dal adları / içerebilir (feature/x) ve UTF-8 olabilir.
+        // Branch names can contain / (feature/x) and can be UTF-8.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("branch", "özellik/çalışma-günlüğü");
 

@@ -9,7 +9,7 @@ using GitExt.UI.Themes;
 namespace GitExt.UI.Tests.Themes;
 
 /// <summary>
-/// P08-T09 / P08-T10 — grafik paleti, renk körlüğü alternatifi ve tipografi.
+/// P08-T09 / P08-T10 — graph palette, colour-blind alternative and typography.
 /// </summary>
 public class AppearanceTests
 {
@@ -33,12 +33,12 @@ public class AppearanceTests
     // ------------------------------------------------------------------ grafik paleti
 
     /// <summary>
-    /// 🔴 Açık ve koyu paletler aynı olamaz.
+    /// 🔴 The light and dark palettes cannot be the same.
     /// </summary>
     /// <remarks>
-    /// Açık zemine göre seçilmiş <c>#264653</c> gibi koyu bir şerit, koyu zeminde
-    /// <b>neredeyse görünmez</b>. Aynı listeyi iki temada kullanmak, koyu temada bazı
-    /// dalların kaybolması demekti.
+    /// A dark lane colour like <c>#264653</c>, picked against a light background, is
+    /// <b>almost invisible</b> on a dark one. Using the same list in both themes meant some
+    /// branches disappeared in the dark theme.
     /// </remarks>
     [Fact]
     public void Acik_ve_koyu_paletler_ayri()
@@ -83,13 +83,13 @@ public class AppearanceTests
     }
 
     /// <summary>
-    /// Renk körlüğü uyumlu palet kırmızı/yeşil çiftine dayanmıyor.
+    /// The colour-blind-safe palette does not rely on the red/green pair.
     /// </summary>
     /// <remarks>
-    /// <b>Ölçülebilir tanım:</b> deuteranopi benzetiminde iki rengin ayırt edilebilmesi için
-    /// kırmızı-yeşil ekseni işe yaramaz; ayrım <b>mavi-sarı ekseninde ve parlaklıkta</b>
-    /// olmalı. Burada her renk çiftinin bu iki boyutun en az birinde ayrıldığı doğrulanıyor.
-    /// Gözle bakıp "ayrışıyor gibi" demek bir doğrulama değildir.
+    /// <b>Measurable definition:</b> under a deuteranopia simulation the red-green axis is useless
+    /// for telling two colours apart; the separation has to be on the <b>blue-yellow axis and in
+    /// luminance</b>. Here we verify that every colour pair separates on at least one of those two
+    /// dimensions. Eyeballing it and saying "looks distinct enough" is not a verification.
     /// </remarks>
     [Theory]
     [InlineData(false)]
@@ -121,7 +121,7 @@ public class AppearanceTests
 
         tooClose.ShouldBeEmpty();
 
-        // Kırmızı-yeşil ekseninden bağımsız iki boyut: mavi-sarı ve algısal parlaklık.
+        // Two dimensions independent of the red-green axis: blue-yellow and perceptual luminance.
         static (double BlueYellow, double Luminance) Axes(Color color)
         {
             double r = color.R / 255.0;
@@ -132,7 +132,7 @@ public class AppearanceTests
         }
     }
 
-    /// <summary>Palet kaynağa yazılıyor ve tema değişince yenileniyor.</summary>
+    /// <summary>The palette is written into resources and refreshed when the theme changes.</summary>
     [AvaloniaFact]
     public void Palet_kaynaga_yaziliyor_ve_tema_degisince_yenileniyor()
     {
@@ -158,14 +158,15 @@ public class AppearanceTests
         }
     }
 
-    // ------------------------------------------------------- renk körlüğü katmanı
+    // --------------------------------------------------------- colour-blind layer
 
     /// <summary>
-    /// Katman açılınca diff renkleri değişiyor, kapanınca <b>geri geliyor</b>.
+    /// Turning the layer on changes the diff colours; turning it off <b>brings them back</b>.
     /// </summary>
     /// <remarks>
-    /// Geri gelmesi önemli: katman iki tam palet olsaydı kapatmak, varsayılana dönmek yerine
-    /// "iki paletten hangisi güncel" sorusunu doğururdu. Yalnızca fark tutuluyor.
+    /// Coming back matters: if the layer were two full palettes, switching it off would raise the
+    /// question "which of the two palettes is current" instead of returning to the default. Only
+    /// the difference is kept.
     /// </remarks>
     [AvaloniaFact]
     public void Renk_korlugu_katmani_acilip_kapanabiliyor()
@@ -204,15 +205,15 @@ public class AppearanceTests
     }
 
     /// <summary>
-    /// Renk körlüğü katmanı tema değişince yeniden hesaplanıyor (P09-T11).
+    /// The colour-blind layer is recomputed when the theme changes (P09-T11).
     /// </summary>
     /// <remarks>
-    /// 🔴 Katman P09-T11'de XAML'den koda taşındı — <c>ResourceInclude</c>'u çalışma
-    /// zamanında kurmak <c>PublishTrimmed</c>'i <c>IL2026</c> ile tamamen kırıyordu.
-    /// Bindirilen tema sözlüğü açık/koyu ayrımını <b>kendisi</b> yapıyordu; koda taşınan
-    /// fırçalar yapmıyor, tema değişiminde yeniden yazılmaları gerekiyor. Bu abonelik
-    /// olmasa koyu temaya geçen kullanıcı açık zemine göre seçilmiş diff renkleriyle
-    /// kalırdı — koyu zeminde neredeyse okunmaz.
+    /// 🔴 The layer moved from XAML to code in P09-T11 — constructing a <c>ResourceInclude</c> at
+    /// run time broke <c>PublishTrimmed</c> outright with <c>IL2026</c>. The overlaid theme
+    /// dictionary did the light/dark split <b>itself</b>; the brushes moved into code do not, so
+    /// they have to be rewritten on a theme change. Without this subscription a user switching to
+    /// the dark theme would be left with diff colours picked against a light background — nearly
+    /// unreadable on a dark one.
     /// </remarks>
     [AvaloniaFact]
     public void Renk_korlugu_katmani_tema_degisince_yeniden_hesaplaniyor()
@@ -249,12 +250,12 @@ public class AppearanceTests
     }
 
     /// <summary>
-    /// Katman kapatılınca ezilen bütün anahtarlar bırakılıyor (P09-T11).
+    /// When the layer is switched off, every overridden key is dropped (P09-T11).
     /// </summary>
     /// <remarks>
-    /// Anahtarlar <see cref="DiffPalettes.OverlayKeys"/>'ten geliyor. Liste eksik kalırsa
-    /// kapatma bazı fırçaları uygulama sözlüğünde bırakır: palet "varsayılan" görünürken
-    /// diff renkleri renk körü kalır ve iki palet sessizce karışır.
+    /// The keys come from <see cref="DiffPalettes.OverlayKeys"/>. If that list is incomplete,
+    /// switching off leaves some brushes in the application dictionary: the palette looks
+    /// "default" while the diff colours stay colour-blind, and the two palettes silently mix.
     /// </remarks>
     [AvaloniaFact]
     public void Katman_kapaninca_ezilen_butun_anahtarlar_birakiliyor()
@@ -290,9 +291,9 @@ public class AppearanceTests
     }
 
     /// <remarks>
-    /// Açık ve koyu kaplamalar aynı anahtar kümesini kapsamalı; biri eksikse o tema o
-    /// fırçayı varsayılan paletten alır ve renk körü kullanıcı için kırmızı/yeşil ayrımı
-    /// tek bir yerde geri gelir.
+    /// The light and dark overlays must cover the same key set; if one is missing a key, that
+    /// theme takes the brush from the default palette and the red/green distinction comes back
+    /// in one single place for a colour-blind user.
     /// </remarks>
     [Fact]
     public void Acik_ve_koyu_kaplamalar_ayni_anahtarlari_kapsiyor()
@@ -329,11 +330,11 @@ public class AppearanceTests
     }
 
     /// <summary>
-    /// 🔴 Boyut sınırlanıyor.
+    /// 🔴 The size is clamped.
     /// </summary>
     /// <remarks>
-    /// Elle düzenlenmiş bir ayar dosyasındaki <c>0</c> arayüzü <b>okunamaz</b> hâle getirirdi
-    /// ve ayarı geri almak için de o okunamaz arayüzü kullanmak gerekirdi.
+    /// A <c>0</c> in a hand-edited settings file would make the UI <b>unreadable</b>, and undoing
+    /// the setting would require using that same unreadable UI.
     /// </remarks>
     [AvaloniaFact]
     public void Asiri_yazi_boyutu_sinirlaniyor()
@@ -353,7 +354,7 @@ public class AppearanceTests
         }
     }
 
-    /// <summary>Türetilmiş boyutlar ana boyutla birlikte kayıyor.</summary>
+    /// <summary>Derived sizes scale together with the base size.</summary>
     [AvaloniaFact]
     public void Turetilmis_boyutlar_ana_boyutu_takip_ediyor()
     {

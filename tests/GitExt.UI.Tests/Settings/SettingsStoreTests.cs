@@ -4,13 +4,12 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Tests.Settings;
 
 /// <summary>
-/// P08-T14 — ayarlar altyapısı.
+/// P08-T14 — settings infrastructure.
 /// </summary>
 /// <remarks>
-/// Testlerin çoğu <b>kayıp</b> senaryolarını kovalıyor: ayar dosyası kullanıcının elle
-/// düzenleyebildiği, uzun ömürlü ve <c>v1.0.0</c>'da donacak bir şema (ADR-0006). Sessizce
-/// sıfırlanan bir ayar, hiç kaydedilmemiş bir ayardan daha kötüdür — kullanıcı kaydettiğini
-/// sanır.
+/// Most of these tests chase <b>data loss</b> scenarios: the settings file is a long-lived schema
+/// the user can hand-edit, and it freezes at <c>v1.0.0</c> (ADR-0006). A setting that is silently
+/// reset is worse than one that was never saved — the user thinks it was saved.
 /// </remarks>
 public class SettingsStoreTests : IDisposable
 {
@@ -85,12 +84,13 @@ public class SettingsStoreTests : IDisposable
     }
 
     /// <summary>
-    /// 🔴 İleriye dönük uyumluluk: yeni sürümün yazdığı alanlar eski sürümde <b>kaybolmamalı</b>.
+    /// 🔴 Forward compatibility: fields written by a newer version must <b>not be lost</b> by an
+    /// older one.
     /// </summary>
     /// <remarks>
-    /// Bu olmadan senaryo şu olurdu: kullanıcı yeni sürümde bir ayar yapar, bir kez eski
-    /// sürümü açar, tek bir ayarı değiştirir — ve yeni sürümün bütün ayarları sessizce
-    /// silinmiş olur.
+    /// Without this the scenario would be: the user configures something in the new version, opens
+    /// the old version once, changes a single setting — and every setting of the new version has
+    /// silently been deleted.
     /// </remarks>
     [Fact]
     public async Task Taninmayan_alanlar_kaydedince_KAYBOLMUYOR()
@@ -117,7 +117,7 @@ public class SettingsStoreTests : IDisposable
         written["appearance"]!["theme"]!.GetValue<string>().ShouldBe("Dark");
     }
 
-    /// <summary>Bozuk dosya silinmiyor, yanına taşınıyor.</summary>
+    /// <summary>A corrupted file is not deleted, it is moved aside.</summary>
     [Fact]
     public async Task Bozuk_dosya_silinmez_yanina_tasinir()
     {
@@ -131,7 +131,7 @@ public class SettingsStoreTests : IDisposable
         (await File.ReadAllTextAsync(store.InvalidFilePath, Ct)).ShouldContain("bu json değil");
     }
 
-    /// <summary>Geçerli JSON ama yanlış şekil (bir bölüm dizi olmuş) da bozuk sayılır.</summary>
+    /// <summary>Valid JSON but the wrong shape (a section became an array) also counts as corrupt.</summary>
     [Fact]
     public async Task Yanlis_sekilli_json_de_bozuk_sayilir()
     {
@@ -145,7 +145,7 @@ public class SettingsStoreTests : IDisposable
     }
 
     /// <summary>
-    /// 🔴 Gelecekten gelen dosyaya <b>dokunulmuyor</b> — ne okunuyor ne yeniden adlandırılıyor.
+    /// 🔴 A file from the future is <b>left alone</b> — neither read nor renamed.
     /// </summary>
     [Fact]
     public async Task Gelecekten_gelen_dosyaya_DOKUNULMUYOR()
@@ -162,12 +162,12 @@ public class SettingsStoreTests : IDisposable
     }
 
     /// <summary>
-    /// Tanınmayan enum değeri <b>yalnızca o alanı</b> varsayılana düşürür.
+    /// An unrecognised enum value drops <b>only that one field</b> to its default.
     /// </summary>
     /// <remarks>
-    /// Enum'ları doğrudan seri hale getirseydik <c>System.Text.Json</c> istisna atar, dosya
-    /// bozuk sayılır ve <b>bütün</b> ayarlar giderdi. Bu test o kararı koruyor: aşağıda tema
-    /// hatalı ama yazı tipi boyutu <b>korunuyor</b>.
+    /// Had we serialised the enums directly, <c>System.Text.Json</c> would throw, the file would
+    /// count as corrupt and <b>all</b> settings would be gone. This test protects that decision:
+    /// below, the theme is invalid but the font size is <b>preserved</b>.
     /// </remarks>
     [Fact]
     public async Task Taninmayan_enum_degeri_yalnizca_o_alani_etkiler()
@@ -185,7 +185,7 @@ public class SettingsStoreTests : IDisposable
         File.Exists(store.InvalidFilePath).ShouldBeFalse();
     }
 
-    /// <summary>Yazma atomik: geçici dosya ortada kalmıyor, dosya her zaman geçerli JSON.</summary>
+    /// <summary>Writes are atomic: no temp file is left behind, the file is always valid JSON.</summary>
     [Fact]
     public async Task Yazma_atomik_gecici_dosya_birakmaz()
     {
@@ -200,8 +200,8 @@ public class SettingsStoreTests : IDisposable
     }
 
     /// <summary>
-    /// Gecikmeli kayıt: art arda gelen değişiklikler tek yazmada birleşiyor,
-    /// <see cref="SettingsStore.FlushAsync"/> beklemeyi kesip yazıyor.
+    /// Debounced save: back-to-back changes coalesce into a single write, and
+    /// <see cref="SettingsStore.FlushAsync"/> cuts the wait short and writes.
     /// </summary>
     [Fact]
     public async Task Flush_bekleyen_degisikligi_hemen_yazar()
@@ -237,7 +237,8 @@ public class SettingsStoreTests : IDisposable
 }
 
 /// <summary>
-/// P08-T14 — göç mekanizması. Kayıtlı gerçek göç yok; mekanizma sahte adımlarla doğrulanıyor.
+/// P08-T14 — the migration mechanism. There are no real migrations recorded yet; the mechanism is
+/// verified with fake steps.
 /// </summary>
 public class SettingsMigratorTests
 {
@@ -292,11 +293,11 @@ public class SettingsMigratorTests
     }
 
     /// <summary>
-    /// Zincirde eksik adım varsa <b>hiç</b> göç yapılmaz.
+    /// If a step is missing from the chain, <b>no</b> migration is performed at all.
     /// </summary>
     /// <remarks>
-    /// Eksik adımı atlayıp devam etmek, yapılmamış bir dönüşümü yapılmış saymak olurdu;
-    /// sonuç, sessizce yanlış okunan bir ayar dosyası.
+    /// Skipping the missing step and carrying on would mean treating a transformation that never
+    /// ran as done; the result is a settings file that is silently read wrong.
     /// </remarks>
     [Fact]
     public void Eksik_adim_gocu_tumden_iptal_eder()

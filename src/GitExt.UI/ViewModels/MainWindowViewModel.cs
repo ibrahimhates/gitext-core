@@ -14,7 +14,7 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Karşılama ekranındaki son açılan depo girdisi (P03-T16).
+/// A recently opened repository entry on the welcome screen (P03-T16).
 /// </summary>
 public sealed class RecentRepositoryItem
 {
@@ -23,7 +23,7 @@ public sealed class RecentRepositoryItem
         Path = path;
         OpenCommand = openCommand;
 
-        // Klasör adı listeyi taramayı kolaylaştırır; tam yol ikinci satırda kalır.
+        // The folder name makes the list easy to scan; the full path stays on the second line.
         Name = System.IO.Path.GetFileName(path.TrimEnd(
             System.IO.Path.DirectorySeparatorChar,
             System.IO.Path.AltDirectorySeparatorChar));
@@ -41,12 +41,12 @@ public sealed class RecentRepositoryItem
     public ICommand OpenCommand { get; }
 
     /// <summary>
-    /// Klasör hâlâ duruyor mu?
+    /// Does the folder still exist?
     /// </summary>
     /// <remarks>
-    /// Kayıp girdiler listeden <b>silinmiyor</b>, soluk gösteriliyor: bağlı olmayan bir disk
-    /// veya geçici olarak erişilemeyen bir ağ yolu, kullanıcının listesini kalıcı olarak
-    /// budamak için yeterli sebep değil.
+    /// Lost entries are <b>not removed</b> from the list, they are shown dimmed: an unmounted
+    /// disk or a temporarily unreachable network path is not reason enough to permanently
+    /// prune the user's list.
     /// </remarks>
     public bool Exists => Directory.Exists(Path);
 
@@ -54,7 +54,7 @@ public sealed class RecentRepositoryItem
 }
 
 /// <summary>
-/// Ana pencerenin ViewModel'ı.
+/// ViewModel of the main window.
 /// </summary>
 public partial class MainWindowViewModel : ViewModelBase
 {
@@ -84,15 +84,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IPerformanceDiagnostics? _diagnostics;
 
     /// <summary>
-    /// Commit ekranı için yeni bir ViewModel üretir (P05-T09).
+    /// Creates a new ViewModel for the commit screen (P05-T09).
     /// </summary>
     /// <remarks>
-    /// GitExtensions'ta bu ekran <c>FormCommit</c> ve <c>ShowDialog</c> ile <b>modal</b>
-    /// açılıyor (<c>GitUICommands.StartCommitDialog</c>); yerleşim gibi açılış biçimi de
-    /// takip ediliyor (CLAUDE.md § 9).
+    /// In GitExtensions this screen opens <b>modally</b> via <c>FormCommit</c> and
+    /// <c>ShowDialog</c> (<c>GitUICommands.StartCommitDialog</c>); the way it opens is
+    /// followed just like the layout is (CLAUDE.md § 9).
     /// <para>
-    /// Pencereyi <b>açmak</b> görünümün işi; burası yalnızca ne gösterileceğini kuruyor
-    /// (P04-T16'daki karşılaştırma penceresiyle aynı desen).
+    /// <b>Opening</b> the window is the view's job; this only sets up what will be shown
+    /// (the same pattern as the comparison window in P04-T16).
     /// </para>
     /// </remarks>
     public WorkingTreeViewModel? CreateWorkingTree()
@@ -180,8 +180,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         CancelLoadingCommand = new AsyncRelayCommand(Commits.CancelLoadingAsync);
 
-        // Menü komutları (P08-T26). GitExtensions'ta "Refresh" hem Dashboard hem Repository
-        // menüsünde var; "Close (go to Dashboard)" Repository menüsünün son öğesi.
+        // Menu commands (P08-T26). In GitExtensions "Refresh" exists in both the Dashboard and
+        // the Repository menu; "Close (go to Dashboard)" is the last item of the Repository menu.
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         CloseRepositoryCommand = new RelayCommand(CloseRepository);
         CreateBranchCommand = new AsyncRelayCommand(CreateBranchAsync, () => CanCreateBranch);
@@ -209,11 +209,12 @@ public partial class MainWindowViewModel : ViewModelBase
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
 
-        // 🔴 Depoya bağlı HER ŞEY buradan haber alıyor. Tek yer olması şart: depo dört ayrı
-        // yoldan açılıp kapanıyor (açık yol, sürükle-bırak, açılışta sessiz deneme, kapatma)
-        // ve bildirimi tek tek o yollara koymak, birini unutmayı sessiz bir hata yapardı —
-        // nitekim öyle olmuştu: `HasRepository` yalnızca KAPANIŞTA bildiriliyordu, açılışta
-        // hiç. `_Depo` ve `_Komutlar` menüleri depo açıkken de soluk kalıyordu.
+        // 🔴 EVERYTHING that depends on the repository is notified from here. A single place is
+        // essential: the repository is opened and closed through four separate paths (explicit
+        // open, drag and drop, silent attempt at startup, close) and putting the notification
+        // into each path one by one would make forgetting one a silent bug — which is exactly
+        // what happened: `HasRepository` was notified only on CLOSE, never on open. The
+        // `_Repository` and `_Commands` menus stayed dimmed even with a repository open.
         Commits.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(CommitListViewModel.IsLoading)
@@ -223,9 +224,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 NotifyRepositoryDependents();
             }
 
-            // Faz 07: reset/cherry-pick/revert SEÇİLİ commit üzerinde çalışıyor. Seçim
-            // değiştiğinde bildirmezsek menü öğeleri, gerçekte kullanılabilir oldukları
-            // hâlde soluk kalırdı — P06'da `HasRepository` ile yaşanan hatanın aynısı.
+            // Phase 07: reset/cherry-pick/revert operate on the SELECTED commit. Without a
+            // notification when the selection changes the menu items would stay dimmed even
+            // though they are actually available — the same bug lived through with
+            // `HasRepository` in P06.
             if (e.PropertyName is nameof(CommitListViewModel.SelectedIndex)
                 or nameof(CommitListViewModel.SelectedRow))
             {
@@ -236,12 +238,12 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Seçili commit'i oturuma yazar (P08-T16).
+    /// Writes the selected commit into the session (P08-T16).
     /// </summary>
     /// <remarks>
-    /// Her seçim değişiminde çağrılıyor ama diske her seferinde yazılmıyor: ayar deposunun
-    /// kaydı gecikmeli. Ok tuşuyla listede gezinen kullanıcı saniyede onlarca seçim
-    /// değiştiriyor ve her birini yazmak sürekli dosya yazmak demekti.
+    /// Called on every selection change, but not written to disk every time: the settings
+    /// store saves with a delay. A user walking the list with the arrow keys changes the
+    /// selection dozens of times a second and writing each one meant writing files nonstop.
     /// </remarks>
     private void RememberSelection()
     {
@@ -253,19 +255,19 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Commit geçmişi listesi.</summary>
+    /// <summary>Commit history list.</summary>
     public CommitListViewModel Commits { get; }
 
-    /// <summary>Son açılan depolar, en yeni ilk sırada.</summary>
+    /// <summary>Recently opened repositories, newest first.</summary>
     public ObservableCollection<RecentRepositoryItem> RecentRepositories { get; } = [];
 
     /// <summary>
-    /// Gösterilecek son açılan depo var mı?
+    /// Is there any recently opened repository to show?
     /// </summary>
     /// <remarks>
-    /// Ayrı bir <see cref="bool"/> gerekli: <c>IsVisible</c>'a doğrudan <c>Count</c> bağlamak
-    /// <b>çalışmıyor</b> — Avalonia <c>int</c>'i <c>bool</c>'a çevirmiyor ve bölüm sessizce
-    /// hiç görünmüyordu (render'da yakalandı).
+    /// A separate <see cref="bool"/> is required: binding <c>Count</c> directly to
+    /// <c>IsVisible</c> <b>does not work</b> — Avalonia does not convert <c>int</c> to
+    /// <c>bool</c> and the section silently never showed (caught while rendering).
     /// </remarks>
     public bool HasRecentRepositories => RecentRepositories.Count > 0;
 
@@ -273,84 +275,84 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public ICommand CancelLoadingCommand { get; }
 
-    /// <summary>Açık depoyu yeniden okur (P08-T26).</summary>
+    /// <summary>Re-reads the open repository (P08-T26).</summary>
     public ICommand RefreshCommand { get; }
 
-    /// <summary>Depoyu kapatıp karşılama ekranına döner (P08-T26).</summary>
+    /// <summary>Closes the repository and returns to the welcome screen (P08-T26).</summary>
     public ICommand CloseRepositoryCommand { get; }
 
-    /// <summary>Dal oluşturma diyaloğunu açar (P06-T01).</summary>
+    /// <summary>Opens the create-branch dialog (P06-T01).</summary>
     public IAsyncRelayCommand CreateBranchCommand { get; }
 
     /// <summary>
-    /// Diyaloğu gösteren taraf. Görünüm kuruyor: diyalog bir sahip pencere istiyor ve o
-    /// ancak açılış anında biliniyor (P05-T15'teki <see cref="IDestructiveActionConfirmer"/>
-    /// ile aynı gerekçe).
+    /// The party that shows the dialog. The view supplies it: the dialog wants an owner
+    /// window and that is only known at open time (same rationale as
+    /// <see cref="IDestructiveActionConfirmer"/> in P05-T15).
     /// </summary>
     public ICreateBranchPrompt? BranchPrompt { get; set; }
 
-    /// <summary>Dal oluşturulabilir mi? (Açık depo + yazıcı + diyalog gerekiyor.)</summary>
+    /// <summary>Can a branch be created? (Open repository + writer + dialog required.)</summary>
     public bool CanCreateBranch =>
         _branchWriter is not null
         && BranchPrompt is not null
         && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
-    /// <summary>Seçili commit'e / dala geçer (P06-T02).</summary>
+    /// <summary>Checks out the selected commit / branch (P06-T02).</summary>
     public IAsyncRelayCommand CheckoutCommand { get; }
 
-    /// <summary>Dala geçme diyaloğunu gösteren taraf (P06-T02).</summary>
+    /// <summary>The party that shows the checkout dialog (P06-T02).</summary>
     public ICheckoutPrompt? CheckoutPrompt { get; set; }
 
-    /// <summary>Geçiş yapılabilir mi?</summary>
+    /// <summary>Can a checkout be performed?</summary>
     public bool CanCheckout =>
         _branchWriter is not null
         && CheckoutPrompt is not null
         && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
-    /// <summary>Seçili dalı yeniden adlandırır (P06-T03).</summary>
+    /// <summary>Renames the selected branch (P06-T03).</summary>
     public IAsyncRelayCommand RenameBranchCommand { get; }
 
-    /// <summary>Seçili dalı siler (P06-T03).</summary>
+    /// <summary>Deletes the selected branch (P06-T03).</summary>
     public IAsyncRelayCommand DeleteBranchCommand { get; }
 
-    /// <summary>Dal düzenleme diyaloglarını gösteren taraf (P06-T03).</summary>
+    /// <summary>The party that shows the branch editing dialogs (P06-T03).</summary>
     public IBranchEditPrompt? BranchEditPrompt { get; set; }
 
-    /// <summary>Uzak depo yönetimi ekranını açar (P06-T05).</summary>
+    /// <summary>Opens the remote management screen (P06-T05).</summary>
     public IAsyncRelayCommand ManageRemotesCommand { get; }
 
-    /// <summary>Uzak depo yönetimi ekranını gösteren taraf (P06-T05).</summary>
+    /// <summary>The party that shows the remote management screen (P06-T05).</summary>
     public IRemotesPrompt? RemotesPrompt { get; set; }
 
-    /// <summary>Pull/Fetch ekranını açar (P06-T06 + P06-T07).</summary>
+    /// <summary>Opens the Pull/Fetch screen (P06-T06 + P06-T07).</summary>
     public IAsyncRelayCommand PullCommand { get; }
 
-    /// <summary>Pull/Fetch ekranını gösteren taraf.</summary>
+    /// <summary>The party that shows the Pull/Fetch screen.</summary>
     public IPullPrompt? PullPrompt { get; set; }
 
-    /// <summary>Push ekranını açar (P06-T08).</summary>
+    /// <summary>Opens the Push screen (P06-T08).</summary>
     public IAsyncRelayCommand PushCommand { get; }
 
-    /// <summary>Push ekranını gösteren taraf.</summary>
+    /// <summary>The party that shows the Push screen.</summary>
     public IPushPrompt? PushPrompt { get; set; }
 
-    /// <summary>Kimlik doğrulama ekranını gösteren taraf (P06-T09).</summary>
+    /// <summary>The party that shows the authentication screen (P06-T09).</summary>
     public IAuthenticationPrompt? AuthenticationPrompt { get; set; }
 
     /// <summary>Dal paneli (P06-T13).</summary>
     public RefTreeViewModel RefTree { get; } = new();
 
     /// <summary>
-    /// Panelden çift tıklamayla dala geçer (P06-T13).
+    /// Checks out a branch on a double click in the panel (P06-T13).
     /// </summary>
     /// <remarks>
-    /// Diyalog akışı <see cref="CheckoutCommand"/>'la <b>aynı</b>: kirli ağaç uyarısı ve
-    /// seçenekler tek yerde. İkinci bir geçiş yolu yazmak, birinin sessizce korumasız
-    /// kalması demekti (P06-T02'nin kuralı: değişiklikleri kaybettirecek hiçbir yol olmamalı).
+    /// The dialog flow is <b>the same</b> as <see cref="CheckoutCommand"/>: the dirty-tree
+    /// warning and the options live in one place. Writing a second checkout path meant one
+    /// of them silently ending up unguarded (P06-T02's rule: no path may lose changes).
     /// </remarks>
     public Task CheckoutRefAsync(string refName) => CheckoutCoreAsync(refName);
 
-    /// <summary>Seçili commit'e bağlı komutların etkinliğini yeniler (P07-T06 … T08).</summary>
+    /// <summary>Refreshes the enablement of the commands tied to the selected commit (P07-T06 … T08).</summary>
     private void NotifySelectionDependents()
     {
         OnPropertyChanged(nameof(CanReset));
@@ -361,24 +363,24 @@ public partial class MainWindowViewModel : ViewModelBase
         RevertCommand.NotifyCanExecuteChanged();
     }
 
-    // ===================================================== Faz 07 komutları
+    // ===================================================== Phase 07 commands
 
-    /// <summary>Çakışma çözüm ekranını gösteren taraf (P07-T03).</summary>
+    /// <summary>The party that shows the conflict resolution screen (P07-T03).</summary>
     public IConflictPrompt? ConflictPrompt { get; set; }
 
-    /// <summary>Stash ekranını gösteren taraf (P07-T13).</summary>
+    /// <summary>The party that shows the stash screen (P07-T13).</summary>
     public IStashPrompt? StashPrompt { get; set; }
 
-    /// <summary>Reflog tarayıcısını gösteren taraf (P07-T14).</summary>
+    /// <summary>The party that shows the reflog browser (P07-T14).</summary>
     public IReflogPrompt? ReflogPrompt { get; set; }
 
-    /// <summary>Reset diyaloğunu gösteren taraf (P07-T06).</summary>
+    /// <summary>The party that shows the reset dialog (P07-T06).</summary>
     public IResetPrompt? ResetPrompt { get; set; }
 
-    /// <summary>Cherry-pick / revert diyaloğunu gösteren taraf (P07-T07, P07-T08).</summary>
+    /// <summary>The party that shows the cherry-pick / revert dialog (P07-T07, P07-T08).</summary>
     public ISequencerPrompt? SequencerPrompt { get; set; }
 
-    /// <summary>Rebase ekranını gösteren taraf (P07-T09, P07-T10).</summary>
+    /// <summary>The party that shows the rebase screen (P07-T09, P07-T10).</summary>
     public IRebasePrompt? RebasePrompt { get; set; }
 
     public IAsyncRelayCommand AbortOperationCommand { get; }
@@ -403,20 +405,20 @@ public partial class MainWindowViewModel : ViewModelBase
     private string? SelectedCommitId => Commits.SelectedRow?.Commit.Id.ToString();
 
     /// <summary>
-    /// Süren <b>herhangi bir</b> işlem iptal edilebilir mi? (P07-T11)
+    /// Can <b>any</b> operation in progress be aborted? (P07-T11)
     /// </summary>
     /// <remarks>
-    /// P06-T12'de bu yalnızca merge içindi; rebase/cherry-pick/revert'in iptali farklı
-    /// komutlar olduğu için bilinçli olarak dışarıda bırakılmıştı. Faz 07'de
-    /// <see cref="IConflictResolver"/> doğru fiili <b>durum dosyalarından</b> seçiyor,
-    /// dolayısıyla artık hepsi sunulabiliyor.
+    /// In P06-T12 this was for merge only; aborting rebase/cherry-pick/revert are different
+    /// commands so they were deliberately left out. In phase 07
+    /// <see cref="IConflictResolver"/> picks the right verb <b>from the state files</b>,
+    /// so all of them can now be offered.
     /// </remarks>
     public bool CanAbortOperation =>
         _advanced.Resolver is not null
         && RepositoryPathOrNull is not null
         && CurrentOperation is not (InProgressOperation.None or InProgressOperation.Bisect);
 
-    /// <summary>Çakışma çözüm ekranı açılabilir mi? (P07-T03)</summary>
+    /// <summary>Can the conflict resolution screen be opened? (P07-T03)</summary>
     public bool CanResolveConflicts =>
         _advanced.Conflicts is not null
         && _advanced.Resolver is not null
@@ -447,12 +449,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _advanced.Rebase is not null && RebasePrompt is not null && RepositoryPathOrNull is not null;
 
     /// <summary>
-    /// Süren işlemi iptal eder (P07-T11).
+    /// Aborts the operation in progress (P07-T11).
     /// </summary>
     /// <remarks>
-    /// 🔑 Onay şart: iptal çalışma ağacını işlem ÖNCESİNE döndürüyor, yani çakışmaları
-    /// çözerken yazılan her şey gider (P06-T12'de ölçüldü). Onay ekranında çözülmemiş
-    /// dosyalar listeleniyor.
+    /// 🔑 Confirmation is essential: the abort returns the working tree to its state BEFORE
+    /// the operation, so everything written while resolving conflicts is lost (measured in
+    /// P06-T12). The confirmation screen lists the unresolved files.
     /// </remarks>
     private async Task AbortOperationAsync()
     {
@@ -490,7 +492,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshAsync().ConfigureAwait(true);
     }
 
-    /// <summary>Çakışma çözüm ekranını açar (P07-T03, P07-T05).</summary>
+    /// <summary>Opens the conflict resolution screen (P07-T03, P07-T05).</summary>
     private async Task ResolveConflictsAsync()
     {
         if (_advanced.Conflicts is not { } reader
@@ -512,7 +514,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshAsync().ConfigureAwait(true);
     }
 
-    /// <summary>Stash ekranını açar (P07-T13).</summary>
+    /// <summary>Opens the stash screen (P07-T13).</summary>
     private async Task ShowStashAsync()
     {
         if (_advanced.Stash is not { } stash
@@ -533,7 +535,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshAsync().ConfigureAwait(true);
     }
 
-    /// <summary>Reflog tarayıcısını açar (P07-T14).</summary>
+    /// <summary>Opens the reflog browser (P07-T14).</summary>
     private async Task ShowReflogAsync()
     {
         if (_advanced.Reflog is not { } reflog
@@ -554,7 +556,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshAsync().ConfigureAwait(true);
     }
 
-    /// <summary>Reset diyaloğunu açar (P07-T06).</summary>
+    /// <summary>Opens the reset dialog (P07-T06).</summary>
     private async Task ResetAsync()
     {
         if (_advanced.Reset is not { } reset
@@ -585,7 +587,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private Task RevertAsync() => RunSequencerAsync(SequencerOperation.Revert);
 
-    /// <summary>Cherry-pick / revert diyaloğunu açar (P07-T07, P07-T08).</summary>
+    /// <summary>Opens the cherry-pick / revert dialog (P07-T07, P07-T08).</summary>
     private async Task RunSequencerAsync(SequencerOperation operation)
     {
         if (_advanced.Sequencer is not { } sequencer
@@ -611,15 +613,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
         await RefreshAsync().ConfigureAwait(true);
 
-        // Çakışmayla durduysa kullanıcıyı çözüm ekranına götürüyoruz: yarım kalmış bir
-        // işlemi bulup çıkış yolunu aramak zorunda bırakmak, fazın kuralına aykırı.
+        // If it stopped on a conflict we take the user to the resolution screen: forcing them
+        // to find a half-finished operation and hunt for the way out breaks the phase's rule.
         if (model.HasConflicts)
         {
             await ResolveConflictsAsync().ConfigureAwait(true);
         }
     }
 
-    /// <summary>Rebase ekranını açar (P07-T09, P07-T10).</summary>
+    /// <summary>Opens the rebase screen (P07-T09, P07-T10).</summary>
     private async Task RebaseAsync()
     {
         if (_advanced.Rebase is not { } rebase
@@ -629,7 +631,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Varsayılan hedef: seçili commit varsa o, yoksa mevcut dalın yukarısı boş.
+        // Default target: the selected commit if there is one, otherwise the current branch's upstream is empty.
         RebaseViewModel model = new(path, rebase, SelectedCommitId ?? string.Empty);
         await model.LoadAsync().ConfigureAwait(true);
 
@@ -651,65 +653,65 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Git komut günlüğünü açar (P06-T16).</summary>
+    /// <summary>Opens the git command log (P06-T16).</summary>
     public IAsyncRelayCommand ShowCommandLogCommand { get; }
 
-    /// <summary>Komut günlüğü panelini gösteren taraf (P06-T16).</summary>
+    /// <summary>The party that shows the command log panel (P06-T16).</summary>
     public ICommandLogPrompt? CommandLogPrompt { get; set; }
 
     /// <summary>
-    /// Günlük açılabilir mi?
+    /// Can the log be opened?
     /// </summary>
     /// <remarks>
-    /// Depoya bağlı DEĞİL: günlük depo açılmadan çalışan komutları da (depo arama,
-    /// sürüm kontrolü) gösteriyor ve sorun tam da orada olabilir.
+    /// NOT tied to the repository: the log also shows the commands that run without an open
+    /// repository (repository discovery, version check) and the problem may be exactly there.
     /// </remarks>
     public bool CanShowCommandLog => _commandLog is not null && CommandLogPrompt is not null;
 
-    /// <summary>Performans teşhis panelini açar (P09-T03).</summary>
+    /// <summary>Opens the performance diagnostics panel (P09-T03).</summary>
     public IAsyncRelayCommand ShowDiagnosticsCommand { get; }
 
-    /// <summary>Teşhis panelini gösteren taraf (P09-T03).</summary>
+    /// <summary>The party that shows the diagnostics panel (P09-T03).</summary>
     public IDiagnosticsPrompt? DiagnosticsPrompt { get; set; }
 
     /// <summary>
-    /// Teşhis açılabilir mi?
+    /// Can diagnostics be opened?
     /// </summary>
     /// <remarks>
-    /// Günlük gibi bu da depoya bağlı DEĞİL: açılışın kendisi yavaşsa, depo açılmadan
-    /// önceki komutların süresi tam da aranan bilgidir.
+    /// Like the log this is NOT tied to the repository: if startup itself is slow, the timing
+    /// of the commands before the repository opens is exactly the information wanted.
     /// </remarks>
     public bool CanShowDiagnostics => _diagnostics is not null && DiagnosticsPrompt is not null;
 
-    /// <summary>Merge ekranını açar (P06-T11).</summary>
+    /// <summary>Opens the merge screen (P06-T11).</summary>
     public IAsyncRelayCommand MergeCommand { get; }
 
-    /// <summary>Merge ekranını gösteren taraf.</summary>
+    /// <summary>The party that shows the merge screen.</summary>
     public IMergePrompt? MergePrompt { get; set; }
 
-    /// <summary>Süren merge'i iptal eder (P06-T12).</summary>
+    /// <summary>Aborts the merge in progress (P06-T12).</summary>
     public IAsyncRelayCommand AbortMergeCommand { get; }
 
     /// <summary>Merge iptalini onaylatan taraf (P06-T12).</summary>
     public IMergeAbortConfirmer? MergeAbortConfirmer { get; set; }
 
-    /// <summary>Sürükle-bırak birleştirmesini onaylatan taraf (P06-T15).</summary>
+    /// <summary>The party that confirms a drag-and-drop merge (P06-T15).</summary>
     public IMergeDropConfirmer? MergeDropConfirmer { get; set; }
 
     /// <summary>
-    /// Bir dalı başka bir dalın üstüne bırakınca çağrılır (P06-T15).
+    /// Called when a branch is dropped onto another branch (P06-T15).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 🔑 <b>Hedef MEVCUT dal olmak zorunda.</b> GitExtensions başka bir dalın üstüne
-    /// bırakmaya da izin veriyor ama bunun için önce o dala <b>geçmesi</b> gerekiyor —
-    /// yani tek bir sürüklemenin arkasında gizli ikinci bir işlem oluyor. Bu projede
-    /// gizli işlem yok: hedef mevcut dal değilse birleştirme yapılmıyor ve sebebi
-    /// yazılıyor.
+    /// 🔑 <b>The target MUST be the CURRENT branch.</b> GitExtensions also allows dropping
+    /// onto another branch, but to do that it first has to <b>check out</b> that branch —
+    /// meaning a hidden second operation behind a single drag. This project has no hidden
+    /// operations: if the target is not the current branch the merge is not performed and
+    /// the reason is written out.
     /// </para>
     /// <para>
-    /// Onay <b>her zaman</b> soruluyor (planın maddesi) ve onay ekranında çalıştırılacak
-    /// komut birebir yazılı.
+    /// Confirmation is <b>always</b> asked for (an item of the plan) and the command that
+    /// will run is written out verbatim on the confirmation screen.
     /// </para>
     /// </remarks>
     public async Task MergeDroppedAsync(string source, string target)
@@ -771,32 +773,32 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshAsync().ConfigureAwait(true);
     }
 
-    /// <summary>Birleştirme yapılabilir mi?</summary>
+    /// <summary>Can a merge be performed?</summary>
     public bool CanMerge =>
         _mergeWriter is not null
         && MergePrompt is not null
         && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
     /// <summary>
-    /// Süren bir merge iptal edilebilir mi?
+    /// Can a merge in progress be aborted?
     /// </summary>
     /// <remarks>
-    /// Yalnızca <b>merge</b> için: rebase/cherry-pick/revert'in iptali başka komutlar ve
-    /// Faz 07'nin konusu. Yanlış komutu sunmak yarım kalmış bir işi bozardı.
+    /// For <b>merge</b> only: aborting rebase/cherry-pick/revert are other commands and the
+    /// subject of phase 07. Offering the wrong command would wreck a half-finished job.
     /// </remarks>
     public bool CanAbortMerge =>
         _mergeWriter is not null
         && CurrentOperation == InProgressOperation.Merge
         && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
-    /// <summary>Push yapılabilir mi?</summary>
+    /// <summary>Can a push be performed?</summary>
     public bool CanPush =>
         _pushWriter is not null
         && _remoteReader is not null
         && PushPrompt is not null
         && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
-    /// <summary>Pull/Fetch yapılabilir mi?</summary>
+    /// <summary>Can a pull/fetch be performed?</summary>
     public bool CanPull =>
         _fetchWriter is not null
         && _pullWriter is not null
@@ -804,45 +806,46 @@ public partial class MainWindowViewModel : ViewModelBase
         && PullPrompt is not null
         && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
-    /// <summary>Uzak depolar yönetilebilir mi?</summary>
+    /// <summary>Can remotes be managed?</summary>
     public bool CanManageRemotes =>
         _remoteReader is not null
         && _remoteWriter is not null
         && RemotesPrompt is not null
         && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
-    /// <summary>Dal düzenlenebilir mi?</summary>
+    /// <summary>Can a branch be edited?</summary>
     public bool CanEditBranch =>
         _branchWriter is not null
         && BranchEditPrompt is not null
         && Commits.Repository?.WorkingDirectory is { Length: > 0 };
 
     /// <summary>
-    /// HEAD ayrık mı? (P06-T04)
+    /// Is HEAD detached? (P06-T04)
     /// </summary>
     [ObservableProperty]
     public partial bool IsDetachedHead { get; private set; }
 
-    /// <summary>Süren çok adımlı işlem (P06-T04).</summary>
+    /// <summary>Multi-step operation in progress (P06-T04).</summary>
     [ObservableProperty]
     public partial InProgressOperation CurrentOperation { get; private set; }
 
     /// <summary>
-    /// Ayrık HEAD şeridi gösterilsin mi?
+    /// Should the detached HEAD banner be shown?
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>Süren bir işlem varsa GÖSTERİLMİYOR.</b> ÖLÇÜLDÜ: rebase ve bisect sırasında
-    /// HEAD gerçekten ayrık; düz bir uyarı orada da açılır ve <i>"buradan dal oluştur"</i>
-    /// derdi — oysa kullanıcı bilerek bir işlemin ortasında ve dal oluşturmak yapması
-    /// gereken şey değil. O durumda <see cref="OperationText"/> gösteriliyor.
+    /// 🔴 <b>NOT SHOWN while an operation is in progress.</b> MEASURED: during rebase and
+    /// bisect HEAD really is detached; a plain warning would pop up there too and say
+    /// <i>"create a branch from here"</i> — whereas the user is knowingly in the middle of an
+    /// operation and creating a branch is not what they should do. In that case
+    /// <see cref="OperationText"/> is shown instead.
     /// </remarks>
     public bool ShowDetachedBanner =>
         IsDetachedHead && CurrentOperation == InProgressOperation.None;
 
-    /// <summary>Süren işlem şeridi gösterilsin mi?</summary>
+    /// <summary>Should the operation-in-progress banner be shown?</summary>
     public bool ShowOperationBanner => CurrentOperation != InProgressOperation.None;
 
-    /// <summary>Süren işlemin insan-okunur adı.</summary>
+    /// <summary>Human-readable name of the operation in progress.</summary>
     public string OperationText => CurrentOperation switch
     {
         InProgressOperation.Rebase => Loc.T("main.a_rebase_is_in_progress_finish_it_or_abort"),
@@ -854,37 +857,37 @@ public partial class MainWindowViewModel : ViewModelBase
         _ => string.Empty,
     };
 
-    /// <summary>Son dal işleminin sonucu; arayüzde şerit olarak gösterilir.</summary>
+    /// <summary>Result of the last branch operation; shown as a banner in the UI.</summary>
     [ObservableProperty]
     public partial string? BranchNotice { get; set; }
 
-    /// <summary>Bir depo açık mı? Menü öğelerinin etkinliği buna bağlı.</summary>
+    /// <summary>Is a repository open? Menu item enablement depends on this.</summary>
     /// <remarks>
-    /// ⚠️ Hesaplanan özellik: değeri her zaman doğru ama <b>bildirimi</b> kendiliğinden
-    /// gelmiyor. Bağlamanın güncellenmesi <see cref="NotifyRepositoryDependents"/>'a bağlı.
+    /// ⚠️ A computed property: its value is always correct but the <b>notification</b> does
+    /// not arrive by itself. Updating the binding depends on <see cref="NotifyRepositoryDependents"/>.
     /// </remarks>
     public bool HasRepository => Commits.Repository is not null;
 
     /// <summary>
-    /// Depo açılıp kapandığında değişen <b>tüm</b> bağlamaları ve komut durumlarını bildirir.
+    /// Notifies <b>all</b> the bindings and command states that change when a repository opens or closes.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 🔴 Bunun eksikliği gerçek bir hataydı: <c>HasRepository</c> yalnızca kapanışta
-    /// bildiriliyordu, açılışta hiç → <c>IsEnabled="{Binding HasRepository}"</c> ilk
-    /// değerinde (<see langword="false"/>) donuyor ve <b>ana menünün iki bölümü birden</b>
-    /// (<i>Depo</i>, <i>Komutlar</i>) depo açıkken de soluk kalıyordu.
+    /// 🔴 The absence of this was a real bug: <c>HasRepository</c> was notified only on close,
+    /// never on open → <c>IsEnabled="{Binding HasRepository}"</c> froze at its first value
+    /// (<see langword="false"/>) and <b>two whole sections of the main menu</b>
+    /// (<i>Repository</i>, <i>Commands</i>) stayed dimmed even with a repository open.
     /// </para>
     /// <para>
-    /// ⚠️ <b>Komutların da bildirilmesi gerekiyor:</b> <c>CanExecute</c> temsilcileri
-    /// <c>Commits.Repository</c>'ye bakıyor ama bir kez oluşturulmuş menü öğesi
-    /// <c>CanExecuteChanged</c> gelmedikçe sormuyor. Alt menü öğeleri menü <b>her açılışta</b>
-    /// yeniden kurulduğu için orada fark edilmiyordu; araç çubuğu ve kısayollar gibi
-    /// kalıcı bağlamalarda ise sessizce ölü kalırdı.
+    /// ⚠️ <b>The commands must be notified too:</b> the <c>CanExecute</c> delegates look at
+    /// <c>Commits.Repository</c>, but a menu item that has already been created does not ask
+    /// again until <c>CanExecuteChanged</c> arrives. Submenu items were not affected because
+    /// the menu is rebuilt <b>every time it opens</b>; on persistent bindings such as the
+    /// toolbar and the shortcuts they would have stayed silently dead.
     /// </para>
     /// <para>
-    /// Bir özellik/komut eklendiğinde buraya da eklenmeli — bunu unutmak sessiz bir hata
-    /// olduğu için <c>MainWindowBindingTests</c> gerçek pencere üzerinden kontrol ediyor.
+    /// When a property/command is added it must be added here too — because forgetting that is
+    /// a silent bug, <c>MainWindowBindingTests</c> checks it through a real window.
     /// </para>
     /// </remarks>
     private void NotifyRepositoryDependents()
@@ -927,11 +930,11 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Açık depoyu baştan okur.
+    /// Re-reads the open repository from scratch.
     /// </summary>
     /// <remarks>
-    /// Yol yeniden veriliyor: <c>git</c> durumu dışarıdan değişmiş olabilir (komut satırında
-    /// commit atılması gibi), bu yüzden önbelleğe güvenilmiyor.
+    /// The path is supplied again: the <c>git</c> state may have changed from outside (a commit
+    /// made on the command line, for instance), so the cache is not trusted.
     /// </remarks>
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
@@ -944,13 +947,13 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// İzleyicinin bildirdiği değişikliği ele alır (P05-T14).
+    /// Handles a change reported by the watcher (P05-T14).
     /// </summary>
     /// <remarks>
-    /// Yalnızca <see cref="RepositoryChangeKind.Repository"/> commit listesini ilgilendirir;
-    /// çalışma ağacı değişimini commit penceresi kendi dinliyor. Her dosya kaydedişinde
-    /// commit geçmişini yeniden okumak, büyük depoda saniyeler süren bir iş olurdu
-    /// (ölçüm: git/git 2,1 sn, Linux 31,6 sn).
+    /// Only <see cref="RepositoryChangeKind.Repository"/> concerns the commit list; the commit
+    /// window listens for working tree changes itself. Re-reading the commit history on every
+    /// file save would be a job taking seconds in a large repository
+    /// (measured: git/git 2.1 s, Linux 31.6 s).
     /// </remarks>
     private void OnRepositoryChanged(object? sender, RepositoryChangedEventArgs e)
     {
@@ -969,26 +972,26 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Kendi okumalarımızın ürettiği olaylar yeni bir tazeleme doğurmasın.
+        // Events produced by our own reads must not trigger another refresh.
         using IDisposable? suspension = _watcher?.Suspend();
 
         await OpenRepositoryAsync(path).ConfigureAwait(true);
     }
 
     /// <summary>
-    /// Dal oluşturma akışı (P06-T01).
+    /// Branch creation flow (P06-T01).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Onay diyaloğu değil, kurulum diyaloğu.</b> Dal oluşturmak yıkıcı bir işlem değil —
-    /// P05-T15'in "geri alınamaz işlem" kuralı burada geçerli değil; diyalog ad ve seçenek
-    /// almak için var.
+    /// <b>Not a confirmation dialog but a setup dialog.</b> Creating a branch is not a
+    /// destructive operation — P05-T15's "irreversible operation" rule does not apply here;
+    /// the dialog exists to collect a name and options.
     /// </para>
     /// <para>
-    /// ⚠️ Başlangıç noktası olarak <b>commit listesindeki seçim</b> kullanılıyor, HEAD değil:
-    /// GitExtensions'ta bu komut commit sağ tık menüsünde ve etiketi
-    /// <i>"Create branch at this revision"</i> — seçili commit'i yok sayıp HEAD'den
-    /// oluşturmak sessizce başka bir şey yapmak olurdu.
+    /// ⚠️ The <b>selection in the commit list</b> is used as the starting point, not HEAD:
+    /// in GitExtensions this command sits in the commit context menu and is labelled
+    /// <i>"Create branch at this revision"</i> — ignoring the selected commit and creating
+    /// from HEAD would be silently doing something else.
     /// </para>
     /// </remarks>
     private async Task CreateBranchAsync()
@@ -1018,8 +1021,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            // Kendi yazmamızın ürettiği olaylar ayrıca bir tazeleme doğurmasın; aşağıda
-            // zaten elle tazeliyoruz (P05-T14'ün `Suspend()` kuralı).
+            // Events produced by our own write must not trigger an extra refresh; we already
+            // refresh manually below (P05-T14's `Suspend()` rule).
             BranchCreateResult result;
 
             using (_watcher?.Suspend())
@@ -1040,7 +1043,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException error)
         {
-            // Ham stderr birincil mesaj olarak gösterilmiyor (GitFailureKind'ın gerekçesi).
+            // Raw stderr is not shown as the primary message (the rationale of GitFailureKind).
             BranchNotice = Loc.GitError(error);
             return;
         }
@@ -1050,19 +1053,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
 
     /// <summary>
-    /// Dala / commit'e geçme akışı (P06-T02).
+    /// Checkout flow for a branch / commit (P06-T02).
     /// </summary>
     /// <remarks>
-    /// <b>Hedef seçimi:</b> seçili commit'te <b>yerel bir dal</b> varsa o dala geçilir;
-    /// yoksa commit'in kendisine (detached). GitExtensions'ta da commit menüsünde iki ayrı
-    /// öğe var (<i>Checkout branch</i> · <i>Checkout this commit</i>); ikisini tek komutta
-    /// birleştirirken hangisinin olacağı <b>diyalogda açıkça yazılıyor</b>, sessizce
-    /// seçilmiyor.
+    /// <b>Target selection:</b> if the selected commit has a <b>local branch</b>, that branch
+    /// is checked out; otherwise the commit itself (detached). GitExtensions has two separate
+    /// items in the commit menu too (<i>Checkout branch</i> · <i>Checkout this commit</i>);
+    /// merging the two into one command, which one it will be is <b>stated plainly in the
+    /// dialog</b>, never chosen silently.
     /// </remarks>
     private Task CheckoutAsync() => CheckoutCoreAsync(null);
 
     /// <param name="refName">
-    /// Panelden gelen ref adı; <see langword="null"/> ise seçili commit kullanılır.
+    /// Ref name coming from the panel; when <see langword="null"/> the selected commit is used.
     /// </param>
     private async Task CheckoutCoreAsync(string? refName)
     {
@@ -1113,8 +1116,8 @@ public partial class MainWindowViewModel : ViewModelBase
                             Detach = target.IsDetached,
                             LocalChanges = decision.LocalChanges,
 
-                            // Onayın kendisi diyalogdan geliyor; Core tarafı yine de
-                            // açık bayrak istiyor (P05-T15 deseni).
+                            // The confirmation itself comes from the dialog; the Core side
+                            // still wants an explicit flag (the P05-T15 pattern).
                             UserConfirmed = decision.LocalChanges == LocalChangesAction.Discard,
                         })
                     .ConfigureAwait(true);
@@ -1138,7 +1141,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
 
     /// <summary>
-    /// Seçili commit'teki yerel dalı yeniden adlandırır (P06-T03).
+    /// Renames the local branch at the selected commit (P06-T03).
     /// </summary>
     private async Task RenameBranchAsync()
     {
@@ -1190,14 +1193,15 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Seçili commit'teki yerel dalı siler (P06-T03).
+    /// Deletes the local branch at the selected commit (P06-T03).
     /// </summary>
     /// <remarks>
-    /// <b>İki turlu akış.</b> Önce sıradan onay sorulup <c>git branch -d</c> deneniyor;
-    /// git dalı birleştirilmemiş diye reddederse diyalog ikinci kez, bu kez <b>kurtarma
-    /// komutuyla</b> açılıyor. Birleşmişliği önden hesaplamıyoruz: ölçüldü, <c>-d</c>
-    /// dalı HEAD'e değil <b>upstream'ine</b> birleşmiş olsa da siliyor; kendi hesabımız
-    /// o dallarda yanlış "birleştirilmemiş" alarmı üretirdi.
+    /// <b>A two-round flow.</b> First an ordinary confirmation is asked and <c>git branch -d</c>
+    /// is attempted; if git refuses because the branch is unmerged the dialog opens a second
+    /// time, this time <b>with the recovery command</b>. We do not compute mergedness up
+    /// front: measured, <c>-d</c> deletes a branch that is merged into its <b>upstream</b>
+    /// rather than into HEAD; our own calculation would raise a false "unmerged" alarm on
+    /// those branches.
     /// </remarks>
     private async Task DeleteBranchAsync()
     {
@@ -1234,7 +1238,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (BranchNotMergedException unmerged)
         {
-            // İkinci tur: artık kurtarma komutunu da gösterebiliyoruz.
+            // Second round: now we can show the recovery command as well.
             DeleteBranchDecision forced = await BranchEditPrompt
                 .RequestDeleteAsync(new DeleteBranchRequest
                 {
@@ -1270,8 +1274,9 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // 🔴 Hash bildirimde KALMALI: silinen dalın kendi reflog'u da gidiyor ve dal bu
-        // çalışma ağacında hiç checkout edilmemişse HEAD reflog'unda da iz yok (ölçüldü).
+        // 🔴 The hash MUST STAY in the notice: the deleted branch's own reflog goes away too,
+        // and if the branch was never checked out in this working tree there is no trace in
+        // the HEAD reflog either (measured).
         BranchNotice = result.WasUnmerged
             ? $"Branch '{result.Name}' deleted. To restore it: "
               + $"git branch {result.Name} {result.LastCommitId}"
@@ -1281,14 +1286,14 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Uzak depo yönetimi ekranını açar (P06-T05).
+    /// Opens the remote management screen (P06-T05).
     /// </summary>
     /// <remarks>
-    /// Ekranın kendi ViewModel'ı var ve ana pencereyi <b>tanımıyor</b> (P04-T08'de verilen
-    /// karar): burası yalnızca onu kuruyor, pencereyi açmak görünümün işi.
+    /// The screen has its own ViewModel and <b>does not know</b> the main window (the decision
+    /// made in P04-T08): this only sets it up, opening the window is the view's job.
     /// <para>
-    /// Kapanışta <see cref="RefreshAsync"/>: uzak izleme dalları silinmiş veya yeni bir
-    /// remote eklenmiş olabilir; rozetler ve dal listesi bunu yansıtmalı.
+    /// <see cref="RefreshAsync"/> on close: remote tracking branches may have been deleted or
+    /// a new remote added; the badges and the branch list must reflect that.
     /// </para>
     /// </remarks>
     private async Task ManageRemotesAsync()
@@ -1313,8 +1318,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Depo yazma işlemleri sırasında izleyici askıya alınıyor: config değişiklikleri
-        // tazeleme fırtınası üretebiliyor (P05-T14).
+        // The watcher is suspended during repository writes: config changes can produce a
+        // storm of refreshes (P05-T14).
         using (_watcher?.Suspend())
         {
             await RemotesPrompt.ShowAsync(model).ConfigureAwait(true);
@@ -1324,13 +1329,13 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Pull/Fetch ekranını açar (P06-T06 + P06-T07).
+    /// Opens the Pull/Fetch screen (P06-T06 + P06-T07).
     /// </summary>
     /// <remarks>
-    /// Fetch'in ayrı bir ekranı yok: GitExtensions'ta da <c>FormPull</c>'un bir seçeneği
-    /// ve menüdeki yer birleşik ("Pull/Fetch…", § 9).
+    /// Fetch has no separate screen: in GitExtensions it is an option of <c>FormPull</c> too
+    /// and its place in the menu is combined ("Pull/Fetch…", § 9).
     /// <para>
-    /// Kapanışta tazeleme şart: uzak izleme dalları değişmiş, HEAD ilerlemiş olabilir.
+    /// A refresh on close is essential: remote tracking branches may have changed, HEAD moved.
     /// </para>
     /// </remarks>
     private async Task PullAsync()
@@ -1371,11 +1376,11 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Push ekranını açar (P06-T08).
+    /// Opens the Push screen (P06-T08).
     /// </summary>
     /// <remarks>
-    /// Kapanışta tazeleme şart: <c>-u</c> ile upstream kurulmuş, uzak izleme dalları
-    /// ilerlemiş ya da bir dal silinmiş olabilir — üçü de dal rozetlerini değiştiriyor.
+    /// A refresh on close is essential: an upstream may have been set with <c>-u</c>, remote
+    /// tracking branches moved or a branch deleted — all three change the branch badges.
     /// </remarks>
     private async Task PushAsync()
     {
@@ -1414,7 +1419,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Merge ekranını açar (P06-T11).
+    /// Opens the merge screen (P06-T11).
     /// </summary>
     private async Task MergeAsync()
     {
@@ -1427,8 +1432,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         MergeViewModel model = new(_mergeWriter);
 
-        // Uzak dallar da birleştirilebilir; GitExtensions'ın listesi de ikisini birden
-        // içeriyor (§ 9).
+        // Remote branches can be merged too; GitExtensions' list contains both as well
+        // (§ 9).
         IReadOnlyList<string> sources =
         [
             .. (Commits.Refs?.LocalBranches ?? []).Select(branch => branch.Name),
@@ -1462,12 +1467,13 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Süren merge'i iptal eder (P06-T12).
+    /// Aborts the merge in progress (P06-T12).
     /// </summary>
     /// <remarks>
-    /// 🔑 Onay şart: <c>merge --abort</c> çalışma ağacını merge ÖNCESİNE döndürüyor, yani
-    /// kullanıcının çakışmaları çözerken yazdığı her şey gider (ölçüldü). Onay ekranında
-    /// çözülmemiş dosyalar listeleniyor — neyin kaybolacağı görünmeden onay istenmiyor.
+    /// 🔑 Confirmation is essential: <c>merge --abort</c> returns the working tree to its state
+    /// BEFORE the merge, so everything the user wrote while resolving conflicts is lost
+    /// (measured). The confirmation screen lists the unresolved files — no confirmation is
+    /// asked for without showing what will be lost.
     /// </remarks>
     private async Task AbortMergeAsync()
     {
@@ -1504,7 +1510,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await RefreshAsync().ConfigureAwait(true);
     }
 
-    /// <summary>Git komut günlüğünü açar (P06-T16).</summary>
+    /// <summary>Opens the git command log (P06-T16).</summary>
     private async Task ShowCommandLogAsync()
     {
         if (_commandLog is null || CommandLogPrompt is null)
@@ -1515,7 +1521,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await CommandLogPrompt.ShowAsync(new CommandLogViewModel(_commandLog)).ConfigureAwait(true);
     }
 
-    /// <summary>Performans teşhis panelini açar (P09-T03).</summary>
+    /// <summary>Opens the performance diagnostics panel (P09-T03).</summary>
     private async Task ShowDiagnosticsAsync()
     {
         if (_diagnostics is null || DiagnosticsPrompt is null)
@@ -1526,7 +1532,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await DiagnosticsPrompt.ShowAsync(_diagnostics).ConfigureAwait(true);
     }
 
-    /// <summary>Çözülmemiş dosyalar — iptal onayında gösteriliyor.</summary>
+    /// <summary>Unresolved files — shown in the abort confirmation.</summary>
     private async Task<IReadOnlyList<string>> ReadConflictedAsync(string path)
     {
         if (_statusReader is null)
@@ -1542,12 +1548,13 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException)
         {
-            // Onay ekranı listesiz de gösterilebilir; iptali engellemek doğru olmazdı.
+            // The confirmation screen can be shown without the list too; blocking the abort
+            // would not be right.
             return [];
         }
     }
 
-    /// <summary>Seçili commit'teki ilk yerel dal.</summary>
+    /// <summary>The first local branch at the selected commit.</summary>
     private string? SelectedLocalBranch =>
         Commits.SelectedRow?.Badges.FirstOrDefault(badge => badge.IsLocalBranch)?.Text;
 
@@ -1562,8 +1569,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return null;
         }
 
-        // Aynı commit'te birden çok dal olabilir; ilk yerel dal seçiliyor ve etikette
-        // yazılıyor, böylece kullanıcı hangisine geçtiğini görüyor.
+        // The same commit can carry several branches; the first local branch is chosen and
+        // written on the label, so the user sees which one they switched to.
         RefBadge? branch = row.Badges.FirstOrDefault(badge => badge.IsLocalBranch);
 
         return branch is not null
@@ -1577,8 +1584,8 @@ public partial class MainWindowViewModel : ViewModelBase
             ? $"Checked out commit {target.Label} (detached HEAD)."
             : $"Switched to branch '{result.Target}'.";
 
-        // 🔴 Çıkış kodu 0 olsa bile çakışma olabiliyor (`--merge` ölçümü); sessiz kalmak
-        // kullanıcıya "başarıyla geçildi" demek olurdu.
+        // 🔴 A conflict is possible even with exit code 0 (the `--merge` measurement); staying
+        // silent would be telling the user "checked out successfully".
         if (result.HasConflicts)
         {
             summary += Loc.T("main.some_files_are_unresolved_you_need_to_resolv");
@@ -1604,7 +1611,7 @@ public partial class MainWindowViewModel : ViewModelBase
             ? $"Branch '{result.Name}' created and checked out."
             : $"Branch '{result.Name}' created.";
 
-        // Upstream'i git kendisi kurdu; kullanıcı istemeden kurulan bir bağ sessiz kalmamalı.
+        // git set the upstream itself; a link created without the user asking must not stay silent.
         return result.Upstream is { Length: > 0 } upstream
             ? $"{summary} Tracked branch: {upstream}."
             : summary;
@@ -1638,16 +1645,16 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException)
         {
-            // Uyarı gösterebilmek için durum okuyamamak, dal oluşturmayı engellemez.
+            // Failing to read the state needed for a warning does not block branch creation.
             return false;
         }
     }
 
     /// <summary>
-    /// Açık depo için izlemeyi başlatır; depo yoksa durdurur (P05-T14).
+    /// Starts watching the open repository; stops when there is none (P05-T14).
     /// </summary>
     /// <remarks>
-    /// <b>Bare depo izlenmiyor:</b> çalışma ağacı yok, izlenecek dosya da yok.
+    /// <b>A bare repository is not watched:</b> there is no working tree, so no file to watch.
     /// </remarks>
     private void UpdateWatcher()
     {
@@ -1658,8 +1665,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (Commits.Repository is { WorkTreeRoot: { Length: > 0 } root } repository)
         {
-            // ⚠️ Üç ayrı yol: bağlı çalışma ağacında HEAD/index kendi git dizininde,
-            // ref'ler ortak dizinde (CLAUDE.md § 5, madde 9).
+            // ⚠️ Three separate paths: in a linked working tree HEAD/index live in its own git
+            // directory, while the refs live in the common directory (CLAUDE.md § 5, item 9).
             _watcher.Start(root, repository.GitDirectory, repository.CommonDirectory);
         }
         else
@@ -1668,7 +1675,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Depoyu kapatır; karşılama ekranı geri gelir.</summary>
+    /// <summary>Closes the repository; the welcome screen comes back.</summary>
     public void CloseRepository()
     {
         Commits.Close();
@@ -1676,13 +1683,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Subtitle = Loc.T("main.no_repository_open");
 
-        // Depo bilerek kapatıldı: sonraki açılışta karşılama ekranı gelmeli, aynı depo
-        // değil. Kullanıcı "kapat" derken bunu kastediyor.
+        // The repository was closed deliberately: the next startup must show the welcome
+        // screen, not the same repository. That is what the user means by "close".
         Session?.ForgetRepository();
 
-        // `Commits.Close()` zaten `Repository = null` yapıyor ve abonelik bildirimleri
-        // gönderiyor; buradaki çağrı yalnızca sıranın garantisi için duruyor (ikinci kez
-        // bildirmek zararsız, eksik bildirmek değil).
+        // `Commits.Close()` already sets `Repository = null` and sends the subscription
+        // notifications; the call here only stands to guarantee the ordering (notifying twice
+        // is harmless, notifying too little is not).
         OnPropertyChanged(nameof(ShowWelcome));
         NotifyRepositoryDependents();
     }
@@ -1691,30 +1698,31 @@ public partial class MainWindowViewModel : ViewModelBase
     public partial string Subtitle { get; set; } = Loc.T("main.no_repository_open");
 
     /// <summary>
-    /// Karşılama ekranı gösterilsin mi?
+    /// Should the welcome screen be shown?
     /// </summary>
     /// <remarks>
-    /// Açık depo yoksa ve bir şey yüklenmiyorsa. Yükleme sırasında gizlenmesi kasıtlı:
-    /// aksi halde açılışta karşılama ekranı bir an görünüp kaybolur.
+    /// When there is no open repository and nothing is loading. Hiding it during loading is
+    /// deliberate: otherwise the welcome screen flashes up and vanishes at startup.
     /// </remarks>
     public bool ShowWelcome => Commits.Repository is null && !Commits.IsLoading;
 
     /// <summary>
-    /// Uygulama açılışındaki depo seçimi (P03-T16).
+    /// Repository selection at application startup (P03-T16).
     /// </summary>
     /// <param name="explicitPath">
-    /// Komut satırında verilen yol; verilmediyse <see langword="null"/>.
+    /// Path given on the command line; <see langword="null"/> when not given.
     /// </param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <remarks>
     /// <para>
-    /// Yol açıkça verildiyse açılamaması bir <b>hatadır</b> ve kullanıcıya söylenir — o yolu
-    /// isteyen kullanıcıdır.
+    /// If the path was given explicitly, failing to open it is an <b>error</b> and is told to
+    /// the user — it is the user who asked for that path.
     /// </para>
     /// <para>
-    /// Verilmediyse çalışma dizini <b>sessizce</b> denenir. Uygulama masaüstünden veya
-    /// menüden başlatıldığında çalışma dizini rastgele bir yerdir; "burası depo değil"
-    /// hatası göstermek anlamsız olur. Depo değilse karşılama ekranı açılır.
+    /// If it was not given, the working directory is tried <b>silently</b>. When the
+    /// application is started from the desktop or a menu the working directory is some random
+    /// place; showing a "this is not a repository" error would be meaningless. If it is not a
+    /// repository the welcome screen opens.
     /// </para>
     /// </remarks>
     public async Task StartAsync(string? explicitPath, CancellationToken cancellationToken = default)
@@ -1727,9 +1735,9 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Kapanışta açık olan depo yeniden açılıyor (P08-T16). Çalışma dizininden ÖNCE
-        // deneniyor: masaüstünden başlatıldığında çalışma dizini rastgele bir yer, oysa
-        // son depo kullanıcının bilerek açtığı yer.
+        // The repository that was open at shutdown is reopened (P08-T16). It is tried BEFORE
+        // the working directory: started from the desktop the working directory is some random
+        // place, whereas the last repository is the place the user deliberately opened.
         if (Session?.LastRepository is { Length: > 0 } last
             && await TryOpenQuietlyAsync(last, cancellationToken).ConfigureAwait(true))
         {
@@ -1741,23 +1749,23 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Oturum hatırlayıcısı (P08-T16). Verilmezse oturum durumu tutulmaz.
+    /// Session recorder (P08-T16). Session state is not kept when this is not supplied.
     /// </summary>
     /// <remarks>
-    /// Diğer görünüm bağımlılıkları gibi ayarlanabilir bir özellik: ViewModel testlerinin
-    /// çoğu oturum kalıcılığını umursamıyor ve zorunlu bir bağımlılık hepsini değiştirmeyi
-    /// gerektirirdi.
+    /// A settable property like the other view dependencies: most ViewModel tests do not care
+    /// about session persistence and a mandatory dependency would require changing all of
+    /// them.
     /// </remarks>
     public SessionTracker? Session { get; set; }
 
     /// <summary>
-    /// Deponun son seçili commit'ini geri yükler (P08-T16).
+    /// Restores the repository's last selected commit (P08-T16).
     /// </summary>
     /// <remarks>
-    /// <b>SHA bulunamazsa hiçbir şey yapılmıyor</b> ve varsayılan seçim (en yeni commit)
-    /// korunuyor. Commit gerçekten kaybolmuş olabilir: rebase'lenmiş, sıfırlanmış ya da
-    /// budanmış. Bulunamayan bir SHA için seçimi temizlemek, kullanıcıyı boş bir detay
-    /// paneliyle bırakırdı.
+    /// <b>If the SHA is not found nothing is done</b> and the default selection (the newest
+    /// commit) is kept. The commit may genuinely be gone: rebased, reset away or pruned.
+    /// Clearing the selection for a SHA that cannot be found would leave the user with an
+    /// empty details panel.
     /// </remarks>
     private void RestoreSelectedCommit(string workingDirectory)
     {
@@ -1770,7 +1778,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Bir depoyu açar, başlığı günceller ve son açılanlara ekler.
+    /// Opens a repository, updates the title and adds it to the recent list.
     /// </summary>
     public async Task OpenRepositoryAsync(string path, CancellationToken cancellationToken = default)
     {
@@ -1786,8 +1794,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (Commits.Repository is { } opened)
         {
-            // Kullanıcının verdiği yol değil, git'in çözdüğü kök kaydedilir: alt klasörden
-            // açıldığında listede iki farklı girdi oluşmasın.
+            // Not the path the user gave but the root git resolved is recorded: opening from a
+            // subfolder must not create two different entries in the list.
             await AddRecentAsync(opened.WorkingDirectory, cancellationToken).ConfigureAwait(true);
 
             Session?.RememberRepository(opened.WorkingDirectory);
@@ -1798,12 +1806,12 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Ayrık HEAD ve süren işlem durumunu okur (P06-T04).
+    /// Reads the detached HEAD and operation-in-progress state (P06-T04).
     /// </summary>
     /// <remarks>
-    /// Ayrık olma bilgisi <c>RefReader</c>'dan geliyor (<c>symbolic-ref</c> tabanlı, yani
-    /// <c>(detached)</c> adlı dalı yanlış okumuyor); süren işlem ayrı bir okumayla, çünkü
-    /// dosya sistemine bakıyor ve ref okumasının parçası değil.
+    /// Whether HEAD is detached comes from <c>RefReader</c> (based on <c>symbolic-ref</c>, so a
+    /// branch actually named <c>(detached)</c> is not misread); the operation in progress comes
+    /// from a separate read, because it looks at the file system and is not part of the ref read.
     /// </remarks>
     private async Task UpdateHeadStateAsync(CancellationToken cancellationToken)
     {
@@ -1816,8 +1824,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             IsDetachedHead = Commits.Refs?.Head.IsDetached == true;
 
-            // Dal paneli (P06-T13) aynı ref okumasından besleniyor: ikinci bir okuma
-            // yazmak, iki panelin sessizce ayrışması demekti.
+            // The branch panel (P06-T13) is fed from the same ref read: writing a second read
+            // meant the two panels silently diverging.
             RefTree.Load(Commits.Refs);
 
             CurrentOperation = _operations is null
@@ -1845,20 +1853,20 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (GitException)
         {
-            // Şerit gösterememek depoyu açmayı engellemez.
+            // Failing to show the banner does not block opening the repository.
             return InProgressOperation.None;
         }
     }
 
     /// <summary>
-    /// Pencereye bırakılan yolları açmayı dener (P03-T16, sürükle-bırak).
+    /// Tries to open the paths dropped onto the window (P03-T16, drag and drop).
     /// </summary>
     /// <remarks>
-    /// Bırakılan şey bir <b>dosya</b> olabilir (kullanıcı dosya yöneticisinden bir dosyayı
-    /// sürükler); o zaman bulunduğu klasör denenir. <c>git</c> zaten üst klasörlere doğru
-    /// depo kökünü arar, yani deponun içindeki herhangi bir dosya yeterlidir.
+    /// What is dropped may be a <b>file</b> (the user drags a file from the file manager); in
+    /// that case its containing folder is tried. <c>git</c> already searches upwards for the
+    /// repository root, so any file inside the repository is enough.
     /// </remarks>
-    /// <returns>Bir yol açılmaya çalışıldıysa <see langword="true"/>.</returns>
+    /// <returns><see langword="true"/> when opening a path was attempted.</returns>
     public async Task<bool> TryOpenDroppedAsync(
         IEnumerable<string> paths,
         CancellationToken cancellationToken = default)
@@ -1884,9 +1892,9 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Depo olmayabilecek bir yolu, başarısızlığı hata olarak göstermeden dener.
+    /// Tries a path that may not be a repository, without reporting failure as an error.
     /// </summary>
-    /// <returns>Depo gerçekten açıldıysa <see langword="true"/>.</returns>
+    /// <returns><see langword="true"/> when a repository was really opened.</returns>
     private async Task<bool> TryOpenQuietlyAsync(string path, CancellationToken cancellationToken)
     {
         await Commits.OpenAsync(path, cancellationToken).ConfigureAwait(true);
@@ -1905,7 +1913,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
-            // Hata mesajı temizleniyor: kullanıcı bu klasörü açmayı istemedi.
+            // The error message is cleared: the user did not ask to open this folder.
             Commits.ErrorMessage = null;
             Commits.ErrorDetails = null;
             Subtitle = Loc.T("main.no_repository_open");

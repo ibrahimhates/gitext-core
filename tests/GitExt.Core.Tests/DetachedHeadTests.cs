@@ -56,7 +56,6 @@ public class DetachedHeadTests
         // `git branch "(detached)"` really creates it. While on that branch `--porcelain=v2` still
         // writes "# branch.head (detached)", so the output is INDISTINGUISHABLE. The user would get
         // a "detached HEAD, your commits may be lost" warning while sitting on a branch.
-        // kaybolabilir" uyarısı alırdı.
         using Harness harness = await CreateAsync();
         harness.Repository.Git("switch", "-c", "(detached)");
 

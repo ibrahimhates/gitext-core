@@ -3,8 +3,8 @@ using System.Reflection;
 namespace GitExt.Graph.Tests;
 
 /// <summary>
-/// ADR-0003 — <c>GitExt.Graph</c> yerleşim algoritmasını barındırır ve UI'dan bağımsız kalmalıdır.
-/// Bu bağımsızlık, Faz 03'te algoritmanın çizim yapmadan test edilebilmesini sağlar.
+/// ADR-0003 — <c>GitExt.Graph</c> hosts the layout algorithm and must stay independent of the UI.
+/// That independence is what lets the algorithm be tested in Phase 03 without drawing anything.
 /// </summary>
 public class LayeringTests
 {

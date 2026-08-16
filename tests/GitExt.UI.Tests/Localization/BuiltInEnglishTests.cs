@@ -4,18 +4,18 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Tests.Localization;
 
 /// <summary>
-/// İngilizce metinlerin dosyaya bağlı OLMADIĞINI doğrular (P11-T10).
+/// Verifies that the English strings are NOT tied to a file (P11-T10).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Ölçülmüş kusur:</b> yedek dil önce <c>en.json</c>'dan okunuyordu. Dosya silinir
-/// veya bozulursa yedek <b>boş sözlük</b> oluyor ve etkin dilde bulunmayan her anahtar
-/// arayüzde ham anahtar olarak görünüyordu — <c>settings.language</c> gibi. Hiçbir istisna
-/// fırlatmıyor, hiçbir test kırılmıyordu.
+/// 🔴 <b>Measured defect:</b> the fallback language used to be read from <c>en.json</c>. If the
+/// file is deleted or corrupted the fallback becomes an <b>empty dictionary</b>, and every key
+/// missing from the active language showed up in the UI as the raw key — like
+/// <c>settings.language</c>. Nothing threw, no test broke.
 /// </para>
 /// <para>
-/// Bu testler <c>en.json</c>'un <b>hiç olmadığı</b> durumu kuruyor: gömülü kopya devredeyse
-/// arayüz yine tam İngilizce.
+/// These tests set up the case where <c>en.json</c> <b>does not exist at all</b>: if the built-in
+/// copy is in play, the UI is still fully English.
 /// </para>
 /// </remarks>
 public class BuiltInEnglishTests
@@ -37,7 +37,7 @@ public class BuiltInEnglishTests
     [Fact]
     public void En_json_hic_yokken_metinler_yine_geliyor()
     {
-        // 🔴 Asıl senaryo: dosya silinmiş. Eskiden burada anahtar adı dönerdi.
+        // 🔴 The real scenario: the file is deleted. This used to return the key name.
         Translator translator = Translator.ForTesting(
             new InMemorySettingsStore(),
             Locale("tr", """{"_meta":{"code":"tr","name":"Türkçe"},"settings.theme":"Tema"}"""));
@@ -57,14 +57,14 @@ public class BuiltInEnglishTests
 
         translator["settings.theme"].ShouldBe("Tema");
 
-        // tr.json'da yok → gömülü İngilizceden geliyor, anahtar adı DEĞİL.
+        // Not in tr.json → comes from the built-in English, NOT the key name.
         translator["settings.language"].ShouldBe("Language");
     }
 
     [Fact]
     public void En_json_yokken_ingilizce_yine_secilebiliyor()
     {
-        // Dil listesinde İngilizce görünmezse kullanıcı ona geri dönemezdi.
+        // If English is missing from the language list, the user could not switch back to it.
         Translator translator = Translator.ForTesting(
             new InMemorySettingsStore(),
             Locale("tr", """{"_meta":{"code":"tr","name":"Türkçe"},"settings.theme":"Tema"}"""));
@@ -81,7 +81,7 @@ public class BuiltInEnglishTests
     [Fact]
     public void Bozuk_en_json_metinleri_kaybettirmiyor()
     {
-        // Silinmek zorunda değil; bozulması da yeter.
+        // It does not have to be deleted; being corrupted is enough.
         Translator translator = Translator.ForTesting(
             new InMemorySettingsStore(),
             new Dictionary<string, Func<Stream>>
@@ -96,9 +96,9 @@ public class BuiltInEnglishTests
     [Fact]
     public void Dosyadaki_en_json_gomuluyu_ezmiyor_ama_ayni_olmali()
     {
-        // Gömülü kopya en.json'dan ÜRETİLİYOR; ikisi ayrışırsa çeviri kaynağı belirsizleşir.
-        // CI ayrıca generate-fallback.py --check ile bunu doğruluyor; bu test aynı
-        // güvenceyi çalışma anında veriyor.
+        // The built-in copy is GENERATED from en.json; if the two diverge the translation
+        // source becomes ambiguous. CI also verifies this with generate-fallback.py --check;
+        // this test gives the same guarantee at run time.
         Translator translator = new(new InMemorySettingsStore());
 
         foreach ((string key, string english) in BuiltInEnglish.Entries)

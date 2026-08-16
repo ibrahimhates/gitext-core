@@ -5,11 +5,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P06-T05 — uzak depo yazma.
+/// P06-T05 — remote writing.
 /// </summary>
 /// <remarks>
-/// Ağırlık ölçümde çıkan iki geri alınamaz yolda: <c>remove</c>'un sessizce sildiği
-/// yapılandırma ve <c>rename</c>'in çıkış kodu 0 ile geçtiği güncellenmemiş refspec.
+/// The weight is on the two irreversible paths the measurement exposed: the configuration
+/// <c>remove</c> silently deletes, and the refspec <c>rename</c> leaves un-updated while returning
+/// exit code 0.
 /// </remarks>
 public class RemoteWriterTests
 {
@@ -42,7 +43,7 @@ public class RemoteWriterTests
         return new Harness(repository, new RemoteWriter(gitWriter, runner, reader), reader, queue);
     }
 
-    /// <summary>Gerçekten fetch edilebilecek bir uzak depo üretir.</summary>
+    /// <summary>Produces a remote repository that can really be fetched from.</summary>
     private static TestRepository CreateUpstream(out string url)
     {
         TestRepository upstream = TestRepository.CreateBare();
@@ -79,9 +80,9 @@ public class RemoteWriterTests
     [Fact]
     public async Task Var_olan_ad_RemoteAlreadyExists_olarak_siniflandiriliyor()
     {
-        // 🔴 Bu testin varlık sebebi: "error: remote origin already exists." genel
-        // "already exists" kalıbına da uyuyor ve kullanıcıya "Bu adda bir DAL zaten var."
-        // denirdi.
+        // 🔴 The reason this test exists: "error: remote origin already exists." also matches the
+        // generic "already exists" pattern, and the user would be told "A BRANCH with this name
+        // already exists.".
         using Harness harness = await CreateAsync();
         harness.Repository.Git("remote", "add", "origin", "https://example.com/a.git");
 
@@ -137,7 +138,7 @@ public class RemoteWriterTests
         plan.TrackingBranches.ShouldContain("origin/main");
         plan.AffectedBranches.ShouldNotBeEmpty();
 
-        // Karşı kanıt: silme sonrası bu bilgilerin HİÇBİRİ okunamıyor.
+        // Counter-evidence: after the removal NONE of this information can be read any more.
         harness.Repository.Git("remote").Trim().ShouldBeEmpty();
         harness.Repository.Git("for-each-ref", "refs/remotes").Trim().ShouldBeEmpty();
         harness.Repository.TryGit("config", "--get", "remote.pushDefault").ExitCode.ShouldBe(1);
@@ -146,8 +147,9 @@ public class RemoteWriterTests
     [Fact]
     public async Task Silme_plani_SILMEDEN_ONCE_hesaplaniyor()
     {
-        // 🔴 SABOTAJ TESTİ: plan silme sonrasına alınırsa boş kalır — bilgi artık yok.
-        // P06-T03'teki "hash'i silmeden önce oku" kuralının remote karşılığı.
+        // 🔴 SABOTAGE TEST: if the plan is computed after the removal it comes back empty — the
+        // information is gone. The remote counterpart of the "read the hash before deleting" rule
+        // from P06-T03.
         using Harness harness = await CreateAsync();
         using TestRepository upstream = CreateUpstream(out string url);
 
@@ -166,7 +168,8 @@ public class RemoteWriterTests
     [Fact]
     public async Task Kurtarma_komutlari_GERCEKTEN_calisiyor()
     {
-        // Uçtan uca: verilen komutlar kopyala-yapıştır ile deponun eski hâline getiriyor mu?
+        // End to end: do the commands we hand out restore the repository to its previous state
+        // by copy-paste?
         using Harness harness = await CreateAsync();
         using TestRepository upstream = CreateUpstream(out string url);
 
@@ -194,8 +197,8 @@ public class RemoteWriterTests
     [Fact]
     public async Task Yeniden_adlandirma_varsayilan_olmayan_refspec_te_UYARI_veriyor()
     {
-        // 🔴 ÇIKIŞ KODU 0 ama iş yarım: git refspec'i güncellemiyor. Yalnızca rc'ye bakan
-        // arayüz "başarıyla yeniden adlandırıldı" derdi.
+        // 🔴 EXIT CODE 0 but the job is half done: git does not update the refspec. An interface
+        // that looks only at rc would say "renamed successfully".
         using Harness harness = await CreateAsync();
         harness.Repository.Git("remote", "add", "origin", "https://example.com/a.git");
         harness.Repository.Git("config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/ozel/main");
@@ -205,7 +208,7 @@ public class RemoteWriterTests
         result.Warnings.ShouldNotBeEmpty();
         result.Warnings[0].ShouldContain("non-default fetch refspec");
 
-        // Ve gerçekten güncellenmemiş:
+        // And it really has not been updated:
         harness.Repository.Git("config", "--get", "remote.yeni.fetch").Trim()
             .ShouldBe("+refs/heads/main:refs/remotes/ozel/main");
     }
@@ -258,8 +261,8 @@ public class RemoteWriterTests
     [Fact]
     public async Task COKLU_url_de_tek_adimli_degistirme_REDDEDILIYOR()
     {
-        // ÖLÇÜLDÜ: git bu durumda "has multiple values" deyip 128 ile duruyor. Hatayı
-        // git'ten almak yerine burada durduruyoruz ki arayüz "hangi URL?" diye sorabilsin.
+        // MEASURED: in this case git says "has multiple values" and stops with 128. Instead of
+        // taking the error from git we stop here, so the interface can ask "which URL?".
         using Harness harness = await CreateAsync();
         harness.Repository.Git("remote", "add", "origin", "https://example.com/bir.git");
         harness.Repository.Git("remote", "set-url", "--add", "origin", "https://example.com/iki.git");
@@ -267,7 +270,7 @@ public class RemoteWriterTests
         await Should.ThrowAsync<InvalidOperationException>(() => harness.Writer.SetUrlAsync(
             harness.Path, "origin", RemoteUrlKind.Fetch, "https://example.com/uc.git", Ct));
 
-        // Depo değişmemiş olmalı.
+        // The repository must be unchanged.
         GitRemote remote = (await harness.Reader.FindAsync(harness.Path, "origin", Ct))!;
         remote.FetchUrls.Count.ShouldBe(2);
     }
@@ -293,8 +296,8 @@ public class RemoteWriterTests
     [Fact]
     public async Task Tire_ile_baslayan_MEVCUT_remote_ile_calisilabiliyor()
     {
-        // Kendi doğrulamamız böyle bir ad ÜRETMİYOR ama depoda zaten olabilir; `--` ayracı
-        // olmadan git bunu bayrak sanıyordu (rc=129).
+        // Our own verification does not PRODUCE such a name, but one may already exist in the
+        // repository; without the `--` separator git mistook it for a flag (rc=129).
         using Harness harness = await CreateAsync();
         harness.Repository.Git("remote", "add", "--", "-eski", "https://example.com/a.git");
 
@@ -305,7 +308,7 @@ public class RemoteWriterTests
     }
 
     /// <summary>
-    /// Kurtarma komutunu argümanlara böler (yalnızca test için; tek tırnak destekli).
+    /// Splits the recovery command into arguments (for tests only; single quotes supported).
     /// </summary>
     private static IReadOnlyList<string> SplitCommand(string command)
     {
@@ -339,7 +342,7 @@ public class RemoteWriterTests
             parts.Add(current.ToString());
         }
 
-        // İlk parça "git" — fixture zaten git'i çalıştırıyor.
+        // The first part is "git" — the fixture already runs git itself.
         return [.. parts.Skip(1)];
     }
 }

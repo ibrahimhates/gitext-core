@@ -4,13 +4,13 @@ using GitExt.Desktop;
 namespace GitExt.UI.Tests;
 
 /// <summary>
-/// Sürümün git tag'inden türetildiğini doğrular (P10-T01, ADR-0006).
+/// Verifies that the version is derived from the git tag (P10-T01, ADR-0006).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bu testlerin kapattığı boşluk: sürüm yanlış olduğunda <b>hiçbir şey kırılmaz.</b>
-/// Build yeşil, testler yeşil, paket üretiliyor — sadece adı yanlış. Ölçüldü (P10-T00):
-/// sığ klonda MinVer sessizce <c>0.0.0-alpha.0</c> üretiyor ve o değerle yayın yapılabiliyor.
+/// The gap these tests close: when the version is wrong, <b>nothing breaks.</b> The build is green,
+/// the tests are green, the package is produced — only its name is wrong. Measured (P10-T00): on a
+/// shallow clone MinVer silently produces <c>0.0.0-alpha.0</c> and a release can go out with it.
 /// </para>
 /// </remarks>
 public class VersionInfoTests
@@ -18,8 +18,8 @@ public class VersionInfoTests
     [Fact]
     public void Surum_derleme_sirasinda_gomulmus_olmali()
     {
-        // "bilinmiyor" — özniteliğin hiç üretilmediği durum. Buraya düşmek, sürümleme
-        // altyapısının sessizce devre dışı kaldığı anlamına gelir.
+        // "unknown" — the case where the attribute was never emitted at all. Landing here means
+        // the versioning infrastructure has silently been disabled.
         VersionInfo.Version.ShouldNotBe("bilinmiyor");
         VersionInfo.Version.ShouldNotBeNullOrWhiteSpace();
     }
@@ -27,13 +27,13 @@ public class VersionInfoTests
     [Fact]
     public void Surum_gercekten_MinVer_tarafindan_turetilmis_olmali()
     {
-        // 🔴 Bu test bir SABOTAJ DOĞRULAMASININ sonucu. MinVer devre dışı bırakıldığında
-        // (MinVerSkip=true) diğer tüm testler geçmeye devam etti: SDK varsayılanı `1.0.0`
-        // geçerli semver, tüm derlemelerde tutarlı ve sha'sı bile yerinde. Yani sürümleme
-        // sessizce kapansa uygulama "gitext-core 1.0.0" derdi ve kimse fark etmezdi.
+        // 🔴 This test is the result of a SABOTAGE VERIFICATION. When MinVer was disabled
+        // (MinVerSkip=true) every other test kept passing: the SDK default `1.0.0` is valid
+        // semver, consistent across all assemblies, and even its sha is in place. So if versioning
+        // silently switched off, the app would say "gitext-core 1.0.0" and nobody would notice.
         //
-        // MinVer çalıştığının tek kesin işareti, kendi ürettiği MinVerVersion değeri —
-        // Directory.Build.props bunu derlemeye gömüyor.
+        // The only certain sign that MinVer ran is the MinVerVersion value it produces itself —
+        // Directory.Build.props embeds that into the assembly.
         string? evidence = typeof(VersionInfo).Assembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(a => a.Key == "MinVerVersion")?.Value;
@@ -42,23 +42,23 @@ public class VersionInfoTests
             "MinVerVersion özniteliği yok — sürüm MinVer ile türetilmemiş. "
             + "Sürümleme altyapısı devre dışı kalmış olabilir.");
 
-        // Gömülen sürüm ile uygulamanın bildirdiği sürüm aynı olmalı.
+        // The embedded version and the version the application reports must be the same.
         evidence.ShouldBe(VersionInfo.Version);
     }
 
     [Fact]
     public void Surum_build_metadatasini_icermemeli()
     {
-        // MinVer sürümün sonuna "+<sha>" ekliyor. Paket adlarında ve kullanıcıya
-        // gösterilen metinde bunun yeri yok; '+' çoğu paket formatında geçersiz karakter.
+        // MinVer appends "+<sha>" to the end of the version. It has no place in package names or
+        // in text shown to the user; '+' is an invalid character in most package formats.
         VersionInfo.Version.ShouldNotContain("+");
     }
 
     [Fact]
     public void Commit_sha_ayri_olarak_okunabilmeli()
     {
-        // Hata raporlarında hangi commit'in çalıştığı, sürüm numarasından daha kesin:
-        // ön sürümlerde aynı numara birden çok commit'e denk gelebiliyor.
+        // In bug reports, which commit was running is more precise than the version number:
+        // in pre-releases the same number can map to more than one commit.
         VersionInfo.Commit.ShouldNotBeNull();
         VersionInfo.Commit!.Length.ShouldBe(40);
         VersionInfo.Commit.ShouldAllBe(c => Uri.IsHexDigit(c));
@@ -67,7 +67,7 @@ public class VersionInfoTests
     [Fact]
     public void Surum_semver_bicinminde_olmali()
     {
-        // MAJOR.MINOR.PATCH ile başlamalı (ADR-0006). Ardından ön sürüm eki gelebilir.
+        // Must start with MAJOR.MINOR.PATCH (ADR-0006). A pre-release suffix may follow.
         string core = VersionInfo.Version.Split('-')[0];
         string[] parts = core.Split('.');
 
@@ -78,10 +78,10 @@ public class VersionInfoTests
     [Fact]
     public void Hicbir_derlemede_elle_yazilmis_surum_kalmamali()
     {
-        // ADR-0006: "Sürüm hiçbir dosyaya elle yazılmaz." Directory.Build.props'taki
-        // VersionPrefix P10-T01'de kaldırıldı; geri eklenirse MinVer'i sessizce ezmez
-        // ama iki kaynak oluşur. Bu test, tüm derlemelerin AYNI sürümü taşıdığını
-        // doğrulayarak o ayrışmayı yakalar.
+        // ADR-0006: "The version is never written by hand into any file." The VersionPrefix in
+        // Directory.Build.props was removed in P10-T01; if it is put back it does not silently
+        // override MinVer, but there would be two sources. This test catches that divergence by
+        // verifying that all assemblies carry the SAME version.
         string[] assemblies = ["GitExt.Core", "GitExt.Graph", "GitExt.UI", "gitext-core"];
 
         List<string> versions = [];

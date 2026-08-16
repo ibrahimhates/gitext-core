@@ -7,12 +7,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.Localization;
 
 /// <summary>
-/// Ayarlar ekranındaki dil seçicisini doğrular (P11-T07).
+/// Verifies the language picker on the settings screen (P11-T07).
 /// </summary>
 /// <remarks>
-/// Seçicinin sessizce çalışmaması iki biçimde olabilir: listenin boş gelmesi (kullanıcı dil
-/// değiştiremiyor) ya da seçimin çevirmene ulaşmaması (seçiyor, hiçbir şey olmuyor).
-/// İkisi de istisna fırlatmıyor.
+/// The picker can fail silently in two ways: the list comes back empty (the user cannot change
+/// language), or the selection never reaches the translator (they pick one, nothing happens).
+/// Neither throws.
 /// </remarks>
 public class LanguageSelectionTests
 {
@@ -40,7 +40,7 @@ public class LanguageSelectionTests
     [AvaloniaFact]
     public void Acilista_etkin_dil_secili_geliyor()
     {
-        // Boş bir açılır liste, kullanıcıya hangi dilde olduğunu söylemez.
+        // An empty drop-down does not tell the user which language they are in.
         SettingsViewModel model = Build(out Translator translator, out _);
 
         model.Language.ShouldNotBeNull();
@@ -70,9 +70,9 @@ public class LanguageSelectionTests
     [AvaloniaFact]
     public void Ekran_acilirken_ayar_yeniden_yazilmiyor()
     {
-        // 🔴 Yükleme sırasında özellik atamaları da PropertyChanged tetikliyor. Süzülmezse
-        // ayarlar ekranını AÇMAK, hiçbir şey değiştirilmemişken dili yeniden yazardı.
-        // Tema tarafında aynı gerekçe zaten yazılı (SettingsViewModel.Apply).
+        // 🔴 Property assignments during load also raise PropertyChanged. Unfiltered, merely
+        // OPENING the settings screen would rewrite the language with nothing changed.
+        // The same rationale is already written down on the theme side (SettingsViewModel.Apply).
         InMemorySettingsStore settings = new();
         settings.Current.General.Language = "tr";
 
@@ -93,7 +93,7 @@ public class LanguageSelectionTests
     [AvaloniaFact]
     public void Cevirmen_verilmezse_cokmuyor()
     {
-        // Bazı testler ve tasarımcı çevirmensiz kuruyor; ekran yine açılabilmeli.
+        // Some tests and the designer construct it without a translator; the screen must still open.
         InMemorySettingsStore settings = new();
 
         SettingsViewModel model = new(

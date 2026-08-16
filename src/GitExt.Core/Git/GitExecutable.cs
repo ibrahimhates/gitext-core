@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Bulunmuş ve sürümü doğrulanmış bir <c>git</c> çalıştırılabiliri.
+/// A <c>git</c> executable that has been located and whose version has been validated.
 /// </summary>
 /// <remarks>
-/// Bu tipin bir örneği varsa, <c>git</c> bulunmuş ve <see cref="GitVersion.Minimum"/> koşulunu
-/// sağladığı doğrulanmış demektir. Bu doğrulamayı tip sistemine taşımak, "acaba git var mı"
-/// kontrolünün her çağrı yerinde tekrarlanmasını önler.
+/// If an instance of this type exists, it means <c>git</c> was found and verified to satisfy the
+/// <see cref="GitVersion.Minimum"/> requirement. Moving that validation into the type system
+/// prevents the "is git even there" check from being repeated at every call site.
 /// </remarks>
 public sealed class GitExecutable
 {
@@ -19,28 +19,28 @@ public sealed class GitExecutable
         Version = version;
     }
 
-    /// <summary>Çalıştırılabilirin tam yolu.</summary>
+    /// <summary>Full path of the executable.</summary>
     public string Path { get; }
 
-    /// <summary>Doğrulanmış sürüm.</summary>
+    /// <summary>The validated version.</summary>
     public GitVersion Version { get; }
 
     /// <summary>
-    /// Sistemde <c>git</c> arar, sürümünü okur ve doğrular.
+    /// Searches the system for <c>git</c>, reads its version and validates it.
     /// </summary>
     /// <param name="explicitPath">
-    /// Kullanıcı ayarlarından gelen açık yol. Verilirse arama yapılmaz.
+    /// Explicit path coming from user settings. If supplied, no search is performed.
     /// </param>
-    /// <param name="cancellationToken">İptal jetonu.</param>
-    /// <exception cref="GitNotFoundException">Çalıştırılabilir bulunamadığında.</exception>
-    /// <exception cref="GitVersionTooOldException">Sürüm çok eskiyse.</exception>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="GitNotFoundException">When the executable cannot be found.</exception>
+    /// <exception cref="GitVersionTooOldException">If the version is too old.</exception>
     public static async Task<GitExecutable> LocateAsync(
         string? explicitPath = null,
         CancellationToken cancellationToken = default)
     {
-        // Sandbox içindeysek host'a erişimin gerçekten mümkün olduğu ÖNCE doğrulanıyor.
-        // Erişilemiyorsa burada durulur; sandbox içindeki bir git'e sessizce düşmek,
-        // hook'u olan depolarda commit'in sessizce atılmamasına yol açıyor (ADR-0009).
+        // If we are inside a sandbox, host access is verified to actually be possible FIRST.
+        // If it is unreachable we stop here; silently falling back to a git inside the sandbox
+        // causes commits to be silently dropped in repositories that have hooks (ADR-0009).
         SandboxLauncher.EnsureHostAccessible();
 
         List<string> attempted = [];
@@ -71,36 +71,36 @@ public sealed class GitExecutable
     }
 
     /// <summary>
-    /// Aday yolları, denenme sırasına göre üretir.
+    /// Produces the candidate paths, in the order they are tried.
     /// </summary>
     internal static IEnumerable<string> EnumerateCandidates(string? explicitPath) =>
         EnumerateCandidates(explicitPath, RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
 
     /// <summary>
-    /// Aday üretimi; hedef platform dışarıdan verilebiliyor.
+    /// Candidate generation; the target platform can be supplied from outside.
     /// </summary>
     /// <remarks>
-    /// Test edilebilirlik için ayrıldı. Windows aday listesi yalnızca Windows'ta
-    /// koşan bir testle doğrulanabilseydi, Linux'ta geliştirilen bu projede hiç
-    /// çalıştırılmazdı — ve P10-T19'da bulunan eksik (Scoop/Chocolatey yolları)
-    /// yakalanamazdı.
+    /// Split out for testability. If the Windows candidate list could only be validated by a
+    /// test that runs on Windows, it would never be exercised in this project, which is
+    /// developed on Linux — and the gap found in P10-T19 (Scoop/Chocolatey paths) could not
+    /// have been caught.
     /// </remarks>
     internal static IEnumerable<string> EnumerateCandidates(string? explicitPath, bool windows)
     {
-        // Kullanıcı açıkça bir yol verdiyse yalnızca onu dene — sessizce başka bir git'e
-        // düşmek, teşhisi zor davranış farklarına yol açar.
+        // If the user gave an explicit path, try only that one — silently falling back to a
+        // different git leads to behavioural differences that are hard to diagnose.
         if (!string.IsNullOrWhiteSpace(explicitPath))
         {
             yield return explicitPath;
             yield break;
         }
 
-        // PATH üzerinden: en yaygın ve kullanıcının beklediği durum.
+        // Via PATH: the most common case and the one the user expects.
         yield return windows ? "git.exe" : "git";
 
         if (windows)
         {
-            // Git for Windows varsayılan konumları. PATH'e eklenmeden kurulabiliyor.
+            // Git for Windows default locations. It can be installed without being added to PATH.
             foreach (string root in new[]
                      {
                          Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
@@ -114,35 +114,35 @@ public sealed class GitExecutable
                 }
             }
 
-            // Paket yöneticileriyle kurulmuş git (P10-T19). Bunlar Git for Windows'un
-            // kurulum yolunu KULLANMIYOR ve yalnızca yukarıdaki listeye bakmak, git'i
-            // Scoop veya Chocolatey ile kurmuş kullanıcıda "git bulunamadı" veriyordu.
+            // git installed via package managers (P10-T19). These do NOT use the Git for
+            // Windows installation path, and looking only at the list above produced
+            // "git not found" for users who installed git with Scoop or Chocolatey.
             //
-            // Normalde ikisi de PATH'e ekleniyor, yani ilk aday zaten tutuyor. Bu yollar
-            // PATH'in eksik olduğu durumlar için: uygulama kısayolla veya PATH'i
-            // devralmayan bir başlatıcıyla açıldığında.
+            // Normally both are added to PATH, so the first candidate already matches. These
+            // paths are for the cases where PATH is incomplete: when the application is opened
+            // via a shortcut or by a launcher that does not inherit PATH.
             string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
             if (!string.IsNullOrEmpty(userProfile))
             {
-                // Scoop: kullanıcı başına kurulum, shims/ altında.
+                // Scoop: per-user installation, under shims/.
                 yield return System.IO.Path.Combine(userProfile, "scoop", "shims", "git.exe");
                 yield return System.IO.Path.Combine(userProfile, "scoop", "apps", "git", "current", "cmd", "git.exe");
             }
 
-            // Chocolatey: sistem geneli, varsayılan C:\ProgramData\chocolatey.
+            // Chocolatey: system-wide, defaults to C:\ProgramData\chocolatey.
             string programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 
             if (!string.IsNullOrEmpty(programData))
             {
                 yield return System.IO.Path.Combine(programData, "chocolatey", "bin", "git.exe");
-                // Scoop'un genel (global) kurulumu da buraya düşüyor.
+                // Scoop's global installation also lands here.
                 yield return System.IO.Path.Combine(programData, "scoop", "shims", "git.exe");
             }
         }
         else
         {
-            // Homebrew (Apple Silicon ve Intel), Nix ve klasik Unix konumları.
+            // Homebrew (Apple Silicon and Intel), Nix and the classic Unix locations.
             yield return "/opt/homebrew/bin/git";
             yield return "/usr/local/bin/git";
             yield return "/usr/bin/git";
@@ -150,7 +150,7 @@ public sealed class GitExecutable
     }
 
     /// <summary>
-    /// Adayı çalıştırıp sürümünü okur; çalıştırılamıyorsa <see langword="null"/> döner.
+    /// Runs the candidate and reads its version; returns <see langword="null"/> if it cannot be run.
     /// </summary>
     private static async Task<GitVersion?> TryReadVersionAsync(
         string path,
@@ -168,9 +168,9 @@ public sealed class GitExecutable
         startInfo.ArgumentList.Add("--version");
         startInfo.Environment["LC_ALL"] = "C";
 
-        // Flatpak sandbox'ındaysak host'taki git aranıyor (ADR-0009). Sandbox içindeki
-        // git'i bulmak, kullanıcının hook'larını ve yapılandırmasını göremeyen bir
-        // git'i "bulundu" saymak olurdu.
+        // If we are inside a Flatpak sandbox, the git on the host is searched for (ADR-0009).
+        // Finding the git inside the sandbox would mean treating a git that cannot see the
+        // user's hooks and configuration as "found".
         SandboxLauncher.RewriteForHost(startInfo);
 
         try
@@ -197,7 +197,7 @@ public sealed class GitExecutable
                                        or FileNotFoundException
                                        or DirectoryNotFoundException)
         {
-            // Aday yolda çalıştırılabilir yok — sıradakini dene.
+            // No executable at the candidate path — try the next one.
             return null;
         }
     }

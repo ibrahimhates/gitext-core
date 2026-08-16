@@ -6,7 +6,8 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P02-T11 — Ham nesne erişimi. <c>cat-file --batch</c> protokolü ölçülüp buna göre yazıldı.
+/// P02-T11 — Raw object access. The <c>cat-file --batch</c> protocol was measured and this was
+/// written accordingly.
 /// </summary>
 public class ObjectReaderTests
 {
@@ -58,7 +59,7 @@ public class ObjectReaderTests
             repository.Path, "HEAD", recursive: true, cancellationToken: Ct);
 
         entries.Select(e => e.Path.Value).ShouldContain("alt/derin/dosya.txt");
-        // Özyinelemeli modda ağaç girdileri gelmez, yalnızca blob'lar.
+        // In recursive mode tree entries do not come back, only blobs.
         entries.ShouldAllBe(e => !e.IsDirectory);
     }
 
@@ -73,7 +74,7 @@ public class ObjectReaderTests
 
         TreeEntry text = entries.Single(e => e.Path.Value == "metin.txt");
         text.Size.ShouldNotBeNull();
-        // "satır1\nsatır2\n" — Türkçe karakterler UTF-8'de 2 bayt.
+        // "satır1\nsatır2\n" — Turkish characters are 2 bytes in UTF-8.
         text.Size!.Value.ShouldBe(Encoding.UTF8.GetByteCount("satır1\nsatır2\n"));
     }
 
@@ -126,7 +127,8 @@ public class ObjectReaderTests
     [Fact]
     public async Task Bosluklu_yol_TAB_ayracindan_sonra_dogru_okunur()
     {
-        // Metadata ile yol arasındaki ayraç TAB'dır; boşlukla bölmek yolu keserdi.
+        // The separator between the metadata and the path is a TAB; splitting on space would cut
+        // the path short.
         const string awkward = "klasör adı/dosya adı ÖĞÜŞİ.txt";
 
         using TestRepository repository = TestRepository.CreateEmpty();
@@ -160,7 +162,8 @@ public class ObjectReaderTests
     [Fact]
     public async Task Ikili_icerik_bozulmadan_okunur_ve_isaretlenir()
     {
-        // İçerik metne çevrilip bölünseydi geçersiz UTF-8 baytları U+FFFD'ye dönüşürdü.
+        // If the content were converted to text and split, invalid UTF-8 bytes would turn into
+        // U+FFFD.
         byte[] expected = [0x00, 0xFF, 0xFE, 0x42, 0x00, 0x80, 0x81];
 
         using TestRepository repository = CreateSampleRepository();
@@ -178,7 +181,7 @@ public class ObjectReaderTests
     [Fact]
     public async Task Birden_fazla_blob_tek_cagrida_okunur()
     {
-        // ADR-0002'nin bilinen zayıflığı N+1 süreç çağrısı; toplu okuma bunun cevabı.
+        // ADR-0002's known weakness is the N+1 process call; batch reading is the answer to it.
         using TestRepository repository = CreateSampleRepository();
         ObjectReader reader = await CreateReaderAsync();
 
@@ -196,9 +199,9 @@ public class ObjectReaderTests
     [Fact]
     public async Task Toplu_okumada_ikili_icerik_sonraki_nesneyi_kaydirmaz()
     {
-        // KRİTİK: içerik ikili olabildiği için ayrıştırma bayt düzeyinde yapılmalı.
-        // İçerikte satır sonu veya NUL varsa ve metin olarak bölünseydi, sonraki
-        // nesnenin başlığı kaybolur ve tüm akış kayardı.
+        // CRITICAL: because the content can be binary, parsing must be done at the byte level.
+        // If the content contains a newline or a NUL and it were split as text, the next object's
+        // header would be lost and the whole stream would slip.
         using TestRepository repository = TestRepository.CreateEmpty();
         File.WriteAllBytes(
             Path.Combine(repository.Path, "a.bin"),
@@ -220,7 +223,7 @@ public class ObjectReaderTests
     [Fact]
     public async Task Boyut_siniri_asilinca_icerik_kirpilir()
     {
-        // Sınır olmadan 200 MB'lık tek bir dosya arayüzü kilitler.
+        // Without a limit a single 200 MB file locks up the interface.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("buyuk.txt", new string('x', 5000));
         repository.Git("add", "-A");
@@ -234,7 +237,7 @@ public class ObjectReaderTests
         BlobContent blob = blobs.ShouldHaveSingleItem();
         blob.Content.Length.ShouldBe(100);
         blob.IsTruncated.ShouldBeTrue();
-        // Gerçek boyut kırpılmadan bildirilmeli.
+        // The real size must be reported without being truncated.
         blob.Size.ShouldBe(5000);
     }
 
@@ -298,7 +301,7 @@ public class ObjectReaderTests
     [Fact]
     public void Boyutlu_agac_girdisi_ayristirilir()
     {
-        // --long çıktısında boyut sağa hizalı, boşlukla doldurulmuş gelir.
+        // In --long output the size comes right-aligned and space-padded.
         TreeEntry? entry = ObjectReader.ParseTreeEntry(
             "100644 blob 5e1be32d69590e1725df70312bf2db7eed02e4d9      14\tmetin.txt");
 

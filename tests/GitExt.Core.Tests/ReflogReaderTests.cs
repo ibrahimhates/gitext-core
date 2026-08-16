@@ -4,11 +4,11 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P07-T14 — reflog tarayıcısı.
+/// P07-T14 — the reflog browser.
 /// </summary>
 /// <remarks>
-/// Bu okuyucu fazın <b>sigortası</b>: Faz 07'deki her işlem geçmişi yeniden yazıyor ve
-/// kullanıcı kaybettiğini buradan geri alacak.
+/// This reader is the <b>insurance policy</b> of the phase: every operation in Phase 07 rewrites
+/// history, and this is where the user gets back what they lost.
 /// </remarks>
 public class ReflogReaderTests
 {
@@ -20,7 +20,7 @@ public class ReflogReaderTests
         return new ReflogReader(new GitProcessRunner(executable));
     }
 
-    // ----------------------------------------------------------- ayrıştırma
+    // -------------------------------------------------------------- parsing
 
     [Fact]
     public void Alanlar_NUL_ile_ayriliyor()
@@ -43,8 +43,8 @@ public class ReflogReaderTests
     [Fact]
     public void SEKME_iceren_commit_mesaji_alanlari_KAYDIRMIYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: `%s` commit konusundaki sekmeyi olduğu gibi basıyor. TAB ayırıcı
-        // kullanılsaydı bu satır fazladan alan üretir ve yazar adı yanlış okunurdu.
+        // 🔴 MEASURED: `%s` prints the tab in the commit subject as-is. Had a TAB separator been
+        // used, this line would produce an extra field and the author name would be read wrongly.
         string output = "\u001eabc123\0HEAD@{0}\0commit: x\0konu\tsekmeli\01786083979\0Yazar\n";
 
         IReadOnlyList<ReflogEntry> entries = ReflogReader.Parse(output);
@@ -57,10 +57,10 @@ public class ReflogReaderTests
     [Fact]
     public void BOS_ALANLI_kayit_IKIYE_BOLUNMUYOR()
     {
-        // 🔴 ÖLÇÜLDÜ: kayıt ayracı NUL ÇİFTİ iken, boş bir alan (boş commit mesajı) iki
-        // NUL'u yan yana getiriyor ve ayraçtan ayırt edilemiyordu — kayıt ortasından
-        // ikiye bölünüyordu. Gerçek çıktıda görüldü: `<sha>\0\0T\0\0`.
-        // Ayraç artık \x1e (ASCII Record Separator).
+        // 🔴 MEASURED: while the record separator was a NUL PAIR, an empty field (an empty commit
+        // message) put two NULs side by side and could not be told apart from the separator — the
+        // record was split in two from the middle. Seen in real output: `<sha>\0\0T\0\0`.
+        // The separator is now \x1e (ASCII Record Separator).
         string output =
             "\u001eabc123\0HEAD@{0}\0commit: x\0\01786083979\0Yazar\n"
             + "\u001edef456\0HEAD@{1}\0commit: y\0konu\01786083978\0Yazar\n";
@@ -103,9 +103,9 @@ public class ReflogReaderTests
     [Fact]
     public void Geri_alma_komutu_SECICI_degil_SHA_kullaniyor()
     {
-        // ⚠️ `HEAD@{3}` KAYAN bir referans: yeni bir işlem reflog'a girdi eklediğinde
-        // başka bir commit'i gösterir. Kullanıcı komutu kopyalayıp beş dakika sonra
-        // çalıştırırsa yanlış yere dönerdi.
+        // ⚠️ `HEAD@{3}` is a SLIDING reference: as soon as a new operation adds an entry to the
+        // reflog it points at a different commit. If the user copies the command and runs it five
+        // minutes later they would go back to the wrong place.
         ReflogEntry entry = new()
         {
             ObjectId = "0123456789abcdef",
@@ -118,7 +118,7 @@ public class ReflogReaderTests
         entry.ShortId.ShouldBe("0123456");
     }
 
-    // ----------------------------------------------------------- gerçek git
+    // ------------------------------------------------------------- real git
 
     [Fact]
     public async Task Gercek_depoda_islemler_sirayla_okunuyor()
@@ -133,7 +133,7 @@ public class ReflogReaderTests
 
         entries.ShouldNotBeEmpty();
 
-        // En yeni girdi başta.
+        // The newest entry comes first.
         entries[0].Action.ShouldBe(ReflogAction.Commit);
         entries[0].Timestamp.ShouldBeGreaterThan(DateTimeOffset.UnixEpoch);
         entries[0].AuthorName.ShouldBe("gitext-core tests");
@@ -142,7 +142,8 @@ public class ReflogReaderTests
     [Fact]
     public async Task RESET_ile_kaybolan_commit_reflogda_BULUNUYOR()
     {
-        // Fazın en önemli senaryosu: kullanıcı --hard ile geri gitti, commit'i geri istiyor.
+        // The most important scenario of the phase: the user went back with --hard and wants the
+        // commit back.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
@@ -163,9 +164,9 @@ public class ReflogReaderTests
     [Fact]
     public async Task ERISILEBILIR_commitler_kayip_diye_ISARETLENMIYOR()
     {
-        // 🔴 İlk yazımda erişilebilirlik `rev-list --all --no-walk=unsorted HEAD` ile
-        // hesaplanıyordu; `--no-walk` geçmişi GEZMEDİĞİ için yalnızca uç dönüyordu ve
-        // ilk commit'ten sonraki HER eski girdi "kayıp" görünüyordu.
+        // 🔴 In the first version reachability was computed with
+        // `rev-list --all --no-walk=unsorted HEAD`; because `--no-walk` does NOT walk the history
+        // only the tip came back, and EVERY older entry after the first commit looked "lost".
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
         for (int index = 0; index < 3; index++)

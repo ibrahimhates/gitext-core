@@ -1,26 +1,27 @@
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Depoda duran bir kilit dosyası hakkında bilgi (P05-T02).
+/// Information about a lock file sitting in the repository (P05-T02).
 /// </summary>
-/// <param name="Path">Kilit dosyasının tam yolu.</param>
-/// <param name="Age">Dosyanın oluşturulmasından bu yana geçen süre.</param>
+/// <param name="Path">Full path of the lock file.</param>
+/// <param name="Age">Time elapsed since the file was created.</param>
 public sealed record GitLockInfo(string Path, TimeSpan Age)
 {
     /// <summary>
-    /// Kilit, meşru bir işlem için beklenemeyecek kadar uzun süredir mi duruyor?
+    /// Has the lock been sitting there longer than can be expected for a legitimate operation?
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Bu bir tahmindir, kanıt değildir</b> — ve bilinçli olarak öyle adlandırıldı.
-    /// Ölçüldü: kilit dosyası <b>boş</b> (süreç kimliği yok), git eski bir kilide farklı
-    /// davranmıyor, dolayısıyla "sahibi öldü mü" sorusunun güvenilir bir cevabı yok.
+    /// <b>This is a guess, not proof</b> — and it was deliberately named that way.
+    /// Measured: the lock file is <b>empty</b> (no process id), git does not behave differently
+    /// for an old lock, therefore there is no reliable answer to the question "did its owner
+    /// die".
     /// </para>
     /// <para>
-    /// Eşik ölçüme dayanıyor: meşru kilit süresi <b>milisaniyeler</b> mertebesinde
-    /// (300 dosyalık <c>git add</c> = 12 ms) ve yavaş bir <c>pre-commit</c> hook'u bile
-    /// kilidi uzatmıyor — hook, kilit alınmadan <b>önce</b> çalışıyor (ölçüldü: 5 saniye
-    /// uyuyan hook boyunca <c>index.lock</c> hiç görülmedi).
+    /// The threshold is based on measurement: a legitimate lock lasts on the order of
+    /// <b>milliseconds</b> (a <c>git add</c> of 300 files = 12 ms) and even a slow
+    /// <c>pre-commit</c> hook does not extend the lock — the hook runs <b>before</b> the lock is
+    /// taken (measured: <c>index.lock</c> was never seen during a hook that slept for 5 seconds).
     /// </para>
     /// </remarks>
     public bool LooksStale => Age > TimeSpan.FromMinutes(5);
@@ -29,32 +30,32 @@ public sealed record GitLockInfo(string Path, TimeSpan Age)
 }
 
 /// <summary>
-/// Kilit dosyalarını inceler ve — <b>yalnızca açık istekle</b> — siler (P05-T02).
+/// Inspects lock files and — <b>only on an explicit request</b> — deletes them (P05-T02).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Kilit asla kendiliğinden silinmez.</b> Başka bir git süreci gerçekten çalışıyor
-/// olabilir; o süreç index'i yazarken kilidi silmek deponun index'ini bozar.
+/// <b>A lock is never deleted on its own.</b> Another git process may genuinely be running;
+/// deleting the lock while that process is writing the index corrupts the repository's index.
 /// </para>
 /// <para>
-/// <b>GitExtensions'a bakıldı:</b> orada da bayat tespiti <b>yok</b> —
-/// <c>IndexLockManager</c> yalnızca "dosya var mı" diye bakıyor ve silme işlemi
-/// kullanıcının menüden seçtiği <i>Delete index.lock</i> komutuna bağlı. Yani kararı
-/// kullanıcı veriyor. Biz de aynısını yapıyoruz, üstüne kullanıcıya karar vermesi için
-/// <b>kilidin yaşını</b> gösteriyoruz.
+/// <b>GitExtensions was consulted:</b> it has <b>no</b> stale detection either —
+/// <c>IndexLockManager</c> only checks "does the file exist" and deletion is tied to the
+/// <i>Delete index.lock</i> command the user picks from the menu. That is, the user makes the
+/// decision. We do the same, and on top of that we show <b>the age of the lock</b> so the user
+/// can decide.
 /// </para>
 /// </remarks>
 public static class GitLock
 {
-    /// <summary>Index kilidinin dosya adı.</summary>
+    /// <summary>File name of the index lock.</summary>
     public const string IndexLockName = "index.lock";
 
     /// <summary>
-    /// Depodaki index kilidini inceler; yoksa <see langword="null"/>.
+    /// Inspects the repository's index lock; <see langword="null"/> if there is none.
     /// </summary>
     /// <param name="gitDirectory">
-    /// Deponun git dizini. Worktree'lerde her birinin kendi index'i olduğu için ortak dizin
-    /// değil, o worktree'nin dizini verilmelidir.
+    /// The repository's git directory. Since each worktree has its own index, the directory of
+    /// that worktree must be given rather than the common directory.
     /// </param>
     public static GitLockInfo? Inspect(string gitDirectory)
     {
@@ -72,28 +73,30 @@ public static class GitLock
             DateTime createdUtc = File.GetLastWriteTimeUtc(path);
             TimeSpan age = DateTime.UtcNow - createdUtc;
 
-            // Saat kayması negatif yaş üretebilir; kullanıcıya "-3 saniyedir kilitli"
-            // demektense sıfır göstermek dürüst.
+            // Clock skew can produce a negative age; showing zero is more honest than telling
+            // the user "locked for -3 seconds".
             return new GitLockInfo(path, age > TimeSpan.Zero ? age : TimeSpan.Zero);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // Dosya inceleme ile silme arasında kaybolmuş olabilir; kilit yok sayılır.
+            // The file may have disappeared between inspection and deletion; the lock is treated
+            // as absent.
             return null;
         }
     }
 
     /// <summary>
-    /// Kilit dosyasını siler.
+    /// Deletes the lock file.
     /// </summary>
-    /// <param name="lockInfo">Silinecek kilit — önce <see cref="Inspect"/> ile alınmalı.</param>
+    /// <param name="lockInfo">The lock to delete — must first be obtained via <see cref="Inspect"/>.</param>
     /// <param name="userConfirmed">
-    /// Kullanıcının silmeyi <b>açıkça</b> onayladığı. <see langword="false"/> ise
-    /// <see cref="InvalidOperationException"/> fırlatılır.
+    /// That the user <b>explicitly</b> confirmed the deletion. If <see langword="false"/>,
+    /// <see cref="InvalidOperationException"/> is thrown.
     /// </param>
     /// <remarks>
-    /// Onay bir parametre olarak <b>zorunlu tutuluyor</b>: "sessizce silme" kuralını yorumda
-    /// bırakmak, birinin ileride bu metodu onaysız çağırmasına engel olmaz.
+    /// The confirmation is <b>made mandatory</b> as a parameter: leaving the "never delete
+    /// silently" rule in a comment does not stop somebody from calling this method without
+    /// consent later on.
     /// </remarks>
     public static void Remove(GitLockInfo lockInfo, bool userConfirmed)
     {
@@ -111,43 +114,43 @@ public static class GitLock
 }
 
 /// <summary>
-/// Kilit çakışmasında yeniden deneme politikası (P05-T02).
+/// Retry policy on a lock collision (P05-T02).
 /// </summary>
 /// <remarks>
-/// <b>ÖLÇÜLDÜ:</b> depo kuyruğu (P05-T01) yalnızca <i>bizim</i> yazmalarımızı sıraya sokuyor;
-/// kullanıcının terminali veya IDE'si de aynı depoya yazabiliyor. Dışarıdan sürekli yazan bir
-/// süreç varken 30 <c>git add</c>'in <b>9'u</b> yeniden deneme gerektirdi (en fazla 6 deneme)
-/// ve artan bekleme ile başarısızlık <b>sıfıra</b> indi.
+/// <b>MEASURED:</b> the repository queue (P05-T01) only serializes <i>our</i> writes; the user's
+/// terminal or IDE can write to the same repository too. With an external process writing
+/// continuously, <b>9</b> out of 30 <c>git add</c> calls needed a retry (at most 6 attempts) and
+/// with increasing back-off the failures dropped to <b>zero</b>.
 /// </remarks>
 public sealed record GitLockRetryOptions
 {
     public static GitLockRetryOptions Default { get; } = new();
 
-    /// <summary>Toplam deneme sayısı (ilk deneme dahil).</summary>
+    /// <summary>Total number of attempts (including the first one).</summary>
     public int MaximumAttempts { get; init; } = 8;
 
     /// <summary>
-    /// İlk bekleme süresi; sonraki denemelerde katları kadar beklenir.
+    /// The first delay; subsequent attempts wait multiples of it.
     /// </summary>
     /// <remarks>
-    /// Kilit ölçümde ~10 ms tutuluyordu, bu yüzden ilk bekleme kısa. Varsayılan
-    /// değerlerle toplam bekleme ~0,5 saniye — kullanıcı bir gecikme fark etmez.
+    /// In the measurement the lock was held for ~10 ms, which is why the first delay is short.
+    /// With the default values the total wait is ~0.5 seconds — the user notices no delay.
     /// </remarks>
     public TimeSpan InitialDelay { get; init; } = TimeSpan.FromMilliseconds(15);
 }
 
 /// <summary>
-/// Kilit çakışmasında işlemi yeniden deneyen yardımcı (P05-T02).
+/// Helper that retries an operation on a lock collision (P05-T02).
 /// </summary>
 public static class GitLockRetry
 {
     /// <summary>
-    /// İşlemi çalıştırır; kilit çakışmasında bekleyip yeniden dener.
+    /// Runs the operation; on a lock collision it waits and retries.
     /// </summary>
     /// <remarks>
-    /// Yalnızca <see cref="GitFailureKind.IndexLocked"/> yeniden denenir. Diğer hatalar
-    /// olduğu gibi yükselir — bir kimlik doğrulama hatasını sekiz kez tekrarlamak
-    /// kullanıcıyı bekletmekten başka işe yaramaz.
+    /// Only <see cref="GitFailureKind.IndexLocked"/> is retried. Other failures propagate as they
+    /// are — repeating an authentication failure eight times does nothing but keep the user
+    /// waiting.
     /// </remarks>
     public static async Task<T> RunAsync<T>(
         Func<CancellationToken, Task<T>> operation,

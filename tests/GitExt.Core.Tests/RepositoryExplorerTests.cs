@@ -5,8 +5,8 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P07-T16 · T17 · T18 · T19 · T20 · T21 — blame, dosya geçmişi, tag, submodule,
-/// worktree ve arama.
+/// P07-T16 · T17 · T18 · T19 · T20 · T21 — blame, file history, tag, submodule,
+/// worktree and search.
 /// </summary>
 public class RepositoryExplorerTests
 {
@@ -15,7 +15,7 @@ public class RepositoryExplorerTests
     private static async Task<GitProcessRunner> RunnerAsync() =>
         new(await GitExecutable.LocateAsync(cancellationToken: Ct));
 
-    /// <summary>Bir kez yeniden adlandırılmış, üç commit'lik bir dosya kurar.</summary>
+    /// <summary>Sets up a file with three commits that has been renamed once.</summary>
     private static TestRepository RenamedFile()
     {
         TestRepository repository = TestRepository.CreateEmpty();
@@ -49,17 +49,17 @@ public class RepositoryExplorerTests
         lines[0].LineNumber.ShouldBe(1);
         lines[1].LineNumber.ShouldBe(2);
 
-        // 1. ve 2. satır FARKLI commit'lerden.
+        // Lines 1 and 2 come from DIFFERENT commits.
         lines[0].ObjectId.ShouldNotBe(lines[1].ObjectId);
     }
 
     [Fact]
     public async Task AYNI_committen_gelen_satirlarin_YAZARI_bos_kalmıyor()
     {
-        // 🔴 ÖLÇÜLDÜ: `--porcelain` meta veriyi commit başına BİR KEZ yazıyor. Aynı
-        // commit'ten gelen ikinci satırda `author`/`summary` tekrarlanmıyor; her satırı
-        // bağımsız ayrıştıran bir okuyucu o satırların yazarını BOŞ gösterirdi — hem de
-        // en sık görülen durumda.
+        // 🔴 MEASURED: `--porcelain` writes the metadata ONCE per commit. On a second line coming
+        // from the same commit, `author`/`summary` are not repeated; a reader that parses each line
+        // independently would show those lines' author as EMPTY — and in the most common case at
+        // that.
         using TestRepository repository = TestRepository.CreateEmpty();
         repository.WriteFile("f.txt", "bir\niki\nuc\ndort\n");
         repository.Git("add", "-A");
@@ -84,7 +84,7 @@ public class RepositoryExplorerTests
         IReadOnlyList<BlameLine> lines = await reader.ReadAsync(
             repository.Path, RepositoryPath.Parse("yeni-ad.txt"), cancellationToken: Ct);
 
-        // Satırlar eski adla yazılmıştı; "önceki sürüme git" bunu kullanıyor.
+        // The lines were written under the old name; "go to previous version" uses this.
         lines[0].FileName.ShouldBe("f.txt");
     }
 
@@ -111,13 +111,13 @@ public class RepositoryExplorerTests
             .ShouldBeEmpty();
     }
 
-    // ============================================ P07-T17 dosya geçmişi
+    // ============================================== P07-T17 file history
 
     [Fact]
     public async Task Dosya_gecmisi_YENIDEN_ADLANDIRMA_boyunca_takip_ediyor()
     {
-        // ÖLÇÜLDÜ: `--follow` ile 3 commit, onsuz 1. Kullanıcı "bu dosyanın geçmişi bu
-        // kadar mıymış" diye düşünürdü.
+        // MEASURED: 3 commits with `--follow`, 1 without it. The user would think "so this is all
+        // the history this file has".
         using TestRepository repository = RenamedFile();
         FileHistoryReader reader = new(await RunnerAsync());
 
@@ -132,9 +132,9 @@ public class RepositoryExplorerTests
     [Fact]
     public async Task Yeniden_adlandirma_DOGRU_committe_isaretleniyor()
     {
-        // 🔴 ÖLÇÜLDÜ: kayıt ayracı SONDA olduğunda `--name-status` satırları bir SONRAKİ
-        // parçanın başına düşüyordu; yeniden adlandırma yanlış commit'e atfedilirdi.
-        // Ayraç başa alındı.
+        // 🔴 MEASURED: with the record separator at the END, `--name-status` lines fell into the
+        // beginning of the NEXT chunk; a rename would be attributed to the wrong commit.
+        // The separator was moved to the front.
         using TestRepository repository = RenamedFile();
         FileHistoryReader reader = new(await RunnerAsync());
 
@@ -175,8 +175,8 @@ public class RepositoryExplorerTests
     [Fact]
     public async Task Aciklamali_etiket_ETIKET_nesnesini_degil_COMMITI_gosteriyor()
     {
-        // `%(objectname)` açıklamalıda ETİKET NESNESİNİN SHA'sı. Karıştırmak, etikete
-        // tıklayınca var olmayan bir commit'e gitmek demekti.
+        // On an annotated tag `%(objectname)` is the SHA of the TAG OBJECT. Mixing them up meant
+        // going to a non-existent commit when clicking the tag.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("tag", "-a", "v1", "-m", "surum");
 
@@ -272,7 +272,7 @@ public class RepositoryExplorerTests
     [Fact]
     public void Kilitli_worktree_isaretleniyor()
     {
-        // Kilitli worktree kaldırılamaz; düğmeyi etkin göstermek yanlış olurdu.
+        // A locked worktree cannot be removed; showing the button enabled would be wrong.
         const string output = """
             worktree /depo
             HEAD abc123
@@ -330,7 +330,7 @@ public class RepositoryExplorerTests
     [Fact]
     public void BOSLUKLU_submodule_yolu_bozulmuyor()
     {
-        // Yol boşluk içerebilir; describe SONDAKİ parantezde.
+        // The path can contain spaces; the describe is in the TRAILING parentheses.
         const string output = " abc123 dis/bir dizin adi (v1.0)\n";
 
         Submodule module = SubmoduleReader.Parse(output).ShouldHaveSingleItem();
@@ -400,7 +400,7 @@ public class RepositoryExplorerTests
     [Fact]
     public async Task BOS_sorgu_tum_gecmisi_DONDURMUYOR()
     {
-        // Boş sorguda tüm commit'leri döndürmek "arama sonucu" gibi okunurdu.
+        // Returning every commit for an empty query would read like a "search result".
         using TestRepository repository = RenamedFile();
         SearchReader reader = new(await RunnerAsync());
 
@@ -426,7 +426,7 @@ public class RepositoryExplorerTests
     [Fact]
     public async Task Eslesme_yoksa_HATA_degil_BOS_liste()
     {
-        // `git grep` eşleşme yoksa çıkış kodu 1 veriyor; bu bir hata değil.
+        // `git grep` gives exit code 1 when there is no match; that is not an error.
         using TestRepository repository = RenamedFile();
         SearchReader reader = new(await RunnerAsync());
 
@@ -437,7 +437,7 @@ public class RepositoryExplorerTests
     [Fact]
     public void IKI_NOKTA_iceren_yol_arama_sonucunu_KAYDIRMIYOR()
     {
-        // `-z` olmadan `yol:satır:içerik` ayrıştırması iki nokta içeren bir yolda kayardı.
+        // Without `-z`, parsing `path:line:content` would slip on a path containing a colon.
         const string output = "tuhaf:ad.txt 12 icerik: iki nokta var\n";
 
         ContentMatch match = SearchReader.Parse(output).ShouldHaveSingleItem();

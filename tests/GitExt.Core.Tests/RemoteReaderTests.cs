@@ -5,12 +5,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P06-T05 — uzak depo okuma.
+/// P06-T05 — remote reading.
 /// </summary>
 /// <remarks>
-/// Testlerin ağırlığı, ölçümde <c>git remote -v</c>'yi ve <c>git remote get-url</c>'ü
-/// kullanılamaz kılan durumlarda: sekmeli/boşluklu URL, çoklu URL, URL'siz remote,
-/// noktalı ad ve <c>insteadOf</c>.
+/// The weight of these tests is on the cases that the measurement showed make <c>git remote -v</c>
+/// and <c>git remote get-url</c> unusable: URLs containing tabs/spaces, multiple URLs, a remote with
+/// no URL, a name containing a dot, and <c>insteadOf</c>.
 /// </remarks>
 public class RemoteReaderTests
 {
@@ -57,8 +57,8 @@ public class RemoteReaderTests
         RemoteReader reader = await CreateAsync();
         GitRemote remote = (await reader.FindAsync(repository.Path, "origin", Ct))!;
 
-        // `git remote -v` bu durumda (push) satırında fetch URL'sini TEKRARLIYOR; "ayrı push
-        // URL'si var mı" sorusunun cevabı orada yok, config'te var.
+        // In this case `git remote -v` REPEATS the fetch URL on the (push) line; the answer to
+        // "is there a separate push URL" is not there, it is in the config.
         remote.HasSeparatePushUrl.ShouldBeFalse();
         remote.EffectivePushUrls.ShouldBe(["https://example.com/a.git"]);
     }
@@ -66,7 +66,7 @@ public class RemoteReaderTests
     [Fact]
     public async Task SEKME_iceren_url_dogru_okunuyor()
     {
-        // 🔴 `git remote -v` bu satırı ayrıştırılamaz yapıyor: ayraç da sekme.
+        // 🔴 `git remote -v` makes this line unparsable: the separator is a tab too.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         const string url = "https://a\tb/c.git";
         repository.Git("config", "remote.sekmeli.url", url);
@@ -94,8 +94,8 @@ public class RemoteReaderTests
     [Fact]
     public async Task SATIR_SONU_iceren_url_dogru_okunuyor()
     {
-        // 🔴 `-z` olmadan `git config --get-regexp` bu değeri İKİ SATIRA bölüyor (ölçüldü);
-        // satır tabanlı ayrıştırıcı ikinci parçayı ayrı bir kayıt sanardı.
+        // 🔴 Without `-z`, `git config --get-regexp` splits this value across TWO LINES (measured);
+        // a line-based parser would mistake the second piece for a separate record.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         const string url = "https://a\nb/c.git";
         repository.Git("config", "remote.satirli.url", url);
@@ -110,8 +110,8 @@ public class RemoteReaderTests
     [Fact]
     public async Task COKLU_url_hepsi_okunuyor()
     {
-        // `git remote -v` burada TEK bir remote için üç satır veriyor; ad başına iki satır
-        // varsayan ayrıştırıcı sonraki remote'u kaydırırdı.
+        // Here `git remote -v` gives three lines for a SINGLE remote; a parser assuming two lines
+        // per name would shift the next remote.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("remote", "add", "origin", "https://example.com/bir.git");
         repository.Git("remote", "set-url", "--add", "origin", "https://example.com/iki.git");
@@ -121,15 +121,15 @@ public class RemoteReaderTests
 
         remote.FetchUrls.ShouldBe(["https://example.com/bir.git", "https://example.com/iki.git"]);
 
-        // Fetch ilkini kullanır; "birincil URL" bu.
+        // Fetch uses the first one; this is the "primary URL".
         remote.Url.ShouldBe("https://example.com/bir.git");
     }
 
     [Fact]
     public async Task URL_siz_remote_listede_kaliyor_ve_URL_i_NULL()
     {
-        // 🔴 ÖLÇÜLDÜ: bu remote için `git remote get-url` çıkış kodu 0 ile ADIN KENDİSİNİ
-        // basıyor, `git remote -v` ise boş bırakıyor. İkisi de kullanılmıyor.
+        // 🔴 MEASURED: for this remote `git remote get-url` prints THE NAME ITSELF with exit code
+        // 0, while `git remote -v` leaves it blank. Neither of them is used.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("config", "remote.hayalet.fetch", "+refs/heads/*:refs/remotes/hayalet/*");
 
@@ -145,7 +145,7 @@ public class RemoteReaderTests
     [Fact]
     public async Task NOKTALI_ad_dogru_ayristiriliyor()
     {
-        // 🔴 `remote.a.b.url` anahtarını `Split('.')[1]` ile okumak adı "a" sanardı.
+        // 🔴 Reading the `remote.a.b.url` key with `Split('.')[1]` would take the name to be "a".
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("remote", "add", "a.b", "https://example.com/ab.git");
 
@@ -159,8 +159,9 @@ public class RemoteReaderTests
     [Fact]
     public async Task insteadOf_tanimliyken_HAM_config_degeri_okunuyor()
     {
-        // 🔴 Bu testin varlık sebebi: `get-url`/`remote -v` yeniden yazılmış URL'yi veriyor.
-        // Arayüz onu düzenleme kutusuna koyup kaydederse kısayol kalıcı olarak yok oluyor.
+        // 🔴 The reason this test exists: `get-url`/`remote -v` give back the rewritten URL.
+        // If the interface puts that in an edit box and saves it, the shortcut is destroyed
+        // permanently.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Git("config", "url.https://example.com/.insteadOf", "ornek:");
         repository.Git("remote", "add", "kisa", "ornek:proje.git");
@@ -170,7 +171,7 @@ public class RemoteReaderTests
 
         remote.Url.ShouldBe("ornek:proje.git");
 
-        // Karşı kanıt: git'in kendi kanalı gerçekten farklı cevap veriyor.
+        // Counter-evidence: git's own channel really does answer differently.
         repository.Git("remote", "get-url", "kisa").Trim()
             .ShouldBe("https://example.com/proje.git");
     }

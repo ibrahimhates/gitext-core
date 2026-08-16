@@ -7,7 +7,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T02 — dala / commit'e geçme akışı (ViewModel tarafı).
+/// P06-T02 — the switch-to-branch / commit flow (ViewModel side).
 /// </summary>
 public class CheckoutTests
 {
@@ -42,7 +42,7 @@ public class CheckoutTests
 
         await model.CheckoutCommand.ExecuteAsync(null);
 
-        // Sessizce hiçbir şey yapmamak, kullanıcıya komutun bozuk olduğunu düşündürür.
+        // Silently doing nothing makes the user think the command is broken.
         model.BranchNotice.ShouldNotBeNull();
         prompt.AskCount.ShouldBe(0);
     }
@@ -59,7 +59,7 @@ public class CheckoutTests
 
         await model.CheckoutCommand.ExecuteAsync(null);
 
-        // Hangisinin olacağı DİYALOGDA yazılı; sessizce seçilmiyor.
+        // Which one it will be is written IN THE DIALOG; it is not chosen silently.
         prompt.LastRequest!.IsDetached.ShouldBeTrue();
 
         BranchSwitchOptions options = writer.Switched.ShouldHaveSingleItem();
@@ -86,8 +86,8 @@ public class CheckoutTests
     [AvaloniaFact]
     public async Task Atma_secilince_ONAY_bayragi_geciyor()
     {
-        // Core tarafı `UserConfirmed` olmadan atmayı reddediyor; diyalogdaki seçimin
-        // oraya taşınmaması, özelliğin sessizce hiç çalışmaması demek olurdu.
+        // The Core side refuses to discard without `UserConfirmed`; not carrying the dialog's
+        // choice over there would mean the feature silently never works at all.
         FakeBranchWriter writer = new();
         FakeCheckoutPrompt prompt = new(new CheckoutDecision
         {
@@ -130,9 +130,9 @@ public class CheckoutTests
     [AvaloniaFact]
     public async Task Cakisma_CIKIS_KODU_0_olsa_bile_kullaniciya_bildiriliyor()
     {
-        // 🔴 P06-T02'nin en önemli ölçümü: `switch --merge` çakışmada çıkış kodu 0
-        // veriyor. Bildirim "geçildi" deyip susarsa kullanıcı çözülmemiş dosyalarla
-        // çalışmaya devam eder.
+        // 🔴 The most important measurement of P06-T02: `switch --merge` returns exit code 0 on a
+        // conflict. If the notification just says "switched" and goes quiet, the user carries on
+        // working with unresolved files.
         FakeBranchWriter writer = new()
         {
             SwitchResult = new BranchSwitchResult { Target = "ozellik", HasConflicts = true },

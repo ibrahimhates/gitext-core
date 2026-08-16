@@ -4,12 +4,12 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P06-T11 + P06-T12 — merge ve merge'den çıkış.
+/// P06-T11 + P06-T12 — merge and getting out of a merge.
 /// </summary>
 /// <remarks>
-/// Ölçümün iki sessiz noktası: <c>--squash</c>'ın çıkış kodu 0 verip <b>commit
-/// yapmaması</b>, ve çakışma metninin <c>stdout</c>'ta olması (P06-T07'de pull'da aynı
-/// tuzağa düşülmüştü).
+/// The two silent points of the measurement: <c>--squash</c> giving exit code 0 while <b>not
+/// committing</b>, and the conflict text landing on <c>stdout</c> (the same trap was fallen into
+/// for pull in P06-T07).
 /// </remarks>
 public class MergeWriterTests
 {
@@ -28,7 +28,7 @@ public class MergeWriterTests
 
         public string Head => Repository.Git("rev-parse", "HEAD").Trim();
 
-        /// <summary>Bir dal oluşturup üzerinde commit atar, sonra ana dala döner.</summary>
+        /// <summary>Creates a branch, commits on it, then returns to the main branch.</summary>
         public void BranchWithCommit(string branch, string file, string content)
         {
             Repository.Git("checkout", "-q", "-b", branch);
@@ -99,9 +99,9 @@ public class MergeWriterTests
     [Fact]
     public async Task SQUASH_commit_YAPMIYOR_ve_bu_bildiriliyor()
     {
-        // 🔴 ÖLÇÜLDÜ: git "Squash commit -- not updating HEAD" yazıp çıkış kodu 0 veriyor.
-        // "Başarılı" deyip bırakmak, kullanıcının birleştirdiğini sanıp commit'lememesi
-        // demekti — dalı silseydi çalışması kaybolurdu.
+        // 🔴 MEASURED: git prints "Squash commit -- not updating HEAD" and gives exit code 0.
+        // Calling that "successful" and moving on meant the user would think they had merged and
+        // never commit — and if they deleted the branch their work would be lost.
         using Harness harness = await CreateAsync();
 
         harness.BranchWithCommit("dal", "g.txt", "dal\n");
@@ -117,11 +117,11 @@ public class MergeWriterTests
         result.HeadAfter.ShouldBe(before, "HEAD gerçekten ilerlememiş olmalı");
         result.RecoveryCommand.ShouldBeNull("geri alınacak bir commit yok");
 
-        // git'in hazırladığı taslak kullanıcıya veriliyor.
+        // The draft git prepared is handed to the user.
         result.SuggestedMessage.ShouldNotBeNull();
         result.SuggestedMessage!.ShouldContain("dal commit");
 
-        // Değişiklik gerçekten index'te bekliyor.
+        // The change really is waiting in the index.
         harness.Repository.Git("diff", "--cached", "--name-only").Trim().ShouldBe("g.txt");
     }
 
@@ -180,13 +180,13 @@ public class MergeWriterTests
         harness.Repository.Git("log", "-1", "--format=%s").Trim().ShouldBe("benim mesajim");
     }
 
-    // ----------------------------------------------------------- çakışma
+    // ------------------------------------------------------------ conflict
 
     [Fact]
     public async Task Cakisma_ISTISNA_degil_DURUM_olarak_donuyor()
     {
-        // 🔴 ÖLÇÜLDÜ: çakışma metni stdout'ta, stderr BOŞ. Sınıflandırıcı stderr'e baktığı
-        // için "Unknown" diyor — karar metne değil index'e bakarak veriliyor.
+        // 🔴 MEASURED: the conflict text is on stdout, stderr is EMPTY. The classifier looks at
+        // stderr, so it says "Unknown" — the decision is made by looking at the index, not the text.
         using Harness harness = await CreateAsync();
 
         harness.BranchWithCommit("dal", "f.txt", "benim\n");
@@ -203,8 +203,9 @@ public class MergeWriterTests
     [Fact]
     public async Task GERCEK_hata_istisna_olarak_KALIYOR()
     {
-        // Çakışmayı istisnadan kurtarırken her hatayı yutmamak şart: olmayan bir dal
-        // sessizce "birleştirildi" sayılsaydı kullanıcı hiçbir şey olmadığını fark etmezdi.
+        // While rescuing conflicts from being exceptions, it is mandatory not to swallow every
+        // error: if a non-existent branch were silently counted as "merged", the user would never
+        // notice that nothing happened.
         using Harness harness = await CreateAsync();
 
         await Should.ThrowAsync<GitException>(
@@ -226,11 +227,11 @@ public class MergeWriterTests
                 new MergeOptions { Source = "dal", Strategy = MergeStrategy.FastForwardOnly },
                 Ct));
 
-        // Depo dokunulmamış olmalı.
+        // The repository must be untouched.
         harness.Repository.Git("status", "--porcelain").Trim().ShouldBeEmpty();
     }
 
-    // ---------------------------------------------------------- önizleme
+    // ------------------------------------------------------------- preview
 
     [Fact]
     public async Task Onizleme_ileri_sarilabilirligi_soyluyor()
@@ -279,7 +280,7 @@ public class MergeWriterTests
     {
         using Harness harness = await CreateAsync();
 
-        // Yetim dal: aynı depoda ama ortak atası YOK.
+        // Orphan branch: in the same repository but with NO common ancestor.
         harness.Repository.Git("checkout", "-q", "--orphan", "yetim");
         harness.Repository.WriteFile("baska.txt", "bambaska\n");
         harness.Repository.Git("add", "-A");
@@ -318,7 +319,7 @@ public class MergeWriterTests
     [Fact]
     public async Task Suren_merge_YOKKEN_abort_istisna_veriyor()
     {
-        // Sessizce "iptal edildi" demek, kullanıcıya olmamış bir şeyi anlatırdı.
+        // Silently saying "aborted" would tell the user about something that never happened.
         using Harness harness = await CreateAsync();
 
         await Should.ThrowAsync<GitException>(() => harness.Writer.AbortAsync(harness.Path, Ct));
@@ -327,7 +328,7 @@ public class MergeWriterTests
     [Fact]
     public async Task Suren_merge_InProgressOperationReader_ile_GORULUYOR()
     {
-        // Bant (P06-T04) ve iptal düğmesi (P06-T12) aynı kaynağa bakıyor.
+        // The banner (P06-T04) and the abort button (P06-T12) look at the same source.
         using Harness harness = await CreateAsync();
 
         harness.BranchWithCommit("dal", "f.txt", "benim\n");
@@ -370,7 +371,7 @@ public class MergeWriterTests
     [Fact]
     public void Squash_ile_no_commit_birlikte_YAZILMIYOR()
     {
-        // `--squash` zaten commit'lemiyor; ikisini birlikte vermek gürültü olurdu.
+        // `--squash` already does not commit; passing both together would be noise.
         MergeWriter.Describe(new MergeOptions
         {
             Source = "dal",

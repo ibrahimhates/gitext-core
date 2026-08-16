@@ -53,6 +53,11 @@ jobs:
       - name: Check comment language
         run: build/check-comments.sh
 
+      # A dropped </para> fails the build with CS1570, but the message names the end of the
+      # block rather than the missing tag. This points straight at the line.
+      - name: Check XML doc tags
+        run: build/check-xmldoc.py
+
   build:
     name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

@@ -2,8 +2,8 @@
 namespace GitExt.Graph.Tests;
 
 /// <summary>
-/// P03-T02 — Fixture formatının kendisi. Bu format tüm yerleşim testlerinin temeli olduğu için
-/// önce kendisi doğrulanmalı: bozuk bir fixture, testleri yanlış şeyi doğrular hale getirir.
+/// P03-T02 — The fixture format itself. Because this format is the foundation of every layout test,
+/// it has to be verified first: a broken fixture makes the tests verify the wrong thing.
 /// </summary>
 public class DagFixtureTests
 {
@@ -81,7 +81,7 @@ public class DagFixtureTests
     [Fact]
     public void Tanimlanmamis_ebeveyne_izin_verilir()
     {
-        // Sayfalama sınırı: geçmişin kesildiği yerde ebeveyn tanımsız kalır.
+        // Paging boundary: where the history is cut off the parent stays undefined.
         IReadOnlyList<DagCommit> commits = DagFixture.Parse("B: A");
 
         commits.ShouldHaveSingleItem().Parents.ShouldBe(["A"]);
@@ -90,8 +90,8 @@ public class DagFixtureTests
     [Fact]
     public void Topolojik_sira_ihlali_yakalanir()
     {
-        // ADR-0007'nin değişmezi: her ebeveyn çocuğundan SONRA gelmeli.
-        // Bu ihlal fixture'da fark edilmezse, algoritma testi kendi hatasını doğrular.
+        // ADR-0007's invariant: every parent must come AFTER its child.
+        // If this violation goes unnoticed in the fixture, the algorithm test verifies its own bug.
         FormatException exception = Should.Throw<FormatException>(() => DagFixture.Parse(
             """
             A:
@@ -140,7 +140,7 @@ public class DagFixtureTests
     [Fact]
     public void Coklu_kok_commit_desteklenir()
     {
-        // İlişkisiz geçmişler (git merge --allow-unrelated-histories) böyle görünür.
+        // Unrelated histories (git merge --allow-unrelated-histories) look like this.
         IReadOnlyList<DagCommit> commits = DagFixture.Parse(
             """
             C: A B

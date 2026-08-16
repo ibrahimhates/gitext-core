@@ -5,20 +5,20 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P05-T04 / P05-T05 — Yama tabanlı kısmi stage. <b>Fazın en riskli kodu.</b>
+/// P05-T04 / P05-T05 — Patch-based partial staging. <b>The riskiest code of the phase.</b>
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Test yaklaşımı (plan gereği):</b> yamanın metni değil <b>etkisi</b> doğrulanıyor —
-/// yama uygulanır, sonra index'in içeriği <c>git show :&lt;yol&gt;</c> ile okunup beklenen
-/// sonuçla karşılaştırılır.
+/// <b>Test approach (as the plan requires):</b> not the text of the patch but its <b>effect</b> is
+/// verified — the patch is applied, then the index content is read with <c>git show :&lt;path&gt;</c>
+/// and compared against the expected result.
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLDÜ — risk dağılımı:</b> hunk başlığındaki sayı hataları (<c>corrupt patch</c>) ve
-/// bağlam uyuşmazlıkları (<c>patch failed</c>) git tarafından <b>reddediliyor</b>. Ama
-/// <b>seçim mantığı hatası</b> yakalanmıyor: yama geçerli olduğu için git kabul eder ve
-/// sessizce yanlış içerik stage'lenir. Ölçümde, seçilmeyen bir <c>-</c> satırı bağlama
-/// çevrilmeyince o satır index'ten kayboldu. Aşağıdaki testlerin çoğu bu sınıfı hedefliyor.
+/// <b>MEASURED — risk distribution:</b> count errors in the hunk header (<c>corrupt patch</c>) and
+/// context mismatches (<c>patch failed</c>) are <b>rejected</b> by git. But a
+/// <b>selection-logic bug</b> is not caught: since the patch is valid git accepts it and the wrong
+/// content is silently staged. In the measurement, when an unselected <c>-</c> line was not turned
+/// into context, that line disappeared from the index. Most of the tests below target that class.
 /// </para>
 /// </remarks>
 public class PartialStagingTests
@@ -37,18 +37,18 @@ public class PartialStagingTests
             Repository.Dispose();
         }
 
-        /// <summary>Çalışma ağacı ↔ index farkı (kısmi stage'in kaynağı).</summary>
+        /// <summary>Working tree ↔ index diff (the source of partial staging).</summary>
         public Task<IReadOnlyList<FileDiff>> UnstagedAsync() =>
             Reader.ReadUnstagedAsync(Repository.Path, cancellationToken: Ct);
 
-        /// <summary>Index ↔ HEAD farkı (kısmi unstage'in kaynağı).</summary>
+        /// <summary>Index ↔ HEAD diff (the source of partial unstaging).</summary>
         public Task<IReadOnlyList<FileDiff>> StagedAsync() =>
             Reader.ReadStagedAsync(Repository.Path, cancellationToken: Ct);
 
-        /// <summary>Index'teki dosya içeriği.</summary>
+        /// <summary>The file content in the index.</summary>
         public string Indexed(string path) => Repository.Git("show", $":{path}");
 
-        /// <summary>Çalışma ağacındaki dosya içeriği.</summary>
+        /// <summary>The file content in the working tree.</summary>
         public string OnDisk(string path) =>
             File.ReadAllText(Path.Combine(Repository.Path, path));
     }
@@ -67,7 +67,7 @@ public class PartialStagingTests
             queue);
     }
 
-    /// <summary>Beş satırlık bir dosya kurar ve iki ayrı yerini değiştirir.</summary>
+    /// <summary>Sets up a five-line file and changes it in two separate places.</summary>
     private static void SetupTwoChanges(Harness harness)
     {
         harness.Repository.WriteFile("a.txt", "bir\niki\nuc\ndort\nbes\n");
@@ -77,7 +77,7 @@ public class PartialStagingTests
         harness.Repository.WriteFile("a.txt", "bir\nIKI\nuc\nDORT\nbes\n");
     }
 
-    /// <summary>Bir hunk içinde belirli türdeki satırların indekslerini verir.</summary>
+    /// <summary>Returns the indexes of lines of a given kind inside a hunk.</summary>
     private static PatchSelection SelectLines(FileDiff diff, int hunkIndex, params int[] lineIndexes) =>
         PatchSelection.Lines(lineIndexes.Select(line => (hunkIndex, line)));
 
@@ -98,15 +98,15 @@ public class PartialStagingTests
 
         harness.Indexed("a.txt").ShouldBe("bir\nIKI\n");
 
-        // `--cached` çalışma ağacına DOKUNMAZ.
+        // `--cached` does NOT touch the working tree.
         harness.OnDisk("a.txt").ShouldBe("bir\nIKI\n");
     }
 
     [Fact]
     public async Task SECILMEYEN_degisiklik_index_te_ESKI_haliyle_kalir()
     {
-        // 🔴 Asıl risk bu: seçilmeyen bir `-` satırı bağlama çevrilmezse index'ten
-        // KAYBOLUR ve git bunu yakalamaz (yama geçerlidir).
+        // 🔴 This is the real risk: if an unselected `-` line is not turned into context it
+        // DISAPPEARS from the index, and git does not catch that (the patch is valid).
         using Harness harness = await CreateAsync();
         SetupTwoChanges(harness);
 
@@ -114,7 +114,7 @@ public class PartialStagingTests
         FileDiff diff = diffs.Single();
         DiffHunk hunk = diff.Hunks.Single();
 
-        // Yalnızca ikinci değişikliği (dort → DORT) seç.
+        // Select only the second change (dort → DORT).
         int[] second = [.. Enumerable
             .Range(0, hunk.Lines.Count)
             .Where(i => hunk.Lines[i].Content is "dort" or "DORT")];
@@ -122,7 +122,7 @@ public class PartialStagingTests
         await harness.Writer.StagePartialAsync(
             harness.Repository.Path, diff, SelectLines(diff, 0, second), cancellationToken: Ct);
 
-        // "iki" satırı DEĞİŞMEDEN durmalı; "dort" ise güncellenmiş olmalı.
+        // The "iki" line must stay UNCHANGED; "dort" must be updated.
         harness.Indexed("a.txt").ShouldBe("bir\niki\nuc\nDORT\nbes\n");
     }
 
@@ -135,7 +135,7 @@ public class PartialStagingTests
         harness.Repository.Git("add", "-A");
         harness.Repository.Git("commit", "-m", "ilk");
 
-        // Üç satır da ekleniyor; yalnızca ortadaki stage'lenecek.
+        // All three lines are added; only the middle one will be staged.
         harness.Repository.WriteFile("a.txt", "bir\nA\niki\nB\nuc\nC\n");
 
         FileDiff diff = (await harness.UnstagedAsync()).Single();
@@ -200,7 +200,7 @@ public class PartialStagingTests
     {
         using Harness harness = await CreateAsync();
 
-        // Hunk'ların ayrı kalması için aralarında bol bağlam bırakılıyor.
+        // Plenty of context is left between the hunks so that they stay separate.
         string original = string.Join('\n', Enumerable.Range(1, 40).Select(i => $"satir{i}")) + "\n";
         harness.Repository.WriteFile("a.txt", original);
         harness.Repository.Git("add", "-A");
@@ -219,7 +219,7 @@ public class PartialStagingTests
 
         string indexed = harness.Indexed("a.txt");
 
-        // İkinci hunk uygulandı, birincisi uygulanmadı.
+        // The second hunk was applied, the first was not.
         indexed.ShouldContain("SON");
         indexed.ShouldNotContain("BAS");
         indexed.ShouldContain("satir1\n");
@@ -242,7 +242,7 @@ public class PartialStagingTests
 
         FileDiff diff = (await harness.UnstagedAsync()).Single();
 
-        // İkinci hunk'ın başlığındaki YENİ başlangıç, birincinin satır farkına göre kayar.
+        // The NEW start in the second hunk's header shifts by the first hunk's line delta.
         await harness.Writer.StagePartialAsync(
             harness.Repository.Path, diff, PatchSelection.All(diff), cancellationToken: Ct);
 
@@ -252,8 +252,8 @@ public class PartialStagingTests
     [Fact]
     public async Task Dosya_sonunda_NEWLINE_YOKKEN_calisir()
     {
-        // İşaret satırı (`\ No newline at end of file`) hem eski hem yeni tarafta çıkabiliyor
-        // (P04-T01'de ölçüldü); yamada yanlış yere konursa git reddeder.
+        // The marker line (`\ No newline at end of file`) can appear on both the old and the new
+        // side (measured in P04-T01); if it is put in the wrong place in the patch git rejects it.
         using Harness harness = await CreateAsync();
 
         harness.Repository.WriteFile("a.txt", "bir\niki");
@@ -274,8 +274,8 @@ public class PartialStagingTests
     {
         using Harness harness = await CreateAsync();
 
-        // ⚠️ `WriteFile` satır sonlarını LF'e sabitliyor (fixture kararı); CRLF testi ham
-        // bayt yazmak zorunda, aksi hâlde test aslında CRLF'i hiç denemez.
+        // ⚠️ `WriteFile` pins line endings to LF (a fixture decision); the CRLF test is forced to
+        // write raw bytes, otherwise the test would never actually exercise CRLF.
         string path = Path.Combine(harness.Repository.Path, "a.txt");
 
         File.WriteAllBytes(path, "bir\r\niki\r\n"u8.ToArray());
@@ -294,11 +294,12 @@ public class PartialStagingTests
     [Fact]
     public async Task eol_crlf_NORMALLESTIRMESI_aktifken_kismi_stage_calisir()
     {
-        // Planın 4 numaralı açık sorusu (P05-T17'de ölçüldü). Bir üstteki test CRLF'i
-        // depoda AYNEN saklanıyorken deniyor; buradaki asıl riskli durum: `.gitattributes`
-        // normalleştirme yapıyor, yani çalışma ağacındaki baytlar (CRLF) index'tekiyle
-        // (LF) AYNI DEĞİL. Yama `git diff`ten üretiliyor ve o çıktı normalleştirilmiş
-        // hâlde geliyor — worktree baytlarıyla karşılaştırılsaydı her satır uyuşmazdı.
+        // Open question number 4 of the plan (measured in P05-T17). The test above exercises CRLF
+        // while it is stored VERBATIM in the repository; the genuinely risky case here is:
+        // `.gitattributes` normalises, that is, the bytes in the working tree (CRLF) are NOT THE
+        // SAME as the ones in the index (LF). The patch is produced from `git diff` and that output
+        // arrives normalised — if it were compared against the worktree bytes every line would
+        // mismatch.
         using Harness harness = await CreateAsync();
         string path = Path.Combine(harness.Repository.Path, "a.txt");
 
@@ -314,18 +315,18 @@ public class PartialStagingTests
         await harness.Writer.StagePartialAsync(
             harness.Repository.Path, diff, PatchSelection.All(diff), cancellationToken: Ct);
 
-        // Index normalleştirilmiş hâli tutar (LF) — CRLF girerse dosya git için
-        // "değişmiş" görünmeye devam eder ve kullanıcı stage'ini temizleyemez.
+        // The index holds the normalised form (LF) — if CRLF got in, the file would keep looking
+        // "modified" to git and the user could not clear their staged state.
         harness.Indexed("a.txt").ShouldBe("bir\nIKI\nuc\n");
 
-        // Çalışma ağacına DOKUNULMAMALI: `eol=crlf` orada CRLF vaat ediyor.
+        // The working tree must NOT be touched: `eol=crlf` promises CRLF there.
         File.ReadAllBytes(path).ShouldBe("bir\r\nIKI\r\nuc\r\n"u8.ToArray());
     }
 
     [Fact]
     public async Task ASCII_disi_yol_ve_icerik_calisir()
     {
-        // Yol tırnaklanmadan veriliyor (ölçüldü: `git apply` ham UTF-8 kabul ediyor).
+        // The path is passed unquoted (measured: `git apply` accepts raw UTF-8).
         using Harness harness = await CreateAsync();
 
         harness.Repository.WriteFile("türkçe dosya.txt", "ilk satır\nikinci\n");
@@ -362,13 +363,13 @@ public class PartialStagingTests
         harness.Indexed("a.txt").ShouldBe("bir\nuc\n");
     }
 
-    // ---- Kısmi unstage (ters yön) ----
+    // ---- Partial unstage (reverse direction) ----
 
     [Fact]
     public async Task Kismi_UNSTAGE_secilen_satiri_geri_alir()
     {
-        // Ters yönde kurallar simetrik olarak DEĞİŞİYOR: seçilmeyen `+` bağlama çevrilir,
-        // seçilmeyen `-` atlanır. Karıştırılırsa index sessizce bozulur.
+        // In the reverse direction the rules CHANGE symmetrically: an unselected `+` is turned
+        // into context, an unselected `-` is skipped. Mixing them up silently corrupts the index.
         using Harness harness = await CreateAsync();
         SetupTwoChanges(harness);
 
@@ -385,10 +386,10 @@ public class PartialStagingTests
         await harness.Writer.UnstagePartialAsync(
             harness.Repository.Path, staged, SelectLines(staged, 0, firstChange), cancellationToken: Ct);
 
-        // İlk değişiklik geri alındı, ikincisi index'te kaldı.
+        // The first change was reverted, the second stayed in the index.
         harness.Indexed("a.txt").ShouldBe("bir\niki\nuc\nDORT\nbes\n");
 
-        // Çalışma ağacı dokunulmadan durmalı.
+        // The working tree must stay untouched.
         harness.OnDisk("a.txt").ShouldBe("bir\nIKI\nuc\nDORT\nbes\n");
     }
 
@@ -409,8 +410,8 @@ public class PartialStagingTests
     [Fact]
     public async Task Uretilen_yama_gitin_kendi_dogrulamasindan_gecer()
     {
-        // git'in bize sunduğu güvenlik ağı: bozuk yama reddedilir. Bu test o ağın
-        // gerçekten kurulu olduğunu (ve `--recount` ile kapatılmadığını) doğruluyor.
+        // The safety net git gives us: a corrupt patch is rejected. This test verifies that the
+        // net is really in place (and has not been disabled with `--recount`).
         using Harness harness = await CreateAsync();
         SetupTwoChanges(harness);
 
@@ -423,7 +424,7 @@ public class PartialStagingTests
 
         try
         {
-            // `--check` uygulamadan doğrular.
+            // `--check` verifies without applying.
             harness.Repository.Git("apply", "--cached", "--check", patchFile);
         }
         finally
@@ -432,14 +433,14 @@ public class PartialStagingTests
         }
     }
 
-    // ---- P05-T16: kodlama uçtan uca ----
+    // ---- P05-T16: encoding end to end ----
 
     [Fact]
     public async Task Latin5_dosyada_kismi_stage_KODLAMA_GECILINCE_calisir()
     {
-        // 🔴 P05-T16'da gerçek depoda ölçüldü. Zincir: diff kodlamayla OKUNUR → yama
-        // üretilir → aynı kodlamayla YAZILIR. Halkalardan biri kopunca `git apply`
-        // yamayı reddediyor.
+        // 🔴 Measured on a real repository in P05-T16. The chain: the diff is READ with the
+        // encoding → the patch is produced → it is WRITTEN with the same encoding. When one link
+        // breaks, `git apply` rejects the patch.
         using Harness harness = await CreateAsync();
         System.Text.Encoding latin5 = TextEncodings.TryGet("ISO-8859-9").ShouldNotBeNull();
 
@@ -465,7 +466,8 @@ public class PartialStagingTests
         await harness.Writer.StagePartialAsync(
             harness.Repository.Path, diff, PatchSelection.All(diff), latin5, Ct);
 
-        // Index'e giren baytlar Latin-5 olmalı — string karşılaştırması bunu göstermez.
+        // The bytes that land in the index must be Latin-5 — a string comparison would not show
+        // this.
         byte[] staged = System.Text.Encoding.Latin1.GetBytes(
             harness.Repository.GitLossless("show", ":tr.txt"));
 
@@ -475,9 +477,9 @@ public class PartialStagingTests
     [Fact]
     public async Task Kodlama_gecilmezse_git_yamayi_REDDEDER_sessizce_bozmaz()
     {
-        // 🔑 Asıl güvence bu: yanlış kodlamada yanlış içerik stage'lenmiyor, işlem
-        // BAŞARISIZ oluyor. P05-T04'teki "`--recount` kullanma" kararının karşılığı —
-        // git'in doğrulaması açık bırakıldığı için hata görünür kalıyor.
+        // 🔑 This is the real guarantee: with the wrong encoding the wrong content is not staged,
+        // the operation FAILS. This is the payoff of the "do not use `--recount`" decision from
+        // P05-T04 — because git's verification is left on, the error stays visible.
         using Harness harness = await CreateAsync();
         System.Text.Encoding latin5 = TextEncodings.TryGet("ISO-8859-9").ShouldNotBeNull();
 
@@ -494,7 +496,7 @@ public class PartialStagingTests
             latin5.GetBytes("Türkçe birinci\nikinci\nÜÇÜNCÜ\n"),
             Ct);
 
-        // Kodlama GEÇİLMİYOR: UTF-8 varsayılanı Latin-5 baytları çözemiyor.
+        // The encoding is NOT passed: the UTF-8 default cannot decode Latin-5 bytes.
         FileDiff diff = (await harness.Reader.ReadUnstagedAsync(
                 harness.Repository.Path, cancellationToken: Ct))
             .Single();
@@ -503,7 +505,7 @@ public class PartialStagingTests
             harness.Writer.StagePartialAsync(
                 harness.Repository.Path, diff, PatchSelection.All(diff), cancellationToken: Ct));
 
-        // Index bozulmamış olmalı.
+        // The index must be undamaged.
         harness.Repository.Git("diff", "--cached", "--stat").Trim().ShouldBeEmpty();
     }
 }

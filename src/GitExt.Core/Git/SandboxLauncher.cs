@@ -3,68 +3,67 @@ using System.Diagnostics;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Uygulama bir Flatpak sandbox'ında çalışıyorsa <c>git</c>'i host üzerinde
-/// çalıştırmayı sağlar (P10-T10, ADR-0009).
+/// If the application is running inside a Flatpak sandbox, makes <c>git</c> run on the host
+/// (P10-T10, ADR-0009).
 /// </summary>
 /// <remarks>
 /// <para>
-/// ADR-0002'nin tüm gerekçesi <b>kullanıcının kendi git'ine</b> ulaşmaktır: hook'lar,
-/// kimlik bilgisi yardımcıları, LFS, <c>.gitconfig</c>. Sandbox içindeki bir git bunların
-/// hiçbirini göremez.
+/// The whole rationale of ADR-0002 is to reach <b>the user's own git</b>: hooks, credential
+/// helpers, LFS, <c>.gitconfig</c>. A git inside the sandbox can see none of these.
 /// </para>
 /// <para>
-/// 🔴 <b>Ölçüldü (P10-T10):</b> <c>git</c> olan ama <c>python3</c> olmayan bir ortamda —
-/// yani git'i gömen bir runtime'ın tam karşılığında — Python ile yazılmış bir
-/// <c>pre-commit</c> hook'u olan depoda <c>git commit</c> çalıştırıldığında:
-/// <b>commit atılmadı, ama çıkış kodu 0 döndü.</b> Tek belirti <c>env</c>'in stderr'e
-/// yazdığı bir satırdı. Arayüz "commit edildi" derdi ve kullanıcı bunu ancak sonradan —
-/// hiçbir şey göndermeyen bir push'ta — fark ederdi.
+/// 🔴 <b>Measured (P10-T10):</b> in an environment that has <c>git</c> but no <c>python3</c> —
+/// that is, the exact equivalent of a runtime that embeds git — running <c>git commit</c> in a
+/// repository with a <c>pre-commit</c> hook written in Python:
+/// <b>the commit was not made, but the exit code was 0.</b> The only symptom was a single line
+/// <c>env</c> wrote to stderr. The UI would say "committed" and the user would only notice it
+/// later — on a push that sends nothing.
 /// </para>
 /// <para>
-/// Bu yüzden sandbox içinde git <b>host üzerinden</b> çalıştırılıyor. <c>flatpak-spawn</c>
-/// yoksa uygulama <b>yüksek sesle</b> başarısız oluyor; sandbox içindeki bir git'e sessizce
-/// düşmek, yukarıdaki hatayı geri getirirdi.
+/// That is why, inside a sandbox, git is run <b>on the host</b>. If <c>flatpak-spawn</c> is
+/// missing the application fails <b>loudly</b>; silently falling back to a git inside the
+/// sandbox would bring back the bug described above.
 /// </para>
 /// </remarks>
 public static class SandboxLauncher
 {
     /// <summary>
-    /// Flatpak'in sandbox içinde her zaman oluşturduğu bilgi dosyası.
+    /// The info file Flatpak always creates inside the sandbox.
     /// </summary>
     /// <remarks>
-    /// Ortam değişkeni (<c>FLATPAK_ID</c>) değil bu dosya kullanılıyor: ortam değişkenleri
-    /// alt süreçlere geçerken temizlenebiliyor ve kullanıcı tarafından taklit edilebiliyor.
-    /// Dosyanın varlığı sandbox'ın kendisi tarafından garanti ediliyor.
+    /// This file is used rather than an environment variable (<c>FLATPAK_ID</c>): environment
+    /// variables can be cleared while being passed to child processes and can be faked by the
+    /// user. The existence of the file is guaranteed by the sandbox itself.
     /// </remarks>
     private const string FlatpakInfoPath = "/.flatpak-info";
 
     private const string SpawnExecutable = "flatpak-spawn";
 
     /// <summary>
-    /// Uygulama bir Flatpak sandbox'ı içinde mi çalışıyor?
+    /// Is the application running inside a Flatpak sandbox?
     /// </summary>
     public static bool IsSandboxed { get; } = File.Exists(FlatpakInfoPath);
 
     /// <summary>
-    /// Sandbox içindeyken bir süreci host üzerinde çalıştıracak biçimde yeniden yazar.
-    /// Sandbox dışındaysa <paramref name="startInfo"/> olduğu gibi bırakılır.
+    /// While inside a sandbox, rewrites a process so that it runs on the host.
+    /// Outside a sandbox, <paramref name="startInfo"/> is left as it is.
     /// </summary>
     /// <remarks>
-    /// Çalışma dizini argüman olarak veriliyor: <c>flatpak-spawn</c> çağıran sürecin
-    /// çalışma dizinini host tarafına taşımıyor, host'taki süreç kendi dizininde başlıyor.
-    /// Bu atlandığında komutlar yanlış depoya karşı çalışırdı.
+    /// The working directory is passed as an argument: <c>flatpak-spawn</c> does not carry the
+    /// calling process's working directory over to the host side, the process on the host starts
+    /// in its own directory. When this is skipped, commands would run against the wrong repository.
     /// </remarks>
     public static void RewriteForHost(ProcessStartInfo startInfo) =>
         RewriteForHost(startInfo, IsSandboxed);
 
     /// <summary>
-    /// Sarmalamanın kendisi; sandbox durumu dışarıdan verilebiliyor.
+    /// The wrapping itself; the sandbox state can be supplied from outside.
     /// </summary>
     /// <remarks>
-    /// Test edilebilirlik için ayrıldı: gerçek bir Flatpak sandbox'ı kurmadan
-    /// sarmalamanın doğruluğu doğrulanabilmeli. Sarmalama yanlışsa — eksik ortam
-    /// değişkeni, kayıp çalışma dizini — sonuç sessizce yanlış depoya veya yanlış
-    /// yapılandırmaya karşı çalışan git olurdu.
+    /// Split out for testability: the correctness of the wrapping must be verifiable without
+    /// setting up a real Flatpak sandbox. If the wrapping is wrong — a missing environment
+    /// variable, a lost working directory — the result would be git silently running against the
+    /// wrong repository or the wrong configuration.
     /// </remarks>
     internal static void RewriteForHost(ProcessStartInfo startInfo, bool sandboxed)
     {
@@ -75,9 +74,9 @@ public static class SandboxLauncher
             return;
         }
 
-        // Zaten sarmalanmışsa tekrar sarmalama: "flatpak-spawn --host flatpak-spawn
-        // --host git" çalışmaz ve hatası da anlaşılmaz olur. Çağrı noktası bugün tek,
-        // ama bu tür bir sarmalayıcının ikinci kez uygulanması klasik bir kazadır.
+        // If it is already wrapped, do not wrap again: "flatpak-spawn --host flatpak-spawn
+        // --host git" does not work and its error is incomprehensible too. There is only one
+        // call site today, but applying a wrapper like this twice is a classic accident.
         if (string.Equals(startInfo.FileName, SpawnExecutable, StringComparison.Ordinal))
         {
             return;
@@ -85,10 +84,10 @@ public static class SandboxLauncher
 
         List<string> hostArguments = ["--host"];
 
-        // Ortam değişkenleri de açıkça aktarılmalı: --host ile başlatılan süreç
-        // sandbox'ın ortamını DEVRALMIYOR. GitEnvironment'ın kurduğu her şey
-        // (LC_ALL, GIT_* geçersiz kılmaları, kimlik doğrulama değişkenleri) burada
-        // aktarılmazsa host'taki git bambaşka bir yapılandırmayla çalışır.
+        // Environment variables must be forwarded explicitly too: a process started with --host
+        // does NOT inherit the sandbox's environment. If everything GitEnvironment sets up
+        // (LC_ALL, GIT_* overrides, authentication variables) is not forwarded here, the git on
+        // the host runs with a completely different configuration.
         foreach ((string name, string? value) in startInfo.Environment)
         {
             if (value is not null)
@@ -115,14 +114,14 @@ public static class SandboxLauncher
     }
 
     /// <summary>
-    /// Sandbox içindeyken host'a erişimin gerçekten mümkün olduğunu doğrular.
+    /// Verifies that, while inside a sandbox, host access is actually possible.
     /// </summary>
     /// <exception cref="GitNotFoundException">
-    /// Sandbox içindeyiz ama <c>flatpak-spawn</c> çalışmıyorsa.
+    /// If we are inside a sandbox but <c>flatpak-spawn</c> does not work.
     /// </exception>
     /// <remarks>
-    /// Başlangıçta bir kez çağrılıyor. Sessizce sandbox içindeki bir git'e düşmek
-    /// yerine burada durulması bilinçli: ADR-0009, sessiz geri düşüşü açıkça yasaklıyor.
+    /// Called once at startup. Stopping here instead of silently falling back to a git inside
+    /// the sandbox is deliberate: ADR-0009 explicitly forbids the silent fallback.
     /// </remarks>
     public static void EnsureHostAccessible()
     {

@@ -5,19 +5,19 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.Tests.Localization;
 
 /// <summary>
-/// Yeni bir dilin <b>yalnızca dosya eklenerek</b> geldiğini doğrular (P11-T01).
+/// Verifies that a new language arrives <b>by adding a file only</b> (P11-T01).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Gereksinim şuydu: <c>Locales/</c> klasörüne <c>fr.json</c> bırakmak, o dilin listede
-/// görünmesi için yeterli olmalı — ne <c>.csproj</c>'a ne de C# koduna dokunmadan.
+/// The requirement was: dropping <c>fr.json</c> into the <c>Locales/</c> folder must be enough
+/// for that language to appear in the list — without touching <c>.csproj</c> or any C# code.
 /// </para>
 /// <para>
-/// Doğrulama, gömülü kaynakları taklit eden bir <see cref="Assembly"/> yerine
-/// <see cref="Translator"/>'a doğrudan kaynak akışı sağlayan bir kanca üzerinden yapılıyor:
-/// gerçek keşif yolu (kaynak adı → dil kodu → katalog) aynen çalışıyor, yalnızca kaynakların
-/// nereden geldiği değişiyor. Çalışma anında derleme üretmek için Roslyn eklemek, ADR-0006'nın
-/// "bunu kendimiz yazabilir miyiz" eşiğini karşılamayan bir bağımlılık olurdu.
+/// The verification goes through a hook that feeds resource streams straight to
+/// <see cref="Translator"/>, instead of an <see cref="Assembly"/> that fakes embedded resources:
+/// the real discovery path (resource name → language code → catalog) runs unchanged, only where
+/// the resources come from differs. Pulling in Roslyn to emit an assembly at run time would be a
+/// dependency that fails ADR-0006's "could we write this ourselves" bar.
 /// </para>
 /// </remarks>
 public class LanguageDiscoveryTests
@@ -34,7 +34,7 @@ public class LanguageDiscoveryTests
     [Fact]
     public void Klasore_eklenen_yeni_dil_listede_beliriyor()
     {
-        // 🔴 Asıl gereksinim bu: kod değişmeden dil ekleme.
+        // 🔴 This is the real requirement: adding a language without changing code.
         Translator translator = Build(
             ("en", """{"_meta":{"code":"en","name":"English"},"a":"A"}"""),
             ("tr", """{"_meta":{"code":"tr","name":"Türkçe"},"a":"A"}"""),
@@ -60,11 +60,11 @@ public class LanguageDiscoveryTests
     [Fact]
     public void Yeni_dilde_eksik_anahtar_ingilizceye_dusuyor()
     {
-        // Eksik çeviri, o dili kullanılamaz hâle getirmemeli: çevrilmemiş satır
-        // İngilizce görünüyor, arayüz çalışmaya devam ediyor.
+        // A missing translation must not make the language unusable: the untranslated line
+        // shows up in English and the UI keeps working.
         //
-        // ⚠️ Yedek İngilizce artık DOSYADAN değil koddan geliyor (P11-T10), bu yüzden
-        // uydurma anahtar ("a", "b") kullanılamıyor — gerçek anahtarlarla doğrulanıyor.
+        // ⚠️ The English fallback now comes from code, not FROM A FILE (P11-T10), so made-up
+        // keys ("a", "b") cannot be used — this is verified with real keys.
         Translator translator = Build(
             ("fr", """{"_meta":{"code":"fr","name":"Français"},"settings.theme":"Thème"}"""));
 
@@ -72,14 +72,14 @@ public class LanguageDiscoveryTests
 
         translator["settings.theme"].ShouldBe("Thème");
 
-        // fr.json'da yok → gömülü İngilizceden geliyor.
+        // Not in fr.json → comes from the built-in English.
         translator["settings.language"].ShouldBe("Language");
     }
 
     [Fact]
     public void Meta_bloku_olmayan_dosya_kodunu_ad_olarak_kullaniyor()
     {
-        // Ad eksikse dil listeden KAYBOLMAMALI — adsız da olsa seçilebilir kalmalı.
+        // A missing name must NOT remove the language from the list — nameless, it stays selectable.
         Translator translator = Build(
             ("en", """{"_meta":{"code":"en","name":"English"},"a":"A"}"""),
             ("de", """{"a":"A"}"""));
@@ -90,7 +90,7 @@ public class LanguageDiscoveryTests
     [Fact]
     public void Bozuk_dil_dosyasi_digerlerini_etkilemiyor()
     {
-        // Bir dosyadaki söz dizimi hatası uygulamayı açılmaz hâle getirmemeli.
+        // A syntax error in one file must not make the application fail to start.
         Translator translator = Build(
             ("tr", """{"_meta":{"code":"tr","name":"Türkçe"},"settings.theme":"Tema"}"""),
             ("xx", "{ bu geçerli JSON değil"));
@@ -98,16 +98,16 @@ public class LanguageDiscoveryTests
         translator.Available.Select(l => l.Code).ShouldContain("tr");
         translator.Available.Select(l => l.Code).ShouldNotContain("xx");
 
-        // İngilizce her zaman kullanılabilir: gömülü kopya dosyaya bağlı değil (P11-T10).
+        // English is always available: the built-in copy does not depend on a file (P11-T10).
         translator["settings.theme"].ShouldBe("Theme");
     }
 
     [Fact]
     public void Gercek_derlemede_dil_dosyalari_gomulu()
     {
-        // Yukarıdaki testler keşif MANTIĞINI doğruluyor; bu test .csproj'daki joker
-        // girdinin gerçekten çalıştığını doğruluyor. İkisi ayrı şeyler: mantık doğru
-        // olup dosyalar gömülmezse uygulama dilsiz açılırdı.
+        // The tests above verify the discovery LOGIC; this test verifies that the wildcard
+        // entry in .csproj actually works. Two separate things: if the logic were right but
+        // the files were not embedded, the application would start with no languages.
         string[] embedded = typeof(Translator).Assembly
             .GetManifestResourceNames()
             .Where(n => n.StartsWith("GitExt.UI.Locales.", StringComparison.Ordinal))

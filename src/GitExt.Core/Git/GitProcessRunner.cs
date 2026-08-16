@@ -7,7 +7,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// <see cref="IGitProcessRunner"/> uygulaması — uygulamadaki tek <c>Process.Start</c> çağrısı burada.
+/// <see cref="IGitProcessRunner"/> implementation — the application's only <c>Process.Start</c>
+/// call lives here.
 /// </summary>
 public sealed class GitProcessRunner : IGitProcessRunner
 {
@@ -36,15 +37,15 @@ public sealed class GitProcessRunner : IGitProcessRunner
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        // Zaman aşımını iptal ile birleştir: hangisi önce olursa süreç öldürülür.
+        // Combine the timeout with cancellation: whichever comes first kills the process.
         using CancellationTokenSource timeoutSource = new(command.Timeout);
         using CancellationTokenSource linkedSource =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
 
         long startedAt = Stopwatch.GetTimestamp();
 
-        // Süren komut teşhis panelinde görünsün: donmuş bir arayüzün sebebi çoğu zaman
-        // burada saatlerdir duran tek bir çağrıdır (P09-T03).
+        // Make the running command visible in the diagnostics panel: the cause of a frozen UI is
+        // most often a single call that has been sitting here for hours (P09-T03).
         using IDisposable tracked = _diagnostics.TrackOperation(command.ToDisplayString());
 
         try
@@ -91,7 +92,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
         CancellationToken token = linkedSource.Token;
         long startedAt = Stopwatch.GetTimestamp();
 
-        // Akış yolu da izleniyor: `log` gibi uzun sürenler tam olarak burada çalışıyor.
+        // The streaming path is tracked as well: long-running ones such as `log` run exactly here.
         using IDisposable tracked = _diagnostics.TrackOperation(command.ToDisplayString());
 
         using Process process = new() { StartInfo = BuildStartInfo(command) };
@@ -101,8 +102,8 @@ public sealed class GitProcessRunner : IGitProcessRunner
             throw new GitNotFoundException($"The git process could not be started: {_executablePath}");
         }
 
-        // stderr paralel olarak boşaltılmalı; aksi halde boru dolduğunda süreç bloke olur
-        // ve akış asla ilerlemez.
+        // stderr must be drained in parallel; otherwise the process blocks when the pipe fills up
+        // and the stream never makes progress.
         Task<string> stderrTask = process.StandardError.ReadToEndAsync(token);
         Task stdinTask = WriteStandardInputAsync(process, command, token);
 
@@ -148,11 +149,11 @@ public sealed class GitProcessRunner : IGitProcessRunner
     }
 
     /// <summary>
-    /// stdout'u okurken NUL sınırlarında parçalara ayırır.
+    /// Splits stdout into pieces at NUL boundaries while reading it.
     /// </summary>
     /// <remarks>
-    /// UTF-8 çok baytlı karakterler okuma sınırına denk gelebileceği için, çözümleme
-    /// bayt düzeyinde biriktirilip parça tamamlandığında yapılır.
+    /// Because UTF-8 multi-byte characters can straddle a read boundary, the data is accumulated
+    /// at the byte level and decoded once a piece is complete.
     /// </remarks>
     private static async IAsyncEnumerable<string> ReadNulSeparatedAsync(
         Process process,
@@ -187,8 +188,9 @@ public sealed class GitProcessRunner : IGitProcessRunner
                 pending.Write(buffer, start, read - start);
             }
 
-            // Akışın sonunda kalan veri: git son kaydın ardına da NUL koyduğu için bu
-            // normalde boştur. Boş değilse gerçek bir parçadır, atlanmamalı.
+            // Data left at the end of the stream: because git puts a NUL after the last record as
+            // well, this is normally empty. If it is not empty it is a real piece and must not be
+            // skipped.
             if (pending.Length > 0)
             {
                 yield return DecodeAndReset(pending);
@@ -235,8 +237,8 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
         GitEnvironment.Apply(startInfo, command.IsReadOnly);
 
-        // Komuta özel ortam EN SONA: kimlik doğrulama, GitEnvironment'ın boşalttığı
-        // `GIT_ASKPASS`/`SSH_ASKPASS` değerlerini bilerek geri koyuyor (P06-T09).
+        // Command-specific environment goes LAST: authentication deliberately puts back the
+        // `GIT_ASKPASS`/`SSH_ASKPASS` values that GitEnvironment cleared (P06-T09).
         if (command.Environment is { Count: > 0 } overrides)
         {
             foreach ((string name, string value) in overrides)
@@ -245,9 +247,9 @@ public sealed class GitProcessRunner : IGitProcessRunner
             }
         }
 
-        // Flatpak sandbox'ındaysak git host üzerinde çalıştırılıyor (ADR-0009).
-        // EN SONDA: ortam ve argümanların tamamı kurulduktan sonra sarmalanmalı,
-        // aksi halde sonradan eklenenler host'a geçmez.
+        // If we are inside a Flatpak sandbox, git is run on the host (ADR-0009).
+        // LAST: the wrapping must happen after the environment and all arguments are set up,
+        // otherwise anything added afterwards does not make it to the host.
         SandboxLauncher.RewriteForHost(startInfo);
 
         return startInfo;
@@ -255,7 +257,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
     private async Task<GitResult> ExecuteAsync(GitCommand command, CancellationToken cancellationToken)
     {
-        // Kabuk yorumlaması YOK — kullanıcı verisi asla komut satırı olarak ayrıştırılmaz.
+        // NO shell interpretation — user data is never parsed as a command line.
         long startedAt = Stopwatch.GetTimestamp();
 
         using Process process = new() { StartInfo = BuildStartInfo(command) };
@@ -267,8 +269,9 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
         try
         {
-            // stdout ve stderr AYNI ANDA okunmalı. Biri dolup bloke olursa süreç yazamaz ve
-            // asla bitmez — büyük çıktılarda klasik deadlock. Bu yüzden üç iş paralel yürür.
+            // stdout and stderr must be read AT THE SAME TIME. If one fills up and blocks, the
+            // process cannot write and never finishes — the classic deadlock on large outputs.
+            // That is why the three tasks run in parallel.
             Task<(byte[] Bytes, bool Truncated)> stdoutTask =
                 ReadAllBytesAsync(process, command.MaximumOutputBytes, cancellationToken);
 
@@ -281,8 +284,9 @@ public sealed class GitProcessRunner : IGitProcessRunner
 
             if (truncated)
             {
-                // Çıktıyı okumayı bıraktık; süreç yazmaya çalışırken bloke kalır. Beklemek
-                // yerine öldürülmeli, aksi halde `WaitForExitAsync` asla dönmez.
+                // We stopped reading the output; the process stays blocked trying to write. It
+                // has to be killed instead of waited for, otherwise `WaitForExitAsync` never
+                // returns.
                 TryKill(process);
             }
 
@@ -298,21 +302,21 @@ public sealed class GitProcessRunner : IGitProcessRunner
         }
         catch (OperationCanceledException)
         {
-            // İptal edilen süreç GERÇEKTEN öldürülmeli; aksi halde arkada çalışmaya devam eder
-            // ve index.lock gibi kaynakları tutar.
+            // A cancelled process must ACTUALLY be killed; otherwise it keeps running in the
+            // background and holds resources such as index.lock.
             TryKill(process);
             throw;
         }
     }
 
     /// <summary>
-    /// stderr'i okur; ilerleme isteniyorsa <b>akış hâlinde</b>.
+    /// Reads stderr; <b>as a stream</b> if progress is requested.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — ilerleme satırları <c>\r</c> ile ayrılıyor</b> (gerçek klonda 404
-    /// <c>\r</c>'ye karşılık 7 <c>\n</c>). Bu yüzden satır okuyucu değil <b>parça</b>
-    /// okuyucu kullanılıyor: <c>ReadLineAsync</c> ilk <c>\n</c>'e kadar bekler, yani
-    /// ilerleme ancak iş bittikten sonra görünürdü.
+    /// 🔴 <b>MEASURED — progress lines are separated by <c>\r</c></b> (in a real clone, 404
+    /// <c>\r</c> against 7 <c>\n</c>). That is why a <b>chunk</b> reader is used rather than a
+    /// line reader: <c>ReadLineAsync</c> waits for the first <c>\n</c>, meaning progress would
+    /// only become visible after the work had finished.
     /// </remarks>
     private static async Task<string> ReadStandardErrorAsync(
         Process process,
@@ -365,12 +369,12 @@ public sealed class GitProcessRunner : IGitProcessRunner
     }
 
     /// <summary>
-    /// stdout'u ham bayt olarak okur.
+    /// Reads stdout as raw bytes.
     /// </summary>
     /// <remarks>
-    /// <see cref="Process.StandardOutput"/> yerine <see cref="StreamReader.BaseStream"/> kullanılır:
-    /// dosya adları geçerli UTF-8 olmayabilir ve <c>git show</c> binary içerik döndürebilir.
-    /// Metne çevirme kararı çağıranın olmalı.
+    /// <see cref="StreamReader.BaseStream"/> is used instead of <see cref="Process.StandardOutput"/>:
+    /// file names may not be valid UTF-8 and <c>git show</c> can return binary content.
+    /// The decision to convert to text must belong to the caller.
     /// </remarks>
     private static async Task<(byte[] Bytes, bool Truncated)> ReadAllBytesAsync(
         Process process,
@@ -402,8 +406,8 @@ public sealed class GitProcessRunner : IGitProcessRunner
                     continue;
                 }
 
-                // Sınır aşıldı: okumayı bırak. Süreç çağıran tarafından sonlandırılacak;
-                // okumaya devam etmek tam da kaçınmak istediğimiz belleği tüketmek olurdu.
+                // The limit was exceeded: stop reading. The process will be terminated by the
+                // caller; continuing to read would consume exactly the memory we want to avoid.
                 return (buffer.ToArray(), true);
             }
         }
@@ -431,13 +435,13 @@ public sealed class GitProcessRunner : IGitProcessRunner
         }
         catch (IOException)
         {
-            // Süreç stdin'i okumadan çıkmış olabilir (kırık boru). Bu bir hata değil;
-            // asıl sonuç çıkış kodundan anlaşılır.
+            // The process may have exited without reading stdin (broken pipe). This is not an
+            // error; the real outcome is understood from the exit code.
         }
         finally
         {
-            // stdin MUTLAKA kapatılmalı. Kapatılmazsa girdi bekleyen komutlar (`git commit -F -`
-            // gibi) asla bitmez.
+            // stdin MUST be closed. If it is not, commands waiting for input (such as
+            // `git commit -F -`) never finish.
             process.StandardInput.Close();
         }
     }
@@ -453,7 +457,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
         }
         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
         {
-            // Süreç bu arada kendiliğinden bitmiş olabilir.
+            // The process may have exited on its own in the meantime.
             _logger.LogTrace(ex, "The git process could not be killed; it had probably already exited.");
         }
     }

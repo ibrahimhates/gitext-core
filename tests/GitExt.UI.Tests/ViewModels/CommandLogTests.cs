@@ -9,10 +9,10 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T16 — git çıktısı paneli.
+/// P06-T16 — the git output panel.
 /// </summary>
 /// <remarks>
-/// Planın maddesi: <i>"Kullanıcı ne olduğunu her zaman görebilmeli."</i>
+/// The plan's clause: <i>"The user must always be able to see what happened."</i>
 /// </remarks>
 public class CommandLogTests
 {
@@ -52,8 +52,8 @@ public class CommandLogTests
     [AvaloniaFact]
     public void Panel_acilmadan_ONCE_calisan_komutlar_da_gorunuyor()
     {
-        // Açılışta boş liste "hiçbir şey çalışmadı" gibi okunurdu; oysa sorun daha önce
-        // çalışmış bir komutta olabilir.
+        // An empty list at startup would read as "nothing ran"; whereas the problem may be in a
+        // command that ran earlier.
         InMemoryGitCommandLog log = Log(Entry(), Entry("git log"));
 
         using CommandLogViewModel model = new(log);
@@ -79,7 +79,7 @@ public class CommandLogTests
         log.Record(new GitResult(GitCommand.Create("/depo", "log"), 0, [], string.Empty, TimeSpan.Zero));
         Dispatcher.UIThread.RunJobs();
 
-        // En yeni üstte: kullanıcı az önce ne olduğuna bakıyor.
+        // Newest on top: the user is looking at what just happened.
         model.Rows[0].CommandLine.ShouldBe("git log");
         model.Rows.Count.ShouldBe(2);
     }
@@ -126,8 +126,8 @@ public class CommandLogTests
     [AvaloniaFact]
     public void TAMAMLANMAYAN_komutun_cikis_kodu_SIFIR_yazilmiyor()
     {
-        // ⚠️ null ile 0 aynı şey değil: iptal edilen bir komutu "0" göstermek onu başarılı
-        // gibi okuturdu.
+        // ⚠️ null and 0 are not the same thing: showing a cancelled command as "0" would make it
+        // read as successful.
         InMemoryGitCommandLog log = new();
 
         using CommandLogViewModel model = new(log);
@@ -163,7 +163,7 @@ public class CommandLogTests
     [AvaloniaFact]
     public void Suzme_listeden_dusen_SECIMI_de_dusuruyor()
     {
-        // Ayrıntı panelinin listede olmayan bir kaydı göstermeye devam etmesi yanıltırdı.
+        // The detail panel continuing to show a record no longer in the list would mislead.
         InMemoryGitCommandLog log = new();
 
         using CommandLogViewModel model = new(log);
@@ -196,7 +196,7 @@ public class CommandLogTests
     [AvaloniaFact]
     public void Kapatildiktan_sonra_yeni_kayitlar_ISLENMIYOR()
     {
-        // Abonelik bırakılmazsa günlük, kapanmış her paneli sonsuza kadar canlı tutardı.
+        // If the subscription is not released, the log would keep every closed panel alive forever.
         InMemoryGitCommandLog log = new();
 
         CommandLogViewModel model = new(log);
@@ -231,8 +231,8 @@ public class CommandLogTests
     [AvaloniaFact]
     public async Task Menu_ogesi_DEPO_ACIK_OLMADAN_da_etkin()
     {
-        // 🔑 Günlük depoya bağlı değil: depo bulunamadığında çalışan komutlar da orada ve
-        // sorun tam da o komutta olabilir.
+        // 🔑 The log is not tied to a repository: the commands that run when no repository is
+        // found are in there too, and the problem may be exactly in one of those.
         FakeCommandLogPrompt prompt = new();
         InMemoryGitCommandLog log = new();
 

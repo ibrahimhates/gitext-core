@@ -7,9 +7,10 @@ namespace GitExt.Core.Tests;
 /// P06-T08 — push.
 /// </summary>
 /// <remarks>
-/// Ölçümün dört sessiz noktası test ediliyor: <c>--porcelain</c> stdout'una karışan
-/// insan-okunur satırlar, boşluk olan bayrak alanı, çıkış kodu 1 iken <b>gerçekten gitmiş</b>
-/// ref'ler ve çıplak <c>--force-with-lease</c>'in bir fetch'ten sonra korumayı bırakması.
+/// The four silent points of the measurement are tested: human-readable lines mixed into
+/// <c>--porcelain</c> stdout, a flag field that is a space, refs that <b>really did go through</b>
+/// while the exit code is 1, and bare <c>--force-with-lease</c> dropping its protection after a
+/// fetch.
 /// </remarks>
 public class PushWriterTests
 {
@@ -44,7 +45,7 @@ public class PushWriterTests
 
         public string Head => Local.Git("rev-parse", "HEAD").Trim();
 
-        /// <summary>Yerelde yeni bir commit üretir.</summary>
+        /// <summary>Produces a new commit locally.</summary>
         public void Commit(string name)
         {
             Local.WriteFile($"{name}.txt", $"{name}\n");
@@ -52,7 +53,7 @@ public class PushWriterTests
             Local.Git("commit", "-m", name);
         }
 
-        /// <summary>Başka biri uzak depoyu ilerletir (yarış senaryosu).</summary>
+        /// <summary>Someone else advances the remote repository (the race scenario).</summary>
         public void OtherPushes(string name, string branch = "main")
         {
             Other.WriteFile($"{name}.txt", $"{name}\n");
@@ -95,13 +96,13 @@ public class PushWriterTests
         SetUpstream = upstream,
     };
 
-    // ---------------------------------------------------------------- temel
+    // ---------------------------------------------------------------- basics
 
     [Fact]
     public async Task Ileri_sarma_BOSLUK_bayragiyla_dogru_siniflandiriliyor()
     {
-        // 🔴 Porcelain'de normal ileri sarmanın bayrağı tek bir BOŞLUK. Satır Trim()'lenirse
-        // alanlar kayar ve her başarılı push yanlış okunurdu.
+        // 🔴 In porcelain the flag for an ordinary fast-forward is a single SPACE. If the line is
+        // Trim()'med the fields shift and every successful push would be read wrongly.
         using Harness harness = await CreateAsync();
 
         harness.Commit("ikinci");
@@ -149,9 +150,9 @@ public class PushWriterTests
     [Fact]
     public async Task Upstream_kuruluyor_ve_INSAN_satiri_ayristiriciyi_bozmuyor()
     {
-        // 🔴 `-u` ile git porcelain stdout'una `branch 'x' set up to track …` diye
-        // insan-okunur bir satır KARIŞTIRIYOR (ölçüldü). Sekme sayısına bakmayan bir
-        // ayrıştırıcı burada saçmalardı.
+        // 🔴 With `-u`, git MIXES a human-readable `branch 'x' set up to track …` line into the
+        // porcelain stdout (measured). A parser that does not look at the tab count would produce
+        // nonsense here.
         using Harness harness = await CreateAsync();
 
         harness.Local.Git("checkout", "-q", "-b", "yeni");
@@ -183,7 +184,7 @@ public class PushWriterTests
         harness.RemoteTip("main").ShouldBe(before, "ama uzak depo değişmemeli");
     }
 
-    // ------------------------------------------------------------- reddetme
+    // ------------------------------------------------------------- rejection
 
     [Fact]
     public async Task Geride_kalmis_dal_REDDEDILIYOR_ve_istisna_FIRLATILMIYOR()
@@ -204,14 +205,14 @@ public class PushWriterTests
     [Fact]
     public async Task KISMI_basari_GIDEN_dali_gizlemiyor()
     {
-        // 🔴 ÖLÇÜLDÜ: çıkış kodu 1 ama bir dal GERÇEKTEN gitti. İstisnayı olduğu gibi
-        // bırakmak kullanıcıya "hiçbir şey gitmedi" dedirtir, o da tekrar denerdi.
+        // 🔴 MEASURED: exit code 1, yet one branch REALLY did go through. Leaving the exception as
+        // it is would tell the user "nothing went through", and they would try again.
         using Harness harness = await CreateAsync();
 
         harness.Local.Git("branch", "ikinci-dal");
         harness.Local.Git("push", "-q", "origin", "ikinci-dal");
 
-        // `ikinci-dal` uzakta ilerletiliyor -> yereldeki geride kalıyor.
+        // `ikinci-dal` is advanced on the remote -> the local one falls behind.
         harness.Other.Git("push", "-q", "origin", "HEAD:ikinci-dal");
         harness.OtherPushes("uzakta", "ikinci-dal");
 
@@ -246,15 +247,15 @@ public class PushWriterTests
         row.Status.ShouldBe(PushRefStatus.Rejected);
         row.Rejection.ShouldBe(PushRejectionKind.RemoteRejected);
 
-        // Porcelain yalnızca "(pre-receive hook declined)" diyor; NEDEN olduğu sadece
-        // uzak tarafın `remote:` satırında.
+        // Porcelain only says "(pre-receive hook declined)"; the WHY is only in the remote side's
+        // `remote:` line.
         result.RemoteMessages.ShouldContain("korumali dal");
     }
 
     [Fact]
     public async Task Ulasilamayan_remote_ISTISNA_olarak_kaliyor()
     {
-        // Porcelain hiç satır yazmadıysa (çıkış kodu 128) hata gerçekten ölümcül.
+        // If porcelain wrote no lines at all (exit code 128) the error really is fatal.
         using Harness harness = await CreateAsync();
 
         harness.Local.Git("remote", "add", "yok", "/olmayan/yol/x.git");
@@ -273,10 +274,10 @@ public class PushWriterTests
     [Fact]
     public async Task KARSI_KANIT_ciplak_force_with_lease_bir_FETCH_sonrasi_KORUMUYOR()
     {
-        // 🔴 Bu test bizim kodumuzu değil git'in davranışını sabitliyor: kirayı git'in
-        // örtük hâline bırakırsak, araya giren HERHANGİ bir fetch (bizim otomatik
-        // tazelememiz dahil) korumayı iptal eder ve başkasının commit'i sessizce silinir.
-        // Bu yüzden PushWriter çıpasız ref'e `--force-with-lease` yazmıyor.
+        // 🔴 This test pins down git's behaviour, not our code: if we leave the lease to git's
+        // implicit form, ANY fetch that comes in between (including our own automatic refresh)
+        // cancels the protection and someone else's commit is silently deleted.
+        // That is why PushWriter does not write `--force-with-lease` for an unanchored ref.
         using Harness harness = await CreateAsync();
 
         harness.OtherPushes("baskasinin-emegi");
@@ -296,7 +297,7 @@ public class PushWriterTests
     {
         using Harness harness = await CreateAsync();
 
-        // Kullanıcının ekranı açtığı andaki uç — kira çıpası.
+        // The tip at the moment the user opened the screen — the lease anchor.
         PushPlan plan = await harness.Writer.PlanAsync(harness.Path, "origin", "main", Ct);
         string anchor = plan.RemoteTipObjectId!;
 
@@ -325,7 +326,7 @@ public class PushWriterTests
     {
         using Harness harness = await CreateAsync();
 
-        // Kullanıcı gerçekten geçmişi yeniden yazıyor: aynı uç üstünde amend.
+        // The user really is rewriting history: an amend on top of the same tip.
         harness.Local.Git("commit", "-q", "--amend", "-m", "yeniden yazildi");
 
         PushPlan plan = await harness.Writer.PlanAsync(harness.Path, "origin", "main", Ct);
@@ -350,8 +351,8 @@ public class PushWriterTests
     [Fact]
     public void Cipasiz_ref_e_lease_bayragi_YAZILMIYOR()
     {
-        // Çıpa yoksa git'in örtük (ve ölçümde çöken) kirasına düşmemek için bayrak hiç
-        // eklenmiyor — push zorlamasız denenir ve reddedilir.
+        // With no anchor the flag is not added at all, so as not to fall into git's implicit (and
+        // measurably broken) lease — the push is attempted without force and gets rejected.
         string command = PushWriter.Describe(new PushOptions
         {
             Remote = "origin",
@@ -362,7 +363,7 @@ public class PushWriterTests
         command.ShouldNotContain("--force-with-lease");
     }
 
-    // ------------------------------------------------------------- silme
+    // -------------------------------------------------------------- deletion
 
     [Fact]
     public async Task Uzak_dal_siliniyor()
@@ -391,8 +392,8 @@ public class PushWriterTests
     [Fact]
     public async Task Olmayan_dali_silmek_ISTISNA_uretiyor()
     {
-        // 🔴 ÖLÇÜLDÜ: bu durumda porcelain stdout'a HİÇBİR ŞEY yazmıyor; "satır yok"
-        // sessizce "sorun yok" diye okunsaydı kullanıcı silindiğini sanırdı.
+        // 🔴 MEASURED: in this case porcelain writes NOTHING to stdout; if "no lines" were
+        // silently read as "no problem", the user would think it had been deleted.
         using Harness harness = await CreateAsync();
 
         await Should.ThrowAsync<GitException>(
@@ -406,7 +407,7 @@ public class PushWriterTests
                 Ct));
     }
 
-    // ------------------------------------------------------------ etiketler
+    // ------------------------------------------------------------------ tags
 
     [Fact]
     public async Task Tum_etiketler_gonderiliyor()
@@ -429,8 +430,8 @@ public class PushWriterTests
     [Fact]
     public async Task Follow_tags_HAFIF_etiketi_atliyor()
     {
-        // ⚠️ ÖLÇÜLDÜ: `--follow-tags` yalnızca annotated etiketleri gönderiyor. Arayüz
-        // bunu yazmazsa kullanıcı hafif etiketinin uzakta olduğunu sanır.
+        // ⚠️ MEASURED: `--follow-tags` only sends annotated tags. If the interface does not say so,
+        // the user thinks their lightweight tag is on the remote.
         using Harness harness = await CreateAsync();
 
         harness.Commit("ikinci");
@@ -484,8 +485,8 @@ public class PushWriterTests
     [Fact]
     public async Task Plan_sembolik_origin_HEAD_i_uzak_dal_saymiyor()
     {
-        // Dördüncü kez aynı tuzak (P03-T12, P06-T05, P06-T06): silme listesinde "HEAD"
-        // diye bir dal görünseydi kullanıcı olmayan bir şeyi silmeye çalışırdı.
+        // The same trap for the fourth time (P03-T12, P06-T05, P06-T06): if a branch called "HEAD"
+        // appeared in the deletion list the user would try to delete something that does not exist.
         using Harness harness = await CreateAsync();
 
         harness.Local.Git("remote", "set-head", "origin", "main");
@@ -507,12 +508,12 @@ public class PushWriterTests
         plan.Tags.ShouldBe(["v1"]);
     }
 
-    // ------------------------------------------------------------ ayrıştırıcı
+    // ---------------------------------------------------------------- parser
 
     [Fact]
     public void Ayristirici_TO_DONE_ve_insan_satirlarini_atliyor()
     {
-        // Ölçülen gerçek çıktı, `-u` ve `push.autoSetupRemote` satırlarıyla birlikte.
+        // The real measured output, together with the `-u` and `push.autoSetupRemote` lines.
         const string output = """
             To ../remote.git
             *\trefs/heads/yeni:refs/heads/yeni\t[new branch]

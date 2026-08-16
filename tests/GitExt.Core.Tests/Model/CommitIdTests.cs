@@ -21,7 +21,7 @@ public class CommitIdTests
     [Fact]
     public void Sha256_depolari_desteklenir()
     {
-        // git artık SHA-256 depoları destekliyor; 40 karakter varsayımı yanlış olurdu.
+        // git now supports SHA-256 repositories; a 40-character assumption would be wrong.
         CommitId id = CommitId.Parse(FullSha256);
 
         id.IsFull.ShouldBeTrue();
@@ -40,7 +40,7 @@ public class CommitIdTests
     [Fact]
     public void Buyuk_harfli_girdi_normallestirilir()
     {
-        // git küçük harf üretir; karşılaştırmaların tutarlı olması için normalleştiriyoruz.
+        // git produces lowercase; we normalise so that comparisons stay consistent.
         CommitId upper = CommitId.Parse(FullSha1.ToUpperInvariant());
 
         upper.Value.ShouldBe(FullSha1);
@@ -51,10 +51,10 @@ public class CommitIdTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData(null)]
-    [InlineData("abc")]                       // MinimumLength'ten kısa
-    [InlineData("zzzzzzz")]                   // onaltılık değil
-    [InlineData("src/GitExt.Core/Program.cs")] // dosya yolu — tip sisteminin engellediği hata
-    [InlineData("HEAD")]                       // ref adı
+    [InlineData("abc")]                       // shorter than MinimumLength
+    [InlineData("zzzzzzz")]                   // not hexadecimal
+    [InlineData("src/GitExt.Core/Program.cs")] // file path — the mistake the type system prevents
+    [InlineData("HEAD")]                       // ref name
     [InlineData("main")]
     public void Gecersiz_girdiler_reddedilir(string? value)
     {
@@ -70,8 +70,8 @@ public class CommitIdTests
     [Fact]
     public void Kisaltilmis_sha256_gecerlidir()
     {
-        // 40 ile 64 arasındaki uzunluklar SHA-1 için geçersiz görünse de, SHA-256 depolarında
-        // meşru bir kısaltmadır. "40 değilse geçersiz" varsayımı yanlış olurdu.
+        // Lengths between 40 and 64 look invalid for SHA-1, yet in SHA-256 repositories they are a
+        // legitimate abbreviation. The "invalid unless 40" assumption would be wrong.
         CommitId.TryParse(new string('a', 42), out CommitId id).ShouldBeTrue();
 
         id.IsFull.ShouldBeFalse();
@@ -88,7 +88,7 @@ public class CommitIdTests
     [Fact]
     public void Kisa_gosterim_varsayilan_olarak_yedi_karakter()
     {
-        // git log --oneline ile aynı.
+        // Same as git log --oneline.
         CommitId.Parse(FullSha1).ToShortString().ShouldBe("1e2d3c4");
     }
 
@@ -105,7 +105,7 @@ public class CommitIdTests
         CommitId full = CommitId.Parse(FullSha1);
 
         abbreviated.IsPrefixOf(full).ShouldBeTrue();
-        // Ama eşit DEĞİLLER — kısaltılmış bir SHA'yı tam SHA yerine kullanmak hatadır.
+        // But they are NOT equal — using an abbreviated SHA in place of a full SHA is a bug.
         abbreviated.ShouldNotBe(full);
     }
 

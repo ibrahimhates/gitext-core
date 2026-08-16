@@ -3,115 +3,114 @@ using System.Text;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Çalıştırılacak tek bir <c>git</c> komutunun tanımı.
+/// The definition of a single <c>git</c> command to be executed.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Argümanlar <b>dizi olarak</b> tutulur ve asla tek bir komut satırı dizesine birleştirilmez
-/// (ADR-0002). Kullanıcı verisi — dosya yolları, ref isimleri, commit mesajları — kabuk
-/// yorumlamasına maruz kalmaz.
+/// Arguments are kept <b>as an array</b> and are never joined into a single command line string
+/// (ADR-0002). User data — file paths, ref names, commit messages — is not exposed to shell
+/// interpretation.
 /// </para>
 /// <para>
-/// Commit mesajı gibi serbest metinler argüman yerine <see cref="StandardInput"/> ile
-/// geçirilmelidir.
+/// Free-form text such as a commit message must be passed via <see cref="StandardInput"/>
+/// instead of as an argument.
 /// </para>
 /// </remarks>
 public sealed record GitCommand
 {
-    /// <summary>Komutun çalıştırılacağı dizin.</summary>
+    /// <summary>The directory the command will be run in.</summary>
     public required string WorkingDirectory { get; init; }
 
     /// <summary>
-    /// <c>git</c>'e verilecek argümanlar. Her eleman tek bir argümandır; boşluk içerebilir.
+    /// The arguments passed to <c>git</c>. Each element is a single argument; it may contain spaces.
     /// </summary>
     public required IReadOnlyList<string> Arguments { get; init; }
 
     /// <summary>
-    /// stdin üzerinden gönderilecek veri. <see langword="null"/> ise stdin hemen kapatılır.
+    /// Data to be sent over stdin. If <see langword="null"/>, stdin is closed immediately.
     /// </summary>
     public ReadOnlyMemory<byte>? StandardInput { get; init; }
 
     /// <summary>
-    /// Süreç bu süre içinde bitmezse öldürülür.
+    /// The process is killed if it does not finish within this time.
     /// </summary>
     public TimeSpan Timeout { get; init; } = TimeSpan.FromMinutes(2);
 
     /// <summary>
-    /// Komut depoyu değiştirmiyorsa <see langword="true"/>.
+    /// <see langword="true"/> if the command does not modify the repository.
     /// </summary>
     /// <remarks>
-    /// Salt okunur çağrılarda <c>GIT_OPTIONAL_LOCKS=0</c> ayarlanır; bu, arka planda çalışan
-    /// bir <c>git status</c>'ün index'i güncellemeye çalışıp kilit çakışması üretmesini önler.
+    /// On read-only calls <c>GIT_OPTIONAL_LOCKS=0</c> is set; this prevents a <c>git status</c>
+    /// running in the background from trying to update the index and producing a lock collision.
     /// </remarks>
     public bool IsReadOnly { get; init; } = true;
 
     /// <summary>
-    /// Sıfır olmayan çıkış kodunun hata sayılmadığı durumlar.
+    /// The cases where a non-zero exit code is not considered an error.
     /// </summary>
     /// <remarks>
-    /// Bazı komutlar başarıyı sıfır dışı kodla bildirir; örneğin <c>git diff --quiet</c>
-    /// fark varsa 1 döner. Bu kodlar burada beyan edilir.
+    /// Some commands report success with a non-zero code; for example <c>git diff --quiet</c>
+    /// returns 1 if there is a difference. Those codes are declared here.
     /// </remarks>
     public IReadOnlyCollection<int> SuccessExitCodes { get; init; } = [0];
 
     /// <summary>
-    /// stdout için üst sınır; aşılırsa okuma durdurulur ve süreç sonlandırılır.
+    /// Upper bound for stdout; if exceeded, reading is stopped and the process is terminated.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <see langword="null"/> ise sınır yok. Güvenlik valfi olarak var: <c>git diff</c>
-    /// tek bir commit için <b>yüzlerce megabayt</b> yama üretebiliyor (ölçüldü: tamamı
-    /// değişen 12,7 MB'lık bir dosya 23 MB yama veriyor) ve bunu belleğe almak uygulamayı
-    /// öldürür.
+    /// If <see langword="null"/> there is no limit. It exists as a safety valve: <c>git diff</c>
+    /// can produce <b>hundreds of megabytes</b> of patch for a single commit (measured: a
+    /// 12.7 MB file that changed entirely yields a 23 MB patch) and taking that into memory
+    /// kills the application.
     /// </para>
     /// <para>
-    /// Sınır aşıldığında sonuç <see cref="GitResult.OutputTruncated"/> ile işaretlenir;
-    /// çağıran kısmi çıktıyı <b>ayrıştırmamalı</b>, farklı bir strateji seçmelidir.
+    /// When the limit is exceeded the result is marked with <see cref="GitResult.OutputTruncated"/>;
+    /// the caller must <b>not parse</b> the partial output and should choose a different strategy.
     /// </para>
     /// </remarks>
     public long? MaximumOutputBytes { get; init; }
 
     /// <summary>
-    /// Bu çağrı için eklenecek ortam değişkenleri (P06-T09).
+    /// Environment variables to be added for this call (P06-T09).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Yalnızca <b>kimlik doğrulama</b> için var: <c>GIT_ASKPASS</c> ve onun okuyacağı
-    /// gizli değer. Parola argüman olarak geçirilemez — komut satırı aynı makinedeki her
-    /// sürece <c>ps</c> ile görünür. Ortam değişkeni <c>/proc/&lt;pid&gt;/environ</c>
-    /// üzerinden yalnızca <b>aynı kullanıcıya</b> görünür; `gh` ve benzeri araçların da
-    /// kullandığı yol.
+    /// It exists only for <b>authentication</b>: <c>GIT_ASKPASS</c> and the secret value it will
+    /// read. A password cannot be passed as an argument — the command line is visible to every
+    /// process on the same machine via <c>ps</c>. An environment variable is visible via
+    /// <c>/proc/&lt;pid&gt;/environ</c> only to <b>the same user</b>; this is the route `gh` and
+    /// similar tools use as well.
     /// </para>
     /// <para>
-    /// ⚠️ <see cref="ToDisplayString"/> bunları <b>yazmaz</b>: komut günlüğü ve "komutu
-    /// göster" alanı ekranda duruyor.
+    /// ⚠️ <see cref="ToDisplayString"/> does <b>not</b> print these: the command log and the
+    /// "show command" area are on screen.
     /// </para>
     /// </remarks>
     public IReadOnlyDictionary<string, string>? Environment { get; init; }
 
     /// <summary>
-    /// Canlı ilerleme bildirimi (P06-T10).
+    /// Live progress reporting (P06-T10).
     /// </summary>
     /// <remarks>
-    /// Dolu olduğunda <c>stderr</c> <b>akış hâlinde</b> okunur ve her ilerleme satırı
-    /// buraya gönderilir. Tam metin yine de biriktirilir — mevcut ayrıştırıcılar ona
-    /// bakıyor.
+    /// When set, <c>stderr</c> is read <b>as a stream</b> and every progress line is sent here.
+    /// The full text is still accumulated — the existing parsers look at it.
     /// </remarks>
     public IProgress<GitProgress>? Progress { get; init; }
 
     /// <summary>
-    /// Kısa yol: çalışma dizini ve argümanlarla komut oluşturur.
+    /// Shorthand: creates a command from a working directory and arguments.
     /// </summary>
     public static GitCommand Create(string workingDirectory, params string[] arguments) =>
         new() { WorkingDirectory = workingDirectory, Arguments = arguments };
 
     /// <summary>
-    /// Komutu, günlüğe ve kullanıcıya gösterilecek okunabilir biçime çevirir.
+    /// Converts the command into a readable form to be shown in the log and to the user.
     /// </summary>
     /// <remarks>
-    /// Bu çıktı <b>yalnızca gösterim içindir</b>; asla bir kabuğa geri verilmez.
-    /// Boşluk veya özel karakter içeren argümanlar tırnaklanır ki kullanıcı komutu
-    /// terminaline kopyalayabilsin.
+    /// This output is <b>for display only</b>; it is never fed back into a shell.
+    /// Arguments containing spaces or special characters are quoted so that the user can copy
+    /// the command into their terminal.
     /// </remarks>
     public string ToDisplayString()
     {
@@ -139,7 +138,7 @@ public sealed record GitCommand
             return argument;
         }
 
-        // POSIX tek tırnak: içerideki tek tırnak '\'' dizisiyle kaçırılır.
+        // POSIX single quoting: an inner single quote is escaped with the '\'' sequence.
         return $"'{argument.Replace("'", "'\\''", StringComparison.Ordinal)}'";
     }
 }

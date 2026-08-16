@@ -1,90 +1,93 @@
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Bir <c>git</c> çağrısının başarısız olma nedeni.
+/// The reason a <c>git</c> call failed.
 /// </summary>
 /// <remarks>
-/// Ham <c>stderr</c> metnini kullanıcıya birincil mesaj olarak göstermek kabul edilebilir değil;
-/// bu sınıflandırma, arayüzün anlamlı bir mesaj ve eylem sunabilmesi içindir.
-/// Ham metin <see cref="GitException.StandardError"/> üzerinden her zaman erişilebilir kalır.
+/// Showing the raw <c>stderr</c> text to the user as the primary message is not acceptable;
+/// this classification exists so that the UI can offer a meaningful message and action.
+/// The raw text always remains reachable via <see cref="GitException.StandardError"/>.
 /// </remarks>
 public enum GitFailureKind
 {
-    /// <summary>Sınıflandırılamadı. Ham <c>stderr</c> gösterilmeli.</summary>
+    /// <summary>Could not be classified. The raw <c>stderr</c> should be shown.</summary>
     Unknown,
 
-    /// <summary>Verilen yol bir Git deposu değil.</summary>
+    /// <summary>The given path is not a Git repository.</summary>
     NotARepository,
 
-    /// <summary>Kimlik doğrulama gerekiyor (SSH anahtarı, token, credential helper).</summary>
+    /// <summary>Authentication is required (SSH key, token, credential helper).</summary>
     AuthenticationRequired,
 
-    /// <summary>Ağ hatası: DNS, bağlantı reddi, zaman aşımı.</summary>
+    /// <summary>Network failure: DNS, connection refused, timeout.</summary>
     NetworkFailure,
 
-    /// <summary><c>index.lock</c> mevcut — başka bir git süreci çalışıyor olabilir.</summary>
+    /// <summary><c>index.lock</c> exists — another git process may be running.</summary>
     IndexLocked,
 
-    /// <summary>Merge/rebase/cherry-pick conflict ile durdu.</summary>
+    /// <summary>The merge/rebase/cherry-pick stopped with a conflict.</summary>
     Conflict,
 
-    /// <summary>Belirtilen revizyon, dal veya ref çözümlenemedi.</summary>
+    /// <summary>The given revision, branch or ref could not be resolved.</summary>
     UnknownRevision,
 
-    /// <summary>Çalışma dizini kirli; işlem devam edemedi.</summary>
+    /// <summary>The working tree is dirty; the operation could not continue.</summary>
     DirtyWorkingTree,
 
-    /// <summary>Süreç zaman aşımına uğradı ve öldürüldü.</summary>
+    /// <summary>The process timed out and was killed.</summary>
     Timeout,
 
-    /// <summary>Aynı adda bir dal zaten var (P06-T01).</summary>
+    /// <summary>A branch with the same name already exists (P06-T01).</summary>
     BranchAlreadyExists,
 
     /// <summary>
-    /// Ref adı mevcut bir ref'le dizin/dosya çakışması yaratıyor (P06-T01).
+    /// The ref name creates a directory/file conflict with an existing ref (P06-T01).
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ — iki yönlü:</b> <c>feature</c> dalı varken <c>feature/x</c> oluşturulamıyor
-    /// (<c>refs/heads/feature</c> bir <b>dosya</b>, altına dizin açılamaz) ve simetrik olarak
-    /// <c>kap/alt</c> varken <c>kap</c> oluşturulamıyor. Ad kurallarına <b>tamamen uygun</b>
-    /// bir ad olduğu için doğrulamadan geçiyor; yalnızca git söyleyebiliyor.
+    /// <b>MEASURED — in both directions:</b> while a <c>feature</c> branch exists,
+    /// <c>feature/x</c> cannot be created (<c>refs/heads/feature</c> is a <b>file</b>, no
+    /// directory can be created under it) and symmetrically, while <c>container/sub</c> exists,
+    /// <c>container</c> cannot be created. Because it is a name that <b>fully complies</b> with
+    /// the naming rules it passes validation; only git can tell.
     /// </remarks>
     RefNameConflict,
 
-    /// <summary>Depoda hiç commit yok; işlem bir başlangıç noktası bulamıyor (P06-T01).</summary>
+    /// <summary>The repository has no commits; the operation cannot find a starting point (P06-T01).</summary>
     UnbornHead,
 
-    /// <summary>Aynı adda bir uzak depo zaten var (P06-T05, çıkış kodu 3).</summary>
+    /// <summary>A remote with the same name already exists (P06-T05, exit code 3).</summary>
     RemoteAlreadyExists,
 
-    /// <summary>Belirtilen uzak depo yok (P06-T05, çıkış kodu 2).</summary>
+    /// <summary>The given remote does not exist (P06-T05, exit code 2).</summary>
     RemoteNotFound,
 
     /// <summary>
-    /// Uzak depo adı mevcut bir adla iç içe geçiyor (P06-T05).
+    /// The remote name is nested with an existing name (P06-T05).
     /// </summary>
     /// <remarks>
-    /// <b>ÖLÇÜLDÜ — iki yönlü:</b> <c>ic</c> varken <c>ic/main</c> eklenemiyor
-    /// (<i>"is a subset of existing remote"</i>) ve simetrik olarak <c>ic/main</c> varken
-    /// <c>ic</c> eklenemiyor (<i>"is a superset"</i>). Dallardaki
-    /// <see cref="RefNameConflict"/> ile aynı sebep — <c>refs/remotes/</c> altında da adlar
-    /// dizin gibi saklanıyor — ama mesajı ayrı, çünkü kullanıcıya önerilecek çözüm farklı.
+    /// <b>MEASURED — in both directions:</b> while <c>ic</c> exists, <c>ic/main</c> cannot be
+    /// added (<i>"is a subset of existing remote"</i>) and symmetrically, while <c>ic/main</c>
+    /// exists, <c>ic</c> cannot be added (<i>"is a superset"</i>). The same cause as
+    /// <see cref="RefNameConflict"/> on branches — names are stored like directories under
+    /// <c>refs/remotes/</c> as well — but its message is separate, because the fix suggested to
+    /// the user is different.
     /// </remarks>
     RemoteNameConflict,
 
-    /// <summary>Uzak depoya ulaşılamadı: adres yanlış, depo yok ya da erişim kapalı (P06-T06).</summary>
+    /// <summary>The remote could not be reached: wrong address, missing repository or access denied (P06-T06).</summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — bu tür olmadan mesaj YANLIŞTI.</b> Ulaşılamayan bir remote için git
-    /// <c>fatal: '…' does not appear to be a git repository</c> yazıyor; bu metin
-    /// <see cref="NotARepository"/> kalıbına uyuyor ve kullanıcıya <i>"Bu klasör bir Git
-    /// deposu değil"</i> denirdi — oysa klasör gayet iyi, sorun <b>uzak adreste</b>.
-    /// Ayrım git'in ikinci satırından geliyor: <c>Could not read from remote repository.</c>
+    /// 🔴 <b>MEASURED — without this kind the message was WRONG.</b> For an unreachable remote
+    /// git writes <c>fatal: '…' does not appear to be a git repository</c>; that text matches the
+    /// <see cref="NotARepository"/> pattern and the user would be told <i>"This folder is not a
+    /// Git repository"</i> — while the folder is perfectly fine, the problem is <b>at the remote
+    /// address</b>. The distinction comes from git's second line:
+    /// <c>Could not read from remote repository.</c>
     /// </remarks>
     RemoteUnreachable,
 }
 
 /// <summary>
-/// Bir <c>git</c> komutu sıfır olmayan çıkış koduyla döndüğünde fırlatılır.
+/// Thrown when a <c>git</c> command returns a non-zero exit code.
 /// </summary>
 public class GitException : Exception
 {
@@ -104,45 +107,46 @@ public class GitException : Exception
         StandardOutput = standardOutput;
     }
 
-    /// <summary>Hatanın sınıflandırılmış türü.</summary>
+    /// <summary>The classified kind of the failure.</summary>
     public GitFailureKind Kind { get; }
 
-    /// <summary>Çalıştırılan komut — teşhis ve "komutu göster" ilkesi için.</summary>
+    /// <summary>The command that was run — for diagnosis and the "show the command" principle.</summary>
     public string CommandLine { get; }
 
-    /// <summary>Sürecin çıkış kodu.</summary>
+    /// <summary>The process's exit code.</summary>
     public int ExitCode { get; }
 
-    /// <summary>Ham <c>stderr</c> çıktısı. Kullanıcıya detay panelinde gösterilebilir.</summary>
+    /// <summary>Raw <c>stderr</c> output. Can be shown to the user in the details panel.</summary>
     public string StandardError { get; }
 
     /// <summary>
-    /// Ham <c>stdout</c> çıktısı.
+    /// Raw <c>stdout</c> output.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>P06-T08'de eklendi — yokluğu sessiz bir bilgi kaybıydı.</b> Başarısız komutların
-    /// çoğunda stdout boş olduğu için alan hiç istenmemişti. Ama <c>git push --porcelain</c>
-    /// <b>reddedilen</b> ref'leri de <b>stdout'a</b> makine-okunur biçimde yazıp çıkış kodu 1
-    /// veriyor (ölçüldü); istisna fırlatılırken bu çıktı atılırsa geriye yalnızca
-    /// insan-okunur <c>hint:</c> satırları kalır — yani ADR-0002'nin yasakladığı kanal.
-    /// Üstelik kısmi başarıda (bir dal gitti, biri reddedildi) gerçekten <b>ne olduğu</b>
-    /// tam olarak burada yazıyor.
+    /// 🔴 <b>Added in P06-T08 — its absence was a silent loss of information.</b> Because stdout
+    /// is empty for most failing commands, the field was never asked for. But
+    /// <c>git push --porcelain</c> writes the <b>rejected</b> refs to <b>stdout</b> in
+    /// machine-readable form as well and returns exit code 1 (measured); if that output is thrown
+    /// away while raising the exception, all that is left are the human-readable <c>hint:</c>
+    /// lines — that is, the channel ADR-0002 forbids. On top of that, on partial success (one
+    /// branch went through, one was rejected) <b>what actually happened</b> is written exactly
+    /// here.
     /// </remarks>
     public string StandardOutput { get; }
 }
 
 /// <summary>
-/// Sistemde çalıştırılabilir bir <c>git</c> bulunamadığında fırlatılır.
+/// Thrown when no runnable <c>git</c> could be found on the system.
 /// </summary>
 /// <remarks>
-/// Flatpak sandbox'ında host'a erişilemediğinde de bu fırlatılıyor (ADR-0009):
-/// kullanıcı açısından sonuç aynı — kullanılabilir bir git yok.
+/// This is also thrown when the host cannot be reached in a Flatpak sandbox (ADR-0009):
+/// from the user's point of view the outcome is the same — there is no usable git.
 /// </remarks>
 public sealed class GitNotFoundException(string message, Exception? innerException = null)
     : Exception(message, innerException);
 
 /// <summary>
-/// Bulunan <c>git</c> sürümü <see cref="GitVersion.Minimum"/> değerinden düşük olduğunda fırlatılır.
+/// Thrown when the <c>git</c> version found is lower than <see cref="GitVersion.Minimum"/>.
 /// </summary>
 public sealed class GitVersionTooOldException(GitVersion found, string executablePath)
     : Exception(

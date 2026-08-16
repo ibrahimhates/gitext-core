@@ -4,11 +4,11 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P07-T15 — işlem öncesi güvenlik noktası.
+/// P07-T15 — the pre-operation safety point.
 /// </summary>
 /// <remarks>
-/// Faz kuralı: geçmişi değiştiren her işlem öncesinde konum kaydedilir ve "nasıl geri
-/// alırım" bilgisi <b>her zaman</b> sunulur.
+/// Phase rule: before every operation that changes history the position is recorded and the "how do
+/// I undo this" information is <b>always</b> offered.
 /// </remarks>
 public class SafetyPointTests
 {
@@ -37,8 +37,8 @@ public class SafetyPointTests
     [Fact]
     public async Task AYRIK_HEADde_checkout_oneriliyor()
     {
-        // ⚠️ ÖLÇÜLDÜ: ayrık HEAD'de `reset --hard` hiçbir dalı oynatmıyor; kullanıcının
-        // istediği şey o commit'e dönmek olduğu için `checkout` doğru komut.
+        // ⚠️ MEASURED: on a detached HEAD `reset --hard` moves no branch at all; since what the
+        // user wants is to go back to that commit, `checkout` is the right command.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.Commit("ikinci");
         repository.Git("checkout", "--detach", "HEAD");
@@ -64,9 +64,9 @@ public class SafetyPointTests
     [Fact]
     public async Task KIRLI_agacta_geri_almanin_EKSIK_oldugu_soyleniyor()
     {
-        // 🔴 ÖLÇÜLDÜ: `git reset --hard <sha>` commit'lenmemiş işi de siliyor. "Geri almak
-        // için: git reset --hard <sha>" demek, ağaç kirliyken EKSİK bir söz — commit geri
-        // gelir, kullanıcının o anki işi gelmez.
+        // 🔴 MEASURED: `git reset --hard <sha>` deletes uncommitted work too. Saying "to undo:
+        // git reset --hard <sha>" is an INCOMPLETE promise while the tree is dirty — the commit
+        // comes back, the user's current work does not.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.WriteFile("README.md", "# degisti\n");
 
@@ -79,9 +79,9 @@ public class SafetyPointTests
     [Fact]
     public async Task TAKIP_EDILMEYEN_dosya_geri_alinabilirligi_ETKILEMIYOR()
     {
-        // ÖLÇÜLDÜ: takip edilmeyen dosyalar `reset --hard`'ı atlatıyor — commit'lerden
-        // sonra oluşturulan `takipsiz.txt` reset sonrası diskte DURUYORDU. Dolayısıyla
-        // onları "kirli" sayıp kullanıcıyı boşuna uyarmak yanlış olurdu.
+        // MEASURED: untracked files slip past `reset --hard` — `takipsiz.txt`, created after the
+        // commits, was STILL on disk after the reset. So counting them as "dirty" and warning the
+        // user for nothing would be wrong.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         repository.WriteFile("takipsiz.txt", "x\n");
 

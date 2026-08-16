@@ -8,11 +8,11 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P05-T14 — dosya sistemi izlemeye ViewModel tarafının tepkisi.
+/// P05-T14 — how the ViewModel side reacts to file system watching.
 /// </summary>
 /// <remarks>
-/// İzleyicinin kendisi <c>RepositoryWatcherTests</c> içinde gerçek <c>git</c> ile test
-/// ediliyor; burada test edilen şey <b>olay geldiğinde ne yapıldığı</b>.
+/// The watcher itself is tested against real <c>git</c> in <c>RepositoryWatcherTests</c>; what is
+/// tested here is <b>what happens when an event arrives</b>.
 /// </remarks>
 public class AutoRefreshTests
 {
@@ -47,9 +47,9 @@ public class AutoRefreshTests
         return (model, status);
     }
 
-    /// <summary>Olay <c>Dispatcher</c>'a post ediliyor; kuyruğun boşalmasını bekler.</summary>
+    /// <summary>The event is posted to the <c>Dispatcher</c>; waits for the queue to drain.</summary>
     /// <param name="until">
-    /// Beklenen sonuç; sağlanınca erken çıkılır. Verilmezse yalnızca kuyruk boşaltılır.
+    /// The expected outcome; once it holds we exit early. If not given, the queue is only drained.
     /// </param>
     private static async Task DrainAsync(Func<bool>? until = null)
     {
@@ -77,8 +77,8 @@ public class AutoRefreshTests
         watcher.IsRunning.ShouldBeTrue();
         watcher.WorkingTreeRoot.ShouldBe("/tmp/depo");
 
-        // ⚠️ Üç yol da veriliyor: bağlı çalışma ağacında ref'ler ortak dizinde, HEAD ve
-        // index ise o ağacın kendi git dizininde (CLAUDE.md § 5, madde 9).
+        // ⚠️ All three paths are given: in a linked worktree the refs live in the common directory,
+        // while HEAD and the index live in that worktree's own git directory (CLAUDE.md § 5, item 9).
         watcher.GitDirectory.ShouldNotBeNullOrEmpty();
         watcher.CommonDirectory.ShouldNotBeNullOrEmpty();
     }
@@ -98,7 +98,7 @@ public class AutoRefreshTests
     [AvaloniaFact]
     public async Task Ref_degisimi_commit_listesini_tazeler()
     {
-        // Başka bir terminalde yapılan commit: kullanıcının elle tazelemesi gerekmemeli.
+        // A commit made in another terminal: the user must not have to refresh by hand.
         FakeRepositoryWatcher watcher = new();
         MainWindowViewModel model = CreateMain(watcher);
 
@@ -109,15 +109,15 @@ public class AutoRefreshTests
         watcher.Raise(RepositoryChangeKind.Repository);
         await DrainAsync(() => watcher.StartCount > before);
 
-        // Tazeleme depoyu yeniden açıyor; izleme de yeniden kuruluyor.
+        // A refresh reopens the repository; the watch is set up again as well.
         watcher.StartCount.ShouldBeGreaterThan(before);
     }
 
     [AvaloniaFact]
     public async Task Calisma_agaci_degisimi_commit_listesini_tazelemez()
     {
-        // 🔴 Her dosya kaydedişinde commit geçmişini yeniden okumak, ölçülen sürelerle
-        // (git/git 2,1 sn · Linux 31,6 sn) uygulamayı kullanılamaz hale getirirdi.
+        // 🔴 Re-reading the commit history on every file save would, at the measured times
+        // (git/git 2.1 s · Linux 31.6 s), make the application unusable.
         FakeRepositoryWatcher watcher = new();
         MainWindowViewModel model = CreateMain(watcher);
 
@@ -150,9 +150,9 @@ public class AutoRefreshTests
     [AvaloniaFact]
     public async Task Otomatik_tazeleme_YAZILAN_MESAJI_silmez()
     {
-        // 🔴 P05-T13'ün değişmezi: hiçbir arka plan olayı kullanıcının yazdığı metni
-        // ezmez. Buradaki tazelemeyi kullanıcı istememişti — bir dosya değişti diye
-        // commit mesajının kaybolması kabul edilemez.
+        // 🔴 The invariant from P05-T13: no background event overwrites text the user typed.
+        // The user did not ask for this refresh — losing the commit message because some file
+        // changed is unacceptable.
         FakeRepositoryWatcher watcher = new();
         (WorkingTreeViewModel model, _) = await CreateWorkingTreeAsync(watcher);
 
@@ -169,9 +169,9 @@ public class AutoRefreshTests
     [AvaloniaFact]
     public async Task Tazeleme_sirasinda_izleme_ASKIYA_ALINIR()
     {
-        // 🔴 Sonsuz döngünün ViewModel tarafındaki kapısı. ÖLÇÜLDÜ: `git status` bir depoda
-        // ilk çalıştığında index'i yeniden yazıyor — tazelemenin kendisi yeni bir olay
-        // doğuruyor. Askı olmasaydı bu zincir kendini beslerdi.
+        // 🔴 The ViewModel-side gate against the infinite loop. MEASURED: the first `git status`
+        // in a repository rewrites the index — the refresh itself gives birth to a new event.
+        // Without the suspension this chain would feed itself.
         FakeRepositoryWatcher watcher = new();
         FakeStatusReader status = new([Unstaged("a.txt")]);
         bool suspendedDuringRead = false;
@@ -198,8 +198,8 @@ public class AutoRefreshTests
     [AvaloniaFact]
     public async Task Pencere_kapaninca_abonelik_birakilir()
     {
-        // İzleyici uygulama ömrü boyunca yaşıyor; bırakılmayan abonelik kapalı bir ekran
-        // için `git status` çalıştırmaya devam ederdi.
+        // The watcher lives for the lifetime of the application; a subscription that is not
+        // released would keep running `git status` for a screen that is already closed.
         FakeRepositoryWatcher watcher = new();
         (WorkingTreeViewModel model, FakeStatusReader status) = await CreateWorkingTreeAsync(watcher);
 
@@ -216,8 +216,8 @@ public class AutoRefreshTests
     [AvaloniaFact]
     public void Izleyici_verilmeden_de_calisir()
     {
-        // Otomatik tazeleme bir kolaylık; izleyici kurulamamış olabilir (inotify sınırı,
-        // izin hatası) ve uygulama o zaman da açılmalı.
+        // Auto-refresh is a convenience; the watcher may have failed to start (inotify limit,
+        // permission error) and the application must still open in that case.
         MainWindowViewModel model = new(
             new CommitListViewModel(
                 new FakeRepositoryLocator(),

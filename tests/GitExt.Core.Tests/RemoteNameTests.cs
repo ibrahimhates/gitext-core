@@ -3,35 +3,36 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// P06-T05 — uzak depo adı doğrulaması.
+/// P06-T05 — remote name verification.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bu dosyanın <b>asıl testi</b> <see cref="Kurallarimiz_gercek_git_remote_add_ile_AYNI_cevabi_veriyor"/>.
-/// Doğrulama saf C# (her tuş vuruşunda süreç başlatmamak için) ve sapması sessiz olurdu.
+/// The <b>real test</b> of this file is <see cref="Kurallarimiz_gercek_git_remote_add_ile_AYNI_cevabi_veriyor"/>.
+/// The verification is pure C# (so as not to start a process on every keystroke) and any drift in it
+/// would be silent.
 /// </para>
 /// <para>
-/// 🔴 <b>Oracle <c>check-ref-format</c> DEĞİL, gerçek <c>git remote add</c>.</b> Ölçüldü:
-/// <c>check-ref-format --branch HEAD</c> reddediyor ama <c>git remote add HEAD …</c>
-/// <b>kabul ediyor</b> — dal kuralları burada geçerli değil.
+/// 🔴 <b>The oracle is NOT <c>check-ref-format</c>, it is real <c>git remote add</c>.</b> Measured:
+/// <c>check-ref-format --branch HEAD</c> rejects it but <c>git remote add HEAD …</c>
+/// <b>accepts</b> it — branch rules do not apply here.
 /// </para>
 /// </remarks>
 public class RemoteNameTests
 {
     /// <summary>
-    /// Doğrulamanın <b>bilinçli olarak</b> git'ten ayrıldığı adlar.
+    /// The names where the verification <b>deliberately</b> diverges from git.
     /// </summary>
     /// <remarks>
-    /// Her ikisi de ölçümde git tarafından <b>kabul edildi</b> ve ikisini de biz reddediyoruz:
+    /// Both were <b>accepted</b> by git in the measurement and we reject both of them:
     /// <list type="bullet">
     ///   <item><description>
-    ///     <c>refs/…</c>: git <c>refs/remotes/refs/remotes/x/*</c> altına yazan bir remote
-    ///     oluşturuyor — kullanıcı <c>branch -a</c> çıktısından ad kopyalarsa sessizce
-    ///     iç içe bir ad elde ediyor.
+    ///     <c>refs/…</c>: git creates a remote that writes under
+    ///     <c>refs/remotes/refs/remotes/x/*</c> — if the user copies a name out of <c>branch -a</c>
+    ///     output they silently end up with a nested name.
     ///   </description></item>
     ///   <item><description>
-    ///     <c>-</c> ile başlayan ad: yalnızca <c>--</c> ayracı kullanılan çağrılarda
-    ///     çalışıyor; kullanıcı aynı adı terminalde yazdığında <c>unknown switch</c> alıyor.
+    ///     A name starting with <c>-</c>: it only works in calls that use the <c>--</c> separator;
+    ///     when the user types the same name in a terminal they get <c>unknown switch</c>.
     ///   </description></item>
     /// </list>
     /// </remarks>
@@ -54,7 +55,7 @@ public class RemoteNameTests
     {
         using TestRepository repository = TestRepository.CreateEmpty();
 
-        // `--` ayracı: adın kendisi sınanıyor, git'in bayrak ayrıştırması değil.
+        // The `--` separator: the name itself is being exercised, not git's flag parsing.
         bool gitAccepts =
             repository.TryGit("remote", "add", "--", name, "https://example.com/x.git").ExitCode == 0;
 
@@ -75,8 +76,8 @@ public class RemoteNameTests
     [Fact]
     public void HEAD_dal_icin_gecersiz_ama_remote_icin_GECERLI()
     {
-        // Bu testin varlık sebebi: `BranchName` yeniden kullanılsaydı `HEAD` adlı bir uzak
-        // depo — git'in izin verdiği bir ad — sebepsiz reddedilirdi.
+        // The reason this test exists: if `BranchName` were reused, a remote named `HEAD` — a name
+        // git allows — would be rejected for no reason.
         BranchName.IsValid("HEAD").ShouldBeFalse();
         RemoteName.IsValid("HEAD").ShouldBeTrue();
     }
@@ -101,8 +102,8 @@ public class RemoteNameTests
     [Fact]
     public void Her_sorunun_kendi_metni_var()
     {
-        // Hepsi tek bir "ad geçersiz" metnine düşseydi kullanıcı ne düzelteceğini bilemezdi
-        // (P06-T02'deki dört seçenek metninin aynı gerekçesi).
+        // If they all collapsed into a single "name is invalid" message the user would not know
+        // what to fix (the same rationale as the four-option text in P06-T02).
         RemoteNameProblem[] problems = Enum.GetValues<RemoteNameProblem>();
 
         problems
