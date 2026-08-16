@@ -5,19 +5,18 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Bir git komutunun <b>tam çıktısını</b> kullanıcıya gösteren bileşenin ViewModel'i (P05-T07).
+/// The ViewModel of the component that shows a git command's <b>full output</b> to the user (P05-T07).
 /// </summary>
 /// <remarks>
 /// <para>
-/// ADR-0002'de <c>git</c> CLI'ının seçilme gerekçesi hook desteğiydi. Hook'un yalnızca
-/// <b>çalışması</b> yetmez: kullanıcının kurduğu doğrulama bir şey söylüyorsa o söz
-/// görünmelidir. Bugüne kadar arayüz yalnızca sınıflandırılmış özeti
-/// (<c>"Git komutu başarısız oldu."</c>) gösteriyordu; hook'un asıl çıktısı
-/// <see cref="GitException.StandardError"/> içinde kalıp <b>hiç gösterilmiyordu</b>.
+/// The reason ADR-0002 chose the <c>git</c> CLI was hook support. It is not enough that a hook merely
+/// <b>runs</b>: if the validation the user set up has something to say, that must be visible. Until
+/// now the UI showed only the classified summary (<c>"The git command failed."</c>); the hook's actual
+/// output stayed inside <see cref="GitException.StandardError"/> and was <b>never shown</b>.
 /// </para>
 /// <para>
-/// Bileşen bilinçli olarak <b>bağımsız</b>: commit paneli (P05-T12), dosya işlemleri
-/// (P05-T08) ve onay akışı (P05-T15) aynı görünümü kullanacak.
+/// The component is deliberately <b>standalone</b>: the commit panel (P05-T12), file operations
+/// (P05-T08) and the confirmation flow (P05-T15) will all use the same view.
 /// </para>
 /// </remarks>
 public sealed class GitOutputViewModel : ViewModelBase
@@ -28,61 +27,61 @@ public sealed class GitOutputViewModel : ViewModelBase
         Summary = summary;
     }
 
-    /// <summary>Pencere/bölüm başlığı.</summary>
+    /// <summary>The window/section title.</summary>
     public string Title { get; private init; }
 
-    /// <summary>Tek cümlelik özet — sınıflandırılmış hata açıklaması ya da durum.</summary>
+    /// <summary>A one-sentence summary — the classified error description, or the status.</summary>
     public string Summary { get; private init; }
 
-    /// <summary>Çalıştırılan komut; kullanıcı terminaline kopyalayabilsin diye.</summary>
+    /// <summary>The command that was run, so the user can copy it into their terminal.</summary>
     public string CommandLine { get; private init; } = string.Empty;
 
-    /// <summary><see cref="CommandLine"/> gösterilecek mi?</summary>
+    /// <summary>Should <see cref="CommandLine"/> be shown?</summary>
     public bool HasCommandLine => CommandLine.Length > 0;
 
     /// <summary>
-    /// git'in çıkış kodu; başarı yolunda <see langword="null"/>.
+    /// git's exit code; <see langword="null"/> on the success path.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Bu <b>git'in</b> çıkış kodudur, hook'unki değil. Ölçüldü (P05-T07): çıkış 3 veren
-    /// bir <c>pre-commit</c> hook'unda git yine <b>1</b> döndürüyor — hook'un kodu
-    /// kaybolur. Arayüz bu sayıyı "hook 3 ile çıktı" diye sunamaz.
+    /// ⚠️ This is <b>git's</b> exit code, not the hook's. Measured (P05-T07): with a
+    /// <c>pre-commit</c> hook exiting 3, git still returns <b>1</b> — the hook's code is lost. The UI
+    /// cannot present this number as "the hook exited with 3".
     /// </remarks>
     public int? ExitCode { get; private init; }
 
-    /// <summary>Çıkış kodu satırı gösterilecek mi?</summary>
+    /// <summary>Should the exit code line be shown?</summary>
     public bool HasExitCode => ExitCode is not null;
 
-    /// <summary>Çıkış kodunun gösterim metni.</summary>
+    /// <summary>The display text for the exit code.</summary>
     public string ExitCodeText => ExitCode is { } code ? $"Exit code: {code}" : string.Empty;
 
     /// <summary>
-    /// Komutun tam çıktısı — gösterime hazırlanmış (ANSI kodları silinmiş, <c>\r</c> uygulanmış).
+    /// The command's full output — prepared for display (ANSI codes stripped, <c>\r</c> applied).
     /// </summary>
     public string Output { get; private init; } = string.Empty;
 
-    /// <summary>Gösterilecek çıktı var mı?</summary>
+    /// <summary>Is there any output to show?</summary>
     public bool HasOutput => Output.Length > 0;
 
-    /// <summary>Çıktı kırpıldıysa kaç satırın atıldığını anlatan not.</summary>
+    /// <summary>When the output was truncated, a note saying how many lines were dropped.</summary>
     public string TruncationNotice { get; private init; } = string.Empty;
 
-    /// <summary>Kırpma notu gösterilecek mi?</summary>
+    /// <summary>Should the truncation note be shown?</summary>
     public bool HasTruncationNotice => TruncationNotice.Length > 0;
 
     /// <summary>
-    /// Hook mesajı değiştirdiyse commit'e giren son mesaj; değiştirmediyse boş.
+    /// When a hook changed the message, the final message that went into the commit; empty otherwise.
     /// </summary>
     public string FinalMessage { get; private init; } = string.Empty;
 
-    /// <summary>Son mesaj bölümü gösterilecek mi?</summary>
+    /// <summary>Should the final message section be shown?</summary>
     public bool HasFinalMessage => FinalMessage.Length > 0;
 
     /// <summary>
-    /// Başarısız bir git komutunu gösterime hazırlar.
+    /// Prepares a failed git command for display.
     /// </summary>
-    /// <param name="exception">Yakalanan hata.</param>
-    /// <param name="title">Başlık; verilmezse genel bir başlık kullanılır.</param>
+    /// <param name="exception">The exception caught.</param>
+    /// <param name="title">The title; a generic one is used when it is not given.</param>
     public static GitOutputViewModel ForFailure(GitException exception, string? title = null)
     {
         ArgumentNullException.ThrowIfNull(exception);
@@ -99,13 +98,13 @@ public sealed class GitOutputViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Tamamlanmış bir commit'i gösterime hazırlar.
+    /// Prepares a completed commit for display.
     /// </summary>
     /// <remarks>
-    /// <b>Gösterilip gösterilmeyeceğine burası karar VERMEZ</b> — çağıran
-    /// <see cref="CommitResult.NeedsReporting"/> ile karar verir. Ayrı bir pencerede boş
-    /// içerik gürültüdür ama commit paneline (P05-T12) gömülü bir bölümde "hook çıktısı yok"
-    /// gayet iyi bir cevaptır; kararı yüzeyi bilen taraf vermeli.
+    /// <b>This is NOT where the decision to show it is made</b> — the caller decides with
+    /// <see cref="CommitResult.NeedsReporting"/>. Empty content is noise in a separate window, but in
+    /// a section embedded in the commit panel (P05-T12) "no hook output" is a perfectly good answer;
+    /// the side that knows the surface should make the call.
     /// </remarks>
     public static GitOutputViewModel ForCommit(CommitResult result)
     {
@@ -123,8 +122,8 @@ public sealed class GitOutputViewModel : ViewModelBase
             Output = output,
             TruncationNotice = Notice(dropped),
 
-            // Değişmediyse gösterilmiyor: kullanıcının zaten yazdığı metni geri okutmak
-            // bilgi değil gürültüdür.
+            // Not shown when it did not change: reading back the text the user already wrote is noise,
+            // not information.
             FinalMessage = messageChanged ? result.Message : string.Empty,
         };
     }

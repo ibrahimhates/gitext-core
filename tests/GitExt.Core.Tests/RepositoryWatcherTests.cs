@@ -3,17 +3,17 @@ using GitExt.Core.Tests.Fixtures;
 namespace GitExt.Core.Tests;
 
 /// <summary>
-/// İzleyicinin <b>gerçek dosya sistemi ve gerçek <c>git</c></b> ile davranışı (P05-T14).
+/// The watcher's behaviour against <b>a real file system and real <c>git</c></b> (P05-T14).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Kurallar <see cref="RepositoryChangeClassifierTests"/> içinde saf olarak test ediliyor;
-/// burada test edilen şey <b>zincirin tamamı</b>: git bir komut çalıştırdığında beklenen
-/// olayın gerçekten gelip gelmediği. Sınıflandırıcı doğru olup izleyicinin yanlış yolu
-/// vermesi mümkün, ve bu ancak burada yakalanır.
+/// The rules are tested purely in <see cref="RepositoryChangeClassifierTests"/>; what is tested here
+/// is <b>the whole chain</b>: whether the expected event actually arrives when git runs a command.
+/// The classifier can be right while the watcher hands it the wrong path, and that can only be caught
+/// here.
 /// </para>
 /// <para>
-/// Testler gerçek zaman bekliyor; gecikmeler o yüzden kısa tutuldu.
+/// The tests wait on real time; the delays were kept short for that reason.
 /// </para>
 /// </remarks>
 public class RepositoryWatcherTests
@@ -44,7 +44,7 @@ public class RepositoryWatcherTests
 
         public void Clear() { lock (_gate) { _events.Clear(); } }
 
-        /// <summary>Beklenen sayıda olay gelene kadar bekler.</summary>
+        /// <summary>Waits until the expected number of events has arrived.</summary>
         public async Task<bool> WaitAsync(int count, int timeoutMs = 5000)
         {
             for (int waited = 0; waited < timeoutMs; waited += 25)
@@ -86,10 +86,10 @@ public class RepositoryWatcherTests
     [Fact]
     public async Task HARICI_commit_depo_tazelemesi_tetikler()
     {
-        // 🔴 Planı düzelten bulgunun testi. ÖLÇÜLDÜ: `git commit` 64 olay üretiyor ve
-        // HEPSİ .git altında — çalışma ağacında sıfır. Plandaki ".git'i filtrele"
-        // talimatı harfiyen uygulansaydı bu test kırmızı olurdu ve başka bir terminalde
-        // yapılan commit ekranda hiç görünmezdi.
+        // 🔴 The test for the finding that corrected the plan. MEASURED: `git commit` produces 64
+        // events and ALL of them are under .git — zero in the working tree. Had the plan's
+        // "filter out .git" instruction been applied literally, this test would be red and a commit
+        // made in another terminal would never show on screen.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using RepositoryWatcher watcher = CreateWatcher();
         Recorder recorder = new();
@@ -107,7 +107,7 @@ public class RepositoryWatcherTests
     [Fact]
     public async Task Dal_olusturma_depo_tazelemesi_tetikler()
     {
-        // Yalnızca ref yazılıyor; çalışma ağacına dokunulmuyor.
+        // Only the ref is written; the working tree is not touched.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using RepositoryWatcher watcher = CreateWatcher();
         Recorder recorder = new();
@@ -124,8 +124,8 @@ public class RepositoryWatcherTests
     [Fact]
     public async Task Gecmis_okumak_hicbir_olay_uretmez()
     {
-        // Kilit filtresinin testi: `git log` .git altında geçici dosyalar dokunsa bile
-        // tazeleme tetiklememeli.
+        // The test for the lock filter: `git log` must not trigger a refresh even when it touches
+        // temporary files under .git.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using RepositoryWatcher watcher = CreateWatcher();
         Recorder recorder = new();
@@ -148,15 +148,15 @@ public class RepositoryWatcherTests
     [Fact]
     public async Task Kendi_okumamiz_askidayken_HIC_olay_uretmez()
     {
-        // 🔴 Sonsuz döngünün asıl kapısı. ⚠️ ÖLÇÜLDÜ ve BEKLENENDEN KÖTÜ: `git status`
-        // yalnızca ilk çalıştırmada değil, "racily clean" penceresi boyunca ARDIŞIK
-        // çalıştırmalarda da index'i yeniden yazıyor (`index.lock → index`) — yani
-        // salt-okunur sanılan bir komut tazeleme sinyali üretiyor. Yeni yazılmış bir
-        // depoda 6 ardışık okumanın 5'i olay üretti.
+        // 🔴 The real door to the endless loop. ⚠️ MEASURED and WORSE THAN EXPECTED: `git status`
+        // rewrites the index (`index.lock → index`) not only on the first run but on CONSECUTIVE runs
+        // throughout the "racily clean" window — so a command believed to be read-only produces a
+        // refresh signal. In a freshly written repository, 5 out of 6 consecutive reads produced an
+        // event.
         //
-        // Kilit filtresi bunu kapatmıyor (yeniden adlandırmanın hedefi `index`, kilit
-        // değil). Kapatan tek şey tazeleme yolunun askı altında çalışmasıdır; ViewModel
-        // tarafı da tam olarak öyle yapıyor (`AutoRefreshTests`).
+        // The lock filter does not close this (the rename's target is `index`, not the lock). The only
+        // thing that closes it is the refresh path running under suspension; the ViewModel side does
+        // exactly that (`AutoRefreshTests`).
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using RepositoryWatcher watcher = CreateWatcher();
         Recorder recorder = new();
@@ -182,8 +182,8 @@ public class RepositoryWatcherTests
     [Fact]
     public async Task Taslak_yazimi_tazeleme_tetiklemez()
     {
-        // P05-T13'ün taslağı `.git/GITEXT_COMMITMESSAGE`'a yazılıyor. Elenmeseydi kullanıcı
-        // commit mesajı yazarken her kayıt tazeleme tetiklerdi.
+        // P05-T13's draft is written to `.git/GITEXT_COMMITMESSAGE`. Unless it were filtered out, every
+        // save while the user writes a commit message would trigger a refresh.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using RepositoryWatcher watcher = CreateWatcher();
         Recorder recorder = new();
@@ -222,7 +222,8 @@ public class RepositoryWatcherTests
         (await recorder.WaitAsync(1)).ShouldBeTrue();
         await Task.Delay(400, Ct);
 
-        // 200 dosya en fazla iki tazeleme yapmalı (üst sınır penceresine denk gelirse ikinci).
+        // 200 files must cause at most two refreshes (a second one if it coincides with the upper
+        // bound window).
         recorder.Events.Count.ShouldBeLessThanOrEqualTo(2);
     }
 
@@ -245,8 +246,8 @@ public class RepositoryWatcherTests
 
         suspension.Dispose();
 
-        // Askı sırasında biriken değişiklik kaybolmamalı: kendi yazma işlemimiz bitince
-        // dışarıdan gelen değişiklikleri de görmemiz gerekiyor.
+        // A change accumulated during suspension must not be lost: once our own write finishes we also
+        // need to see the changes that came from outside.
         (await recorder.WaitAsync(1)).ShouldBeTrue();
     }
 
@@ -273,8 +274,8 @@ public class RepositoryWatcherTests
     [Fact]
     public async Task Bagli_calisma_agacinda_git_dizini_AYRICA_izlenir()
     {
-        // ⚠️ Bağlı çalışma ağacında git dizini çalışma ağacının DIŞINDA. İkinci izleyici
-        // kurulmazsa o çalışma ağacındaki commit'ler hiç görülmez.
+        // ⚠️ In a linked working tree the git directory is OUTSIDE the working tree. Unless a second
+        // watcher is set up, commits in that working tree are never seen.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using TestRepository linked = repository.AddWorkTree("ikinci-dal");
         using RepositoryWatcher watcher = CreateWatcher();
@@ -288,8 +289,9 @@ public class RepositoryWatcherTests
             .StartsWith(Path.GetFullPath(linked.Path) + Path.DirectorySeparatorChar, StringComparison.Ordinal)
             .ShouldBeFalse("bağlı çalışma ağacının git dizini ağacın dışında olmalı");
 
-        // ⚠️ İki ayrı dizin: HEAD ve index bu ağacın kendi dizininde, REF'LER ortak dizinde.
-        // Yalnızca git dizini izlenseydi buradaki commit'in ref güncellemesi kaçardı.
+        // ⚠️ Two separate directories: HEAD and the index are in this tree's own directory, the REFS
+        // are in the common one. Were only the git directory watched, the ref update from a commit here
+        // would be missed.
         commonDirectory.ShouldNotBe(gitDirectory);
 
         watcher.Start(linked.Path, gitDirectory, commonDirectory).ShouldBeTrue();
@@ -304,8 +306,8 @@ public class RepositoryWatcherTests
     [Fact]
     public void Var_olmayan_dizin_istisna_yerine_false_dondurur()
     {
-        // Otomatik tazeleme bir kolaylık; kurulamadığında uygulama elle tazelemeyle
-        // çalışmaya devam etmeli.
+        // Automatic refresh is a convenience; when it cannot be set up the application must carry on
+        // working with manual refresh.
         using RepositoryWatcher watcher = CreateWatcher();
 
         string missing = Path.Combine(Path.GetTempPath(), $"yok-{Guid.NewGuid():N}");
@@ -315,8 +317,8 @@ public class RepositoryWatcherTests
     }
 
     /// <remarks>
-    /// <c>--git-common-dir</c> normal depoda GÖRELİ döner (CLAUDE.md § 5, madde 8);
-    /// çalışma dizinine göre elle çözülüyor.
+    /// <c>--git-common-dir</c> returns a RELATIVE path in a normal repository (CLAUDE.md § 5, item 8);
+    /// it is resolved by hand against the working directory.
     /// </remarks>
     private static string ResolveCommonDirectory(TestRepository repository)
     {

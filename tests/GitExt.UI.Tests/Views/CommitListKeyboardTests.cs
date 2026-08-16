@@ -12,19 +12,18 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P03-T14 — Klavye gezinmesi, <b>gerçek tuş olaylarıyla</b>.
+/// P03-T14 — Keyboard navigation, with <b>real key events</b>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bu testler ViewModel testlerinin yerine geçmez, onların göremediğini görür: tuşun doğru
-/// metoda bağlanıp bağlanmadığını ve <c>ListBox</c>'ın kendi davranışıyla çakışıp
-/// çakışmadığını.
+/// These tests do not replace the ViewModel tests; they see what those cannot: whether the key is
+/// bound to the right method and whether it collides with <c>ListBox</c>'s own behaviour.
 /// </para>
 /// <para>
-/// <b>ÖLÇÜLDÜ (bu testler yazılmadan önce):</b> <c>ListBox</c> <c>↑↓</c>, <c>Home</c> ve
-/// <c>End</c> ile seçimi kendisi taşıyor; <c>PgUp</c>/<c>PgDn</c>'de ise yalnızca
-/// <c>ScrollViewer</c> kayıyor (offset 0 → 288) ve <b>seçim yerinde kalıyor</b>. Sayfa
-/// gezinmesinin elle uygulanmasının sebebi bu; aşağıdaki testler o düzeltmeyi koruyor.
+/// <b>MEASURED (before these tests were written):</b> <c>ListBox</c> moves the selection itself for
+/// <c>↑↓</c>, <c>Home</c> and <c>End</c>; for <c>PgUp</c>/<c>PgDn</c>, however, only the
+/// <c>ScrollViewer</c> scrolls (offset 0 → 288) and <b>the selection stays put</b>. That is why page
+/// navigation is implemented by hand; the tests below protect that fix.
 /// </para>
 /// </remarks>
 public class CommitListKeyboardTests
@@ -45,13 +44,13 @@ public class CommitListKeyboardTests
         }
 
         /// <summary>
-        /// Seçimi ayarlar ve odağı o satıra taşır.
+        /// Sets the selection and moves focus to that row.
         /// </summary>
         /// <remarks>
-        /// <b>ÖLÇÜLDÜ:</b> <c>ListBox.Focusable</c> <see langword="false"/>'tur ve ok tuşu
-        /// gezinmesi <c>SelectedIndex</c>'i değil <b>odaklanmış konteyneri</b> temel alır.
-        /// Odağı taşımadan sadece seçimi ayarlamak, kullanıcının fareyle tıklamadığı bir
-        /// durumu taklit eder ve testi anlamsız kılar.
+        /// <b>MEASURED:</b> <c>ListBox.Focusable</c> is <see langword="false"/>, and arrow key
+        /// navigation is based on the <b>focused container</b>, not on <c>SelectedIndex</c>.
+        /// Setting only the selection without moving focus imitates a state the user never reaches
+        /// by clicking, and makes the test meaningless.
         /// </remarks>
         public void SelectAndFocus(int index)
         {
@@ -76,12 +75,12 @@ public class CommitListKeyboardTests
 
         CommitListView view = new() { DataContext = viewModel };
 
-        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
-        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        // P08-T01: the shortcuts now come from the command registry; without binding it the view
+        // runs without shortcuts (which is exactly what these tests verify).
         view.AttachShortcuts(TestCommands.Registry());
 
-        // Yükseklik bilinçli olarak sabit: sayfa boyutu görünür alandan hesaplanıyor,
-        // pencere ölçülmezse test anlamını yitirir.
+        // The height is deliberately fixed: the page size is computed from the visible area, and
+        // unless the window is measured the test loses its meaning.
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();
 
@@ -100,8 +99,8 @@ public class CommitListKeyboardTests
 
         harness.Press(PhysicalKey.PageDown);
 
-        // Kaç satır olduğu pencere yüksekliğine bağlı; kritik olan seçimin GERÇEKTEN
-        // taşınması ve tek satırdan fazla ilerlemesi — ölçüm bunun olmadığını göstermişti.
+        // How many rows depends on the window height; what matters is that the selection ACTUALLY
+        // moves and advances by more than one row — the measurement had shown it did not.
         harness.ViewModel.SelectedIndex.ShouldBeGreaterThan(1);
         harness.ViewModel.SelectedIndex.ShouldBeLessThan(RowCount);
 
@@ -141,7 +140,7 @@ public class CommitListKeyboardTests
     [AvaloniaFact]
     public async Task Yon_tuslari_ve_Home_End_ListBox_tan_geliyor()
     {
-        // Kendi kodumuzun bunları ele almadığını doğrular: ele alsaydık iki kez hareket ederdi.
+        // Verifies that our own code does not handle these: had it done so, it would move twice.
         Harness harness = await CreateAsync();
         harness.SelectAndFocus(10);
 
@@ -178,8 +177,8 @@ public class CommitListKeyboardTests
     [AvaloniaFact]
     public async Task Ebeveyn_yokken_Alt_asagi_secimi_kaydirmaz()
     {
-        // Alt+↓ işlenmiş sayılmazsa ListBox devralır ve seçim bir satır aşağı kayar —
-        // kullanıcı "ebeveyne git" isterken sessizce başka bir commit'e düşer.
+        // Unless Alt+↓ counts as handled, the ListBox takes over and the selection slips one row down —
+        // the user asks for "go to parent" and silently lands on a different commit.
         Harness harness = await CreateAsync();
         harness.SelectAndFocus(RowCount - 1);
 
@@ -193,9 +192,9 @@ public class CommitListKeyboardTests
     [AvaloniaFact]
     public async Task Satirlar_gorunumden_sonra_gelirse_odak_listeye_devredilir()
     {
-        // Gerçek akışta depo yüklemesi görünümden SONRA biter. Odak arama kutusunda
-        // kalırsa açılışta ok tuşları listeyi gezmek yerine kutuya yazar — bu, gerçek
-        // depo render'ında görülen bir kusurdu.
+        // In the real flow the repository load finishes AFTER the view. If focus stays in the search
+        // box, the arrow keys type into the box at startup instead of moving through the list — a
+        // defect seen in a render of a real repository.
         CommitListViewModel viewModel = new(
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(RowCount)),
@@ -204,14 +203,14 @@ public class CommitListKeyboardTests
 
         CommitListView view = new() { DataContext = viewModel };
 
-        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
-        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        // P08-T01: the shortcuts now come from the command registry; without binding it the view
+        // runs without shortcuts (which is exactly what these tests verify).
         view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
-        // Henüz satır yok: odak geçici olarak arama kutusunda.
+        // No rows yet: focus sits temporarily in the search box.
         TextBox search = view.GetVisualDescendants().OfType<TextBox>().First();
         search.IsFocused.ShouldBeTrue();
 
@@ -220,7 +219,7 @@ public class CommitListKeyboardTests
 
         search.IsFocused.ShouldBeFalse();
 
-        // Ve gezinme gerçekten çalışıyor olmalı.
+        // And the navigation must actually work.
         window.KeyPressQwerty(PhysicalKey.ArrowDown, RawInputModifiers.None);
         window.KeyReleaseQwerty(PhysicalKey.ArrowDown, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
@@ -241,8 +240,8 @@ public class CommitListKeyboardTests
 
         CommitListView view = new() { DataContext = viewModel };
 
-        // P08-T01: kısayollar artık komut kaydından geliyor; bağlanmazsa görünüm
-        // kısayolsuz çalışır (bu testler tam da bunu doğruluyor).
+        // P08-T01: the shortcuts now come from the command registry; without binding it the view
+        // runs without shortcuts (which is exactly what these tests verify).
         view.AttachShortcuts(TestCommands.Registry());
         Window window = new() { Width = 900, Height = 300, Content = view };
         window.Show();
@@ -262,9 +261,9 @@ public class CommitListKeyboardTests
     [AvaloniaFact]
     public async Task Shift_ile_aralik_secilir()
     {
-        // Çoklu seçimin tüketicisi henüz yok (aralık işlemleri Faz 07, iki commit'i
-        // karşılaştırma Faz 04). Buradaki amaç yeteneğin AÇIK olduğunu sabitlemek:
-        // SelectionMode yanlışlıkla Single'a dönerse bu test kırılır.
+        // There is no consumer of multiple selection yet (range operations are Phase 07, comparing two
+        // commits is Phase 04). The point here is to pin the capability ON: if SelectionMode is
+        // accidentally changed back to Single, this test breaks.
         Harness harness = await CreateAsync();
         harness.SelectAndFocus(5);
 

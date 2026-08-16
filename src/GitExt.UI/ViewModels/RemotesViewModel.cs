@@ -9,7 +9,7 @@ using GitExt.UI.Localization;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Listede görünen tek bir uzak depo satırı (P06-T05).
+/// A single remote row as shown in the list (P06-T05).
 /// </summary>
 public sealed class RemoteRowViewModel
 {
@@ -24,11 +24,11 @@ public sealed class RemoteRowViewModel
     public string Name => Remote.Name;
 
     /// <summary>
-    /// Listede gösterilen URL — <b>parola maskeli</b>.
+    /// The URL shown in the list — <b>with the password masked</b>.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Maskeleme yalnızca burada. Düzenleme kutusuna maskelenmiş değer konulsaydı
-    /// kullanıcı <c>***</c>'ı kaydeder ve parolasını bozardı.
+    /// ⚠️ The masking is only here. Had the masked value been put into the edit box, the user would
+    /// save <c>***</c> and break their own password.
     /// </remarks>
     public string DisplayUrl => Remote.Url is { } url
         ? GitRemote.MaskCredentials(url)
@@ -38,18 +38,18 @@ public sealed class RemoteRowViewModel
 }
 
 /// <summary>
-/// Uzak depo yönetimi ekranı (P06-T05).
+/// The remote management screen (P06-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Yerleşim GitExtensions <c>FormRemotes</c>'tan (§ 9): solda liste, sağda
-/// <i>Url → Name → Separate Push Url → Push Url</i> sırası, altta <i>Save changes</i>,
-/// listenin sağında <i>New</i>/<i>Delete</i>.
+/// The layout comes from GitExtensions <c>FormRemotes</c> (§ 9): the list on the left, the
+/// <i>Url → Name → Separate Push Url → Push Url</i> order on the right, <i>Save changes</i> at the
+/// bottom, and <i>New</i>/<i>Delete</i> to the right of the list.
 /// </para>
 /// <para>
-/// 🔴 <b>Düzenlenen değerler HAM config değerleri.</b> <c>git remote get-url</c>
-/// <c>insteadOf</c> kısayollarını çözerek veriyor; o değeri kutuya koyup kaydetmek
-/// kullanıcının kısayolunu sessizce yok ederdi (ölçüldü).
+/// 🔴 <b>The values being edited are RAW config values.</b> <c>git remote get-url</c> gives them with
+/// <c>insteadOf</c> shortcuts already resolved; putting that value into the box and saving it would
+/// silently destroy the user's shortcut (measured).
 /// </para>
 /// </remarks>
 public sealed partial class RemotesViewModel : ViewModelBase
@@ -85,10 +85,10 @@ public sealed partial class RemotesViewModel : ViewModelBase
         SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanSave);
     }
 
-    /// <summary>Yapılandırılmış uzak depolar.</summary>
+    /// <summary>The configured remotes.</summary>
     public ObservableCollection<RemoteRowViewModel> Remotes { get; } = [];
 
-    /// <summary>Seçili satır; <see langword="null"/> ise "yeni" modundayız.</summary>
+    /// <summary>The selected row; when <see langword="null"/> we are in "new" mode.</summary>
     public RemoteRowViewModel? Selected
     {
         get => _selected;
@@ -105,7 +105,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Düzenlenen ad.</summary>
+    /// <summary>The name being edited.</summary>
     public string Name
     {
         get => _name;
@@ -119,7 +119,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Düzenlenen fetch URL'si — <b>ham</b>.</summary>
+    /// <summary>The fetch URL being edited — <b>raw</b>.</summary>
     public string Url
     {
         get => _url;
@@ -132,7 +132,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Düzenlenen push URL'si — <b>ham</b>.</summary>
+    /// <summary>The push URL being edited — <b>raw</b>.</summary>
     public string PushUrl
     {
         get => _pushUrl;
@@ -145,7 +145,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Push için ayrı URL kullanılsın mı? (<c>checkBoxSepPushUrl</c>)</summary>
+    /// <summary>Should a separate URL be used for pushing? (<c>checkBoxSepPushUrl</c>)</summary>
     public bool SeparatePushUrl
     {
         get => _separatePushUrl;
@@ -158,7 +158,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Son işlemin sonucu.</summary>
+    /// <summary>The result of the last operation.</summary>
     public string? Notice
     {
         get => _notice;
@@ -166,12 +166,12 @@ public sealed partial class RemotesViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// git'in <b>çıkış kodu 0 ile</b> verdiği uyarı.
+    /// A warning git gave <b>alongside exit code 0</b>.
     /// </summary>
     /// <remarks>
-    /// Ayrı bir alan çünkü bu bir hata değil: işlem başarılı ama <b>yarım</b>. Ölçüldü:
-    /// varsayılan olmayan fetch refspec'i yeniden adlandırmada güncellenmiyor ve bunu
-    /// yalnızca stderr söylüyor.
+    /// A separate field, because this is not an error: the operation succeeded but is <b>half
+    /// done</b>. Measured: a non-default fetch refspec is not updated on a rename, and only stderr
+    /// says so.
     /// </remarks>
     public string? Warning
     {
@@ -186,8 +186,8 @@ public sealed partial class RemotesViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Bileşik koşul XAML'de değil burada: Faz 03'te bileşik bağlamanın sessizce yanlış
-    /// davrandığı ölçülmüştü.
+    /// The compound condition lives here rather than in XAML: in Phase 03 a compound binding was
+    /// measured behaving silently wrong.
     /// </summary>
     public bool HasWarning => !string.IsNullOrEmpty(Warning);
 
@@ -204,26 +204,26 @@ public sealed partial class RemotesViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Var olan bir remote düzenleniyor mu (yoksa yeni mi ekleniyor)?</summary>
+    /// <summary>Is an existing remote being edited (or a new one added)?</summary>
     public bool IsExisting => Selected is not null;
 
-    /// <summary>Seçili remote'ta birden çok URL var mı?</summary>
+    /// <summary>Does the selected remote have more than one URL?</summary>
     public bool HasMultipleUrls =>
         Selected?.Remote is { } remote && (remote.FetchUrls.Count > 1 || remote.PushUrls.Count > 1);
 
     /// <summary>
-    /// Çoklu URL durumunda kullanıcıya gösterilen açıklama.
+    /// The explanation shown to the user in the multiple-URL case.
     /// </summary>
     /// <remarks>
-    /// ÖLÇÜLDÜ: bu durumda <c>git remote set-url</c> <i>"has multiple values"</i> deyip
-    /// çıkış kodu 128 ile duruyor. Tek satırlık kutu bu remote'u temsil edemez.
+    /// MEASURED: in this case <c>git remote set-url</c> says <i>"has multiple values"</i> and stops
+    /// with exit code 128. A single-line box cannot represent this remote.
     /// </remarks>
     public string? MultipleUrlNotice => HasMultipleUrls
         ? Loc.T("remotes.this_remote_has_multiple_urls_configured_it_")
           + Loc.T("remotes.configured_urls") + string.Join(", ", AllUrls())
         : null;
 
-    /// <summary>Ad doğrulaması — kullanıcı yazarken.</summary>
+    /// <summary>Name validation — while the user types.</summary>
     public string? NameProblem => RemoteName.Validate(Name) is { } problem
         && problem != RemoteNameProblem.Empty
             ? RemoteName.Describe(problem)
@@ -242,7 +242,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
 
     public IAsyncRelayCommand SaveCommand { get; }
 
-    /// <summary>Ekranı bir depo için doldurur.</summary>
+    /// <summary>Populates the screen for a repository.</summary>
     public async Task LoadAsync(string workingDirectory, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
@@ -360,8 +360,8 @@ public sealed partial class RemotesViewModel : ViewModelBase
     {
         List<string> done = [];
 
-        // Sıra önemli: önce ad değişikliği, sonra URL'ler. Ters sırada URL'ler ESKİ ada
-        // yazılır ve yeniden adlandırma onları taşımadan önce iki kez yazma yapılırdı.
+        // The order matters: the name change first, then the URLs. In the reverse order the URLs are
+        // written to the OLD name, and there would be two writes before the rename moved them.
         if (!string.Equals(original.Name, Name, StringComparison.Ordinal))
         {
             RemoteRenameResult rename = await _writer
@@ -372,7 +372,7 @@ public sealed partial class RemotesViewModel : ViewModelBase
 
             if (rename.Warnings.Count > 0)
             {
-                // Çıkış kodu 0 ama iş yarım kaldı; sessizce geçilemez.
+                // Exit code 0 but the job was left half done; it cannot be passed over silently.
                 Warning = string.Join(" · ", rename.Warnings);
             }
         }
@@ -420,8 +420,8 @@ public sealed partial class RemotesViewModel : ViewModelBase
 
         try
         {
-            // 🔴 Plan SİLMEDEN ÖNCE okunuyor ve kullanıcıya gösteriliyor: silme sonrası
-            // bu bilgilerin hiçbiri okunamıyor (ölçüldü).
+            // 🔴 The plan is read BEFORE the deletion and shown to the user: after the deletion none of
+            // this information can be read (measured).
             RemoteRemovalPlan plan = await _writer
                 .PrepareRemovalAsync(_workingDirectory, row.Name)
                 .ConfigureAwait(true);

@@ -1,58 +1,58 @@
 namespace GitExt.Core;
 
 /// <summary>
-/// Bir dosya sistemi olayının hangi tazelemeyi gerektirdiği (P05-T14).
+/// Which refresh a file system event calls for (P05-T14).
 /// </summary>
 public enum RepositoryChangeKind
 {
     /// <summary>
-    /// Çalışma ağacı veya index değişti → <c>git status</c> yeniden okunmalı.
+    /// The working tree or the index changed → <c>git status</c> must be re-read.
     /// </summary>
     WorkingTree,
 
     /// <summary>
-    /// Ref'ler, <c>HEAD</c> veya depo durumu değişti → commit listesi de yeniden okunmalı.
+    /// Refs, <c>HEAD</c> or the repository state changed → the commit list must be re-read too.
     /// </summary>
     Repository,
 }
 
 /// <summary>
-/// Bir dosya sistemi olayının anlamlı olup olmadığına karar verir (P05-T14).
+/// Decides whether a file system event is meaningful (P05-T14).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Bu sınıf saf tutuldu</b> çünkü izleyicinin tüm zekâsı burada; dosya sistemine ve
-/// zamanlayıcıya bağlı olsaydı bu kuralların hiçbiri hızlı ve deterministik test edilemezdi.
+/// <b>This class was kept pure</b> because all of the watcher's intelligence lives here; tied to the
+/// file system and a timer, none of these rules could be tested quickly and deterministically.
 /// </para>
 /// <para>
-/// <b>⚠️ ÖLÇÜLDÜ — plan bu noktada düzeltildi.</b> Plan "<c>.git</c> dizinindeki değişiklikleri
-/// filtrele" diyordu. Harfiyen uygulanırsa <b>çalışmaz</b>: başka bir terminalde yapılan
-/// <c>git commit</c> ölçümde <b>64 olay</b> üretti ve <b>hepsi <c>.git</c> altındaydı</b>,
-/// çalışma ağacında sıfır olay. <c>.git</c> tamamen elenirse dışarıdan yapılan commit, dal
-/// değişimi ve ref güncellemesi <b>hiç fark edilmez</b>.
+/// <b>⚠️ MEASURED — the plan was corrected at this point.</b> The plan said "filter out changes in
+/// the <c>.git</c> directory". Applied literally it <b>does not work</b>: a <c>git commit</c> made in
+/// another terminal produced <b>64 events</b> in the measurement and <b>every one of them was under
+/// <c>.git</c></b>, with zero events in the working tree. Filter <c>.git</c> out entirely and a
+/// commit, branch switch or ref update made from outside goes <b>completely unnoticed</b>.
 /// </para>
 /// <para>
-/// Doğru ayrım <c>.git</c> değil <b>kilit dosyaları</b>: ölçümde salt-okunur <c>git status</c>
-/// bile <c>.git/index.lock</c> oluşturup siliyor (2 olay). Sonsuz tazeleme döngüsünü kapatan
-/// şey <c>*.lock</c> filtresidir. Ref güncellemesi <c>refs/heads/x.lock → refs/heads/x</c>
-/// olarak <b>yeniden adlandırma</b> ile geldiği ve olayın yolu <b>yeni ad</b> olduğu için
-/// bu filtre gerçek sinyali yemez.
+/// The right distinction is not <c>.git</c> but the <b>lock files</b>: in the measurement even a
+/// read-only <c>git status</c> creates and deletes <c>.git/index.lock</c> (2 events). What closes the
+/// endless refresh loop is the <c>*.lock</c> filter. Because a ref update arrives as a <b>rename</b>
+/// from <c>refs/heads/x.lock → refs/heads/x</c> and the event's path is the <b>new name</b>, this
+/// filter does not eat the real signal.
 /// </para>
 /// </remarks>
 public static class RepositoryChangeClassifier
 {
     /// <summary>
-    /// Git dizininin çalışma ağacı içindeki adı.
+    /// The git directory's name inside the working tree.
     /// </summary>
     public const string GitDirectoryName = ".git";
 
     /// <summary>
-    /// Çalışma ağacı köküne göreli bir yolu sınıflandırır.
+    /// Classifies a path relative to the working tree root.
     /// </summary>
     /// <param name="relativePath">
-    /// Kök dizine göreli yol. Ayraç olarak <c>/</c> veya platform ayracı kabul edilir.
+    /// The path relative to the root directory. Either <c>/</c> or the platform separator is accepted.
     /// </param>
-    /// <returns>Gerekli tazeleme, olay yok sayılacaksa <see langword="null"/>.</returns>
+    /// <returns>The refresh required, or <see langword="null"/> when the event is to be ignored.</returns>
     public static RepositoryChangeKind? ClassifyWorkingTreePath(string relativePath)
     {
         ArgumentNullException.ThrowIfNull(relativePath);
@@ -64,8 +64,8 @@ public static class RepositoryChangeClassifier
             return null;
         }
 
-        // İç içe depolar da dahil olmak üzere `.git` içindeki her şey git dizini kuralına gider.
-        // Alt modüllerde `.git` bir DOSYA olabilir; o da depo durumu değişimidir.
+        // Everything inside `.git`, nested repositories included, goes to the git directory rule.
+        // In submodules `.git` may be a FILE; that too is a repository state change.
         for (int i = 0; i < segments.Length; i++)
         {
             if (!segments[i].Equals(GitDirectoryName, StringComparison.Ordinal))
@@ -73,9 +73,9 @@ public static class RepositoryChangeClassifier
                 continue;
             }
 
-            // Parçalar yeniden birleştirilip tekrar bölünmüyor: her `.git` olayı için
-            // fazladan bir birleştirme + bir dizi tahsisi demekti ve bu yol sıcak —
-            // tek bir dal değişimi 2102 olay üretiyor (ölçüldü).
+            // The parts are not rejoined and re-split: that would mean an extra join plus an array
+            // allocation for every `.git` event, and this path is hot — a single branch switch
+            // produces 2102 events (measured).
             return i == segments.Length - 1
                 ? RepositoryChangeKind.Repository
                 : ClassifySegments(segments.AsSpan(i + 1));
@@ -85,15 +85,15 @@ public static class RepositoryChangeClassifier
     }
 
     /// <summary>
-    /// Git dizinine (<c>.git</c> veya bağlı çalışma ağacının kendi dizini) göreli bir yolu
-    /// sınıflandırır.
+    /// Classifies a path relative to the git directory (<c>.git</c>, or a linked working tree's own
+    /// directory).
     /// </summary>
     /// <remarks>
-    /// Yok sayılanlar bilinçli: <c>objects/</c> ve <c>logs/</c> her yazma işleminde onlarca
-    /// olay üretir ama tek başlarına hiçbir şey anlatmaz — nesne yazılmış olması ref
-    /// güncellenmedikçe kullanıcı için görünür bir değişiklik değildir.
-    /// <c>GITEXT_COMMITMESSAGE</c> ise <b>bizim kendi taslağımız</b> (P05-T13): her tuş
-    /// vuruşundan sonra yazılıyor, elenmezse yazarken sürekli tazeleme tetiklerdi.
+    /// What is ignored is deliberate: <c>objects/</c> and <c>logs/</c> produce dozens of events on
+    /// every write but say nothing on their own — an object having been written is not a visible
+    /// change for the user unless a ref is updated as well. <c>GITEXT_COMMITMESSAGE</c> is
+    /// <b>our own draft</b> (P05-T13): it is written after every keystroke, and unless it were
+    /// filtered out it would trigger a refresh continuously while the user types.
     /// </remarks>
     public static RepositoryChangeKind? ClassifyGitDirectoryPath(string relativePath)
     {
@@ -109,7 +109,7 @@ public static class RepositoryChangeClassifier
             return null;
         }
 
-        // Kilit dosyaları sonsuz döngünün kaynağı: bizim her `git` çağrımız üretiyor.
+        // Lock files are the source of the endless loop: every one of our own `git` calls creates them.
         if (IsLockFile(segments[^1]))
         {
             return null;
@@ -117,16 +117,16 @@ public static class RepositoryChangeClassifier
 
         return segments[0] switch
         {
-            // Ref'ler: dal/etiket oluşturma, commit, fetch, reset.
+            // Refs: creating a branch/tag, committing, fetching, resetting.
             "refs" or "packed-refs" => RepositoryChangeKind.Repository,
 
-            // Süregelen işlemler: rebase/merge/cherry-pick durum dosyaları.
+            // Operations in progress: the rebase/merge/cherry-pick state files.
             "rebase-merge" or "rebase-apply" => RepositoryChangeKind.Repository,
 
             "HEAD" or "MERGE_HEAD" or "CHERRY_PICK_HEAD" or "REVERT_HEAD" or "BISECT_LOG"
                 => RepositoryChangeKind.Repository,
 
-            // Index yalnızca stage durumunu değiştirir; commit listesi aynı kalır.
+            // The index only changes the staging state; the commit list stays the same.
             "index" => RepositoryChangeKind.WorkingTree,
 
             _ => null,

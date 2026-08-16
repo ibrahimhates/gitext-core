@@ -1,15 +1,15 @@
 namespace GitExt.Core.Model;
 
 /// <summary>
-/// Bir dosyanın tek bir alandaki (index veya çalışma ağacı) değişim türü.
+/// The kind of change to a file in a single area (the index or the working tree).
 /// </summary>
 /// <remarks>
-/// <c>--porcelain=v2</c> çıktısındaki <c>XY</c> alanının tek karakterine karşılık gelir.
-/// Değişmemiş olan boşlukla değil <b><c>.</c></b> ile gösterilir — v1'den farkı budur.
+/// Corresponds to one character of the <c>XY</c> field in <c>--porcelain=v2</c> output.
+/// Unchanged is shown with <b><c>.</c></b> rather than a space — that is the difference from v1.
 /// </remarks>
 public enum FileChangeKind
 {
-    /// <summary><c>.</c> — bu alanda değişiklik yok.</summary>
+    /// <summary><c>.</c> — no change in this area.</summary>
     Unmodified,
 
     /// <summary><c>M</c></summary>
@@ -27,25 +27,26 @@ public enum FileChangeKind
     /// <summary><c>C</c></summary>
     Copied,
 
-    /// <summary><c>T</c> — dosya türü değişti (örn. normal dosya → sembolik bağ).</summary>
+    /// <summary><c>T</c> — the file type changed (a regular file becoming a symlink, say).</summary>
     TypeChanged,
 
-    /// <summary><c>U</c> — çakışma nedeniyle birleştirilmemiş.</summary>
+    /// <summary><c>U</c> — unmerged because of a conflict.</summary>
     Unmerged,
 }
 
 /// <summary>
-/// Birleştirilmemiş (unmerged) bir dosyanın çakışma türü.
+/// The conflict kind of an unmerged file.
 /// </summary>
 /// <remarks>
-/// <c>XY</c> çiftinin anlamı; "us" mevcut dal (<c>HEAD</c>), "them" birleştirilen dal.
-/// Bu ayrım conflict çözüm arayüzünde doğrudan kullanıcıya gösterilecek (Faz 07).
+/// The meaning of the <c>XY</c> pair; "us" is the current branch (<c>HEAD</c>), "them" the branch
+/// being merged. This distinction will be shown to the user directly in the conflict resolution UI
+/// (Phase 07).
 /// </remarks>
 public enum ConflictKind
 {
     None,
 
-    /// <summary><c>UU</c> — her iki taraf da değiştirdi.</summary>
+    /// <summary><c>UU</c> — both sides changed it.</summary>
     BothModified,
 
     /// <summary><c>AA</c> — her iki taraf da ekledi.</summary>
@@ -54,21 +55,21 @@ public enum ConflictKind
     /// <summary><c>DD</c> — her iki taraf da sildi.</summary>
     BothDeleted,
 
-    /// <summary><c>AU</c> — biz ekledik, onlar dokunmadı.</summary>
+    /// <summary><c>AU</c> — we added it, they did not touch it.</summary>
     AddedByUs,
 
-    /// <summary><c>UA</c> — onlar ekledi, biz dokunmadık.</summary>
+    /// <summary><c>UA</c> — they added it, we did not touch it.</summary>
     AddedByThem,
 
-    /// <summary><c>DU</c> — biz sildik, onlar değiştirdi.</summary>
+    /// <summary><c>DU</c> — we deleted it, they changed it.</summary>
     DeletedByUs,
 
-    /// <summary><c>UD</c> — onlar sildi, biz değiştirdik.</summary>
+    /// <summary><c>UD</c> — they deleted it, we changed it.</summary>
     DeletedByThem,
 }
 
 /// <summary>
-/// Bir submodule girdisinin durumu (<c>S&lt;c&gt;&lt;m&gt;&lt;u&gt;</c> alanı).
+/// The state of a submodule entry (the <c>S&lt;c&gt;&lt;m&gt;&lt;u&gt;</c> field).
 /// </summary>
 public readonly record struct SubmoduleState(
     bool CommitChanged,
@@ -79,41 +80,41 @@ public readonly record struct SubmoduleState(
 }
 
 /// <summary>
-/// Çalışma dizinindeki tek bir dosyanın durumu.
+/// The state of a single file in the working directory.
 /// </summary>
 public sealed record FileStatus
 {
     public required RepositoryPath Path { get; init; }
 
     /// <summary>
-    /// Index'in <c>HEAD</c>'e göre durumu — yani <b>stage'lenmiş</b> değişiklik.
+    /// The index's state relative to <c>HEAD</c> — that is, the <b>staged</b> change.
     /// </summary>
     public FileChangeKind StagedChange { get; init; } = FileChangeKind.Unmodified;
 
     /// <summary>
-    /// Çalışma ağacının index'e göre durumu — yani <b>stage'lenmemiş</b> değişiklik.
+    /// The working tree's state relative to the index — that is, the <b>unstaged</b> change.
     /// </summary>
     public FileChangeKind UnstagedChange { get; init; } = FileChangeKind.Unmodified;
 
-    /// <summary>Takip edilmeyen dosya mı?</summary>
+    /// <summary>Is it an untracked file?</summary>
     public bool IsUntracked { get; init; }
 
-    /// <summary><c>.gitignore</c> tarafından yok sayılıyor mu?</summary>
+    /// <summary>Is it ignored by <c>.gitignore</c>?</summary>
     public bool IsIgnored { get; init; }
 
-    /// <summary>Çakışma türü; çakışma yoksa <see cref="ConflictKind.None"/>.</summary>
+    /// <summary>The conflict kind; <see cref="ConflictKind.None"/> when there is no conflict.</summary>
     public ConflictKind Conflict { get; init; } = ConflictKind.None;
 
     /// <summary>
-    /// Yeniden adlandırma veya kopyalamada kaynak yol.
+    /// The source path on a rename or copy.
     /// </summary>
     /// <remarks>
-    /// <c>-z</c> modunda bu değer <b>ayrı bir NUL kaydında</b> gelir (ölçüldü);
-    /// ayrıştırıcı <c>2</c> satırından sonra bir sonraki kaydı tüketmelidir.
+    /// In <c>-z</c> mode this value arrives in <b>a separate NUL record</b> (measured); the parser has
+    /// to consume the next record after a <c>2</c> line.
     /// </remarks>
     public RepositoryPath? OriginalPath { get; init; }
 
-    /// <summary>Yeniden adlandırma/kopyalama benzerlik yüzdesi (<c>R100</c> → 100).</summary>
+    /// <summary>The rename/copy similarity percentage (<c>R100</c> → 100).</summary>
     public int? SimilarityScore { get; init; }
 
     /// <summary>Girdi bir submodule ise durumu.</summary>
@@ -121,11 +122,11 @@ public sealed record FileStatus
 
     public bool IsConflicted => Conflict != ConflictKind.None;
 
-    /// <summary>Stage'lenmiş bir değişiklik var mı?</summary>
+    /// <summary>Is there a staged change?</summary>
     public bool IsStaged =>
         StagedChange is not (FileChangeKind.Unmodified or FileChangeKind.Unmerged);
 
-    /// <summary>Stage'lenmemiş bir değişiklik var mı?</summary>
+    /// <summary>Is there an unstaged change?</summary>
     public bool IsUnstaged =>
         IsUntracked
         || UnstagedChange is not (FileChangeKind.Unmodified or FileChangeKind.Unmerged);
@@ -134,11 +135,11 @@ public sealed record FileStatus
 }
 
 /// <summary>
-/// Çalışma dizininin bütün durumu.
+/// The complete state of the working directory.
 /// </summary>
 public sealed record WorkingTreeStatus
 {
-    /// <summary>Mevcut commit; doğmamış depoda boş.</summary>
+    /// <summary>The current commit; empty in an unborn repository.</summary>
     public CommitId Head { get; init; }
 
     /// <summary>Mevcut dal; detached ise <see langword="null"/>.</summary>
@@ -146,12 +147,12 @@ public sealed record WorkingTreeStatus
 
     public bool IsDetached { get; init; }
 
-    /// <summary>Henüz hiç commit yok mu (<c># branch.oid (initial)</c>)?</summary>
+    /// <summary>Are there no commits yet (<c># branch.oid (initial)</c>)?</summary>
     public bool IsUnborn { get; init; }
 
     public string? Upstream { get; init; }
 
-    /// <summary>Upstream'e göre konum; <c># branch.ab</c> başlığından.</summary>
+    /// <summary>The position relative to the upstream; from the <c># branch.ab</c> header.</summary>
     public UpstreamTracking Tracking { get; init; } = UpstreamTracking.None;
 
     public required IReadOnlyList<FileStatus> Entries { get; init; }
@@ -166,6 +167,6 @@ public sealed record WorkingTreeStatus
 
     public IEnumerable<FileStatus> Ignored => Entries.Where(e => e.IsIgnored);
 
-    /// <summary>Commit edilmemiş hiçbir değişiklik yok mu?</summary>
+    /// <summary>Are there no uncommitted changes at all?</summary>
     public bool IsClean => !Entries.Any(e => !e.IsIgnored);
 }

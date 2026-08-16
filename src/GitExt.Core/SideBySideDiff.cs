@@ -3,37 +3,37 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Yan yana görünümdeki tek satır (P04-T10).
+/// A single row in the side-by-side view (P04-T10).
 /// </summary>
 /// <remarks>
-/// Bir taraf <see langword="null"/> olabilir: karşılığı olmayan satırın karşısına
-/// <b>dolgu</b> konur. Hunk başlığı satırında iki taraf da <see langword="null"/>'dır.
+/// One side can be <see langword="null"/>: a <b>filler</b> is placed opposite a line with no
+/// counterpart. On a hunk header row both sides are <see langword="null"/>.
 /// </remarks>
 public sealed record SideBySideRow
 {
-    /// <summary>Sol taraf (eski hâl): bağlam veya silinen satır.</summary>
+    /// <summary>The left side (the old state): a context or removed line.</summary>
     public DiffLine? Left { get; init; }
 
-    /// <summary>Sağ taraf (yeni hâl): bağlam veya eklenen satır.</summary>
+    /// <summary>The right side (the new state): a context or added line.</summary>
     public DiffLine? Right { get; init; }
 
-    /// <summary>Hunk başlığı; içerik satırında <see langword="null"/>.</summary>
+    /// <summary>The hunk header; <see langword="null"/> on a content row.</summary>
     public string? HunkHeader { get; init; }
 
     /// <summary>
-    /// Satırın ait olduğu hunk'ın indeksi; tek hunk çevrilirken <c>-1</c>.
+    /// The index of the hunk the row belongs to; <c>-1</c> when a single hunk is being converted.
     /// </summary>
     /// <remarks>
-    /// Kısmi staging (P05-T11) yan yana moddaki seçimi <see cref="PatchSelection"/>'a
-    /// çevirirken bunu kullanıyor. Ekrandaki satır sırası yeterli değil: bir yan yana satır
-    /// <b>iki farklı</b> unified satırı taşıyabiliyor.
+    /// Partial staging (P05-T11) uses this when turning a selection in side-by-side mode into a
+    /// <see cref="PatchSelection"/>. The row order on screen is not enough: one side-by-side row can
+    /// carry <b>two different</b> unified lines.
     /// </remarks>
     public int HunkIndex { get; init; } = -1;
 
-    /// <summary>Sol satırın hunk içindeki indeksi; sol taraf boşsa <c>-1</c>.</summary>
+    /// <summary>The left line's index within the hunk; <c>-1</c> when the left side is empty.</summary>
     public int LeftIndex { get; init; } = -1;
 
-    /// <summary>Sağ satırın hunk içindeki indeksi; sağ taraf boşsa <c>-1</c>.</summary>
+    /// <summary>The right line's index within the hunk; <c>-1</c> when the right side is empty.</summary>
     public int RightIndex { get; init; } = -1;
 
     public bool IsHunkHeader => HunkHeader is not null;
@@ -43,27 +43,27 @@ public sealed record SideBySideRow
 }
 
 /// <summary>
-/// Unified diff satırlarını <b>yan yana</b> yerleşime dönüştürür (P04-T10).
+/// Converts unified diff lines into a <b>side-by-side</b> layout (P04-T10).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Bu dönüşüm bilinçli olarak <b>çekirdek katmanda</b>: saf veri dönüşümü, arayüz
-/// bağımlılığı yok, testi arayüz kurmadan yazılabiliyor.
+/// This conversion is deliberately in the <b>core layer</b>: it is a pure data transformation with no
+/// UI dependency, and its test can be written without setting up any UI.
 /// </para>
 /// <para>
-/// <b>Hizalama, satır içi vurgulamayla AYNI eşlemeyi kullanır</b>
-/// (<see cref="InlineDiff.MatchLines"/>). İkinci bir eşleme yazmak, vurgulanan çift ile
-/// yan yana gösterilen çiftin farklı olabilmesi demekti — aynı ekranda iki çelişkili cevap.
+/// <b>The alignment uses the SAME matching as the intra-line highlighting</b>
+/// (<see cref="InlineDiff.MatchLines"/>). Writing a second matching would mean the highlighted pair
+/// and the pair shown side by side could differ — two contradictory answers on the same screen.
 /// </para>
 /// <para>
-/// <b>Referans yok:</b> GitExtensions'ın yerleşik yan yana görünümü <b>yok</b>; işi harici
-/// difftool'a (difftastic) devredip onun iki sütunlu çıktısını ayrıştırıyorlar. Oradan
-/// alınan tek şey şu: bir tarafın satırı <b>olmayabilir</b>, yani dolgu gerçek bir durumdur.
+/// <b>No reference:</b> GitExtensions has <b>no</b> built-in side-by-side view; it hands the job to an
+/// external difftool (difftastic) and parses its two-column output. The one thing taken from there is
+/// this: a side <b>may have no line</b>, meaning a filler is a real state.
 /// </para>
 /// </remarks>
 public static class SideBySideDiff
 {
-    /// <summary>Bir dosyanın tüm hunk'larını yan yana yerleşime çevirir.</summary>
+    /// <summary>Converts all of a file's hunks into a side-by-side layout.</summary>
     public static IReadOnlyList<SideBySideRow> Build(FileDiff diff)
     {
         ArgumentNullException.ThrowIfNull(diff);
@@ -81,7 +81,7 @@ public static class SideBySideDiff
         return rows;
     }
 
-    /// <summary>Tek bir hunk'ı yan yana yerleşime çevirir (başlık satırı üretilmez).</summary>
+    /// <summary>Converts a single hunk into a side-by-side layout (no header row is produced).</summary>
     public static IReadOnlyList<SideBySideRow> Build(DiffHunk hunk, int hunkIndex = -1)
     {
         ArgumentNullException.ThrowIfNull(hunk);
@@ -97,8 +97,8 @@ public static class SideBySideDiff
 
             if (line.Kind == DiffLineKind.Context)
             {
-                // Bağlam satırı iki tarafta da aynı; tek nesne yeterli (satır numaralarının
-                // ikisi de üzerinde).
+                // A context line is the same on both sides; a single object is enough (it carries both
+                // line numbers).
                 rows.Add(new SideBySideRow
                 {
                     Left = line,
@@ -112,8 +112,8 @@ public static class SideBySideDiff
                 continue;
             }
 
-            // git unified diff'te bir değişiklik bloğu her zaman "önce silinenler, sonra
-            // eklenenler" biçiminde gelir; blok sınırı bağlam satırıdır.
+            // In a git unified diff a change block always arrives as "removals first, then additions";
+            // the block boundary is a context line.
             int removedStart = index;
 
             while (index < lines.Count && lines[index].Kind == DiffLineKind.Removed)
@@ -142,13 +142,13 @@ public static class SideBySideDiff
     }
 
     /// <summary>
-    /// Bir silinen/eklenen bloğunu satırlara yerleştirir.
+    /// Lays a removed/added block out into rows.
     /// </summary>
     /// <remarks>
-    /// <b>Eşlenmeyen satırlar yan yana KONULMAZ.</b> Eşleme algoritması o iki satırın
-    /// birbirinin karşılığı olmadığına zaten karar verdi; yine de yan yana koymak
-    /// kullanıcıya "bunlar karşılıklı" demek olurdu. Yer tasarrufu için doğruluktan
-    /// vazgeçilmiyor — dolgu satırı bırakılıyor.
+    /// <b>Unmatched lines are NOT put side by side.</b> The matching algorithm has already decided
+    /// those two lines are not counterparts; putting them side by side anyway would be telling the
+    /// user "these correspond". Correctness is not given up to save space — a filler row is left
+    /// instead.
     /// </remarks>
     private static void AppendBlock(
         List<SideBySideRow> rows,
@@ -161,7 +161,7 @@ public static class SideBySideDiff
     {
         if (removedCount == 0 || addedCount == 0)
         {
-            // Tek taraflı blok: karşısı boş kalır.
+            // A one-sided block: the opposite side is left empty.
             for (int i = 0; i < removedCount; i++)
             {
                 rows.Add(Left(lines, removedStart + i, hunkIndex));
@@ -195,7 +195,7 @@ public static class SideBySideDiff
 
         foreach ((int pairedRemoved, int pairedAdded) in pairs)
         {
-            // Çiftten önce kalan eşsiz satırlar: önce silinenler, sonra eklenenler.
+            // The unmatched lines before the pair: removals first, then additions.
             while (nextRemoved < pairedRemoved)
             {
                 rows.Add(Left(lines, removedStart + nextRemoved++, hunkIndex));

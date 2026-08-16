@@ -13,26 +13,26 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P05-T09 — çalışma dizini ekranının yerleşimi GitExtensions'ı takip ediyor mu?
+/// P05-T09 — does the working directory screen's layout follow GitExtensions?
 /// </summary>
 /// <remarks>
 /// <para>
-/// CLAUDE.md § 9: görsel tasarım birebir aynı olmak zorunda değil ama <b>öğelerin yeri ve
-/// sırası</b> aynı olmalı. Kaynak: <c>FormCommit.Designer.cs</c> —
-/// <c>splitLeft.Panel1 = Unstaged</c> (üst), <c>splitLeft.Panel2 = Staged</c> (alt),
-/// aradaki <c>toolbarStaged</c>, sağda <c>SelectedDiff</c>.
+/// CLAUDE.md § 9: the visual design does not have to be identical, but the <b>position and order of
+/// the elements</b> must be. Source: <c>FormCommit.Designer.cs</c> —
+/// <c>splitLeft.Panel1 = Unstaged</c> (top), <c>splitLeft.Panel2 = Staged</c> (bottom), with
+/// <c>toolbarStaged</c> between them and <c>SelectedDiff</c> on the right.
 /// </para>
 /// <para>
-/// Test <b>konum</b> karşılaştırıyor, görünüm değil: renk ya da yazı tipi değişebilir,
-/// listelerin yer değiştirmesi kullanıcının kas hafızasını kırar.
+/// The test compares <b>position</b>, not appearance: colour or font may change, but the lists
+/// swapping places breaks the user's muscle memory.
 /// </para>
 /// </remarks>
 public class WorkingTreeLayoutTests
 {
     /// <remarks>
-    /// ⚠️ <c>async</c> olmak zorunda: <c>OpenAsync</c> UI iş parçacığına dönüyor
-    /// (<c>ConfigureAwait(true)</c>) ve <c>GetAwaiter().GetResult()</c> ile beklemek
-    /// headless testte <b>kilitlenme</b> üretiyor (ölçüldü — test takımı hiç bitmedi).
+    /// ⚠️ It has to be <c>async</c>: <c>OpenAsync</c> returns to the UI thread
+    /// (<c>ConfigureAwait(true)</c>) and waiting on it with <c>GetAwaiter().GetResult()</c> produces
+    /// a <b>deadlock</b> in a headless test (measured — the test suite never finished).
     /// </remarks>
     private static Task<(Window Window, WorkingTreeView View)> ShowAsync(
         params FileStatus[] entries) =>
@@ -115,8 +115,8 @@ public class WorkingTreeLayoutTests
     [AvaloniaFact]
     public async Task Unstage_SOLDA_stage_SAGDA()
     {
-        // `toolbarStaged`'de stage öğeleri `ToolStripItemAlignment.Right`, unstage öğeleri
-        // varsayılan (sol) hizalı. Yön listelerin konumuyla uyumlu.
+        // In `toolbarStaged` the stage items are `ToolStripItemAlignment.Right` and the unstage items
+        // are default (left) aligned. The direction matches where the lists are.
         (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
 
         Rect unstageAll = BoundsIn(window, view.GetControl<Button>("UnstageAllButton"));
@@ -124,7 +124,7 @@ public class WorkingTreeLayoutTests
         Rect stage = BoundsIn(window, view.GetControl<Button>("StageButton"));
         Rect stageAll = BoundsIn(window, view.GetControl<Button>("StageAllButton"));
 
-        // Soldan sağa: [Tümünü geri al][Geri al] … [Stage][Tümünü stage'le]
+        // Left to right: [Unstage all][Unstage] … [Stage][Stage all]
         unstageAll.X.ShouldBeLessThan(unstage.X);
         unstage.Right.ShouldBeLessThan(stage.X);
         stage.X.ShouldBeLessThan(stageAll.X);
@@ -148,8 +148,8 @@ public class WorkingTreeLayoutTests
     [AvaloniaFact]
     public async Task Diff_bileseninin_kendi_dosya_listesi_CIZILMEZ()
     {
-        // ViewModel testinde `ShowFileList = false` doğrulanıyor; burada bunun ekranda da
-        // karşılığı olduğu görülüyor (bağlama sessizce çalışmayabilir — Faz 03'ün dersi).
+        // The ViewModel test verifies `ShowFileList = false`; here we see that it has a counterpart on
+        // screen too (a binding can silently not work — the lesson of Phase 03).
         (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
 
         DiffView diff = view.GetVisualDescendants().OfType<DiffView>().Single();
@@ -180,7 +180,7 @@ public class WorkingTreeLayoutTests
     [AvaloniaFact]
     public async Task Diff_USTTE_commit_mesaji_ALTTA()
     {
-        // FormCommit: splitRight.Panel1 = SelectedDiff, Panel2 = commit mesajı.
+        // FormCommit: splitRight.Panel1 = SelectedDiff, Panel2 = the commit message.
         (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
 
         DiffView diff = view.GetVisualDescendants().OfType<DiffView>().Single();
@@ -194,7 +194,7 @@ public class WorkingTreeLayoutTests
     [AvaloniaFact]
     public async Task Commit_dugmeleri_SOLDA_mesaj_kutusu_SAGDA()
     {
-        // `tableLayoutPanel1`: sol sütun `flowCommitButtons`, sağ sütun `Message`.
+        // `tableLayoutPanel1`: the left column is `flowCommitButtons`, the right column `Message`.
         (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
 
         Rect commit = BoundsIn(window, view.GetControl<Button>("CommitButton"));
@@ -210,7 +210,7 @@ public class WorkingTreeLayoutTests
     {
         // `flowCommitButtons`: Commit · Commit&Push · StageInSuperproject · Amend ·
         // [ResetAuthor · ResetSoft] · StashStaged · ResetAll · ResetUnstaged.
-        // Uygulanmamış olanlar devre dışı ama YERİNDE (§ 9).
+        // The unimplemented ones are disabled but IN PLACE (§ 9).
         (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
 
         double Top(string name) => BoundsIn(
@@ -226,7 +226,7 @@ public class WorkingTreeLayoutTests
 
         view.GetControl<Button>("CommitAndPushButton").IsEnabled.ShouldBeFalse();
 
-        // P05-T15'te açıldılar; sıradaki yerleri değişmedi.
+        // They were enabled in P05-T15; their place in the order did not change.
         view.GetControl<Button>("ResetAllButton").IsEnabled.ShouldBeTrue();
         view.GetControl<Button>("ResetUnstagedButton").IsEnabled.ShouldBeTrue();
 
@@ -236,8 +236,8 @@ public class WorkingTreeLayoutTests
     [AvaloniaFact]
     public async Task Elli_ve_yetmis_iki_kilavuzu_gercekten_CIZILIYOR()
     {
-        // P04-T09'un dersi: bağlama sessizce hiçbir şey çizmeyebilir. Kılavuz çizilmezse
-        // kullanıcı sınırı göremez ve özellik hiç yokmuş gibi olur.
+        // The lesson of P04-T09: a binding can silently draw nothing. If the guide is not drawn the
+        // user cannot see the limit and the feature might as well not exist.
         (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
 
         ColumnGuides guides = view.GetControl<ColumnGuides>("MessageGuides");
@@ -249,14 +249,14 @@ public class WorkingTreeLayoutTests
         window.Close();
     }
 
-    // ---- P05-T13: mesaj yardımcıları araç çubuğu ----
+    // ---- P05-T13: the message helpers toolbar ----
 
     [AvaloniaFact]
     public async Task Mesaj_araci_cubugu_GitExtensions_sirasinda()
     {
-        // `toolbarCommit` sırası: commit message ▾ · options ▾ · templates ▾ · create branch.
-        // Uygulanmamış olanlar (Seçenekler, Dal oluştur) devre dışı ama YERİNDE (§ 9);
-        // sonradan araya sokmak sırayı bozar ve kas hafızasını kırar.
+        // `toolbarCommit` order: commit message ▾ · options ▾ · templates ▾ · create branch.
+        // The unimplemented ones (Options, Create branch) are disabled but IN PLACE (§ 9);
+        // slotting one in later breaks the order and the muscle memory.
         (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
 
         double Left(string name) => BoundsIn(
@@ -267,7 +267,7 @@ public class WorkingTreeLayoutTests
         Left("CommitOptionsButton").ShouldBeLessThan(Left("CommitTemplatesButton"));
         Left("CommitTemplatesButton").ShouldBeLessThan(Left("CreateBranchButton"));
 
-        // P05-T13'te ikisi, P05-T15'te "Seçenekler" açıldı; "Create branch" Faz 06'da.
+        // Two of them were enabled in P05-T13 and "Options" in P05-T15; "Create branch" is Phase 06.
         view.GetControl<Button>("MessageHistoryButton").IsEnabled.ShouldBeTrue();
         view.GetControl<Button>("CommitTemplatesButton").IsEnabled.ShouldBeTrue();
         view.GetControl<Button>("CommitOptionsButton").IsEnabled.ShouldBeTrue();
@@ -279,9 +279,9 @@ public class WorkingTreeLayoutTests
     [AvaloniaFact]
     public async Task Gecmis_menusu_GERCEKTEN_ogeler_ciziyor()
     {
-        // 🔑 Fazın tekrar eden dersi: ViewModel testi yeşilken menü ekranda BOŞ olabilir
-        // (P04-T09'daki boş hunk başlıkları, P03'teki `IsVisible` bağlaması). Burada
-        // doğrulanan şey koleksiyonun dolması değil, menünün öğe ÜRETMESİ.
+        // 🔑 The phase's recurring lesson: the ViewModel test can be green while the menu is EMPTY on
+        // screen (the empty hunk headers in P04-T09, the `IsVisible` binding in Phase 03). What is
+        // verified here is not that the collection fills up but that the menu PRODUCES items.
         FakeCommitMessageReader reader = new();
         reader.Recent.AddRange(["ikinci konu", "ilk konu"]);
 
@@ -293,7 +293,7 @@ public class WorkingTreeLayoutTests
         flyout.ShowAt(historyButton);
         Dispatcher.UIThread.RunJobs();
 
-        // Menü asenkron dolduğu için (git okuması) bir tur daha gerekiyor.
+        // Because the menu fills asynchronously (a git read), one more turn is needed.
         await Task.Delay(50);
         Dispatcher.UIThread.RunJobs();
 
@@ -305,7 +305,7 @@ public class WorkingTreeLayoutTests
         headers.ShouldContain("ikinci konu");
         headers.ShouldContain("ilk konu");
 
-        // Sabit öğe (filtre) korunuyor — geçmiş satırları onun üzerine yazmamalı.
+        // The fixed item (the filter) is preserved — the history rows must not overwrite it.
         headers.ShouldContain("Only my messages");
 
         flyout.Hide();
@@ -315,14 +315,14 @@ public class WorkingTreeLayoutTests
     [AvaloniaFact]
     public async Task Sablon_menusu_ayarsizken_de_NEDENINI_soyluyor()
     {
-        // Boş bir menü, kullanıcıya "burada bir şey olmalıydı" dedirtir. Şablon yoksa
-        // sebebi yazıyor; bozuksa yolu yazıyor (git'in kendisi de o durumda commit'i
-        // reddediyor — ölçüldü).
+        // An empty menu makes the user think "something should have been here". When there is no
+        // template the reason is written out; when it is broken the path is written out (git itself
+        // rejects the commit in that case — measured).
         //
-        // ⚠️ ÖLÇÜLDÜ: menü AÇILMADAN bakmak yanıltıcı. Flyout kapalıyken içindeki öğeler
-        // görsel ağaçta değil, `DataContext` akmıyor ve `IsEnabled` bağlaması hiç
-        // değerlendirilmemiş varsayılanında (true) duruyor. Doğrulanacak şey kullanıcının
-        // gördüğü durum, yani menü açıkken.
+        // ⚠️ MEASURED: looking at the menu WITHOUT opening it is misleading. While the flyout is
+        // closed its items are not in the visual tree, the `DataContext` does not flow and the
+        // `IsEnabled` binding sits at its never-evaluated default (true). What has to be verified is
+        // the state the user sees, which is with the menu open.
         (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
 
         Button templatesButton = view.GetControl<Button>("CommitTemplatesButton");

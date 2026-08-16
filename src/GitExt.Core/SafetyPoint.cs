@@ -3,57 +3,57 @@ using GitExt.Core.Git;
 namespace GitExt.Core;
 
 /// <summary>
-/// Geçmişi değiştiren bir işlemden <b>önceki</b> depo konumu (P07-T15).
+/// The repository's position <b>before</b> an operation that rewrites history (P07-T15).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Faz kuralı: <i>"Geçmişi değiştiren her işlem öncesinde reflog konumu kaydedilir ve
-/// kullanıcıya 'nasıl geri alırım' bilgisi her zaman sunulur."</i> Bu tip o bilgiyi
-/// taşıyor.
+/// The phase rule: <i>"Before every operation that rewrites history, the reflog position is recorded
+/// and the user is always given the 'how do I undo this' information."</i> This type carries that
+/// information.
 /// </para>
 /// </remarks>
 public sealed record SafetyPoint
 {
-    /// <summary>İşlem öncesi <c>HEAD</c> (tam SHA).</summary>
+    /// <summary><c>HEAD</c> before the operation (full SHA).</summary>
     public required string ObjectId { get; init; }
 
-    /// <summary>Üzerinde bulunulan dal; ayrık <c>HEAD</c> ise <see langword="null"/>.</summary>
+    /// <summary>The branch we were on; <see langword="null"/> for a detached <c>HEAD</c>.</summary>
     public string? BranchName { get; init; }
 
-    /// <summary>Güvenlik noktasını alan işlemin adı — "rebase", "reset" gibi.</summary>
+    /// <summary>The name of the operation taking the safety point — "rebase", "reset" and so on.</summary>
     public required string Operation { get; init; }
 
     /// <summary>
-    /// Güvenlik noktası alınırken çalışma ağacında commit'lenmemiş değişiklik var mıydı?
+    /// Were there uncommitted changes in the working tree when the safety point was taken?
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — <c>git reset --hard</c> commit'lenmemiş işi de siliyor.</b>
-    /// Stage'lenmiş yeni bir dosya (<c>yeni.txt</c>) reset sonrası diskten <b>kayboldu</b>.
-    /// Yani ağaç kirliyken "geri almak için: <c>git reset --hard &lt;sha&gt;</c>" demek
-    /// <b>eksik</b> bir söz: commit geri gelir, kullanıcının o anki işi gelmez.
-    /// <see cref="IsFullyRecoverable"/> bunu ayırıyor.
+    /// 🔴 <b>MEASURED — <c>git reset --hard</c> deletes uncommitted work too.</b>
+    /// A newly staged file (<c>new.txt</c>) <b>disappeared</b> from disk after the reset.
+    /// So with a dirty tree, saying "to undo: <c>git reset --hard &lt;sha&gt;</c>" is an
+    /// <b>incomplete</b> promise: the commit comes back, the user's current work does not.
+    /// <see cref="IsFullyRecoverable"/> makes that distinction.
     /// </remarks>
     public bool HasUncommittedChanges { get; init; }
 
     public bool IsDetached => BranchName is null;
 
-    /// <summary>Kısaltılmış SHA — ekranda gösterilen.</summary>
+    /// <summary>The abbreviated SHA — the one shown on screen.</summary>
     public string ShortId => ObjectId.Length >= 7 ? ObjectId[..7] : ObjectId;
 
     /// <summary>
-    /// Bu noktaya dönmek için çalıştırılacak komut.
+    /// The command to run in order to return to this point.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// ⚠️ <b>ÖLÇÜLDÜ — ayrık <c>HEAD</c>'de <c>reset --hard</c> hiçbir dalı oynatmıyor</b>,
-    /// dal üzerindeyken ise <b>dalı</b> oynatıyor. İkisi de doğru davranış ama farklı; ayrık
-    /// durumda kullanıcının istediği şey genelde o commit'e dönmek olduğu için
-    /// <c>checkout</c> öneriliyor.
+    /// ⚠️ <b>MEASURED — on a detached <c>HEAD</c>, <c>reset --hard</c> moves no branch</b>, whereas on
+    /// a branch it moves <b>the branch</b>. Both are correct behaviour but they differ; because in the
+    /// detached case what the user usually wants is to return to that commit, <c>checkout</c> is
+    /// suggested.
     /// </para>
     /// <para>
-    /// ⚠️ <c>ORIG_HEAD</c> ya da <c>HEAD@{1}</c> gibi <b>kayan</b> bir referans değil,
-    /// <b>SHA</b> yazılıyor: kullanıcı komutu kopyalayıp sonra çalıştırırsa kayan referans
-    /// bambaşka bir yeri gösterirdi.
+    /// ⚠️ The <b>SHA</b> is written, not a <b>sliding</b> reference such as <c>ORIG_HEAD</c> or
+    /// <c>HEAD@{1}</c>: if the user copies the command and runs it later, a sliding reference would
+    /// point somewhere else entirely.
     /// </para>
     /// </remarks>
     public string RecoveryCommand => IsDetached
@@ -61,20 +61,20 @@ public sealed record SafetyPoint
         : $"git reset --hard {ObjectId}";
 
     /// <summary>
-    /// Geri alma komutu <b>her şeyi</b> geri getirir mi?
+    /// Does the undo command bring <b>everything</b> back?
     /// </summary>
     /// <remarks>
-    /// Ağaç kirliyken <see langword="false"/>: commit'lenmemiş iş geri alınamaz.
-    /// Ekran bunu ayrı bir uyarı olarak gösteriyor, komutu gizlemiyor.
+    /// <see langword="false"/> when the tree is dirty: uncommitted work cannot be recovered.
+    /// The screen shows that as a separate warning rather than hiding the command.
     /// </remarks>
     public bool IsFullyRecoverable => !HasUncommittedChanges;
 }
 
-/// <summary>Güvenlik noktası alma (P07-T15).</summary>
+/// <summary>Taking a safety point (P07-T15).</summary>
 public interface ISafetyPointRecorder
 {
     /// <summary>
-    /// Geçmişi değiştiren bir işlemden hemen önce çağrılır.
+    /// Called immediately before an operation that rewrites history.
     /// </summary>
     Task<SafetyPoint> CaptureAsync(
         string workingDirectory,
@@ -83,7 +83,7 @@ public interface ISafetyPointRecorder
 }
 
 /// <summary>
-/// <c>HEAD</c>'i ve çalışma ağacının temizliğini kaydeder (P07-T15).
+/// Records <c>HEAD</c> and whether the working tree is clean (P07-T15).
 /// </summary>
 public sealed class SafetyPointRecorder : ISafetyPointRecorder
 {
@@ -107,14 +107,14 @@ public sealed class SafetyPointRecorder : ISafetyPointRecorder
             GitCommand.Create(workingDirectory, "rev-parse", "HEAD"),
             cancellationToken).ConfigureAwait(false);
 
-        // Doğmamış depoda `rev-parse HEAD` başarısız — geri dönülecek bir nokta da yok.
+        // In an unborn repository `rev-parse HEAD` fails — and there is no point to return to either.
         string objectId = head.IsSuccess ? head.GetStandardOutputText().Trim() : string.Empty;
 
         GitResult branch = await _runner.RunAsync(
             GitCommand.Create(workingDirectory, "symbolic-ref", "--quiet", "--short", "HEAD"),
             cancellationToken).ConfigureAwait(false);
 
-        // Ayrık HEAD'de `symbolic-ref` çıkış kodu 1 veriyor; bu bir hata değil, bir durum.
+        // On a detached HEAD `symbolic-ref` gives exit code 1; that is not an error but a state.
         string? branchName = branch.IsSuccess
             ? branch.GetStandardOutputText().Trim() is { Length: > 0 } name ? name : null
             : null;
@@ -130,12 +130,11 @@ public sealed class SafetyPointRecorder : ISafetyPointRecorder
     }
 
     /// <summary>
-    /// Çalışma ağacında commit'lenmemiş bir değişiklik var mı?
+    /// Is there an uncommitted change in the working tree?
     /// </summary>
     /// <remarks>
-    /// Takip edilmeyen dosyalar <b>sayılmıyor</b>: <c>reset --hard</c> onlara dokunmuyor
-    /// (ölçüldü — silinen yalnızca stage'lenmiş/izlenen değişikliklerdi), dolayısıyla
-    /// geri alınabilirliği etkilemiyorlar.
+    /// Untracked files <b>do not count</b>: <c>reset --hard</c> does not touch them (measured — only
+    /// staged/tracked changes were deleted), so they do not affect recoverability.
     /// </remarks>
     private async Task<bool> IsDirtyAsync(string workingDirectory, CancellationToken cancellationToken)
     {

@@ -4,26 +4,26 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Çakışan bir dosyanın index'teki üç sürümünden biri (P07-T02).
+/// One of the three versions of a conflicting file in the index (P07-T02).
 /// </summary>
 /// <remarks>
-/// Numaralar git'in kendi stage numaraları; <c>git show :2:&lt;yol&gt;</c> gibi
-/// gösterimlerde aynen kullanılıyor.
+/// The numbers are git's own stage numbers; they are used exactly this way in notations such as
+/// <c>git show :2:&lt;path&gt;</c>.
 /// </remarks>
 public enum ConflictStage
 {
     /// <summary>Ortak ata (<c>:1:</c>).</summary>
     Base = 1,
 
-    /// <summary>Bizim sürümümüz — <c>HEAD</c> (<c>:2:</c>).</summary>
+    /// <summary>Our version — <c>HEAD</c> (<c>:2:</c>).</summary>
     Ours = 2,
 
-    /// <summary>Karşı tarafın sürümü (<c>:3:</c>).</summary>
+    /// <summary>The other side's version (<c>:3:</c>).</summary>
     Theirs = 3,
 }
 
 /// <summary>
-/// Çakışan tek bir dosya (P07-T01).
+/// A single conflicting file (P07-T01).
 /// </summary>
 public sealed record ConflictedFile
 {
@@ -31,24 +31,24 @@ public sealed record ConflictedFile
 
     public required ConflictKind Kind { get; init; }
 
-    /// <summary>Ortak ata sürümü index'te var mı?</summary>
+    /// <summary>Is the common ancestor version in the index?</summary>
     public bool HasBase { get; init; }
 
-    /// <summary>Bizim sürümümüz index'te var mı?</summary>
+    /// <summary>Is our version in the index?</summary>
     public bool HasOurs { get; init; }
 
-    /// <summary>Karşı tarafın sürümü index'te var mı?</summary>
+    /// <summary>Is the other side's version in the index?</summary>
     public bool HasTheirs { get; init; }
 
-    /// <summary>Bir alt-modül çakışması mı?</summary>
+    /// <summary>Is it a submodule conflict?</summary>
     public bool IsSubmodule { get; init; }
 
-    /// <summary>Verilen aşama index'te var mı?</summary>
+    /// <summary>Is the given stage in the index?</summary>
     /// <remarks>
-    /// 🔴 Bunu sormadan <c>git show :2:&lt;yol&gt;</c> çalıştırmak <b>fatal</b> veriyor
-    /// (ölçüldü: <c>is in the index, but not at stage 2</c>). Hatayı yutup boş metin
-    /// döndürmek "dosya boştu" gibi okunurdu — silinmiş bir dosyayla boş bir dosya
-    /// kullanıcı için çok farklı şeyler.
+    /// 🔴 Running <c>git show :2:&lt;path&gt;</c> without asking this gives a <b>fatal</b>
+    /// (measured: <c>is in the index, but not at stage 2</c>). Swallowing the error and returning
+    /// empty text would read as "the file was empty" — a deleted file and an empty file are very
+    /// different things to the user.
     /// </remarks>
     public bool HasStage(ConflictStage stage) => stage switch
     {
@@ -59,27 +59,27 @@ public sealed record ConflictedFile
     };
 
     /// <summary>
-    /// Bu çakışma <b>içerik</b> düzeyinde mi, yoksa <b>varlık</b> düzeyinde mi?
+    /// Is this conflict at the <b>content</b> level, or at the <b>presence</b> level?
     /// </summary>
     /// <remarks>
-    /// Varlık çakışmasında (bir taraf silmiş) üç yollu metin görünümü anlamsız: birleştirecek
-    /// iki metin yok, verilecek bir karar var — "sil" ya da "tut".
+    /// In a presence conflict (one side deleted it) a three-way text view is meaningless: there are
+    /// not two texts to merge, there is a decision to make — "delete" or "keep".
     /// </remarks>
     public bool IsContentConflict => HasOurs && HasTheirs;
 }
 
-/// <summary>Çakışma okuma (P07-T01, P07-T02).</summary>
+/// <summary>Conflict reading (P07-T01, P07-T02).</summary>
 public interface IConflictReader
 {
-    /// <summary>Çakışan dosyaları listeler.</summary>
+    /// <summary>Lists the conflicting files.</summary>
     Task<IReadOnlyList<ConflictedFile>> ReadAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Çakışan bir dosyanın verilen aşamadaki içeriğini okur.
+    /// Reads a conflicting file's content at the given stage.
     /// </summary>
-    /// <returns>Aşama index'te yoksa <see langword="null"/>.</returns>
+    /// <returns><see langword="null"/> when the stage is not in the index.</returns>
     Task<byte[]?> ReadStageAsync(
         string workingDirectory,
         RepositoryPath path,
@@ -88,27 +88,27 @@ public interface IConflictReader
 }
 
 /// <summary>
-/// Index'teki çakışmaları okur (P07-T01, P07-T02).
+/// Reads the conflicts in the index (P07-T01, P07-T02).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>ÖLÇÜLDÜ — <c>u</c> satırının düzeni:</b>
-/// <c>u &lt;XY&gt; &lt;sub&gt; &lt;m1&gt; &lt;m2&gt; &lt;m3&gt; &lt;mW&gt; &lt;h1&gt; &lt;h2&gt; &lt;h3&gt; &lt;yol&gt;</c>.
-/// Eksik bir aşamanın <b>modu</b> <c>000000</c> geliyor — hangi sürümlerin var olduğu
-/// buradan biliniyor, deneme yanılmayla değil.
+/// <b>MEASURED — the layout of a <c>u</c> line:</b>
+/// <c>u &lt;XY&gt; &lt;sub&gt; &lt;m1&gt; &lt;m2&gt; &lt;m3&gt; &lt;mW&gt; &lt;h1&gt; &lt;h2&gt; &lt;h3&gt; &lt;path&gt;</c>.
+/// A missing stage's <b>mode</b> comes back as <c>000000</c> — which versions exist is known from
+/// there, not by trial and error.
 /// </para>
 /// <para>
-/// 🔴 <b><c>-z</c> zorunlu.</b> Ölçüldü: <c>-z</c> olmadan git yolu C-tırnaklıyor
-/// (<c>şğüıöç.txt</c> → <c>"\305\237\304\237…"</c>). Türkçe yollar sessizce bozulurdu.
+/// 🔴 <b><c>-z</c> is mandatory.</b> Measured: without <c>-z</c> git C-quotes the path
+/// (<c>şğüıöç.txt</c> → <c>"\305\237\304\237…"</c>). Turkish paths would be silently corrupted.
 /// </para>
 /// <para>
-/// Neden <see cref="StatusReader"/> yetmiyor? O, çakışmanın <b>türünü</b> veriyor ama
-/// hangi aşamaların var olduğunu düşürüyor; üç yollu görünüm tam olarak buna dayanıyor.
+/// Why is <see cref="StatusReader"/> not enough? It gives the <b>kind</b> of the conflict but drops
+/// which stages exist; the three-way view rests on exactly that.
 /// </para>
 /// </remarks>
 public sealed class ConflictReader : IConflictReader
 {
-    /// <summary>Var olmayan bir aşamanın modu.</summary>
+    /// <summary>The mode of a stage that does not exist.</summary>
     private const string AbsentMode = "000000";
 
     private readonly IGitProcessRunner _runner;
@@ -156,15 +156,16 @@ public sealed class ConflictReader : IConflictReader
                 $":{(int)stage}:{path.Value}"),
             cancellationToken).ConfigureAwait(false);
 
-        // Aşama yoksa git `fatal: … but not at stage N` diyor. Bu bir hata değil, bir
-        // DURUM: "bu tarafta dosya yok". null ile boş dosyayı ayırmak şart.
+        // When the stage is absent git says `fatal: … but not at stage N`. That is not an error but a
+        // STATE: "there is no file on this side". Telling null from an empty file is essential.
         //
-        // Ham baytlar dönüyor: içerik metin olmayabilir, olsa bile kodlaması deponun
-        // kendi kodlaması. Metne çevirme kararı üst katmanın (P04'ün kodlama tespiti).
+        // Raw bytes are returned: the content may not be text, and even when it is, its encoding is
+        // the repository's own. The decision to convert to text belongs to the layer above (P04's
+        // encoding detection).
         return result.IsSuccess ? result.StandardOutput : null;
     }
 
-    /// <summary><c>--porcelain=v2 -z</c> çıktısındaki <c>u</c> kayıtlarını ayrıştırır.</summary>
+    /// <summary>Parses the <c>u</c> records in the <c>--porcelain=v2 -z</c> output.</summary>
     internal static IReadOnlyList<ConflictedFile> Parse(string output)
     {
         List<ConflictedFile> files = [];
@@ -176,7 +177,7 @@ public sealed class ConflictReader : IConflictReader
                 continue;
             }
 
-            // Yol boşluk içerebilir; ilk 10 alan sabit, kalanı yol.
+            // A path can contain spaces; the first 10 fields are fixed, the rest is the path.
             string[] parts = record.Split(' ', 11);
 
             if (parts.Length < 11 || !RepositoryPath.TryParse(parts[10], out RepositoryPath path))

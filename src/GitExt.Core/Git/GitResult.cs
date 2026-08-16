@@ -3,12 +3,12 @@ using System.Text;
 namespace GitExt.Core.Git;
 
 /// <summary>
-/// Tamamlanmış bir <c>git</c> çağrısının sonucu.
+/// The result of a completed <c>git</c> call.
 /// </summary>
 /// <remarks>
-/// stdout <b>ham bayt</b> olarak tutulur, <see cref="string"/> olarak değil: dosya adları geçerli
-/// UTF-8 olmayabilir ve <c>git show</c> gibi komutlar binary içerik döndürebilir. Metin gerektiğinde
-/// <see cref="GetStandardOutputText"/> kullanılır.
+/// stdout is kept as <b>raw bytes</b>, not as a <see cref="string"/>: file names may not be valid
+/// UTF-8, and commands such as <c>git show</c> can return binary content. When text is needed,
+/// <see cref="GetStandardOutputText"/> is used.
 /// </remarks>
 public sealed class GitResult
 {
@@ -29,75 +29,74 @@ public sealed class GitResult
     }
 
     /// <summary>
-    /// Çıktı <see cref="GitCommand.MaximumOutputBytes"/> sınırına takıldı mı?
+    /// Did the output hit the <see cref="GitCommand.MaximumOutputBytes"/> limit?
     /// </summary>
     /// <remarks>
-    /// <see langword="true"/> ise <see cref="StandardOutput"/> <b>yarım</b>; ayrıştırılırsa
-    /// sessizce eksik veri üretir. Çağıran bu durumu ayrıca ele almalıdır.
+    /// When <see langword="true"/>, <see cref="StandardOutput"/> is <b>incomplete</b>; parsing it
+    /// silently produces missing data. The caller has to handle this case explicitly.
     /// </remarks>
     public bool OutputTruncated { get; }
 
-    /// <summary>Çalıştırılan komut.</summary>
+    /// <summary>The command that was run.</summary>
     public GitCommand Command { get; }
 
-    /// <summary>Sürecin çıkış kodu.</summary>
+    /// <summary>The process's exit code.</summary>
     public int ExitCode { get; }
 
-    /// <summary>Ham stdout içeriği.</summary>
+    /// <summary>The raw stdout content.</summary>
     public byte[] StandardOutput { get; }
 
-    /// <summary>stderr içeriği. Git ilerleme bilgisini de buraya yazar, hata olmasa bile dolu olabilir.</summary>
+    /// <summary>The stderr content. Git writes progress information here too, so it can be non-empty without an error.</summary>
     public string StandardError { get; }
 
-    /// <summary>Sürecin başlangıcından bitişine kadar geçen süre.</summary>
+    /// <summary>The time elapsed from the start of the process to its end.</summary>
     public TimeSpan Duration { get; }
 
     /// <summary>
-    /// Çıkış kodu, komutun beyan ettiği başarı kodlarından biri mi?
+    /// Is the exit code one of the success codes the command declared?
     /// </summary>
     public bool IsSuccess => Command.SuccessExitCodes.Contains(ExitCode);
 
     /// <summary>
-    /// stdout'u UTF-8 metin olarak döndürür.
+    /// Returns stdout as UTF-8 text.
     /// </summary>
     /// <remarks>
-    /// Geçersiz baytlar U+FFFD ile değiştirilir — bozuk kodlamalı bir dosya adı yüzünden
-    /// istisna fırlatmak, o dosyayı hiç göstermemekten daha kötüdür.
+    /// Invalid bytes are replaced with U+FFFD — throwing an exception over a file name in a broken
+    /// encoding is worse than not showing that file at all.
     /// </remarks>
     public string GetStandardOutputText() =>
         StandardOutput.Length == 0 ? string.Empty : _utf8Lenient.GetString(StandardOutput);
 
     /// <summary>
-    /// stdout'u <b>kayıpsız</b> metne çevirir: her bayt bire bir bir karaktere karşılık gelir.
+    /// Converts stdout to text <b>losslessly</b>: every byte maps one to one onto a character.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <c>git diff</c> çıktısı <b>tek bir kodlamada değil</b>: başlıklar ve işaretler ASCII
-    /// iken satır içerikleri <b>dosyanın kendi baytları</b>. UTF-8 olarak çözmek, UTF-8
-    /// olmayan bir dosyanın içeriğini <b>sessizce bozar</b> (ölçüldü: Latin-5 bir dosyada
-    /// <c>0xFC</c> baytları U+FFFD oluyor).
+    /// <c>git diff</c> output is <b>not in a single encoding</b>: the headers and markers are ASCII
+    /// while the line contents are <b>the file's own bytes</b>. Decoding it as UTF-8 <b>silently
+    /// corrupts</b> the content of a file that is not UTF-8 (measured: in a Latin-5 file the
+    /// <c>0xFC</c> bytes become U+FFFD).
     /// </para>
     /// <para>
-    /// Latin-1 ile çözmek her baytı korur; yapı ASCII olduğu için ayrıştırma etkilenmez ve
-    /// içerik daha sonra doğru kodlamayla <b>yeniden çözülebilir</b>. Bu yaklaşım
-    /// GitExtensions'ın <c>PatchProcessor</c>'ından alındı: orada da çıktı kayıpsız okunup
-    /// başlıklar ile içerik <b>ayrı ayrı</b> yeniden kodlanıyor.
+    /// Decoding with Latin-1 preserves every byte; because the structure is ASCII the parsing is
+    /// unaffected, and the content can be <b>re-decoded</b> later with the right encoding. This
+    /// approach was taken from GitExtensions' <c>PatchProcessor</c>: there too the output is read
+    /// losslessly and the headers and the content are re-encoded <b>separately</b>.
     /// </para>
     /// </remarks>
     public string GetStandardOutputLossless() =>
         StandardOutput.Length == 0 ? string.Empty : Encoding.Latin1.GetString(StandardOutput);
 
     /// <summary>
-    /// stdout'u NUL (<c>\0</c>) ayracına göre böler; <b>boş parçaları atar</b>.
+    /// Splits stdout on the NUL (<c>\0</c>) separator; <b>dropping empty parts</b>.
     /// </summary>
     /// <remarks>
-    /// Yalnızca her parçanın dolu olduğu bilinen çıktılar için uygundur
-    /// (<c>ls-files -z</c> gibi).
+    /// Suitable only for outputs where every part is known to be non-empty
+    /// (<c>ls-files -z</c>, for instance).
     /// <para>
-    /// ⚠️ Sabit alanlı kayıtları ayrıştırmak için <b>kullanmayın</b>: boş bir alan
-    /// (örneğin gövdesiz bir commit) atıldığında sonraki tüm alanlar kayar ve veri
-    /// sessizce yanlış olur. O durumda <see cref="SplitStandardOutputAtNulPreservingEmpty"/>
-    /// kullanılmalı.
+    /// ⚠️ <b>Do not use</b> it to parse fixed-field records: when an empty field (a commit with no
+    /// body, say) is dropped, every following field shifts and the data is silently wrong. Use
+    /// <see cref="SplitStandardOutputAtNulPreservingEmpty"/> in that case.
     /// </para>
     /// </remarks>
     public string[] SplitStandardOutputAtNul()
@@ -109,11 +108,11 @@ public sealed class GitResult
     }
 
     /// <summary>
-    /// stdout'u NUL ayracına göre böler; <b>boş parçaları korur</b>.
+    /// Splits stdout on the NUL separator; <b>keeping empty parts</b>.
     /// </summary>
     /// <remarks>
-    /// Sabit alanlı kayıtların hizasını korumak için gereklidir. Yalnızca akışın en sonundaki
-    /// ayraçtan doğan boş parça atılır — <c>git log -z</c> son kaydın ardına da NUL koyar.
+    /// Required to keep fixed-field records aligned. Only the empty part arising from the separator at
+    /// the very end of the stream is dropped — <c>git log -z</c> puts a NUL after the last record too.
     /// </remarks>
     public string[] SplitStandardOutputAtNulPreservingEmpty()
     {
@@ -124,7 +123,7 @@ public sealed class GitResult
             return [];
         }
 
-        // Sondaki ayraç yapay bir boş parça üretir; onu at, diğer boşları koru.
+        // The trailing separator produces an artificial empty part; drop that one and keep the others.
         if (text[^1] == '\0')
         {
             text = text[..^1];

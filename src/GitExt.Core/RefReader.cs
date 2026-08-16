@@ -5,7 +5,7 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Dalları, tag'leri, uzak depoları ve <c>HEAD</c> durumunu okur (P02-T09).
+/// Reads branches, tags, remotes and the <c>HEAD</c> state (P02-T09).
 /// </summary>
 public interface IRefReader
 {
@@ -26,21 +26,22 @@ public sealed class RefReader : IRefReader
     }
 
     /// <summary>
-    /// <c>for-each-ref</c> alan sırası.
+    /// The <c>for-each-ref</c> field order.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Alan ayracı <c>%00</c>, kayıt ayracı satır sonu.</b> Bu güvenli çünkü ref adları
-    /// satır sonu içeremez — <c>git check-ref-format</c> reddediyor (ölçüldü).
+    /// <b>The field separator is <c>%00</c>, the record separator a line ending.</b> That is safe
+    /// because ref names cannot contain a line ending — <c>git check-ref-format</c> rejects it
+    /// (measured).
     /// </para>
     /// <para>
-    /// ⚠️ <c>for-each-ref</c> <b><c>-z</c> bayrağını desteklemiyor</b>
-    /// (<c>error: unknown switch 'z'</c>, ölçüldü). <c>git log</c>'daki yaklaşımın aynısı
-    /// burada uygulanamaz.
+    /// ⚠️ <c>for-each-ref</c> <b>does not support the <c>-z</c> flag</b>
+    /// (<c>error: unknown switch 'z'</c>, measured). The approach used for <c>git log</c> cannot be
+    /// applied here.
     /// </para>
     /// <para>
-    /// <c>%(subject)</c> en sonda: olası bir sürpriz satır sonu yalnızca o kaydın sonunu
-    /// etkiler, diğer alanları kaydırmaz.
+    /// <c>%(subject)</c> comes last: a surprise line ending would then affect only the end of that
+    /// record and not shift the other fields.
     /// </para>
     /// </remarks>
     private const string RefFormat =
@@ -68,12 +69,12 @@ public sealed class RefReader : IRefReader
         foreach (string line in result.GetStandardOutputText()
                      .Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
-            // Boş alanlar korunmalı; bölme sınırı verilmiyor çünkü alan sayısı sabit.
+            // Empty fields must be preserved; no split limit is given because the field count is fixed.
             string[] fields = line.Split('\0');
 
             if (fields.Length < RefFieldCount)
             {
-                // Beklenmeyen biçim: sessizce yanlış veri üretmektense o ref'i atla.
+                // An unexpected format: rather than silently produce wrong data, skip that ref.
                 continue;
             }
 
@@ -94,7 +95,7 @@ public sealed class RefReader : IRefReader
                     break;
 
                 default:
-                    // refs/stash, refs/notes/… — şimdilik ilgilenmiyoruz.
+                    // refs/stash, refs/notes/… — not of interest for now.
                     break;
             }
         }
@@ -119,12 +120,12 @@ public sealed class RefReader : IRefReader
 
         CommitId objectId = CommitId.TryParse(fields[3], out CommitId parsed) ? parsed : default;
 
-        // Annotated tag'de %(*objectname) tag'in işaret ettiği commit'tir; diğerlerinde boştur.
+        // On an annotated tag %(*objectname) is the commit the tag points at; on others it is empty.
         CommitId target = CommitId.TryParse(fields[4], out CommitId dereferenced)
             ? dereferenced
             : objectId;
 
-        // %(symref) yalnızca sembolik ref'lerde dolu; normal dalda BOŞ dize (ölçüldü).
+        // %(symref) is only filled in for symbolic refs; on a normal branch it is an EMPTY string (measured).
         string symref = fields[8];
 
         return new GitRef
@@ -141,7 +142,7 @@ public sealed class RefReader : IRefReader
 
     private static BranchInfo BuildBranch(GitRef reference, string[] fields)
     {
-        // %(HEAD) mevcut dal için "*", diğerleri için BOŞLUK döner — boş dize değil (ölçüldü).
+        // %(HEAD) returns "*" for the current branch and a SPACE for the others — not an empty string (measured).
         bool isCurrent = fields[5].Trim() == "*";
         string upstream = fields[6];
 
@@ -155,11 +156,11 @@ public sealed class RefReader : IRefReader
     }
 
     /// <summary>
-    /// <c>%(upstream:track)</c> alanını ayrıştırır.
+    /// Parses the <c>%(upstream:track)</c> field.
     /// </summary>
     /// <remarks>
-    /// Ölçülen biçimler: <c>[ahead 3, behind 2]</c> · <c>[ahead 1]</c> · <c>[behind 4]</c> ·
-    /// <c>[gone]</c> · boş (senkron ya da upstream yok).
+    /// The measured forms: <c>[ahead 3, behind 2]</c> · <c>[ahead 1]</c> · <c>[behind 4]</c> ·
+    /// <c>[gone]</c> · empty (in sync, or no upstream).
     /// </remarks>
     internal static UpstreamTracking ParseTracking(string value)
     {
@@ -203,17 +204,17 @@ public sealed class RefReader : IRefReader
     }
 
     /// <summary>
-    /// <c>HEAD</c>'in dala mı yoksa doğrudan commit'e mi baktığını belirler.
+    /// Determines whether <c>HEAD</c> looks at a branch or straight at a commit.
     /// </summary>
     /// <remarks>
-    /// <c>%(HEAD)</c> alanı yeterli değil: detached durumda <b>hiçbir dal</b> işaretlenmiyor
-    /// (ölçüldü). Bu yüzden <c>symbolic-ref</c> ile ayrıca soruluyor.
+    /// The <c>%(HEAD)</c> field is not enough: in a detached state <b>no branch</b> is marked
+    /// (measured). That is why <c>symbolic-ref</c> is asked separately.
     /// </remarks>
     private async Task<HeadState> ReadHeadAsync(
         string workingDirectory,
         CancellationToken cancellationToken)
     {
-        // -q: detached durumda hata yazmaz, yalnızca sıfır olmayan kod döner.
+        // -q: in a detached state it prints no error, it just returns a non-zero code.
         GitResult symbolic = await _runner.RunAsync(
             new GitCommand
             {
@@ -231,7 +232,7 @@ public sealed class RefReader : IRefReader
             {
                 WorkingDirectory = workingDirectory,
                 Arguments = ["rev-parse", "--verify", "--quiet", "HEAD"],
-                // Doğmamış depoda commit yoktur ve bu bir hata değildir.
+                // In an unborn repository there is no commit, and that is not an error.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);
@@ -250,20 +251,20 @@ public sealed class RefReader : IRefReader
     }
 
     /// <summary>
-    /// Yapılandırılmış uzak depoları okur.
+    /// Reads the configured remotes.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <c>git remote -v</c> insan-okunur; onun yerine <c>config</c> kullanılıyor
-    /// (ADR-0002: insan-okunur çıktı ayrıştırılmaz).
+    /// <c>git remote -v</c> is human-readable; <c>config</c> is used instead (ADR-0002: human-readable
+    /// output is not parsed).
     /// </para>
     /// <para>
-    /// 🔴 <b>Ayrıştırma burada DEĞİL, <see cref="RemoteConfigParser"/>'da</b> (P06-T05).
-    /// Burada ikinci bir ayrıştırıcı vardı ve ölçüm üç sessiz farkını gösterdi: <c>-z</c>
-    /// kullanmadığı için satır sonu içeren URL <b>ikiye bölünüyordu</b>, çoklu URL'de
-    /// <b>sonuncusu</b> kazanıyordu ve URL'siz bir remote listeden <b>düşüyordu</b>.
-    /// Aynı soruya iki yoldan cevap vermek, birinin sessizce yanlış olmasına izin vermişti
-    /// (P06-T04'ün dersi).
+    /// 🔴 <b>The parsing is NOT here but in <see cref="RemoteConfigParser"/></b> (P06-T05). There used
+    /// to be a second parser here, and measurement showed three silent differences: because it did
+    /// not use <c>-z</c>, a URL containing a line ending was <b>split in two</b>; with multiple URLs
+    /// <b>the last one</b> won; and a remote with no URL <b>dropped out</b> of the list. Answering the
+    /// same question by two routes had allowed one of them to be silently wrong (the lesson of
+    /// P06-T04).
     /// </para>
     /// </remarks>
     private async Task<IReadOnlyList<RemoteInfo>> ReadRemotesAsync(
@@ -275,7 +276,7 @@ public sealed class RefReader : IRefReader
             {
                 WorkingDirectory = workingDirectory,
                 Arguments = ["config", "-z", "--get-regexp", RemoteConfigParser.KeyPattern],
-                // Hiç remote yoksa 1 döner; bu bir hata değil.
+                // With no remotes at all it returns 1; that is not an error.
                 SuccessExitCodes = [0, 1],
             },
             cancellationToken).ConfigureAwait(false);
@@ -286,10 +287,10 @@ public sealed class RefReader : IRefReader
 
         return
         [
-            // URL'si olmayan remote burada elenmeye devam ediyor: `RemoteInfo.FetchUrl`
-            // zorunlu ve bu tür çağıranlar (rozetler, dal listesi) adresi olmayan bir
-            // remote'la bir şey yapamaz. Uzak depo yönetimi ekranı onları da göstermek
-            // zorunda ve bu yüzden `IRemoteReader` kullanıyor.
+            // A remote with no URL continues to be filtered out here: `RemoteInfo.FetchUrl` is
+            // required, and callers of this kind (badges, the branch list) can do nothing with a
+            // remote that has no address. The remote management screen has to show those too, which is
+            // why it uses `IRemoteReader`.
             .. remotes
                 .Where(remote => remote.FetchUrls.Count > 0 || remote.PushUrls.Count > 0)
                 .Select(remote => new RemoteInfo

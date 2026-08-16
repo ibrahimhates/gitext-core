@@ -4,53 +4,53 @@ using GitExt.Core.Model;
 namespace GitExt.Core;
 
 /// <summary>
-/// Commit'leri yeniden oynatan işlem türü (P07-T07, P07-T08).
+/// The kind of operation that replays commits (P07-T07, P07-T08).
 /// </summary>
 /// <remarks>
-/// <c>cherry-pick</c> ve <c>revert</c> git içinde <b>aynı sequencer</b> tarafından
-/// yürütülüyor: aynı durum dosyaları, aynı <c>--continue</c>/<c>--skip</c>/<c>--abort</c>
-/// üçlüsü, aynı çakışma davranışı. Bu yüzden tek bir yazıcı ile ele alınıyorlar.
+/// <c>cherry-pick</c> and <c>revert</c> are driven by the <b>same sequencer</b> inside git: the same
+/// state files, the same <c>--continue</c>/<c>--skip</c>/<c>--abort</c> trio, the same conflict
+/// behaviour. That is why they are handled by a single writer.
 /// </remarks>
 public enum SequencerOperation
 {
     /// <summary>Commit'i buraya uygula.</summary>
     CherryPick,
 
-    /// <summary>Commit'in yaptığını geri alan yeni bir commit üret.</summary>
+    /// <summary>Produce a new commit that undoes what the commit did.</summary>
     Revert,
 }
 
-/// <summary>Cherry-pick / revert seçenekleri (P07-T07, P07-T08).</summary>
+/// <summary>Cherry-pick / revert options (P07-T07, P07-T08).</summary>
 public sealed record SequencerOptions
 {
     public required SequencerOperation Operation { get; init; }
 
-    /// <summary>Uygulanacak commit'ler — verildikleri sırayla.</summary>
+    /// <summary>The commits to apply — in the order they are given.</summary>
     public required IReadOnlyList<string> Commits { get; init; }
 
     /// <summary>
-    /// <c>--no-commit</c>: değişiklikleri hazırla ama commit'leme.
+    /// <c>--no-commit</c>: prepare the changes but do not commit.
     /// </summary>
     /// <remarks>
-    /// Çoklu commit ile birlikte kullanıldığında hepsi tek bir hazırlığa yığılır.
+    /// Used together with multiple commits, all of them pile into a single preparation.
     /// </remarks>
     public bool NoCommit { get; init; }
 
     /// <summary>
-    /// <c>-x</c>: mesaja <i>"(cherry picked from commit …)"</i> satırı ekler.
+    /// <c>-x</c>: adds a <i>"(cherry picked from commit …)"</i> line to the message.
     /// </summary>
     /// <remarks>
-    /// Yalnızca cherry-pick için anlamlı; revert zaten kaynağı mesaja yazıyor.
+    /// Only meaningful for cherry-pick; revert already writes its source into the message.
     /// </remarks>
     public bool RecordOrigin { get; init; }
 
     /// <summary>
-    /// Merge commit'i için hangi ebeveynin "ana hat" sayılacağı (1 tabanlı).
+    /// Which parent counts as the "mainline" for a merge commit (1-based).
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ — merge commit'ini <c>-m</c> olmadan revert etmek rc=128 veriyor</b>
-    /// (<c>is a merge but no -m option was given</c>). Hangi ebeveyne göre geri alınacağı
-    /// git'in tahmin edebileceği bir şey değil; kullanıcı seçmeli.
+    /// 🔴 <b>MEASURED — reverting a merge commit without <c>-m</c> gives rc=128</b>
+    /// (<c>is a merge but no -m option was given</c>). Which parent to revert against is not something
+    /// git can guess; the user has to choose.
     /// </remarks>
     public int? MainlineParent { get; init; }
 }
@@ -60,23 +60,23 @@ public sealed record SequencerResult
 {
     public required SequencerOperation Operation { get; init; }
 
-    /// <summary>İşlem öncesi konum — geri alma bilgisi bunun üzerinden.</summary>
+    /// <summary>The position before the operation — the undo information comes from this.</summary>
     public required SafetyPoint SafetyPoint { get; init; }
 
-    /// <summary>Çakışmayla durdu mu?</summary>
+    /// <summary>Did it stop on a conflict?</summary>
     public bool HasConflicts => ConflictedPaths.Count > 0;
 
     public IReadOnlyList<RepositoryPath> ConflictedPaths { get; init; } = [];
 
-    /// <summary>Oluşan commit sayısı.</summary>
+    /// <summary>The number of commits created.</summary>
     public int CommitsCreated { get; init; }
 
     /// <summary>
-    /// Kullanıcının hâlâ commit'lemesi gerekiyor mu?
+    /// Does the user still have to commit?
     /// </summary>
     /// <remarks>
-    /// <c>--no-commit</c> "başarılı" dönüyor ama <c>HEAD</c> ilerlemiyor — P06-T11'de
-    /// <c>--squash</c> ile aynı tuzak.
+    /// <c>--no-commit</c> returns "success" but <c>HEAD</c> does not advance — the same trap as
+    /// <c>--squash</c> in P06-T11.
     /// </remarks>
     public bool RequiresCommit { get; init; }
 }
@@ -99,18 +99,18 @@ public interface ISequencerWriter
 }
 
 /// <summary>
-/// <c>git cherry-pick</c> ve <c>git revert</c> sarmalayıcısı (P07-T07, P07-T08).
+/// The <c>git cherry-pick</c> and <c>git revert</c> wrapper (P07-T07, P07-T08).
 /// </summary>
 /// <remarks>
 /// <para>
-/// 🔴 <b>Çakışma bir hata değil, bir DURUM.</b> Her ikisi de çakışmada rc=1 veriyor ve
-/// metni <c>stdout</c>'a yazıyor (P06-T11'de merge'de, P06-T07'de pull'da aynı ders).
-/// Karar metne değil <b>index'e</b> bakarak veriliyor: <c>diff --diff-filter=U</c>.
+/// 🔴 <b>A conflict is not an error, it is a STATE.</b> Both give rc=1 on a conflict and write their
+/// text to <c>stdout</c> (the same lesson as merge in P06-T11 and pull in P06-T07).
+/// The decision is made by looking at the <b>index</b>, not at the text: <c>diff --diff-filter=U</c>.
 /// </para>
 /// <para>
-/// ÖLÇÜLDÜ — çakışmada bırakılan durum: <c>.git/CHERRY_PICK_HEAD</c> (ya da
-/// <c>REVERT_HEAD</c>) + <c>MERGE_MSG</c>. Çoklu commit'te ayrıca <c>.git/sequencer/</c>.
-/// Çözüm akışı P07-T05'e bağlanıyor.
+/// MEASURED — the state left behind on a conflict: <c>.git/CHERRY_PICK_HEAD</c> (or
+/// <c>REVERT_HEAD</c>) plus <c>MERGE_MSG</c>. With multiple commits, <c>.git/sequencer/</c> as well.
+/// The resolution flow connects to P07-T05.
 /// </para>
 /// </remarks>
 public sealed class SequencerWriter : ISequencerWriter
@@ -157,7 +157,7 @@ public sealed class SequencerWriter : ISequencerWriter
             IReadOnlyList<RepositoryPath> conflicts =
                 await ReadConflictsAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
 
-            // Gerçek hatalar (bilinmeyen commit, kirli ağaç, eksik -m) olduğu gibi yukarı.
+            // Real errors (an unknown commit, a dirty tree, a missing -m) propagate as they are.
             if (conflicts.Count == 0)
             {
                 throw;
@@ -213,7 +213,7 @@ public sealed class SequencerWriter : ISequencerWriter
 
     public string DescribeCommand(SequencerOptions options) => Describe(options);
 
-    /// <summary>Çalıştırılacak komutu üretir ("komutu göster" ilkesi).</summary>
+    /// <summary>Produces the command that will run (the "show the command" principle).</summary>
     public static string Describe(SequencerOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -243,8 +243,8 @@ public sealed class SequencerWriter : ISequencerWriter
             arguments.Add("-x");
         }
 
-        // Revert kendi mesajını üretebiliyor; editör açtırmamak için --no-edit.
-        // (Cherry-pick zaten kaynak mesajı kullanıyor ve editör açmıyor.)
+        // Revert can produce its own message; --no-edit keeps it from opening an editor.
+        // (Cherry-pick already uses the source message and opens no editor.)
         if (options.Operation == SequencerOperation.Revert && !options.NoCommit)
         {
             arguments.Add("--no-edit");
@@ -318,7 +318,7 @@ public sealed class SequencerWriter : ISequencerWriter
         string workingDirectory,
         CancellationToken cancellationToken)
     {
-        // `--quiet` fark varsa 1 döner; bu bir hata değil (P02'de beyan edilen kalıp).
+        // `--quiet` returns 1 when there is a difference; that is not an error (the pattern declared in P02).
         GitResult result = await _runner.RunAsync(
             new GitCommand
             {

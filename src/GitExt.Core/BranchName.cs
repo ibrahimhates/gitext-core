@@ -1,45 +1,45 @@
 namespace GitExt.Core;
 
 /// <summary>
-/// Bir dal adının neden kabul edilemediği (P06-T01).
+/// Why a branch name cannot be accepted (P06-T01).
 /// </summary>
 public enum BranchNameProblem
 {
-    /// <summary>Ad boş veya yalnızca boşluk.</summary>
+    /// <summary>The name is empty or only whitespace.</summary>
     Empty,
 
     /// <summary>
-    /// Ad <c>refs/heads/</c> ile başlıyor.
+    /// The name starts with <c>refs/heads/</c>.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ:</b> git bunu hata saymıyor — <c>git branch refs/heads/x</c>
-    /// <c>refs/heads/refs/heads/x</c> oluşturuyor. Kullanıcı tam ref adını yapıştırdığında
-    /// sessizce iç içe bir dal elde ediyor.
+    /// 🔴 <b>MEASURED:</b> git does not treat this as an error — <c>git branch refs/heads/x</c>
+    /// creates <c>refs/heads/refs/heads/x</c>. When the user pastes the full ref name they silently
+    /// end up with a nested branch.
     /// </remarks>
     NestedRefsPrefix,
 
     /// <summary>
-    /// Ad revizyon sözdizimi içeriyor (<c>@{-1}</c>, <c>@{u}</c> gibi).
+    /// The name contains revision syntax (such as <c>@{-1}</c> or <c>@{u}</c>).
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ:</b> <c>git branch</c> bunları <b>çeviriyor</b>; <c>@{-1}</c>
-    /// "bir önceki dal" demek ve yazılan adla oluşan ad farklı oluyor.
+    /// 🔴 <b>MEASURED:</b> <c>git branch</c> <b>translates</b> these; <c>@{-1}</c> means "the previous
+    /// branch" and the name typed differs from the name created.
     /// </remarks>
     RevisionSyntax,
 
-    /// <summary>Ad <c>-</c> ile başlıyor (git bunu seçenek sanar).</summary>
+    /// <summary>The name starts with <c>-</c> (git takes it for an option).</summary>
     LeadingDash,
 
-    /// <summary>Ad <c>HEAD</c> (git özel olarak reddediyor).</summary>
+    /// <summary>The name is <c>HEAD</c> (git rejects it specially).</summary>
     ReservedHead,
 
-    /// <summary>Yasak karakter: boşluk, kontrol karakteri, <c>~ ^ : ? * [ \</c>.</summary>
+    /// <summary>A forbidden character: space, a control character, <c>~ ^ : ? * [ \</c>.</summary>
     ForbiddenCharacter,
 
-    /// <summary>Bölüm <c>.</c> ile başlıyor veya <c>.lock</c> ile bitiyor.</summary>
+    /// <summary>A component starts with <c>.</c> or ends with <c>.lock</c>.</summary>
     InvalidSegment,
 
-    /// <summary>Boş bölüm: baştaki/sondaki <c>/</c> veya art arda <c>//</c>.</summary>
+    /// <summary>An empty component: a leading/trailing <c>/</c> or a consecutive <c>//</c>.</summary>
     EmptySegment,
 
     /// <summary>Art arda iki nokta (<c>..</c>) veya sonda nokta.</summary>
@@ -47,42 +47,43 @@ public enum BranchNameProblem
 }
 
 /// <summary>
-/// Dal adı doğrulaması (P06-T01).
+/// Branch name validation (P06-T01).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Neden saf bir uygulama?</b> Doğrulama kullanıcı yazarken çalışıyor; her tuş vuruşunda
-/// <c>git check-ref-format</c> süreci başlatmak hem yavaş hem gereksiz. Buradaki kuralların
-/// git'inkilerle aynı kaldığı <b>ayrık bir testle</b> (aynı adlar hem buraya hem gerçek
-/// <c>git check-ref-format --branch</c>'a verilir) sabitlendi — sapma testte kırmızı olur.
+/// <b>Why a pure implementation?</b> The validation runs while the user types; starting a
+/// <c>git check-ref-format</c> process on every keystroke is both slow and unnecessary. That the
+/// rules here stay the same as git's is pinned down by a <b>differential test</b> (the same names are
+/// fed both to this code and to the real <c>git check-ref-format --branch</c>) — any drift turns the
+/// test red.
 /// </para>
 /// <para>
-/// <b>⚠️ ÖLÇÜLDÜ — tek bir <c>check-ref-format</c> çağrısı bu işi DOĞRU yapmıyor.</b>
-/// İki form birbirine zıt cevap veriyor:
+/// <b>⚠️ MEASURED — a single <c>check-ref-format</c> call DOES NOT do this job correctly.</b>
+/// The two forms give opposite answers:
 /// </para>
 /// <list type="table">
-///   <listheader><term>Ad</term><description><c>--branch</c> · <c>--allow-onelevel refs/heads/…</c></description></listheader>
-///   <item><term><c>@{-1}</c></term><description>geçiyor (ve <b>başka bir ada çeviriyor</b>) · reddediyor</description></item>
-///   <item><term><c>HEAD</c></term><description>reddediyor · <b>geçiyor</b></description></item>
-///   <item><term><c>-x</c></term><description>reddediyor · <b>geçiyor</b></description></item>
+///   <listheader><term>Name</term><description><c>--branch</c> · <c>--allow-onelevel refs/heads/…</c></description></listheader>
+///   <item><term><c>@{-1}</c></term><description>passes (and <b>translates it to another name</b>) · rejects</description></item>
+///   <item><term><c>HEAD</c></term><description>rejects · <b>passes</b></description></item>
+///   <item><term><c>-x</c></term><description>rejects · <b>passes</b></description></item>
 /// </list>
 /// <para>
-/// Doğru referans <c>--branch</c>: <c>git branch</c>'ın kendisi de aynı kuralları uyguluyor
-/// (<c>--</c> ayracından sonra bile <c>HEAD</c> ve <c>-x</c> reddediliyor). Ama <c>--branch</c>
-/// doğrulamıyor, <b>çeviriyor</b>: <c>@{-1}</c> için çıktısı yazılan ad değil "bir önceki
-/// dal"ın adı. Bu yüzden revizyon sözdizimi burada <b>ayrıca</b> eleniyor.
+/// The right reference is <c>--branch</c>: <c>git branch</c> itself applies the same rules
+/// (<c>HEAD</c> and <c>-x</c> are rejected even after the <c>--</c> separator). But <c>--branch</c>
+/// does not validate, it <b>translates</b>: for <c>@{-1}</c> its output is not the name typed but the
+/// name of "the previous branch". That is why revision syntax is filtered out <b>separately</b> here.
 /// </para>
 /// </remarks>
 public static class BranchName
 {
-    /// <summary>Git'in tam dal ref'i öneki.</summary>
+    /// <summary>Git's full branch ref prefix.</summary>
     public const string HeadsPrefix = "refs/heads/";
 
     /// <summary>
-    /// Adı doğrular.
+    /// Validates the name.
     /// </summary>
-    /// <param name="name">Kullanıcının yazdığı ad.</param>
-    /// <returns>Sorun yoksa <see langword="null"/>.</returns>
+    /// <param name="name">The name the user typed.</param>
+    /// <returns><see langword="null"/> when there is no problem.</returns>
     public static BranchNameProblem? Validate(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -90,14 +91,14 @@ public static class BranchName
             return BranchNameProblem.Empty;
         }
 
-        // 🔴 git bunu hata saymıyor, sessizce iç içe dal oluşturuyor (ölçüldü).
+        // 🔴 git does not treat this as an error, it silently creates a nested branch (measured).
         if (name.StartsWith(HeadsPrefix, StringComparison.Ordinal))
         {
             return BranchNameProblem.NestedRefsPrefix;
         }
 
-        // `@{` git için revizyon sözdizimi. `--branch` bunu ÇEVİRİYOR; yazılan ad ile
-        // oluşan ad farklı olurdu.
+        // `@{` is revision syntax to git. `--branch` TRANSLATES it; the name typed and the name
+        // created would differ.
         if (name.Contains("@{", StringComparison.Ordinal))
         {
             return BranchNameProblem.RevisionSyntax;
@@ -126,7 +127,7 @@ public static class BranchName
             }
         }
 
-        // ⚠️ `Split` boş bölümleri koruyor: baştaki/sondaki `/` ve `//` böyle yakalanıyor.
+        // ⚠️ `Split` keeps empty components: that is how a leading/trailing `/` and `//` are caught.
         foreach (string segment in name.Split('/'))
         {
             if (segment.Length == 0)
@@ -143,7 +144,7 @@ public static class BranchName
         return null;
     }
 
-    /// <summary>Ad geçerli mi?</summary>
+    /// <summary>Is the name valid?</summary>
     public static bool IsValid(string? name) => Validate(name) is null;
 
     private static bool IsForbidden(char c) =>

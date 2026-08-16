@@ -7,7 +7,7 @@ using GitExt.Core.Model;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Çakışan tek bir dosyanın satırı (P07-T03).
+/// The row for a single conflicting file (P07-T03).
 /// </summary>
 public sealed class ConflictFileViewModel : ViewModelBase
 {
@@ -19,10 +19,10 @@ public sealed class ConflictFileViewModel : ViewModelBase
 
     public string Name => File.Path.Name;
 
-    /// <summary>Çakışma türünün insan okunur karşılığı.</summary>
+    /// <summary>The human-readable rendering of the conflict kind.</summary>
     /// <remarks>
-    /// Metinler GitExtensions <c>FormResolveConflicts</c>'in sütun değerleriyle aynı
-    /// anlamda (§ 9); orada da kullanıcıya <i>hangi tarafın ne yaptığı</i> söyleniyor.
+    /// The texts carry the same meaning as the column values in GitExtensions'
+    /// <c>FormResolveConflicts</c> (§ 9); there too the user is told <i>which side did what</i>.
     /// </remarks>
     public string Description => File.Kind switch
     {
@@ -37,13 +37,13 @@ public sealed class ConflictFileViewModel : ViewModelBase
     };
 
     /// <summary>
-    /// Üç yollu metin görünümü bu dosya için anlamlı mı?
+    /// Does the three-way text view make sense for this file?
     /// </summary>
     /// <remarks>
-    /// Varlık çakışmasında (bir taraf silmiş) birleştirilecek iki metin yok; verilecek bir
-    /// <b>karar</b> var. Boş bir "theirs" paneli göstermek, dosyanın boş olduğu gibi
-    /// okunurdu — P07-T02'de <see langword="null"/> ile boş dizinin ayrılma gerekçesinin
-    /// arayüzdeki karşılığı.
+    /// In a presence conflict (one side deleted it) there are not two texts to merge; there is a
+    /// <b>decision</b> to make. Showing an empty "theirs" panel would read as the file being empty —
+    /// the UI counterpart of why <see langword="null"/> and an empty string are kept apart in
+    /// P07-T02.
     /// </remarks>
     public bool SupportsThreeWay => File.IsContentConflict;
 
@@ -55,17 +55,17 @@ public sealed class ConflictFileViewModel : ViewModelBase
 }
 
 /// <summary>
-/// Çakışma çözüm ekranı (P07-T03, P07-T05).
+/// The conflict resolution screen (P07-T03, P07-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Yerleşim GitExtensions <c>FormResolveConflicts</c>'i takip ediyor (§ 9): solda çakışan
-/// dosyaların listesi, sağda seçili dosyanın <b>Base | Ours | Theirs</b> panelleri, altta
-/// eylem düğmeleri.
+/// The layout follows GitExtensions' <c>FormResolveConflicts</c> (§ 9): the list of conflicting files
+/// on the left, the selected file's <b>Base | Ours | Theirs</b> panels on the right, and the action
+/// buttons at the bottom.
 /// </para>
 /// <para>
-/// 🔴 Devam düğmesi yalnızca <b>hepsi çözüldüğünde</b> etkin: ölçümde çözülmeden
-/// <c>--continue</c> çalıştırmak rc=128 veriyordu.
+/// 🔴 The continue button is enabled only when <b>everything is resolved</b>: in the measurement,
+/// running <c>--continue</c> before resolving gave rc=128.
 /// </para>
 /// </remarks>
 public sealed class ConflictViewModel : ViewModelBase
@@ -109,7 +109,7 @@ public sealed class ConflictViewModel : ViewModelBase
         AbortCommand = new AsyncRelayCommand(AbortAsync, () => Progress?.Operation != InProgressOperation.None);
     }
 
-    /// <summary>Çakışan dosyalar.</summary>
+    /// <summary>The conflicting files.</summary>
     public ObservableCollection<ConflictFileViewModel> Files { get; } = [];
 
     public ConflictFileViewModel? Selected
@@ -129,10 +129,10 @@ public sealed class ConflictViewModel : ViewModelBase
 
     public bool HasSelection => Selected is not null;
 
-    /// <summary>Üç yollu paneller gösterilsin mi?</summary>
+    /// <summary>Should the three-way panels be shown?</summary>
     public bool ShowThreeWay => Selected?.SupportsThreeWay == true;
 
-    /// <summary>Ortak ata sürümü.</summary>
+    /// <summary>The common ancestor version.</summary>
     public string BaseText
     {
         get => _baseText;
@@ -151,7 +151,7 @@ public sealed class ConflictViewModel : ViewModelBase
         private set => SetProperty(ref _theirsText, value);
     }
 
-    /// <summary>Kullanıcının düzenlediği sonuç.</summary>
+    /// <summary>The result as edited by the user.</summary>
     public string MergedText
     {
         get => _mergedText;
@@ -172,14 +172,14 @@ public sealed class ConflictViewModel : ViewModelBase
         }
     }
 
-    /// <summary>"3 dosyada çakışma kaldı" gibi bir özet.</summary>
+    /// <summary>A summary along the lines of "3 files still conflicting".</summary>
     public string RemainingText => Progress is null
         ? string.Empty
         : Progress.IsResolved
             ? "All conflicts resolved."
             : $"{Progress.RemainingCount} file(s) still conflicted.";
 
-    /// <summary>Devam komutunun metni — işleme göre değişiyor.</summary>
+    /// <summary>The text of the continue command — it differs by operation.</summary>
     public string ContinueCommandText => Progress?.ContinueCommand ?? string.Empty;
 
     public string? Error
@@ -216,7 +216,7 @@ public sealed class ConflictViewModel : ViewModelBase
 
     public IAsyncRelayCommand AbortCommand { get; }
 
-    /// <summary>Ekranı doldurur.</summary>
+    /// <summary>Populates the screen.</summary>
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
         string? previous = Selected?.Path;
@@ -235,8 +235,8 @@ public sealed class ConflictViewModel : ViewModelBase
             .GetProgressAsync(_workingDirectory, cancellationToken)
             .ConfigureAwait(true);
 
-        // Seçim korunuyor: her çözümden sonra listenin başına atlamak, sırayla ilerleyen
-        // kullanıcının yerini kaybettirirdi.
+        // The selection is preserved: jumping back to the top of the list after every resolution would
+        // lose the place of a user working through them in order.
         Selected = Files.FirstOrDefault(file =>
                        string.Equals(file.Path, previous, StringComparison.Ordinal))
                    ?? Files.FirstOrDefault();
@@ -262,7 +262,7 @@ public sealed class ConflictViewModel : ViewModelBase
         AbortCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Seçili dosyanın üç sürümünü okur.</summary>
+    /// <summary>Reads the three versions of the selected file.</summary>
     private async Task LoadStagesAsync()
     {
         if (Selected is not { } selected)
@@ -275,14 +275,14 @@ public sealed class ConflictViewModel : ViewModelBase
         OursText = await ReadStageAsync(selected, ConflictStage.Ours).ConfigureAwait(true);
         TheirsText = await ReadStageAsync(selected, ConflictStage.Theirs).ConfigureAwait(true);
 
-        // Sonuç paneli çalışma ağacındaki hâlle başlıyor — git'in çakışma işaretlerini
-        // koyduğu dosya. Kullanıcının elle düzenlemesi buradan devam ediyor.
+        // The result panel starts from the state in the working tree — the file git put the conflict
+        // markers into. The user's hand editing carries on from there.
         MergedText = ReadWorkingTree(selected);
     }
 
     private async Task<string> ReadStageAsync(ConflictFileViewModel file, ConflictStage stage)
     {
-        // 🔴 Aşama yoksa okumaya kalkmıyoruz: `git show :2:<yol>` fatal veriyor.
+        // 🔴 With the stage absent we do not even attempt the read: `git show :2:<path>` gives a fatal.
         if (!file.File.HasStage(stage))
         {
             return string.Empty;
@@ -320,10 +320,9 @@ public sealed class ConflictViewModel : ViewModelBase
     });
 
     /// <remarks>
-    /// "İkisini de al" birleştirme değil <b>birleştirmeyi kullanıcıya bırakma</b>: iki
-    /// taraf art arda yazılıyor ve sonuç paneline konuyor. Doğrudan kaydetmiyoruz —
-    /// kullanıcı bakmadan iki sürümün üst üste eklenmesi neredeyse hiçbir zaman doğru
-    /// sonuç değil.
+    /// "Take both" is not merging but <b>leaving the merge to the user</b>: the two sides are written
+    /// one after the other and put into the result panel. We do not save it directly — appending two
+    /// versions on top of each other without the user looking is almost never the right result.
     /// </remarks>
     private Task TakeBothAsync()
     {
@@ -363,7 +362,7 @@ public sealed class ConflictViewModel : ViewModelBase
         await _resolver.AbortAsync(_workingDirectory).ConfigureAwait(true);
     });
 
-    /// <summary>Ortak sarmalayıcı: hata yakalama + yenileme.</summary>
+    /// <summary>The shared wrapper: error handling plus refresh.</summary>
     private async Task RunAsync(Func<Task> action)
     {
         IsBusy = true;
@@ -385,7 +384,7 @@ public sealed class ConflictViewModel : ViewModelBase
     }
 }
 
-/// <summary>Çakışma çözüm ekranını gösteren taraf (P07-T03).</summary>
+/// <summary>The side that shows the conflict resolution screen (P07-T03).</summary>
 public interface IConflictPrompt
 {
     Task ShowAsync(ConflictViewModel model);

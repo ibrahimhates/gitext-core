@@ -1,32 +1,32 @@
 namespace GitExt.Core.Model;
 
 /// <summary>
-/// Yapılandırılmış bir uzak depo (P06-T05).
+/// A configured remote (P06-T05).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Değerler <b>ham config</b> değerleridir. 🔴 <b>ÖLÇÜLDÜ:</b> <c>git remote get-url</c> ve
-/// <c>git remote -v</c>, <c>url.&lt;taban&gt;.insteadOf</c> tanımlıysa URL'yi <b>yeniden
-/// yazılmış</b> hâlde veriyor: config'te <c>ornek:proje</c> dururken ikisi de
-/// <c>/…/up.gitproje</c> diyor. Arayüz o değeri düzenleme kutusuna koyup kaydederse
-/// kullanıcının kısayolu <b>kalıcı olarak yok olur</b>. Bu yüzden buradaki değerler
-/// yalnızca <c>git config</c>'ten okunur.
+/// The values are <b>raw config</b> values. 🔴 <b>MEASURED:</b> with
+/// <c>url.&lt;base&gt;.insteadOf</c> defined, <c>git remote get-url</c> and <c>git remote -v</c> both
+/// give the URL in its <b>rewritten</b> form: with <c>example:project</c> in the config, both say
+/// <c>/…/up.gitproject</c>. If the UI puts that value into the edit box and saves it, the user's
+/// shortcut is <b>permanently destroyed</b>. That is why the values here are read only from
+/// <c>git config</c>.
 /// </para>
 /// <para>
-/// URL listeleri <b>çoğul</b>: <c>git remote set-url --add</c> aynı remote'a birden çok URL
-/// yazabiliyor (fetch ilkini kullanır, push hepsine gider).
+/// The URL lists are <b>plural</b>: <c>git remote set-url --add</c> can write several URLs to the
+/// same remote (fetch uses the first, push goes to all of them).
 /// </para>
 /// </remarks>
 public sealed record GitRemote
 {
-    /// <summary>Remote adı (<c>origin</c> gibi).</summary>
+    /// <summary>The remote's name (<c>origin</c> and the like).</summary>
     public required string Name { get; init; }
 
-    /// <summary><c>remote.&lt;ad&gt;.url</c> — ham, sırayla.</summary>
+    /// <summary><c>remote.&lt;name&gt;.url</c> — raw, in order.</summary>
     public IReadOnlyList<string> FetchUrls { get; init; } = [];
 
     /// <summary>
-    /// <c>remote.&lt;ad&gt;.pushurl</c> — ham. Boşsa push <see cref="FetchUrls"/> kullanır.
+    /// <c>remote.&lt;name&gt;.pushurl</c> — raw. When empty, push uses <see cref="FetchUrls"/>.
     /// </summary>
     public IReadOnlyList<string> PushUrls { get; init; } = [];
 
@@ -37,49 +37,49 @@ public sealed record GitRemote
     public string? TagOption { get; init; }
 
     /// <summary>
-    /// Gösterilecek birincil URL; <b>tanımlı değilse <see langword="null"/></b>.
+    /// The primary URL to display; <b><see langword="null"/> when none is defined</b>.
     /// </summary>
     /// <remarks>
-    /// 🔴 <b>ÖLÇÜLDÜ:</b> yalnızca <c>fetch</c> anahtarı tanımlı bir remote için
-    /// <c>git remote get-url &lt;ad&gt;</c> çıkış kodu <b>0</b> ile <b>adın kendisini</b>
-    /// basıyor (git adı URL sanıyor), <c>remote -v</c> ise boş bırakıyor. Aynı soruya iki
-    /// farklı cevap; ikisi de kullanılmıyor.
+    /// 🔴 <b>MEASURED:</b> for a remote with only a <c>fetch</c> key defined,
+    /// <c>git remote get-url &lt;name&gt;</c> prints <b>the name itself</b> with exit code <b>0</b>
+    /// (git takes the name for a URL), while <c>remote -v</c> leaves it blank. Two different answers to
+    /// the same question; neither is used.
     /// </remarks>
     public string? Url => FetchUrls.Count > 0 ? FetchUrls[0] : null;
 
-    /// <summary>Push için ayrı URL tanımlı mı?</summary>
+    /// <summary>Is a separate URL defined for pushing?</summary>
     /// <remarks>
-    /// Bu sorunun cevabı <c>remote -v</c>'nin <c>(push)</c> satırında <b>yok</b>: pushurl
-    /// tanımlı değilken git orada fetch URL'sini tekrarlıyor.
+    /// The answer to this question is <b>not</b> in <c>remote -v</c>'s <c>(push)</c> line: with no
+    /// pushurl defined, git repeats the fetch URL there.
     /// </remarks>
     public bool HasSeparatePushUrl => PushUrls.Count > 0;
 
-    /// <summary>Push'un gerçekten gideceği URL'ler.</summary>
+    /// <summary>The URLs a push will actually go to.</summary>
     public IReadOnlyList<string> EffectivePushUrls =>
         PushUrls.Count > 0 ? PushUrls : FetchUrls;
 
     /// <summary>
-    /// <c>fetch</c> refspec'i git'in kurduğu varsayılan mı?
+    /// Is the <c>fetch</c> refspec the default one git sets up?
     /// </summary>
     /// <remarks>
-    /// Varsayılan olmayan refspec, yeniden adlandırmada git tarafından <b>güncellenmiyor</b>
-    /// (ölçüldü; uyarı yalnızca stderr'de, çıkış kodu 0).
+    /// A non-default refspec is <b>not updated</b> by git on a rename (measured; the warning is on
+    /// stderr alone, with exit code 0).
     /// </remarks>
     public bool HasDefaultFetchRefspec =>
         FetchRefspecs.Count == 1
         && string.Equals(FetchRefspecs[0], DefaultFetchRefspec(Name), StringComparison.Ordinal);
 
-    /// <summary>Bir remote için git'in kurduğu varsayılan fetch refspec'i.</summary>
+    /// <summary>The default fetch refspec git sets up for a remote.</summary>
     public static string DefaultFetchRefspec(string name) =>
         $"+refs/heads/*:refs/remotes/{name}/*";
 
     /// <summary>
-    /// URL'deki parolayı gizler: <c>https://ali:s3cr3t@host/x.git</c> →
+    /// Hides the password in a URL: <c>https://ali:s3cr3t@host/x.git</c> →
     /// <c>https://ali:***@host/x.git</c>.
     /// </summary>
     /// <remarks>
-    /// ⚠️ Yalnızca <b>gösterim</b> içindir. Düzenleme kutusuna asla maskelenmiş değer
-    /// konulmaz: kullanıcı <c>***</c>'ı kaydeder ve parolasını bozar.
+    /// ⚠️ For <b>display</b> only. A masked value is never put into an edit box: the user saves
+    /// <c>***</c> and breaks their own password.
     /// </remarks>
     public static string MaskCredentials(string? url)
     {
@@ -88,8 +88,8 @@ public sealed record GitRemote
             return string.Empty;
         }
 
-        // Kullanıcı bilgisi yalnızca `şema://` biçiminde olabilir; `git@host:yol` (scp benzeri)
-        // biçiminde `:` yoldan önce gelir ve parola taşımaz.
+        // User information can only appear in the `scheme://` form; in the `git@host:path` (scp-like)
+        // form the `:` comes before the path and carries no password.
         int schemeEnd = url.IndexOf("://", StringComparison.Ordinal);
         if (schemeEnd < 0)
         {
@@ -106,7 +106,7 @@ public sealed record GitRemote
         int colon = url.IndexOf(':', authorityStart);
         if (colon < 0 || colon > at)
         {
-            // Parola yok, yalnızca kullanıcı adı var.
+            // No password, only a user name.
             return url;
         }
 

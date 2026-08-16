@@ -1,27 +1,27 @@
 namespace GitExt.Core;
 
 /// <summary>
-/// Dosya sistemi olaylarını tek bir tazelemede birleştirir (P05-T14).
+/// Coalesces file system events into a single refresh (P05-T14).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Zamanlayıcıdan bilinçli olarak ayrıldı.</b> Burada yalnızca "şimdi ne kadar beklenmeli"
-/// hesabı var; gerçek zamanlayıcı <see cref="RepositoryWatcher"/> tarafında. Böylece
-/// birleştirme kuralları gerçek zaman geçirmeden, deterministik test edilebiliyor —
-/// aksi halde her test yüzlerce milisaniye uyumak zorunda kalır ve yavaş makinede kırılırdı.
+/// <b>Deliberately separated from the timer.</b> All that lives here is the "how long should we wait
+/// now" calculation; the real timer is on the <see cref="RepositoryWatcher"/> side. That way the
+/// coalescing rules can be tested deterministically without any real time passing — otherwise every
+/// test would have to sleep for hundreds of milliseconds and would break on a slow machine.
 /// </para>
 /// <para>
-/// <b>⚠️ ÖLÇÜLDÜ — üç sayı bu tasarımı belirledi:</b>
+/// <b>⚠️ MEASURED — three numbers shaped this design:</b>
 /// </para>
 /// <list type="bullet">
-///   <item>800 dosyalık dal değişimi <b>2102 olay</b> üretti, hepsi ~50 ms içinde.
-///     Gecikme olmadan 2102 <c>git status</c> çalışırdı.</item>
-///   <item>Tek bir dosyayı kaydetmek bile <b>2 olay</b>, editörlerin yaptığı atomik kaydetme
-///     (geçici dosya + yeniden adlandırma) <b>4 olay</b>.</item>
-///   <item>Tek projelik bir <c>dotnet build</c> <b>92 olay</b> üretti ve <b>1,5 saniye</b>
-///     sürdü — hepsi git'in yok saydığı <c>obj/</c> altında. Sürekli akan bu tür gürültüde
-///     saf "her olayda sayacı sıfırla" debounce <b>hiç tetiklenmez</b>; bu yüzden
-///     <see cref="MaximumDelay"/> üst sınırı var.</item>
+///   <item>A branch switch touching 800 files produced <b>2102 events</b>, all within about 50 ms.
+///     Without a delay, 2102 <c>git status</c> runs would follow.</item>
+///   <item>Even saving a single file is <b>2 events</b>, and the atomic save editors do (temporary
+///     file plus rename) is <b>4 events</b>.</item>
+///   <item>A single-project <c>dotnet build</c> produced <b>92 events</b> over <b>1.5 seconds</b> —
+///     all under <c>obj/</c>, which git ignores. Under that kind of continuous noise a pure "reset the
+///     counter on every event" debounce <b>never fires</b>; hence the <see cref="MaximumDelay"/> upper
+///     bound.</item>
 /// </list>
 /// </remarks>
 public sealed class ChangeCoalescer
@@ -33,14 +33,14 @@ public sealed class ChangeCoalescer
     private DateTimeOffset _lastEventAt;
     private DateTimeOffset _lastTakenAt = DateTimeOffset.MinValue;
 
-    /// <param name="debounceDelay">Son olaydan sonra beklenecek sessizlik süresi.</param>
+    /// <param name="debounceDelay">The quiet period to wait for after the last event.</param>
     /// <param name="maximumDelay">
-    /// İlk bekleyen olaydan sonra en fazla beklenecek süre. Sürekli olay akarken
-    /// tazelemenin sonsuza kadar ertelenmesini engeller.
+    /// The longest wait after the first pending event. Keeps the refresh from being deferred forever
+    /// while events keep arriving.
     /// </param>
     /// <param name="minimumInterval">
-    /// İki tazeleme arasındaki en kısa süre. <see cref="MaximumDelay"/>'i de ezer:
-    /// gürültülü bir depoda üst sınır bu olmalı.
+    /// The shortest time between two refreshes. It overrides <see cref="MaximumDelay"/> as well: in a
+    /// noisy repository this is what the upper bound should be.
     /// </param>
     public ChangeCoalescer(
         TimeSpan debounceDelay,
@@ -62,18 +62,18 @@ public sealed class ChangeCoalescer
 
     public TimeSpan MinimumInterval { get; }
 
-    /// <summary>Bekleyen bir değişiklik var mı?</summary>
+    /// <summary>Is there a pending change?</summary>
     public bool HasPending
     {
         get { lock (_gate) { return _pending is not null; } }
     }
 
     /// <summary>
-    /// Bir olayı kaydeder ve tetikleme için beklenecek süreyi döndürür.
+    /// Records an event and returns how long to wait before firing.
     /// </summary>
     /// <remarks>
-    /// Farklı türden olaylar birleşirken <b>daha kapsamlısı kazanır</b>: çalışma ağacı ve
-    /// ref değişimi aynı pencereye düşerse ikisini de kapsayan tam tazeleme yapılır.
+    /// When events of different kinds are coalesced, <b>the broader one wins</b>: if a working tree
+    /// change and a ref change fall into the same window, the full refresh covering both is performed.
     /// </remarks>
     public TimeSpan Add(RepositoryChangeKind kind, DateTimeOffset now)
     {
@@ -95,12 +95,12 @@ public sealed class ChangeCoalescer
     }
 
     /// <summary>
-    /// Zamanı geldiyse bekleyen değişikliği alır ve durumu sıfırlar.
+    /// Takes the pending change when its time has come and resets the state.
     /// </summary>
-    /// <param name="now">Şu anki zaman.</param>
+    /// <param name="now">The current time.</param>
     /// <param name="wait">
-    /// Zamanı gelmediyse tekrar denemeden önce beklenecek süre;
-    /// bekleyen değişiklik yoksa <see langword="null"/>.
+    /// How long to wait before trying again when the time has not come;
+    /// <see langword="null"/> when there is no pending change.
     /// </param>
     public RepositoryChangeKind? TryTake(DateTimeOffset now, out TimeSpan? wait)
     {
@@ -129,7 +129,7 @@ public sealed class ChangeCoalescer
     }
 
     /// <summary>
-    /// Bekleyen değişikliği atar. Depo kapanırken veya izleme durdurulurken kullanılır.
+    /// Discards the pending change. Used when the repository is closed or watching is stopped.
     /// </summary>
     public void Reset()
     {
@@ -141,11 +141,11 @@ public sealed class ChangeCoalescer
 
     private TimeSpan WaitTime(DateTimeOffset now)
     {
-        // Debounce SON OLAYDAN itibaren sayılır: amaç "olaylar durdu mu" sorusuna cevap
-        // vermek. İlk olaydan sayılsaydı bu bir gecikme olurdu, sessizlik beklemek değil.
+        // The debounce counts FROM THE LAST EVENT: the aim is to answer the question "have the events
+        // stopped". Counted from the first event it would be a delay, not waiting for quiet.
         TimeSpan wait = DebounceDelay - (now - _lastEventAt);
 
-        // Üst sınır: ilk bekleyen olaydan beri geçen süre.
+        // The upper bound: the time since the first pending event.
         TimeSpan cap = MaximumDelay - (now - _firstPendingAt);
 
         if (wait > cap)
@@ -153,8 +153,8 @@ public sealed class ChangeCoalescer
             wait = cap;
         }
 
-        // Alt sınır: son tazelemeden beri geçen süre. Üst sınırı EZER — sürekli yazan bir
-        // derleme sırasında tazeleme sıklığını sınırlayan tek şey bu.
+        // The lower bound: the time since the last refresh. It OVERRIDES the upper bound — during a
+        // build that writes continuously, this is the only thing limiting the refresh rate.
         if (_lastTakenAt != DateTimeOffset.MinValue)
         {
             TimeSpan floor = MinimumInterval - (now - _lastTakenAt);

@@ -5,23 +5,23 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Themes;
 
 /// <summary>
-/// Görünüm ayarlarını (tema, palet, tipografi) uygulamaya bağlar (P08-T07…T10).
+/// Binds the appearance settings (theme, palette, typography) to the application (P08-T07…T10).
 /// </summary>
 public interface IAppearanceService
 {
-    /// <summary>Kaydedilmiş bütün görünüm ayarlarını uygular. Açılışta bir kez çağrılır.</summary>
+    /// <summary>Applies all the saved appearance settings. Called once at startup.</summary>
     void ApplyStored();
 
-    /// <summary>Tema tercihini değiştirir ve kaydeder.</summary>
+    /// <summary>Changes the theme preference and saves it.</summary>
     void SetTheme(ThemePreference preference);
 
-    /// <summary>Palet tercihini değiştirir ve kaydeder.</summary>
+    /// <summary>Changes the palette preference and saves it.</summary>
     void SetPalette(PalettePreference preference);
 
-    /// <summary>Arayüz ve kod yazı tipi boyutlarını değiştirir ve kaydeder.</summary>
+    /// <summary>Changes the UI and code font sizes and saves them.</summary>
     void SetFontSizes(double uiFontSize, double monospaceFontSize);
 
-    /// <summary>Sabit genişlikli yazı tipi ailesini değiştirir; boş dize platform varsayılanı.</summary>
+    /// <summary>Changes the monospace font family; an empty string means the platform default.</summary>
     void SetMonospaceFont(string fontFamily);
 }
 
@@ -40,15 +40,14 @@ public sealed class AppearanceService : IAppearanceService
         _settings = settings;
         _theme = new ThemeService(application, settings);
 
-        // Tema değişince grafik paleti YENİDEN hesaplanmalı: palet bir tema sözlüğünde
-        // değil, hesaplanmış tek bir kaynakta duruyor (renk listesi XAML'de ifade
-        // edilemiyor). Bu abonelik olmadan koyu temaya geçen kullanıcı açık zemine göre
-        // seçilmiş şeritlerle kalırdı — bazıları neredeyse görünmez.
-        // 🔴 Kaplama da yeniden uygulanmalı, yalnızca grafik paleti değil: renk körlüğü
-        // fırçaları artık koda taşındı (P09-T11) ve açık/koyu ayrımını kendileri yapıyor.
-        // Eskiden bunu bindirilen tema sözlüğü hallediyordu; sadece grafiği tazelemek,
-        // koyu temaya geçen kullanıcıyı açık zemine göre seçilmiş diff renkleriyle
-        // bırakırdı.
+        // When the theme changes the graph palette has to be RECOMPUTED: the palette lives not in a
+        // theme dictionary but in a single computed resource (a colour list cannot be expressed in
+        // XAML). Without this subscription, a user switching to the dark theme would be left with lanes
+        // picked against a light background — some of them all but invisible.
+        // 🔴 The overlay has to be reapplied too, not just the graph palette: the colour-blind brushes
+        // have moved into code (P09-T11) and make the light/dark distinction themselves. That used to
+        // be handled by the overlaid theme dictionary; refreshing only the graph would leave a user
+        // switching to the dark theme with diff colours picked against a light background.
         _application.ActualThemeVariantChanged += (_, _) =>
         {
             ApplyColorBlindOverlay();
@@ -100,12 +99,12 @@ public sealed class AppearanceService : IAppearanceService
     }
 
     /// <summary>
-    /// Boyutu kullanılabilir aralığa sıkıştırır.
+    /// Clamps the size into the usable range.
     /// </summary>
     /// <remarks>
-    /// Sınırsız bırakmak, elle düzenlenmiş bir ayar dosyasındaki <c>0</c> ya da <c>900</c>
-    /// değerinin uygulamayı <b>okunamaz</b> hâle getirmesi demekti — ve ayarı geri almak
-    /// için de o okunamaz arayüzü kullanmak gerekirdi.
+    /// Leaving it unbounded meant a <c>0</c> or <c>900</c> in a hand-edited settings file could make
+    /// the application <b>unreadable</b> — and undoing the setting would require using that unreadable
+    /// UI.
     /// </remarks>
     private static double Clamp(double size) =>
         double.IsFinite(size)
@@ -116,18 +115,17 @@ public sealed class AppearanceService : IAppearanceService
         SettingsEnum.Parse(_settings.Current.Appearance.Palette, PalettePreference.Default);
 
     /// <summary>
-    /// Renk körlüğü katmanını ekler veya kaldırır.
+    /// Adds or removes the colour-blindness layer.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Yalnızca kırmızı/yeşil ayrımına dayanan anahtarlar eziliyor; ötekiler alttaki
-    /// paletten geliyor. İki tam palet tutmak, birinin unutulup ikisi arasında sessizce
-    /// ayrışması demekti.
+    /// Only the keys that rely on a red/green distinction are overridden; the rest come from the
+    /// palette underneath. Keeping two full palettes meant one being forgotten and silently diverging
+    /// from the other.
     /// </para>
     /// <para>
-    /// Değerler <see cref="DiffPalettes"/>'te, XAML'de değil: kaplama çalışma zamanında
-    /// açılıp kapandığı için <c>ResourceInclude</c> ile yüklenmesi trimming'i kırıyordu
-    /// (P09-T11).
+    /// The values live in <see cref="DiffPalettes"/>, not in XAML: because the overlay is switched on
+    /// and off at runtime, loading it with a <c>ResourceInclude</c> was breaking trimming (P09-T11).
     /// </para>
     /// </remarks>
     private void ApplyColorBlindOverlay()
@@ -148,10 +146,10 @@ public sealed class AppearanceService : IAppearanceService
         }
         else if (_colorBlindOverlayApplied)
         {
-            // Anahtarı uygulama sözlüğünden SİLMEK gerekiyor, üzerine varsayılanı yazmak
-            // değil: alttaki tema sözlükleri açık/koyu ayrımını kendisi yapıyor ve buraya
-            // tek bir renk yazmak, tema değişince yanlış kalırdı. Silince arama zinciri
-            // yeniden alttaki sözlüğe düşüyor.
+            // The key has to be REMOVED from the application dictionary rather than overwritten with
+            // the default: the theme dictionaries underneath make the light/dark distinction
+            // themselves, and writing a single colour here would be wrong as soon as the theme changed.
+            // Removing it lets the lookup chain fall back to the dictionary underneath.
             foreach (string key in DiffPalettes.OverlayKeys)
             {
                 _application.Resources.Remove(key);
@@ -177,8 +175,8 @@ public sealed class AppearanceService : IAppearanceService
         _application.Resources["GitExtUiFontSize"] = ui;
         _application.Resources["GitExtMonospaceFontSize"] = mono;
 
-        // Türetilmiş boyutlar ana boyutla birlikte kayıyor; sabit kalsalardı büyütülen
-        // arayüzde ipuçları ve rozetler orantısız biçimde küçük kalırdı.
+        // The derived sizes shift together with the base size; were they fixed, tooltips and badges
+        // would stay disproportionately small in an enlarged UI.
         _application.Resources["GitExtSmallFontSize"] = Math.Max(
             TypographyDefaults.MinimumFontSize,
             ui - 1);

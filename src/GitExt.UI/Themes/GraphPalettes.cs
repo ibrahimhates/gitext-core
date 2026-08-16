@@ -5,33 +5,34 @@ using GitExt.UI.Settings;
 namespace GitExt.UI.Themes;
 
 /// <summary>
-/// Commit grafiğinin şerit renkleri (P08-T09).
+/// The lane colours of the commit graph (P08-T09).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Dört palet var, çünkü iki eksen bağımsız:</b> zemin (açık/koyu) ve renk ayrımı
-/// (varsayılan / renk körlüğü uyumlu). Açık zeminde okunaklı bir renk koyu zeminde sönük
-/// kalır; renk körlüğü uyumlu bir palet de her iki zeminde ayrı ayrı ayarlanmalı.
+/// <b>There are four palettes, because two axes are independent:</b> the background (light/dark) and
+/// the colour distinction (default / colour-blind safe). A colour that is legible on a light
+/// background comes out dull on a dark one; and a colour-blind safe palette has to be tuned
+/// separately for each background.
 /// </para>
 /// <para>
-/// <b>Renk körlüğü uyumlu palet Okabe–Ito kümesidir</b> — deuteranopi, protanopi ve
-/// tritanopi altında ayırt edilebilirliği için tasarlanmış, yaygın olarak kullanılan sekiz
-/// renk. Kendi karışımımızı uydurmak yerine bunun seçilmesinin sebebi basit: "bana ayırt
-/// edilebilir göründü" bir doğrulama değildir.
+/// <b>The colour-blind safe palette is the Okabe–Ito set</b> — eight widely used colours designed to
+/// stay distinguishable under deuteranopia, protanopia and tritanopia. The reason for choosing it
+/// over inventing our own mix is simple: "it looked distinguishable to me" is not a verification.
 /// </para>
 /// <para>
-/// <b>Kaynak:</b> Okabe, M. &amp; Ito, K., <i>Color Universal Design</i> (2008).
+/// <b>Source:</b> Okabe, M. &amp; Ito, K., <i>Color Universal Design</i> (2008).
 /// </para>
 /// </remarks>
 public static class GraphPalettes
 {
     /// <summary>
-    /// Açık zemin, varsayılan palet.
+    /// Light background, default palette.
     /// </summary>
     /// <remarks>
-    /// Faz 03'ten devralındı. Kırmızı ve yeşil <b>yan yana</b> kullanıyor; deuteranopili bir
-    /// kullanıcı için iki şerit ayırt edilemez. Bu yüzden erişilebilir alternatif şart
-    /// (aşağıda), ama varsayılan değiştirilmedi: alışılmış görünümü sebepsiz bozmamak için.
+    /// Inherited from Phase 03. It uses red and green <b>side by side</b>; for a user with
+    /// deuteranopia the two lanes are indistinguishable. That is why an accessible alternative is
+    /// essential (below), but the default was left unchanged: so as not to break the familiar look for
+    /// no reason.
     /// </remarks>
     public static IReadOnlyList<Color> LightDefault { get; } =
     [
@@ -46,11 +47,11 @@ public static class GraphPalettes
     ];
 
     /// <summary>
-    /// Koyu zemin, varsayılan palet.
+    /// Dark background, default palette.
     /// </summary>
     /// <remarks>
-    /// Açık paletin aynısı değil: <c>#264653</c> gibi koyu tonlar koyu zeminde <b>hiç
-    /// görünmez</b>. Tonlar açıldı, doygunluk korundu.
+    /// Not the same as the light palette: dark tones such as <c>#264653</c> are <b>invisible</b> on a
+    /// dark background. The tones were lightened and the saturation kept.
     /// </remarks>
     public static IReadOnlyList<Color> DarkDefault { get; } =
     [
@@ -64,24 +65,24 @@ public static class GraphPalettes
         Color.FromRgb(0xE0, 0x92, 0xA3),
     ];
 
-    /// <summary>Açık zemin, Okabe–Ito.</summary>
+    /// <summary>Light background, Okabe–Ito.</summary>
     /// <remarks>
     /// <para>
-    /// Yedi renk kanonik Okabe–Ito. Tek sapma: kümenin sarısı (<c>#F0E442</c>) beyaz zeminde
-    /// <b>1,1:1</b> kontrastla neredeyse görünmüyor; yerine koyu hardal (<c>#8A6D00</c>,
-    /// 4,9:1) kullanıldı.
+    /// Seven of the colours are canonical Okabe–Ito. The one deviation: the set's yellow
+    /// (<c>#F0E442</c>) is all but invisible on a white background at <b>1.1:1</b> contrast; a dark
+    /// mustard (<c>#8A6D00</c>, 4.9:1) is used instead.
     /// </para>
     /// <para>
-    /// ⚠️ <b>Dürüst sınır:</b> gök mavisi (2,3:1) ve turuncu (2,3:1) beyaz üzerinde WCAG'in
-    /// metin dışı öğeler için istediği <b>3:1'in altında</b>. Denendi ve <b>çözülemedi</b>:
-    /// sekiz rengi 3:1'e çıkarmak için koyulaştırmak, onları renk körlüğü altında birbirine
-    /// yaklaştırıyor — bir testle ölçüldü, iki kısıt aynı anda sağlanamıyor.
+    /// ⚠️ <b>An honest limitation:</b> sky blue (2.3:1) and orange (2.3:1) are <b>below the 3:1</b>
+    /// WCAG asks for on non-text elements against white. It was attempted and <b>could not be
+    /// solved</b>: darkening the eight colours to reach 3:1 brings them closer together under colour
+    /// blindness — measured with a test, the two constraints cannot be met at once.
     /// </para>
     /// <para>
-    /// Kanonik küme korundu çünkü <b>şeridin kimliği rengiyle değil, sütun konumuyla</b>
-    /// taşınıyor; renk ikincil bilgi. Ayrıca Faz 03'te ölçüldü: gerçek depolarda eşzamanlı
-    /// şerit sayısı 2–3, yani beşinci ve sonraki renkler nadiren ekrana geliyor.
-    /// Sınır P08-T20'de belgeleniyor.
+    /// The canonical set was kept because <b>a lane's identity is carried by its column position, not
+    /// by its colour</b>; the colour is secondary information. Measured in Phase 03 as well: in real
+    /// repositories the number of simultaneous lanes is 2–3, so the fifth and later colours rarely
+    /// reach the screen. The limitation is documented in P08-T20.
     /// </para>
     /// </remarks>
     public static IReadOnlyList<Color> LightColorBlindSafe { get; } =
@@ -96,12 +97,12 @@ public static class GraphPalettes
         Color.FromRgb(0x8A, 0x6D, 0x00),
     ];
 
-    /// <summary>Koyu zemin, Okabe–Ito.</summary>
+    /// <summary>Dark background, Okabe–Ito.</summary>
     /// <remarks>
-    /// Koyu mavi (<c>#0072B2</c>) ve siyah koyu zeminde kayboluyor; karşılıkları açık mavi
-    /// ve açık gri. Sarı burada <b>kullanılabiliyor</b> — açık zeminde kullanılamayan tam da
-    /// oydu. Bu palette <b>sekiz rengin de</b> zemine karşı kontrastı 4:1'in üstünde;
-    /// açık temadaki uzlaşma burada gerekmedi.
+    /// Dark blue (<c>#0072B2</c>) and black disappear on a dark background; their counterparts are
+    /// light blue and light grey. Yellow <b>can be used</b> here — the very one that could not be used
+    /// on a light background. In this palette <b>all eight colours</b> have a contrast above 4:1
+    /// against the background; the compromise made in the light theme was not needed here.
     /// </remarks>
     public static IReadOnlyList<Color> DarkColorBlindSafe { get; } =
     [
@@ -115,7 +116,7 @@ public static class GraphPalettes
         Color.FromRgb(0xD5, 0x5E, 0x00),
     ];
 
-    /// <summary>Zemin ve tercihe göre paleti seçer.</summary>
+    /// <summary>Picks the palette by background and preference.</summary>
     public static IReadOnlyList<Color> Resolve(ThemeVariant variant, PalettePreference preference)
     {
         bool dark = variant == ThemeVariant.Dark;
@@ -127,6 +128,6 @@ public static class GraphPalettes
         };
     }
 
-    /// <summary>Grafik paletinin kaynak sözlüğündeki anahtarı.</summary>
+    /// <summary>The graph palette's key in the resource dictionary.</summary>
     public const string ResourceKey = "GitExtGraphPalette";
 }
