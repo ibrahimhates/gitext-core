@@ -9,11 +9,11 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T04 — ayrık HEAD şeridinin gerçekten çizilmesi.
+/// P06-T04 — the detached HEAD strip actually being drawn.
 /// </summary>
 /// <remarks>
-/// ViewModel testi <c>ShowDetachedBanner</c>'ı doğruluyor; burada bağlamanın <b>gerçekten</b>
-/// bağlandığı doğrulanıyor. P05'te ölçüldüğü gibi bir bağlama sessizce çalışmayabiliyor.
+/// The ViewModel test verifies <c>ShowDetachedBanner</c>; here it is verified that the binding
+/// <b>really</b> binds. As measured in P05, a binding can silently fail to work.
 /// </remarks>
 public class DetachedBannerLayoutTests
 {
@@ -44,8 +44,8 @@ public class DetachedBannerLayoutTests
         MainWindow window = new() { DataContext = model };
         window.Show();
 
-        // ⚠️ `GetAwaiter().GetResult()` burada KİLİTLENİYOR: devamı UI iş parçacığını
-        // istiyor, o da bloke oluyor. Test async olmalı.
+        // ⚠️ `GetAwaiter().GetResult()` DEADLOCKS here: the continuation wants the UI thread, and that
+        // thread is blocked. The test has to be async.
         await model.OpenRepositoryAsync("/tmp/depo");
 
         return window;
@@ -63,7 +63,8 @@ public class DetachedBannerLayoutTests
     [AvaloniaFact]
     public async Task Serit_BURADAN_DAL_OLUSTUR_eylemi_sunuyor()
     {
-        // Plan bu görevde açıkça bunu istiyor: uyarı tek başına yetmez, çıkış yolu lazım.
+        // The plan asks for this explicitly in this task: a warning alone is not enough, a way out is
+        // needed.
         MainWindow window = await CreateAsync(detached: true, operation: InProgressOperation.None);
 
         window.GetControl<Button>("DetachedCreateBranchButton").IsVisible.ShouldBeTrue();

@@ -6,11 +6,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// İki revizyonu karşılaştıran modeless pencere (P04-T16).
+/// The modeless window comparing two revisions (P04-T16).
 /// </summary>
 /// <remarks>
-/// <see cref="Window.Show()"/> ile açılır, <c>ShowDialog</c> ile değil: kullanıcı aynı anda
-/// birkaç karşılaştırma açıp yan yana koyabilmeli. Bu, gömülü panelin çözemediği ihtiyaçtı.
+/// Opened with <see cref="Window.Show()"/> rather than <c>ShowDialog</c>: the user has to be able to
+/// open several comparisons at once and put them side by side. That was the need the embedded panel
+/// could not meet.
 /// </remarks>
 public partial class CompareWindow : Window
 {
@@ -35,7 +36,7 @@ public partial class CompareWindow : Window
                 e.Handled = true;
                 break;
 
-            // Pencere modeless; kapatma kullanıcının elinde olmalı.
+            // The window is modeless; closing it has to be in the user's hands.
             case Key.Escape:
                 Close();
                 e.Handled = true;

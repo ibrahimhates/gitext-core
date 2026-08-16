@@ -11,11 +11,11 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T06 + P06-T07 — Pull/Fetch ekranının yerleşimi.
+/// P06-T06 + P06-T07 — The Pull/Fetch screen's layout.
 /// </summary>
 /// <remarks>
-/// § 9: sıra GitExtensions <c>FormPull</c>'dan — <c>GroupPullFrom</c> → <c>GroupBranch</c> →
-/// <c>GroupMergeOptions</c> (Merge · Rebase · yalnızca Fetch) → <c>GroupTagOptions</c> →
+/// § 9: the order comes from GitExtensions <c>FormPull</c> — <c>GroupPullFrom</c> → <c>GroupBranch</c>
+/// → <c>GroupMergeOptions</c> (Merge · Rebase · Fetch only) → <c>GroupTagOptions</c> →
 /// <c>Prune</c>/<c>PruneTags</c> → <c>AutoStash</c> → <c>Pull</c>.
 /// </remarks>
 public class PullLayoutTests
@@ -81,7 +81,8 @@ public class PullLayoutTests
     [AvaloniaFact]
     public async Task Calistirilacak_komut_EKRANDA()
     {
-        // "Komutu göster" ilkesi: kullanıcı basmadan ne olacağını okuyabilmeli.
+        // The "show the command" principle: the user must be able to read what will happen before
+        // pressing anything.
         Window window = await ShowAsync();
 
         window.GetControl<TextBox>("CommandPreviewBox").Text
@@ -121,7 +122,7 @@ public class PullLayoutTests
     [AvaloniaFact]
     public async Task Yalnizca_getir_secilince_AutoStash_anlamsiz_ve_KAPALI()
     {
-        // Fetch çalışma ağacına dokunmuyor; kutunun açık kalması yanlış bir vaat olurdu.
+        // Fetch does not touch the working tree; leaving the box enabled would be a false promise.
         Window window = await ShowAsync();
 
         window.GetControl<CheckBox>("AutoStashBox").IsEnabled.ShouldBeTrue();
@@ -137,7 +138,7 @@ public class PullLayoutTests
     [AvaloniaFact]
     public async Task URL_secenegi_YERINDE_ama_devre_disi()
     {
-        // Uygulanmamış komutlar "devre dışı ama yerinde" (§ 9); URL'den çekme P06-T09'a bağlı.
+        // Unimplemented commands are "disabled but in place" (§ 9); pulling from a URL depends on P06-T09.
         Window window = await ShowAsync();
 
         window.GetControl<RadioButton>("FromUrlRadio").IsEnabled.ShouldBeFalse();

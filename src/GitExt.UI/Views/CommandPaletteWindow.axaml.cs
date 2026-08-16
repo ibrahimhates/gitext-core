@@ -15,9 +15,9 @@ public partial class CommandPaletteWindow : Window
     {
         InitializeComponent();
 
-        // Tünelleme: ok tuşları ve Enter arama kutusundayken de listeyi sürmeli. Kabarma
-        // fazında `TextBox` onları kendi işine alırdı ve kullanıcı yazarken listede
-        // gezinemezdi — paletin tek kullanım biçimi tam da bu.
+        // Tunnelling: the arrow keys and Enter have to drive the list even while in the search box.
+        // In the bubbling phase the `TextBox` would take them for its own purposes and the user could
+        // not move through the list while typing — which is the palette's only mode of use.
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
 
         Opened += OnOpened;
@@ -25,7 +25,7 @@ public partial class CommandPaletteWindow : Window
 
     private CommandPaletteViewModel? Model => DataContext as CommandPaletteViewModel;
 
-    /// <summary>Paleti sahibinin üstünde modal açar.</summary>
+    /// <summary>Opens the palette modally above its owner.</summary>
     internal static Task ShowAsync(CommandPaletteViewModel model, Window owner)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -38,7 +38,7 @@ public partial class CommandPaletteWindow : Window
 
     private void OnOpened(object? sender, EventArgs e)
     {
-        // Odak arama kutusuna: palet açıldığı anda yazmaya başlanabilmeli.
+        // Focus goes to the search box: typing must be possible the moment the palette opens.
         QueryBox.Focus();
 
         Dispatcher.UIThread.Post(() => QueryBox.SelectAll(), DispatcherPriority.Loaded);
@@ -66,8 +66,8 @@ public partial class CommandPaletteWindow : Window
                 break;
 
             case Key.Enter:
-                // Pencere yalnızca komut GERÇEKTEN çalıştıysa kapanıyor. Çalıştırılamayan
-                // bir komutta kapanmak, kullanıcıya "oldu" izlenimi verirdi.
+                // The window closes only when the command ACTUALLY ran. Closing on a command that
+                // cannot run would give the user the impression it had happened.
                 if (model.RunSelected())
                 {
                     Close();

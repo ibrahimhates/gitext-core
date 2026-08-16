@@ -5,10 +5,10 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Dal yeniden adlandırma diyaloğu (P06-T03).
+/// The branch rename dialog (P06-T03).
 /// </summary>
 /// <remarks>
-/// GitExtensions'ta karşılığı <c>FormRenameBranch</c> (§ 9).
+/// Its counterpart in GitExtensions is <c>FormRenameBranch</c> (§ 9).
 /// </remarks>
 public partial class RenameBranchDialog : Window
 {
@@ -18,8 +18,8 @@ public partial class RenameBranchDialog : Window
     {
         InitializeComponent();
 
-        // ⚠️ `TextChanged` görsel ağaca bağlı olmayan pencerede tetiklenmiyor (P06-T01'de
-        // ölçüldü); doğrulama sessizce hiç çalışmazdı.
+        // ⚠️ `TextChanged` does not fire in a window not attached to the visual tree (measured in
+        // P06-T01); the validation would silently never run.
         NewNameTextBox.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty)
@@ -54,8 +54,8 @@ public partial class RenameBranchDialog : Window
 
         CurrentNameText.Text = request.CurrentName;
 
-        // Kutu mevcut adla dolu geliyor: yeniden adlandırma çoğunlukla küçük bir düzeltme
-        // (yazım hatası, önek ekleme); sıfırdan yazdırmak gereksiz iş.
+        // The box arrives filled with the current name: a rename is usually a small correction (a typo,
+        // adding a prefix); making them type it from scratch is needless work.
         NewNameTextBox.Text = request.CurrentName;
 
         Revalidate();

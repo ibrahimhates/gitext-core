@@ -10,7 +10,7 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T10 — ağ işlemlerinde ilerleme ve iptal (arayüz tarafı).
+/// P06-T10 — progress and cancellation on network operations (the UI side).
 /// </summary>
 public class ProgressTests
 {
@@ -49,7 +49,7 @@ public class ProgressTests
     [AvaloniaFact]
     public async Task Islem_bitince_ilerleme_TEMIZLENIYOR()
     {
-        // Biten bir işlemin çubuğu ekranda kalırsa kullanıcı hâlâ çalıştığını sanır.
+        // If a finished operation's bar stays on screen, the user thinks it is still running.
         (PushViewModel model, _) = CreatePush();
 
         await LoadAsync(model);
@@ -63,7 +63,7 @@ public class ProgressTests
     [AvaloniaFact]
     public async Task IPTAL_hata_olarak_degil_bilgi_olarak_bildiriliyor()
     {
-        // 🔑 Kullanıcının kendi bastığı düğme "hata" diye geri dönmemeli.
+        // 🔑 A button the user pressed themselves must not come back as an "error".
         (PushViewModel model, FakePushWriter push) = CreatePush();
 
         push.CancelOnRun = true;
@@ -78,8 +78,8 @@ public class ProgressTests
     [AvaloniaFact]
     public async Task Iptal_jetonu_yaziciya_GERCEKTEN_gecirilyor()
     {
-        // İptal düğmesinin bir işe yaraması için jetonun git'e kadar inmesi gerek;
-        // yalnızca beklemeyi bırakmak arkada çalışan bir süreç bırakırdı.
+        // For the cancel button to be of any use the token has to reach all the way down to git;
+        // merely giving up on waiting would leave a process running in the background.
         (PushViewModel model, FakePushWriter push) = CreatePush();
 
         await LoadAsync(model);
@@ -99,7 +99,7 @@ public class ProgressTests
         model.IsProgressIndeterminate.ShouldBeTrue();
     }
 
-    // -------------------------------------------------------------- yerleşim
+    // -------------------------------------------------------------- layout
 
     [AvaloniaFact]
     public async Task Ilerleme_paneli_yalnizca_calisirken_GORUNUYOR()

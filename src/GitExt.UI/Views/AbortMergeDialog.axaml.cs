@@ -3,7 +3,7 @@ using Avalonia.Controls;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Süren birleştirmenin iptal onayı (P06-T12).
+/// The confirmation for aborting an in-progress merge (P06-T12).
 /// </summary>
 public partial class AbortMergeDialog : Window
 {
@@ -23,7 +23,7 @@ public partial class AbortMergeDialog : Window
 
         dialog.ConflictList.ItemsSource = conflicted;
 
-        // Liste boşsa panel de gösterilmiyor: boş bir başlık kullanıcıya bir şey söylemez.
+        // When the list is empty the panel is not shown either: an empty heading tells the user nothing.
         dialog.ConflictPanel.IsVisible = conflicted.Count > 0;
 
         await dialog.ShowDialog(owner);

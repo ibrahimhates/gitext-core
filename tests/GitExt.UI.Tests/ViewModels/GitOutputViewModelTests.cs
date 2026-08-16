@@ -6,7 +6,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P05-T07 — hook/git çıktısının gösterime hazırlanması.
+/// P05-T07 — preparing the hook/git output for display.
 /// </summary>
 public class GitOutputViewModelTests
 {
@@ -63,15 +63,17 @@ public class GitOutputViewModelTests
         view.HasOutput.ShouldBeTrue();
         view.Output.ShouldContain("UYARI: iki TODO satiri var");
 
-        // Başarı yolunda çıkış kodu YOK: 0 göstermek "bir sorun var mı?" sorusu doğururdu.
+        // There is NO exit code on the success path: showing 0 would raise the question "is something
+        // wrong?".
         view.HasExitCode.ShouldBeFalse();
     }
 
     [Fact]
     public void Gosterilecek_sey_yoksa_bunu_SONUC_soyler()
     {
-        // Karar görünümde değil sonuçta: ayrı pencerede boş içerik gürültüdür ama commit
-        // paneline gömülü bir bölümde (P05-T12) "çıktı yok" gayet iyi bir cevaptır.
+        // The decision lives in the outcome, not in the view: empty content is noise in a separate
+        // window, but in a section embedded in the commit panel (P05-T12) "no output" is a perfectly
+        // good answer.
         Result().NeedsReporting.ShouldBeFalse();
         Result(output: "cikti").NeedsReporting.ShouldBeTrue();
         Result(message: "konu\n\nChange-Id: I1").NeedsReporting.ShouldBeTrue();

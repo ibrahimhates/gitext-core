@@ -5,7 +5,7 @@ using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
 
-/// <summary>Reflog tarayıcısı penceresi (P07-T14).</summary>
+/// <summary>The reflog browser window (P07-T14).</summary>
 public partial class ReflogWindow : Window
 {
     public ReflogWindow()

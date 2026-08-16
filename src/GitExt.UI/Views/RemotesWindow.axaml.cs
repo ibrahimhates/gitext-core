@@ -4,12 +4,12 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Uzak depo yönetimi penceresi (P06-T05).
+/// The remote management window (P06-T05).
 /// </summary>
 /// <remarks>
-/// GitExtensions'ta karşılığı <c>FormRemotes</c> (§ 9) ve orada da <b>modal</b> açılıyor
-/// (<c>ShowDialog</c>) — <c>FormDiff</c>'in aksine (P04-T16) burada aynı anda birden fazla
-/// pencere açık olmasının bir faydası yok, üstelik ikisi aynı config'i yazardı.
+/// Its counterpart in GitExtensions is <c>FormRemotes</c> (§ 9) and it opens <b>modally</b> there too
+/// (<c>ShowDialog</c>) — unlike <c>FormDiff</c> (P04-T16), there is no benefit to having several of
+/// these open at once here, and two of them would be writing the same config.
 /// </remarks>
 public partial class RemotesWindow : Window
 {

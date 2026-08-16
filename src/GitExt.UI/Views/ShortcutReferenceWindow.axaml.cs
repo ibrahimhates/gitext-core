@@ -5,7 +5,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Kısayol referans ekranı (P08-T06, <c>F1</c>).
+/// The shortcut reference screen (P08-T06, <c>F1</c>).
 /// </summary>
 public partial class ShortcutReferenceWindow : Window
 {
@@ -28,7 +28,7 @@ public partial class ShortcutReferenceWindow : Window
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        // Escape kapatır: salt okunur bir listeden çıkmanın yolu fare olmamalı.
+        // Escape closes it: the way out of a read-only list must not be the mouse.
         if (e.Key is Key.Escape)
         {
             Close();

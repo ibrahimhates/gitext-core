@@ -5,13 +5,13 @@ using System.Text.Json.Serialization;
 namespace GitExt.UI.Settings;
 
 /// <summary>
-/// Ayarların JSON'a çevrimi. <b>Yalnızca kaynak üretimli</b> (P08-T14).
+/// Converting the settings to JSON. <b>Source-generated only</b> (P08-T14).
 /// </summary>
 /// <remarks>
-/// Yansımalı <see cref="JsonSerializer"/> aşırı yüklemeleri <b>kullanılamaz</b>: trimming'i
-/// bozuyorlar (IL2026) ve <c>PublishTrimmed</c> ile yayın derlenmiyor. Bu, P03-T16'da
-/// ölçülerek öğrenildi — derleme ve testler yeşil kaldığı için hata ancak
-/// <c>dotnet publish</c> denenince görülmüştü.
+/// The reflection-based <see cref="JsonSerializer"/> overloads <b>cannot be used</b>: they break
+/// trimming (IL2026) and the release does not build with <c>PublishTrimmed</c>. This was learned by
+/// measurement in P03-T16 — because the build and the tests stayed green, the bug only became visible
+/// when <c>dotnet publish</c> was attempted.
 /// </remarks>
 internal static class SettingsSerializer
 {

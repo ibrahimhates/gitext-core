@@ -5,7 +5,7 @@ using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
 
-/// <summary>Cherry-pick / revert diyaloğu (P07-T07, P07-T08).</summary>
+/// <summary>The cherry-pick / revert dialog (P07-T07, P07-T08).</summary>
 public partial class SequencerDialog : Window
 {
     public SequencerDialog()

@@ -4,9 +4,9 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Merge penceresi (P06-T11).
+/// The merge window (P06-T11).
 /// </summary>
-/// <remarks>GitExtensions'ta karşılığı <c>FormMergeBranch</c> (§ 9); orada da modal.</remarks>
+/// <remarks>Its counterpart in GitExtensions is <c>FormMergeBranch</c> (§ 9); modal there too.</remarks>
 public partial class MergeWindow : Window
 {
     public MergeWindow()

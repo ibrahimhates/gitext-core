@@ -5,7 +5,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Git komutunun tam çıktısını gösteren <b>modeless</b> pencere (P05-T07).
+/// The <b>modeless</b> window showing a git command's full output (P05-T07).
 /// </summary>
 public partial class GitOutputWindow : Window
 {
@@ -14,7 +14,7 @@ public partial class GitOutputWindow : Window
         InitializeComponent();
     }
 
-    /// <summary>Çıktıyı sahibinin üstünde <b>modeless</b> açar.</summary>
+    /// <summary>Opens the output <b>modeless</b> above its owner.</summary>
     internal static void Open(GitOutputViewModel viewModel, Window? owner)
     {
         ArgumentNullException.ThrowIfNull(viewModel);

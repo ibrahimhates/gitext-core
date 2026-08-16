@@ -18,6 +18,13 @@
 #   - the Turkish translations themselves, in Locales/tr.json
 #   - suppression justifications
 # Those are deliberately left alone.
+#
+# QUOTED SPANS INSIDE A COMMENT are exempt for the same reason. An English sentence often
+# has to cite the Turkish input a measurement used — `şğüıöç.txt` in the path-quoting
+# finding, "Türkçe" in the encoding one, <c>Ölçüm</c> in the --author regex one. Naming the
+# real input is what makes those notes verifiable; paraphrasing it would lose the finding.
+# So `…`, "…" and <c>…</c> spans are stripped before the check, and only the prose around
+# them has to be English.
 
 set -euo pipefail
 
@@ -26,10 +33,15 @@ cd "$ROOT"
 
 python3 - <<'PY'
 import pathlib
+import re
 import sys
 
 TURKISH = "ğüşıöçĞÜŞİÖÇ"
 ROOTS = ("src", "tests", "benchmarks")
+
+# Spans that quote something verbatim: an inline-code tag, a backtick span, a quoted
+# string. What is inside them is the cited input, not prose.
+QUOTED = re.compile(r"<c>.*?</c>|`[^`]*`|\"[^\"]*\"")
 
 findings = []
 
@@ -39,18 +51,34 @@ for root in ROOTS:
     if not directory.is_dir():
         continue
 
-    for path in sorted(directory.rglob("*.cs")):
+    for path in sorted(directory.rglob("*")):
+        if path.suffix not in (".cs", ".axaml") or not path.is_file():
+            continue
+
         if "obj/" in str(path) or "bin/" in str(path):
             continue
 
-        for number, line in enumerate(
-                path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        text = path.read_text(encoding="utf-8", errors="replace")
+
+        # In XAML, the comment is a <!-- --> block rather than a line prefix, so the lines
+        # inside one are found first and then checked the same way.
+        inside = set()
+
+        if path.suffix == ".axaml":
+            for match in re.finditer(r"<!--.*?-->", text, re.S):
+                start = text.count("\n", 0, match.start()) + 1
+                end = text.count("\n", 0, match.end()) + 1
+                inside.update(range(start, end + 1))
+
+        for number, line in enumerate(text.splitlines(), 1):
             stripped = line.lstrip()
 
-            if not stripped.startswith(("//", "///")):
+            if not (stripped.startswith(("//", "///")) or number in inside):
                 continue
 
-            if any(character in line for character in TURKISH):
+            prose = QUOTED.sub("", line)
+
+            if any(character in prose for character in TURKISH):
                 findings.append((path, number, stripped[:88]))
 
 if findings:
@@ -64,7 +92,8 @@ if findings:
 
     print(
         "\nComments are written in English (see CONTRIBUTING.md). String literals are\n"
-        "exempt — only comment lines are checked.",
+        "exempt, and so are quoted spans inside a comment (`…`, \"…\", <c>…</c>) — a\n"
+        "measurement note may cite the Turkish input it used.",
         file=sys.stderr)
     sys.exit(1)
 

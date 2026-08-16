@@ -174,7 +174,7 @@ public class CommitLogReaderTests
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
 
-        // "Türkçe baslik" — Latin-5: ü=0xFC, ç=0xE7
+        // "Türkçe baslik" — Latin-5: `ü`=0xFC, `ç`=0xE7
         byte[] latin5Message = [0x54, 0xFC, 0x72, 0x6B, 0xE7, 0x65, 0x20, 0x62, 0x61, 0x73, 0x6C, 0x69, 0x6B];
         string messageFile = Path.Combine(repository.Path, "msg.txt");
         await File.WriteAllBytesAsync(messageFile, latin5Message, Ct);

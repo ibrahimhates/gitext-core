@@ -543,7 +543,7 @@ public class WorkingTreeWriterTests
         harness.Exists("a.txt").ShouldBeTrue();
     }
 
-    // ---- git clean (tüm ağaç) ----
+    // ---- git clean (the whole tree) ----
 
     [Fact]
     public async Task Clean_takip_edilmeyenleri_siler_yok_sayilanlari_BIRAKIR()

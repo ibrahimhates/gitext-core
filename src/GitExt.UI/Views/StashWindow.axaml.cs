@@ -27,9 +27,9 @@ public partial class StashWindow : Window
 
 
     /// <remarks>
-    /// Dal adı doğrudan bağlanmıyor: <see cref="StashViewModel.BranchName"/> düz bir
-    /// özellik ve komutun etkinliği ona bakıyor; her tuşta yeniden değerlendirilmesi için
-    /// metin değişimi burada iletiliyor.
+    /// The branch name is not bound directly: <see cref="StashViewModel.BranchName"/> is a plain
+    /// property and the command's enabled state depends on it; the text change is forwarded here so it
+    /// is re-evaluated on every keystroke.
     /// </remarks>
     protected override void OnDataContextChanged(System.EventArgs e)
     {

@@ -4,7 +4,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Sürükle-bırak birleştirmesinin onayı (P06-T15).
+/// The confirmation of a drag-and-drop merge (P06-T15).
 /// </summary>
 public partial class MergeDropDialog : Window
 {

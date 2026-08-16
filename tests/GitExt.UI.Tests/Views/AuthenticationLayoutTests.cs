@@ -8,7 +8,7 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P06-T09 — kimlik doğrulama ekranının yerleşimi.
+/// P06-T09 — the authentication screen's layout.
 /// </summary>
 public class AuthenticationLayoutTests
 {
@@ -41,7 +41,7 @@ public class AuthenticationLayoutTests
         window.GetControl<StackPanel>("CredentialPanel").IsVisible.ShouldBeFalse();
         window.GetControl<Button>("SubmitButton").IsVisible.ShouldBeFalse();
 
-        // Ne yapılacağı yine de ekranda.
+        // What to do is on screen all the same.
         window.GetControl<StackPanel>("SuggestionPanel").IsVisible.ShouldBeTrue();
 
         window.Close();
@@ -59,7 +59,7 @@ public class AuthenticationLayoutTests
 
         window.GetControl<StackPanel>("CredentialPanel").IsVisible.ShouldBeTrue();
 
-        // 🔒 Parola alanı maskeli olmalı — omuz üstünden okunmasın.
+        // 🔒 The password field has to be masked — so it cannot be read over a shoulder.
         window.GetControl<TextBox>("SecretBox").PasswordChar.ShouldNotBe('\0');
 
         window.Close();
@@ -68,7 +68,7 @@ public class AuthenticationLayoutTests
     [AvaloniaFact]
     public void Kaydedilmedigi_kullaniciya_YAZILI()
     {
-        // Kullanıcı token'ını girerken nereye gittiğini bilmeli.
+        // The user must know where their token is going while they type it.
         Window window = Show(new AuthenticationDiagnosis
         {
             Transport = RemoteTransport.Https,

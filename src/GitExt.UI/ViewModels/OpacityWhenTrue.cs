@@ -4,12 +4,12 @@ using Avalonia.Data.Converters;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// <see langword="true"/> ise tam opaklık, değilse soluk (P08-T04).
+/// Full opacity when <see langword="true"/>, dimmed otherwise (P08-T04).
 /// </summary>
 /// <remarks>
-/// Çalıştırılamayan komutlar komut paletinde <b>gizlenmiyor, soluklaştırılıyor</b>: gizlemek,
-/// komutu arayıp bulamayan kullanıcıya "böyle bir şey yok" dedirtirdi. Soluk hâli hem
-/// varlığını hem şu an neden çalışmadığını (depo kapalı) gösteriyor.
+/// Commands that cannot run are <b>dimmed, not hidden</b>, in the command palette: hiding them would
+/// leave a user who searched and did not find one saying "there is no such thing". Dimmed, it shows
+/// both that it exists and why it does not work right now (the repository is closed).
 /// </remarks>
 public sealed class OpacityWhenTrue : IValueConverter
 {

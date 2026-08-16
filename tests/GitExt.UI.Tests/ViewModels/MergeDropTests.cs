@@ -6,10 +6,10 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// P06-T15 — sürükle-bırak birleştirme.
+/// P06-T15 — drag-and-drop merging.
 /// </summary>
 /// <remarks>
-/// Planın maddesi: <b>her zaman onay diyaloğu ile</b> — kazara sürükleme gerçek bir risk.
+/// The plan's item: <b>always with a confirmation dialog</b> — an accidental drag is a real risk.
 /// </remarks>
 public class MergeDropTests
 {
@@ -70,7 +70,7 @@ public class MergeDropTests
     [AvaloniaFact]
     public async Task Onay_ekraninda_calistirilacak_KOMUT_yazili()
     {
-        // "Komutu göster" ilkesi burada da geçerli: kullanıcı neyi onayladığını görmeli.
+        // The "show the command" principle applies here too: the user must see what they are confirming.
         (MainWindowViewModel model, _, FakeMergeDropConfirmer confirmer) = Create();
 
         await model.OpenRepositoryAsync("/depo");
@@ -85,8 +85,8 @@ public class MergeDropTests
     [AvaloniaFact]
     public async Task MEVCUT_dal_disinda_bir_hedefe_birakmak_calismiyor()
     {
-        // 🔑 GitExtensions başka dala bırakmaya da izin veriyor ama arkasında gizli bir
-        // checkout var. Bu projede gizli işlem yok; sebep yazılıyor.
+        // 🔑 GitExtensions allows dropping onto another branch as well, but there is a hidden checkout
+        // behind it. There are no hidden operations in this project; the reason is written out.
         (MainWindowViewModel model, FakeMergeWriter merge, FakeMergeDropConfirmer confirmer) = Create();
 
         await model.OpenRepositoryAsync("/depo");

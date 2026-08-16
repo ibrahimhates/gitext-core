@@ -4,15 +4,15 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Pull / Fetch penceresi (P06-T06 + P06-T07).
+/// The Pull / Fetch window (P06-T06 + P06-T07).
 /// </summary>
 /// <remarks>
-/// GitExtensions'ta karşılığı <c>FormPull</c> (§ 9) ve orada da modal açılıyor.
-/// Fetch'in ayrı bir ekranı yok; "yalnızca getir" bu pencerenin bir seçeneği.
+/// Its counterpart in GitExtensions is <c>FormPull</c> (§ 9), and it opens modally there too.
+/// Fetch has no screen of its own; "fetch only" is an option on this window.
 /// </remarks>
 public partial class PullWindow : Window
 {
-    /// <summary>"Yönet…" düğmesine basıldığında uzak depo ekranını açan taraf.</summary>
+    /// <summary>The side that opens the remotes screen when "Manage…" is pressed.</summary>
     internal Func<Task>? ManageRemotes { get; set; }
 
     public PullWindow()

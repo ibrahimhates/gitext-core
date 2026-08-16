@@ -4,19 +4,19 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Push penceresi (P06-T08).
+/// The push window (P06-T08).
 /// </summary>
 /// <remarks>
-/// GitExtensions'ta karşılığı <c>FormPush</c> (§ 9) ve orada da modal açılıyor. Alt sıradaki
-/// "Pull…" düğmesi de oradan: reddedilen bir gönderimden sonra kullanıcının gideceği yer
-/// zaten pull ekranı.
+/// Its counterpart in GitExtensions is <c>FormPush</c> (§ 9), and it opens modally there too. The
+/// "Pull…" button on the bottom row comes from there as well: after a rejected push, the pull screen is
+/// where the user is going anyway.
 /// </remarks>
 public partial class PushWindow : Window
 {
-    /// <summary>"Yönet…" düğmesine basıldığında uzak depo ekranını açan taraf.</summary>
+    /// <summary>The side that opens the remotes screen when "Manage…" is pressed.</summary>
     internal Func<Task>? ManageRemotes { get; set; }
 
-    /// <summary>"Pull…" düğmesine basıldığında Pull/Fetch ekranını açan taraf.</summary>
+    /// <summary>The side that opens the Pull/Fetch screen when "Pull…" is pressed.</summary>
     internal Func<Task>? OpenPull { get; set; }
 
     public PushWindow()

@@ -5,11 +5,11 @@ using Avalonia.Media;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// <see langword="true"/> ise kalın yazı tipi (P06-T13).
+/// A bold font when <see langword="true"/> (P06-T13).
 /// </summary>
 /// <remarks>
-/// Üzerinde bulunulan dalı ayırt etmek için. Dönüştürücü olarak yazılıyor çünkü bağlamada
-/// hesap yapmak bu projede daha önce sessizce yanlış davranmıştı (Faz 03).
+/// For telling the branch you are on apart. It is written as a converter because doing arithmetic in a
+/// binding has silently misbehaved in this project before (Phase 03).
 /// </remarks>
 public sealed class BoldWhenTrue : IValueConverter
 {

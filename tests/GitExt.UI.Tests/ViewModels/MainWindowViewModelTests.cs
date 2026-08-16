@@ -6,11 +6,11 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Tests.ViewModels;
 
 /// <summary>
-/// Ana pencere ViewModel'ı.
+/// The main window's ViewModel.
 /// </summary>
 /// <remarks>
-/// Faz 01'in "Hello World" testlerinin yerini aldı: o testler test altyapısının çalıştığını
-/// kanıtlamak içindi ve görevlerini tamamladılar.
+/// This replaced Phase 01's "Hello World" tests: those existed to prove the test infrastructure worked
+/// and they have done their job.
 /// </remarks>
 public class MainWindowViewModelTests
 {
@@ -61,7 +61,7 @@ public class MainWindowViewModelTests
     [AvaloniaFact]
     public async Task PropertyChanged_baslik_degisince_tetiklenir()
     {
-        // CommunityToolkit.Mvvm source generator'ının çalıştığını doğrular (ADR-0004).
+        // Verifies that CommunityToolkit.Mvvm's source generator ran (ADR-0004).
         MainWindowViewModel viewModel = Create();
         List<string?> changed = [];
         viewModel.PropertyChanged += (_, e) => changed.Add(e.PropertyName);

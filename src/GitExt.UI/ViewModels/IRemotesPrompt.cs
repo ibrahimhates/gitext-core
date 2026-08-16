@@ -22,7 +22,7 @@ public interface IRemotesPrompt
 /// </summary>
 public interface IPullPrompt
 {
-    /// <summary>Ekranı modal gösterir ve kapanmasını bekler.</summary>
+    /// <summary>Shows the screen modally and waits for it to close.</summary>
     Task ShowAsync(PullViewModel model);
 }
 
@@ -31,6 +31,6 @@ public interface IPullPrompt
 /// </summary>
 public interface IPushPrompt
 {
-    /// <summary>Ekranı modal gösterir ve kapanmasını bekler.</summary>
+    /// <summary>Shows the screen modally and waits for it to close.</summary>
     Task ShowAsync(PushViewModel model);
 }

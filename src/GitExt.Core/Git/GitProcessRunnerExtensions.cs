@@ -212,7 +212,7 @@ internal static class GitFailureClassifier
     }
 
     /// <summary>
-    /// Tür için kullanıcıya gösterilebilecek bir açıklama üretir.
+    /// Produces a description of the kind that can be shown to the user.
     /// </summary>
     internal static string Describe(GitFailureKind kind) => kind switch
     {

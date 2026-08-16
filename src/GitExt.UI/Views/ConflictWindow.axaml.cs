@@ -5,7 +5,7 @@ using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
 
-/// <summary>Çakışma çözüm penceresi (P07-T03, P07-T05).</summary>
+/// <summary>The conflict resolution window (P07-T03, P07-T05).</summary>
 public partial class ConflictWindow : Window
 {
     public ConflictWindow()

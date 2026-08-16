@@ -3,18 +3,17 @@ using GitExt.Core;
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
-/// Faz 07'nin servisleri (P07-T03 … P07-T21).
+/// Phase 07's services (P07-T03 … P07-T21).
 /// </summary>
 /// <remarks>
 /// <para>
-/// Neden demet? <see cref="MainWindowViewModel"/>'in kurucusu Faz 06 sonunda 20 isteğe
-/// bağlı parametreye ulaşmıştı; Faz 07'nin sekiz servisini de tek tek eklemek onu
-/// okunamaz hale getirirdi. Bunlar <b>birlikte</b> anlamlı bir küme: hepsi "ileri
-/// operasyonlar" ekranlarını besliyor.
+/// Why a bundle? By the end of Phase 06, <see cref="MainWindowViewModel"/>'s constructor had reached
+/// 20 optional parameters; adding Phase 07's eight services one by one would have made it unreadable.
+/// These are a set that is meaningful <b>together</b>: they all feed the "advanced operations" screens.
 /// </para>
 /// <para>
-/// Hepsi isteğe bağlı: testler yalnızca ilgilendikleri servisi veriyor, gerisi
-/// <see langword="null"/> kalıyor ve ilgili komut devre dışı görünüyor.
+/// All of them are optional: a test supplies only the service it cares about, the rest stay
+/// <see langword="null"/> and the corresponding command appears disabled.
 /// </para>
 /// </remarks>
 public sealed record AdvancedOperationServices

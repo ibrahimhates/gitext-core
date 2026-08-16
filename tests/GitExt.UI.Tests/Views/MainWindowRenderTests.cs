@@ -8,13 +8,13 @@ using GitExt.UI.Views;
 namespace GitExt.UI.Tests.Views;
 
 /// <summary>
-/// P01-T16 — Pencerenin gerçekten çizildiğini ve metnin render edildiğini doğrular.
+/// P01-T16 — Verifies that the window really is drawn and that text is rendered.
 /// </summary>
 /// <remarks>
-/// Bu test, ADR-0001'deki text shaping sorusunun (Avalonia 12'de <c>UseHarfBuzz()</c> gerekli mi?)
-/// cevabıdır: pencerede boş olmayan piksel varsa metin çiziliyor demektir.
+/// This test is the answer to ADR-0001's text shaping question (is <c>UseHarfBuzz()</c> needed in
+/// Avalonia 12?): if there are non-blank pixels in the window, text is being drawn.
 /// <para>
-/// Headless olduğu için CI'da da çalışır — masaüstü oturumu gerektirmez.
+/// Because it is headless it runs in CI too — it needs no desktop session.
 /// </para>
 /// </remarks>
 public class MainWindowRenderTests
@@ -39,12 +39,13 @@ public class MainWindowRenderTests
         frame.PixelSize.Width.ShouldBeGreaterThan(0);
         frame.PixelSize.Height.ShouldBeGreaterThan(0);
 
-        // Hata ayıklama eseri: render sonucunu diske yaz. CI'da başarısız testin nedenini
-        // görmenin en hızlı yolu budur.
+        // A debugging aid: write the render result to disk. In CI this is the quickest way to see why
+        // a test failed.
         string artifact = Path.Combine(AppContext.BaseDirectory, "render-mainwindow.png");
         frame.Save(artifact, new PngBitmapEncoderOptions());
 
-        // Arka planla aynı olmayan piksel sayısı: metin çizilmediyse bu sayı sıfıra yakın olur.
+        // The number of pixels that differ from the background: if no text was drawn this comes out
+        // close to zero.
         int distinctPixels = CountNonBackgroundPixels(frame);
 
         distinctPixels.ShouldBeGreaterThan(
@@ -71,7 +72,7 @@ public class MainWindowRenderTests
             handle.Free();
         }
 
-        // Sol üst köşeyi arka plan referansı kabul et.
+        // Take the top-left corner as the background reference.
         (byte B, byte G, byte R) background = (buffer[0], buffer[1], buffer[2]);
 
         int count = 0;

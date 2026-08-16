@@ -6,16 +6,16 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Başarısız git komutunun tam çıktısını ayrı pencerede açan düğme (P05-T07).
+/// The button that opens a failed git command's full output in a separate window (P05-T07).
 /// </summary>
 /// <remarks>
-/// Kendi <see cref="Details"/> özelliğini alıyor, <c>DataContext</c>'e bağlı değil: aynı
-/// hata iki ayrı ViewModel yolundan gösteriliyor (<c>ErrorDetails</c> ve
+/// It takes its own <see cref="Details"/> property rather than binding to the <c>DataContext</c>: the
+/// same error is shown through two separate ViewModel routes (<c>ErrorDetails</c> and
 /// <c>Commits.ErrorDetails</c>).
 /// </remarks>
 public partial class GitErrorDetailsButton : UserControl
 {
-    /// <summary>Gösterilecek çıktı; <see langword="null"/> ise düğme görünmez.</summary>
+    /// <summary>The output to show; the button is invisible when <see langword="null"/>.</summary>
     public static readonly StyledProperty<GitOutputViewModel?> DetailsProperty =
         AvaloniaProperty.Register<GitErrorDetailsButton, GitOutputViewModel?>(nameof(Details));
 
@@ -23,8 +23,8 @@ public partial class GitErrorDetailsButton : UserControl
     {
         InitializeComponent();
 
-        // Başlangıçta gizli: `Details` hiç atanmazsa (null → null) özellik değişimi
-        // tetiklenmez ve boş bir düğme ekranda kalırdı.
+        // Hidden to begin with: if `Details` is never assigned (null → null) no property change fires
+        // and an empty button would sit on screen.
         IsVisible = false;
     }
 

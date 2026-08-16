@@ -5,7 +5,7 @@ using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
 
-/// <summary>Reset diyaloğu (P07-T06).</summary>
+/// <summary>The reset dialog (P07-T06).</summary>
 public partial class ResetDialog : Window
 {
     public ResetDialog()

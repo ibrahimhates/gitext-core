@@ -5,7 +5,7 @@ using GitExt.UI.ViewModels;
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// Kimlik doğrulama penceresi (P06-T09).
+/// The authentication window (P06-T09).
 /// </summary>
 public partial class AuthenticationWindow : Window
 {

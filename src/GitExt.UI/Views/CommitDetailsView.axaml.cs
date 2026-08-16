@@ -5,12 +5,12 @@ namespace GitExt.UI.Views;
 public partial class CommitDetailsView : UserControl
 {
     /// <summary>
-    /// Panele odaklanır (P08-T05).
+    /// Focuses the panel (P08-T05).
     /// </summary>
     /// <remarks>
-    /// Detay paneli salt okunur; odaklanabilen bir alt öğesi olmayabilir. Bu yüzden
-    /// görünümün kendisi odaklanabilir yapıldı (<c>Focusable</c>, XAML'de) — aksi halde
-    /// <c>F6</c> gezinmesi burayı atlar ve panelin içeriği klavyeyle hiç kaydırılamazdı.
+    /// The details panel is read-only; it may have no focusable child. That is why the view itself was
+    /// made focusable (<c>Focusable</c>, in XAML) — otherwise <c>F6</c> navigation would skip it and the
+    /// panel's content could never be scrolled from the keyboard.
     /// </remarks>
     public bool FocusPanel() => Focus();
 
