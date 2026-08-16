@@ -158,15 +158,60 @@ public class RepositoryLocatorTests
     }
 
     /// <summary>
+    /// 🔴 Regression: a repository reached through a symlink is NOT a linked worktree.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the macOS CI failure, reproduced on every platform. There the temporary directory
+    /// lives under <c>/var/folders/…</c> and <c>/var</c> is a symlink to <c>/private/var</c>, so the
+    /// condition was met in every single test — but the cause is the symlink, not the operating
+    /// system, and it is set up explicitly here.
+    /// </para>
+    /// <para>
+    /// MEASURED: git answers <c>--absolute-git-dir</c> and <c>--show-toplevel</c> with the links
+    /// resolved, while <c>--git-common-dir</c> stays relative (<c>.git</c>) and used to be resolved
+    /// against the UNRESOLVED path we were handed. The two names of the same directory then compared
+    /// as different and <see cref="RepositoryLocation.IsLinkedWorkTree"/> came out true.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task Symlink_uzerinden_acilan_depo_worktree_sanilmaz()
+    {
+        // Windows requires a privilege to create symlinks; the cause is platform-independent.
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "symlink creation needs a privilege on Windows");
+
+        using TestRepository repository = TestRepository.CreateWithSingleCommit();
+
+        string link = Path.Combine(
+            Path.GetTempPath(), "gitext-link-" + Guid.NewGuid().ToString("N")[..12]);
+
+        Directory.CreateSymbolicLink(link, repository.Path);
+
+        try
+        {
+            RepositoryLocator locator = await CreateLocatorAsync();
+
+            RepositoryLocation location = await locator.LocateAsync(link, Ct);
+
+            location.IsLinkedWorkTree.ShouldBeFalse();
+            location.IsBare.ShouldBeFalse();
+            location.CommonDirectory.ShouldBe(location.GitDirectory);
+            RealPath(location.WorkTreeRoot!).ShouldBe(RealPath(repository.Path));
+        }
+        finally
+        {
+            Directory.Delete(link);
+        }
+    }
+
+    /// <summary>
     /// Resolves symbolic links.
     /// </summary>
     /// <remarks>
-    /// On macOS <c>/tmp</c> is actually a symlink to <c>/private/tmp</c>; git returns the resolved
-    /// path while <see cref="Path.GetTempPath"/> gives the unresolved one. We bring both into the
-    /// same form before comparing.
+    /// On macOS the temporary directory sits behind a symlink (<c>/var</c> → <c>/private/var</c>);
+    /// git returns the resolved path while <see cref="Path.GetTempPath"/> gives the unresolved one.
+    /// We bring both into the same form before comparing — with the very helper the production code
+    /// uses, so that a comparison here means the same thing as a comparison there.
     /// </remarks>
-    private static string RealPath(string path) =>
-        Path.TrimEndingDirectorySeparator(
-            Directory.ResolveLinkTarget(path, returnFinalTarget: true)?.FullName
-            ?? Path.GetFullPath(path));
+    private static string RealPath(string path) => FileSystemPath.Resolve(path);
 }

@@ -51,6 +51,14 @@ public sealed class RepositoryLocator : IRepositoryLocator
             throw new DirectoryNotFoundException($"Directory not found: {directory}");
         }
 
+        // 🔴 MEASURED (macOS) — git returns its paths with every symlink resolved, so any path we
+        // build ourselves has to be brought into the same form BEFORE it is compared with git's
+        // answer. Without this, `/var/folders/…` (what the user passes) and `/private/var/folders/…`
+        // (what git prints) look like two different directories, and every ordinary repository is
+        // reported as a linked worktree. Resolving the input once here fixes it at the single point
+        // where an unresolved path enters.
+        directory = FileSystemPath.Resolve(directory);
+
         // Everything obtainable in a single call. --show-toplevel CANNOT BE HERE:
         // in a bare repository it returns 128 with "fatal: this operation must be run in a work tree"
         // and breaks the whole call. Verified against real git.
