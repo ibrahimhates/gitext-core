@@ -481,11 +481,29 @@ public sealed class DiffReader : IDiffReader
                 .ConfigureAwait(false);
         }
 
-        return DiffParser.Parse(
+        IReadOnlyList<FileDiff> parsed = DiffParser.Parse(
             result.GetStandardOutputLossless(),
             options.WordLevel,
             options.MaximumChangedLines,
             options.ContentEncoding);
+
+        if (options.Whitespace == WhitespaceMode.IgnoreAll)
+        {
+            // On some git versions `-w` keeps a whitespace-only modified file in metadata with
+            // no hunks and zero line stats. Keep behavior stable across versions by hiding that row.
+            parsed =
+            [
+                .. parsed.Where(diff =>
+                    diff.Change != FileChangeKind.Modified
+                    || diff.HasHunks
+                    || diff.IsBinary
+                    || diff.IsModeOnlyChange
+                    || diff.AddedLines != 0
+                    || diff.RemovedLines != 0),
+            ];
+        }
+
+        return parsed;
     }
 
     /// <summary>

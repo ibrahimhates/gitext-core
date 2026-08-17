@@ -184,8 +184,17 @@ public sealed class TestRepository : IDisposable
             return false;
         }
 
-        Git("config", "--local", "gpg.format", "ssh");
-        Git("config", "--local", "user.signingkey", keyPath + ".pub");
+        if (TryGit("config", "--local", "gpg.format", "ssh").ExitCode != 0)
+        {
+            // SSH commit signing was added after the minimum supported git.
+            return false;
+        }
+
+        if (TryGit("config", "--local", "user.signingkey", keyPath + ".pub").ExitCode != 0)
+        {
+            return false;
+        }
+
         return true;
     }
 

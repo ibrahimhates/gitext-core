@@ -209,6 +209,8 @@ public sealed class RemoteWriter : IRemoteWriter
         ArgumentNullException.ThrowIfNull(options);
         ValidateName(options.Name, nameof(options));
         ArgumentException.ThrowIfNullOrWhiteSpace(options.Url);
+        await EnsureNameDoesNotNestWithExistingRemoteAsync(
+            workingDirectory, options.Name, cancellationToken).ConfigureAwait(false);
 
         List<string> arguments = ["remote", "add"];
 
@@ -272,9 +274,11 @@ public sealed class RemoteWriter : IRemoteWriter
         RemoteRemovalPlan plan =
             await PrepareRemovalAsync(workingDirectory, name, cancellationToken).ConfigureAwait(false);
 
-        await _writer
-            .RunAsync(workingDirectory, ["remote", "remove", "--", name], cancellationToken)
-            .ConfigureAwait(false);
+        await RunRemoteCommandWithSeparatorFallbackAsync(
+            workingDirectory,
+            ["remote", "remove", "--", name],
+            ["remote", "remove", name],
+            cancellationToken).ConfigureAwait(false);
 
         return plan;
     }
@@ -288,9 +292,11 @@ public sealed class RemoteWriter : IRemoteWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(oldName);
         ValidateName(newName, nameof(newName));
 
-        GitResult result = await _writer
-            .RunAsync(workingDirectory, ["remote", "rename", "--", oldName, newName], cancellationToken)
-            .ConfigureAwait(false);
+        GitResult result = await RunRemoteCommandWithSeparatorFallbackAsync(
+            workingDirectory,
+            ["remote", "rename", "--", oldName, newName],
+            ["remote", "rename", oldName, newName],
+            cancellationToken).ConfigureAwait(false);
 
         // 🔴 MEASURED: git DOES NOT UPDATE a non-default fetch refspec, yet the exit code is
         // still 0. The warning sits on stderr alone:
@@ -391,6 +397,64 @@ public sealed class RemoteWriter : IRemoteWriter
                 $"'{name}' is not a valid remote name ({RemoteName.Describe(problem)})",
                 parameterName);
         }
+    }
+
+    private async Task EnsureNameDoesNotNestWithExistingRemoteAsync(
+        string workingDirectory,
+        string candidate,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyList<GitRemote> remotes = await _reader.ReadAllAsync(workingDirectory, cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (GitRemote remote in remotes)
+        {
+            if (string.Equals(remote.Name, candidate, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (candidate.StartsWith(remote.Name + "/", StringComparison.Ordinal)
+                || remote.Name.StartsWith(candidate + "/", StringComparison.Ordinal))
+            {
+                throw new GitException(
+                    GitFailureKind.RemoteNameConflict,
+                    GitFailureClassifier.Describe(GitFailureKind.RemoteNameConflict),
+                    "git remote add",
+                    exitCode: 3,
+                    standardError:
+                    $"error: remote '{candidate}' is a subset/superset conflict with existing '{remote.Name}'");
+            }
+        }
+    }
+
+    private async Task<GitResult> RunRemoteCommandWithSeparatorFallbackAsync(
+        string workingDirectory,
+        IReadOnlyList<string> argumentsWithSeparator,
+        IReadOnlyList<string> argumentsWithoutSeparator,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _writer.RunAsync(workingDirectory, argumentsWithSeparator, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (GitException ex) when (LooksLikeUnsupportedRemoteNameSeparator(ex))
+        {
+            return await _writer.RunAsync(workingDirectory, argumentsWithoutSeparator, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private static bool LooksLikeUnsupportedRemoteNameSeparator(GitException exception)
+    {
+        string error = exception.StandardError;
+
+        return error.Contains("No such remote: '--'", StringComparison.Ordinal)
+            || (error.Contains("unknown option", StringComparison.OrdinalIgnoreCase)
+                && error.Contains("--", StringComparison.Ordinal))
+            || (error.Contains("unknown switch", StringComparison.OrdinalIgnoreCase)
+                && error.Contains("--", StringComparison.Ordinal));
     }
 
     /// <summary>

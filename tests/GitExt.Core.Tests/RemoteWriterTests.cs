@@ -301,6 +301,13 @@ public class RemoteWriterTests
         using Harness harness = await CreateAsync();
         harness.Repository.Git("remote", "add", "--", "-eski", "https://example.com/a.git");
 
+        // Older git versions do not support the `--` separator for `git remote remove/rename`.
+        // On those versions, working with an already-existing leading-dash remote is not possible.
+        if (!SupportsRemoteNameSeparator(harness.Repository))
+        {
+            Assert.Skip("Bu git sürümünde `git remote` alt komutları `--` ayırıcısını desteklemiyor.");
+        }
+
         RemoteRemovalPlan plan = await harness.Writer.RemoveAsync(harness.Path, "-eski", Ct);
 
         plan.Remote.Name.ShouldBe("-eski");
@@ -344,5 +351,19 @@ public class RemoteWriterTests
 
         // The first part is "git" — the fixture already runs git itself.
         return [.. parts.Skip(1)];
+    }
+
+    private static bool SupportsRemoteNameSeparator(TestRepository repository)
+    {
+        (int exitCode, string error) = repository.TryGit("remote", "remove", "--", "__olmayan__");
+
+        if (exitCode == 2 && error.Contains("No such remote", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return !error.Contains("No such remote: '--'", StringComparison.Ordinal)
+            && !error.Contains("unknown option", StringComparison.OrdinalIgnoreCase)
+            && !error.Contains("unknown switch", StringComparison.OrdinalIgnoreCase);
     }
 }
