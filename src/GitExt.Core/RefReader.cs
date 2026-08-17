@@ -127,11 +127,22 @@ public sealed class RefReader : IRefReader
 
         // %(symref) is only filled in for symbolic refs; on a normal branch it is an EMPTY string (measured).
         string symref = fields[8];
+        string shortName = fields[1];
+
+        // Old git versions may print refs/remotes/<name>/HEAD as "<name>/HEAD" while newer
+        // ones abbreviate it to "<name>". Normalize so filtering logic is version-independent.
+        if (!string.IsNullOrEmpty(symref)
+            && fullName.StartsWith(RemoteName.RemotesPrefix, StringComparison.Ordinal)
+            && fullName.EndsWith("/HEAD", StringComparison.Ordinal))
+        {
+            shortName = fullName[
+                RemoteName.RemotesPrefix.Length..^"/HEAD".Length];
+        }
 
         return new GitRef
         {
             FullName = fullName,
-            ShortName = fields[1],
+            ShortName = shortName,
             Kind = GitRef.ClassifyKind(fullName),
             ObjectId = objectId,
             TargetCommit = target,
