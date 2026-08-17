@@ -199,10 +199,15 @@ EOF
         fi
     fi
 
+    # ⚠️ The search is pinned to THIS version. Written as `gitext-core-*.rpm` it matched
+    # ANY .rpm lying in dist/, so a leftover from an earlier run was reported as this run's
+    # output — and the guard below would have accepted it even if rpmbuild had produced
+    # nothing at all. Measured: with a `0.1.0~dryrun` file left over from a previous trial,
+    # the freshly built `0.1.0` package was built correctly and the OLD name was printed.
     local rpm
-    rpm=$(find "$OUT" -maxdepth 1 -name 'gitext-core-*.rpm' | head -1)
+    rpm=$(find "$OUT" -maxdepth 1 -name "gitext-core-$PKG_VERSION-*.rpm" | head -1)
 
-    [ -n "$rpm" ] || { echo "ERROR: could not produce .rpm." >&2; exit 1; }
+    [ -n "$rpm" ] || { echo "ERROR: could not produce .rpm ($PKG_VERSION)." >&2; exit 1; }
 
     echo "   $rpm ($(du -h "$rpm" | cut -f1))"
 }

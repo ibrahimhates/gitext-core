@@ -130,6 +130,15 @@ if [ -f "build/linux/$APP_ID.metainfo.xml" ]; then
     # `.appdata.xml` name. Both names are placed: the new name is the standard, the
     # old name silences appimagetool.
     cp "build/linux/$APP_ID.metainfo.xml" "$APPDIR/usr/share/metainfo/$APP_ID.appdata.xml"
+
+    # What SHIPS is validated, and without the network — see the --no-appstream note
+    # at appimagetool below. `--no-net` keeps every offline rule (schema, required
+    # fields, licence identifiers); only the "is this link alive" question is dropped.
+    if command -v appstreamcli >/dev/null 2>&1; then
+        appstreamcli validate --no-net "$APPDIR/usr/share/metainfo/$APP_ID.metainfo.xml"
+    else
+        echo "   appstreamcli missing — metadata validation SKIPPED."
+    fi
 fi
 
 # appimagetool WANTS both a .desktop file and an icon at the root, plus an AppRun
@@ -171,7 +180,18 @@ else
     RUN=("$TOOL" --appimage-extract-and-run)
 fi
 
-if ARCH=x86_64 "${RUN[@]}" "$APPDIR" "$APPIMAGE"; then
+# 🔴 MEASURED — `--no-appstream` is not a way of dodging validation; the metadata is
+# validated a few lines above, offline. What is dropped here is appimagetool's own
+# appstreamcli run, which is ONLINE: it fetches every <url> in the file and treats an
+# unreachable one as a warning, and appstreamcli exits 3 on warnings — so the AppImage
+# fails to build.
+#
+# The link it could not reach was our own bug tracker, and the URL is fine: at the same
+# moment `github.com/git/git/issues` was answering 404 as well, and the repository's API
+# says the issue tracker is open. GitHub throttles anonymous page requests, and a CI
+# runner asks from a shared address. So this check makes the release depend on a coin
+# flip with a third party, not on anything in the repository.
+if ARCH=x86_64 "${RUN[@]}" --no-appstream "$APPDIR" "$APPIMAGE"; then
     echo "   $APPIMAGE ($(du -h "$APPIMAGE" | cut -f1))"
 else
     echo "!! could not produce AppImage — tarball is still ready."

@@ -154,10 +154,17 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq librsvg2-bin imagemagick desktop-file-utils appstream
 
+      # 🔴 `--no-net`. MEASURED: without it, `appstreamcli validate` FETCHES every <url>
+      # in the file and an unreachable one is a warning — and the tool exits 3 on warnings,
+      # so the release stops. The link it could not reach was our own bug tracker, and the
+      # URL is correct: at the same moment `github.com/git/git/issues` answered 404 too, and
+      # the repository's API reports the issue tracker as open. GitHub throttles anonymous
+      # page requests and a runner asks from a shared address, so the answer is a coin flip.
+      # Every offline rule (schema, required fields, licence identifiers) still applies.
       - name: Validate metadata
         run: |
           desktop-file-validate build/linux/io.github.ibrahimhates.GitExtCore.desktop
-          appstreamcli validate build/linux/io.github.ibrahimhates.GitExtCore.metainfo.xml
+          appstreamcli validate --no-net build/linux/io.github.ibrahimhates.GitExtCore.metainfo.xml
 
       # Running the AppImage itself needs FUSE; the runner doesn't have it, so
       # appimagetool runs with `--appimage-extract-and-run` (the script picks this itself).
