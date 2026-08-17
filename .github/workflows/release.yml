@@ -310,7 +310,7 @@ jobs:
       - name: Release notes
         run: build/release-notes.sh "${GITHUB_REF_NAME}" > release-notes.md
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           draft: true
           body_path: release-notes.md
