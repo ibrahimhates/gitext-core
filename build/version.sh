@@ -34,13 +34,53 @@ _gitext_root() {
 # Seeing this in a package's name means the tag never arrived.
 GITEXT_UNRELEASABLE_PREFIX="0.0.0-alpha.0"
 
+# What a version is allowed to look like — SemVer 2.0, which is what MinVer accepts.
+GITEXT_VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The override's `v` prefix is stripped HERE, where the value enters.
+#
+# 🔴 MEASURED — what a person types is the TAG NAME. ADR-0006 defines tags with a `v`
+# prefix, the release workflow's input asks for a "version", so `v0.1.0` is the natural
+# thing to write. MinVer does not accept it:
+#
+#   MinVer : error MINVER1005: Invalid version override 'v0.1.0'
+#
+# and the packaging job dies at `dotnet publish` — after the version job went green, after
+# the tests passed, on all three platforms at once. The value is normalised at this single
+# point instead of at each of the four packaging scripts.
+#
+# ⚠️ It is EXPORTED, not just assigned. The packaging scripts source this file and then
+# start `dotnet`; a plain assignment would stay in the shell and the child process would
+# still see the original value. And it is done at load time, not inside a function: the
+# functions are called as `$(…)`, i.e. in a SUBSHELL, from which an export never reaches
+# the caller.
+if [ -n "${MINVER_VERSION_OVERRIDE:-}" ]; then
+    MINVER_VERSION_OVERRIDE="${MINVER_VERSION_OVERRIDE#v}"
+    export MINVER_VERSION_OVERRIDE
+fi
+
 gitext_version() {
     local root
     root="$(_gitext_root)"
 
     # If MinVerVersionOverride is given, obey it — this is the only way to produce
-    # a tagless trial version in CI via workflow_dispatch.
+    # a tagless trial version in CI via workflow_dispatch. The `v` prefix has already
+    # been stripped as the file was loaded; what is left has to be checked, because
+    # MinVer's own complaint arrives minutes later, from inside MSBuild's output.
     if [ -n "${MINVER_VERSION_OVERRIDE:-}" ]; then
+        if ! [[ "$MINVER_VERSION_OVERRIDE" =~ $GITEXT_VERSION_PATTERN ]]; then
+            cat >&2 <<EOF
+ERROR: '$MINVER_VERSION_OVERRIDE' is not a valid version.
+
+The value has to be SemVer: MAJOR.MINOR.PATCH, optionally followed by a pre-release
+identifier — 0.1.0, 1.2.3-rc.1. A leading 'v' is accepted (it is the tag's form and is
+stripped); anything else is refused here, because MinVer would only refuse it later,
+in the middle of the packaging step.
+EOF
+            return 1
+        fi
+
         printf '%s\n' "$MINVER_VERSION_OVERRIDE"
         return 0
     fi
