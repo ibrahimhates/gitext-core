@@ -43,20 +43,20 @@
   <ItemGroup Label="Test altyapısı">
     <!-- xunit v3: Avalonia.Headless.XUnit 12.1.0 xunit.v3'e bağımlı, bu yüzden baştan v3. -->
     <PackageVersion Include="xunit.v3" Version="$(XunitVersion)" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <!-- Shouldly: MIT. FluentAssertions v8 lisans değişikliği nedeniyle kullanılmıyor (ADR-0003). -->
     <PackageVersion Include="Shouldly" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup Label="BenchmarkDotNet (P09)">
-    <PackageVersion Include="BenchmarkDotNet" Version="0.15.6" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.15.6" />
   </ItemGroup>
 
   <ItemGroup Label="Sürümleme (P10-T01, ADR-0006)">
     <!-- Sürüm git tag'inden türetiliyor; hiçbir dosyaya elle yazılmıyor. -->
-    <PackageVersion Include="MinVer" Version="6.0.0" />
+    <PackageVersion Include="MinVer" Version="7.0.0" />
   </ItemGroup>
 
 </Project>
