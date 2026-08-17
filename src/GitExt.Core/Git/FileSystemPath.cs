@@ -22,11 +22,12 @@ namespace GitExt.Core.Git;
 public static class FileSystemPath
 {
     /// <summary>
-    /// How many links are followed for a single component before giving up.
+    /// How many links are followed in one <see cref="Resolve"/> call before giving up.
     /// </summary>
     /// <remarks>
-    /// A link may point at another link. The limit guards against a cycle and is the same order of
-    /// magnitude as the kernel's own <c>ELOOP</c> threshold.
+    /// A link may point at another link, and a target may sit under further links. The budget is
+    /// shared by the whole path, guards against a cycle, and is the same order of magnitude as the
+    /// kernel's own <c>ELOOP</c> threshold.
     /// </remarks>
     private const int MaxLinkHops = 40;
 
@@ -34,9 +35,19 @@ public static class FileSystemPath
     /// Resolves the path to its real location, following symbolic links in <b>every</b> component.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The path does not have to exist: unresolvable components are left as they are, so the result
     /// is always at least <see cref="Path.GetFullPath(string)"/>. That matters because this also runs
     /// on paths that are about to be created.
+    /// </para>
+    /// <para>
+    /// 🔴 MEASURED — <b>a link's target has to be walked from the root again.</b> Following the chain
+    /// and taking the target as it is leaves the target's OWN prefix unresolved: on macOS a link
+    /// pointing at <c>/var/folders/…/repo</c> resolves to exactly that string, and <c>/var</c> is
+    /// still a symlink. git's answer (<c>/private/var/…</c>) then compares as a different directory
+    /// and the repository is reported as a linked worktree — the same symptom this class exists to
+    /// prevent, one level deeper. So the target's segments go back to the FRONT of the queue.
+    /// </para>
     /// </remarks>
     public static string Resolve(string path)
     {
@@ -51,19 +62,47 @@ public static class FileSystemPath
         }
 
         string current = root;
+        LinkedList<string> pending = new(SplitSegments(full[root.Length..]));
+        int hops = 0;
 
-        foreach (string segment in full[root.Length..].Split(
-                     [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
-                     StringSplitOptions.RemoveEmptyEntries))
+        while (pending.First is { } first)
         {
-            current = ResolveComponent(Path.Combine(current, segment));
+            pending.RemoveFirst();
+
+            string candidate = Path.Combine(current, first.Value);
+            FileSystemInfo? target = hops < MaxLinkHops ? TryResolveLink(candidate) : null;
+
+            if (target is null)
+            {
+                current = candidate;
+                continue;
+            }
+
+            hops++;
+
+            // An absolute target starts from its own root; a relative one has already been resolved
+            // against the link's directory (see TryResolveLink), so both arrive here absolute.
+            string resolved = Path.GetFullPath(target.FullName);
+            string targetRoot = Path.GetPathRoot(resolved) ?? root;
+
+            current = targetRoot;
+
+            foreach (string segment in SplitSegments(resolved[targetRoot.Length..]).Reverse())
+            {
+                pending.AddFirst(segment);
+            }
         }
 
         return Path.TrimEndingDirectorySeparator(current);
     }
 
+    private static string[] SplitSegments(string path) =>
+        path.Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries);
+
     /// <summary>
-    /// Follows the link chain of a path whose parent is already resolved.
+    /// Reads a single component's link target; <see langword="null"/> when it is not a link.
     /// </summary>
     /// <remarks>
     /// MEASURED — with <c>returnFinalTarget: false</c> a <b>relative</b> link target is resolved
@@ -72,34 +111,18 @@ public static class FileSystemPath
     /// than with <c>returnFinalTarget: true</c> so that a broken link leaves the path untouched
     /// instead of throwing.
     /// </remarks>
-    private static string ResolveComponent(string path)
+    private static FileSystemInfo? TryResolveLink(string path)
     {
-        string current = path;
-
-        for (int hop = 0; hop < MaxLinkHops; hop++)
+        try
         {
-            FileSystemInfo? target;
-
-            try
-            {
-                target = Directory.ResolveLinkTarget(current, returnFinalTarget: false)
-                         ?? File.ResolveLinkTarget(current, returnFinalTarget: false);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // A path we cannot inspect is left as it is; the caller loses normalisation, not
-                // correctness.
-                return current;
-            }
-
-            if (target is null)
-            {
-                return current;
-            }
-
-            current = target.FullName;
+            return Directory.ResolveLinkTarget(path, returnFinalTarget: false)
+                   ?? File.ResolveLinkTarget(path, returnFinalTarget: false);
         }
-
-        return current;
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A path we cannot inspect is left as it is; the caller loses normalisation, not
+            // correctness.
+            return null;
+        }
     }
 }

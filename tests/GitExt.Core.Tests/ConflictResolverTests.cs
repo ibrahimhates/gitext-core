@@ -301,6 +301,18 @@ public class ConflictResolverTests
         harness.Repository.Git(
             "config", "--local", "mergetool.sahte.cmd", $"{script} $LOCAL $REMOTE $BASE $MERGED");
 
+        // 🔴 MEASURED (macOS CI): without `trustExitCode` git does not believe the tool, it looks at
+        // the FILE'S TIMESTAMP — `test "$MERGED" -nt "$BACKUP"` in git-mergetool--lib. The backup is
+        // taken immediately before the tool runs and this fake tool finishes in microseconds, so on
+        // a shell that compares whole seconds (macOS's /bin/sh is bash 3.2) the resolved file does
+        // not look "newer". git then prints "seems unchanged", asks "Was the merge successful
+        // [y/n]?" — and there is no terminal: `read` hits EOF, git restores the conflicted file and
+        // exits 1. Reproduced on Linux by hand: with the tool setting an older mtime the same
+        // "merge of f.txt failed" comes out, and with trustExitCode it does not.
+        // The measurement in RunAsync (the index decides, not the exit code) is untouched — this is
+        // about how git judges THE TOOL, and this tool's exit code really is reliable.
+        harness.Repository.Git("config", "--local", "mergetool.sahte.trustExitCode", "true");
+
         MergeToolResult result = await harness.Tools.RunAsync(
             harness.Path, tool: "sahte", cancellationToken: Ct);
 

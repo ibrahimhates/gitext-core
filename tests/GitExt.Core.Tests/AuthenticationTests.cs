@@ -163,16 +163,42 @@ public class AuthenticationTests
     {
         // Writing `credential.helper=` is git's way of cancelling an inherited helper;
         // saying "there is a helper" would give the user the wrong advice.
+        //
+        // 🔴 REGRESSION (macOS CI): the first entry stands for the INHERITED helper — there the
+        // system configuration brings in `osxkeychain`. Without it the test proves nothing: a
+        // single empty value passes even with a check that only looks for a non-empty line. The
+        // two entries are written into the local configuration because the diagnosis runs git as
+        // a child of the TEST PROCESS, which does not see the fixture's own HOME.
         (TestRepository repository, AuthenticationDiagnostics diagnostics) = await CreateAsync();
         using TestRepository _ = repository;
 
         repository.Git("remote", "add", "origin", "https://example.com/x.git");
-        repository.Git("config", "credential.helper", "");
+        repository.Git("config", "--local", "--add", "credential.helper", "cache");
+        repository.Git("config", "--local", "--add", "credential.helper", "");
 
         AuthenticationDiagnosis result =
             await diagnostics.DiagnoseAsync(repository.Path, "origin", Ct);
 
         result.HasCredentialHelper.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Bos_degerden_SONRA_gelen_helper_VAR_sayiliyor()
+    {
+        // The counter-evidence to the test above: the order decides. An empty value only wipes what
+        // came BEFORE it; a helper configured after it is in effect (measured with
+        // `git credential fill`).
+        (TestRepository repository, AuthenticationDiagnostics diagnostics) = await CreateAsync();
+        using TestRepository _ = repository;
+
+        repository.Git("remote", "add", "origin", "https://example.com/x.git");
+        repository.Git("config", "--local", "--add", "credential.helper", "");
+        repository.Git("config", "--local", "--add", "credential.helper", "cache");
+
+        AuthenticationDiagnosis result =
+            await diagnostics.DiagnoseAsync(repository.Path, "origin", Ct);
+
+        result.HasCredentialHelper.ShouldBeTrue();
     }
 
     [Fact]
