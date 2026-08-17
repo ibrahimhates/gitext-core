@@ -14,8 +14,8 @@
   <!-- Sürüm grupları: tek yerden yükseltmek için -->
   <PropertyGroup>
     <AvaloniaVersion>12.1.1</AvaloniaVersion>
-    <MicrosoftExtensionsVersion>10.0.10</MicrosoftExtensionsVersion>
-    <XunitVersion>4.0.0</XunitVersion>
+    <MicrosoftExtensionsVersion>10.0.11</MicrosoftExtensionsVersion>
+    <XunitVersion>3.2.2</XunitVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Avalonia (ADR-0001)">
