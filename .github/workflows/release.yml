@@ -21,6 +21,47 @@ env:
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
+  # Only what is on main is released.
+  #
+  # ⚠️ A tag push carries NO branch. The event's ref is `refs/tags/v1.0.0` and GitHub
+  # offers no "which branch is this tag on" — a `branches:` filter next to `tags:` is
+  # silently ignored for tag pushes. So the question is put to git itself: is the tagged
+  # commit reachable from origin/main? Without it, a tag pushed from a feature branch
+  # publishes that tree under a release version and no step turns red.
+  #
+  # The same rule covers workflow_dispatch: there GITHUB_SHA is the head of the branch
+  # the run was started from, so a trial run from a side branch is refused too.
+  #
+  # Every other job hangs off this one, so nothing — not even the tests — starts before
+  # the question is answered.
+  guard:
+    name: Only from main
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # REQUIRED: ancestry cannot be answered in a shallow clone
+
+      - name: The commit must be on main
+        run: |
+          set -euo pipefail
+
+          # main is fetched EXPLICITLY rather than relying on what checkout happens to
+          # bring along: on a tag push the branch refs are not the point of the checkout,
+          # and a missing origin/main would turn this guard into a green no-op.
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_SHA is not on main — the release is stopped." >&2
+            echo "A tag can be pushed from any branch; only what is on main is released." >&2
+            echo "Merge the commit into main first, then tag it there." >&2
+            exit 1
+          fi
+
+          echo "OK: $GITHUB_SHA is on main."
+
+  # ───────────────────────────────────────────────────────────────────────────
   # The version is determined once and distributed to all jobs from here.
   #
   # ⚠️ MEASURED (P10-T00) — in a shallow clone MinVer silently produces 0.0.0-alpha.0,
@@ -29,6 +70,7 @@ jobs:
   version:
     name: Determine version
     runs-on: ubuntu-latest
+    needs: guard
     outputs:
       value: ${{ steps.derive.outputs.value }}
 
@@ -75,6 +117,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    needs: guard
 
     steps:
       - uses: actions/checkout@v7
