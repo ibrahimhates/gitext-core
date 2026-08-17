@@ -41,7 +41,7 @@ public class CommitSignatureReaderTests
 
         if (!repository.TryEnableSshSigning())
         {
-            Assert.Skip("ssh-keygen bulunamadı; imzalama testi atlandı.");
+            Assert.Skip("SSH imzalama kurulamadı (ssh-keygen yok ya da git < 2.34); imzalama testi atlandı.");
         }
 
         repository.TrustSigningKey();
@@ -69,7 +69,7 @@ public class CommitSignatureReaderTests
 
         if (!repository.TryEnableSshSigning())
         {
-            Assert.Skip("ssh-keygen bulunamadı; imzalama testi atlandı.");
+            Assert.Skip("SSH imzalama kurulamadı (ssh-keygen yok ya da git < 2.34); imzalama testi atlandı.");
         }
 
         // TrustSigningKey is NOT CALLED — this is the situation where the trap occurs.

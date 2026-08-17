@@ -173,10 +173,12 @@ public interface IRemoteWriter
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Every command carries the <c>--</c> separator.</b> MEASURED: a name starting with <c>-</c>
+/// <b>Commands carry the <c>--</c> separator.</b> MEASURED: a name starting with <c>-</c>
 /// is <b>taken for a flag</b> when the separator is missing (<c>error: unknown switch 'x'</c>,
 /// exit code 129), and the same name is accepted with <c>--</c>. Our own validation rejects such
 /// names, but a remote that <b>already exists</b> in the repository may be named that way.
+/// <c>remove</c> and <c>rename</c> are the exception on old git — see
+/// <see cref="NameSeparatorSupport"/>.
 /// </para>
 /// <para>
 /// These writes use <c>config.lock</c>, not <c>index.lock</c>; they still go through
@@ -186,19 +188,51 @@ public interface IRemoteWriter
 /// </remarks>
 public sealed class RemoteWriter : IRemoteWriter
 {
+    /// <summary>
+    /// The first version where <c>git remote remove</c> and <c>git remote rename</c> accept the
+    /// <c>--</c> separator.
+    /// </summary>
+    /// <remarks>
+    /// <b>MEASURED (git 2.30.2, the ADR-0002 minimum):</b> <c>git remote remove -- origin</c> stops
+    /// with exit code <b>129</b> and prints nothing but <c>usage: git remote remove &lt;name&gt;</c>.
+    /// The reason is in git's own source: up to and including 2.37 the <c>rm</c> and <c>mv</c>
+    /// subcommands <b>do not call <c>parse_options</c> at all</b>, they only check the argument count,
+    /// so <c>--</c> counts as one argument too many. They moved to <c>parse_options</c> in
+    /// <b>2.38.0</b>.
+    /// <para>
+    /// Dropping the separator below that version is <b>safe</b> exactly because of the same reason:
+    /// with no option parsing, a name starting with <c>-</c> is not taken for a flag either
+    /// (measured: <c>git remote remove -eski</c> succeeds on 2.30.2, while on 2.55 the same command
+    /// fails with <c>unknown switch 'e'</c>). So each version gets the form that works on it.
+    /// </para>
+    /// <para>
+    /// The version is read, not probed: the failure of the probe would be a <b>write command</b>
+    /// entering the queue and coming back with 129, and telling that apart from a real usage error
+    /// is only possible from the text.
+    /// </para>
+    /// </remarks>
+    private static readonly GitVersion NameSeparatorSupport = new(2, 38, 0);
+
     private readonly IGitWriter _writer;
     private readonly IGitProcessRunner _runner;
     private readonly IRemoteReader _reader;
+    private readonly GitVersion _version;
 
-    public RemoteWriter(IGitWriter writer, IGitProcessRunner runner, IRemoteReader reader)
+    public RemoteWriter(
+        IGitWriter writer,
+        IGitProcessRunner runner,
+        IRemoteReader reader,
+        GitExecutable executable)
     {
         ArgumentNullException.ThrowIfNull(writer);
         ArgumentNullException.ThrowIfNull(runner);
         ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(executable);
 
         _writer = writer;
         _runner = runner;
         _reader = reader;
+        _version = executable.Version;
     }
 
     public async Task AddAsync(
@@ -274,11 +308,9 @@ public sealed class RemoteWriter : IRemoteWriter
         RemoteRemovalPlan plan =
             await PrepareRemovalAsync(workingDirectory, name, cancellationToken).ConfigureAwait(false);
 
-        await RunRemoteCommandWithSeparatorFallbackAsync(
-            workingDirectory,
-            ["remote", "remove", "--", name],
-            ["remote", "remove", name],
-            cancellationToken).ConfigureAwait(false);
+        await _writer
+            .RunAsync(workingDirectory, BuildNameArguments("remove", name), cancellationToken)
+            .ConfigureAwait(false);
 
         return plan;
     }
@@ -292,11 +324,9 @@ public sealed class RemoteWriter : IRemoteWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(oldName);
         ValidateName(newName, nameof(newName));
 
-        GitResult result = await RunRemoteCommandWithSeparatorFallbackAsync(
-            workingDirectory,
-            ["remote", "rename", "--", oldName, newName],
-            ["remote", "rename", oldName, newName],
-            cancellationToken).ConfigureAwait(false);
+        GitResult result = await _writer
+            .RunAsync(workingDirectory, BuildNameArguments("rename", oldName, newName), cancellationToken)
+            .ConfigureAwait(false);
 
         // 🔴 MEASURED: git DOES NOT UPDATE a non-default fetch refspec, yet the exit code is
         // still 0. The warning sits on stderr alone:
@@ -428,33 +458,23 @@ public sealed class RemoteWriter : IRemoteWriter
         }
     }
 
-    private async Task<GitResult> RunRemoteCommandWithSeparatorFallbackAsync(
-        string workingDirectory,
-        IReadOnlyList<string> argumentsWithSeparator,
-        IReadOnlyList<string> argumentsWithoutSeparator,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// Builds the arguments of a <c>remote</c> subcommand that takes only names, putting the
+    /// <c>--</c> separator in only where git understands it.
+    /// </summary>
+    /// <seealso cref="NameSeparatorSupport"/>
+    private List<string> BuildNameArguments(string subcommand, params string[] names)
     {
-        try
-        {
-            return await _writer.RunAsync(workingDirectory, argumentsWithSeparator, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (GitException ex) when (LooksLikeUnsupportedRemoteNameSeparator(ex))
-        {
-            return await _writer.RunAsync(workingDirectory, argumentsWithoutSeparator, cancellationToken)
-                .ConfigureAwait(false);
-        }
-    }
+        List<string> arguments = ["remote", subcommand];
 
-    private static bool LooksLikeUnsupportedRemoteNameSeparator(GitException exception)
-    {
-        string error = exception.StandardError;
+        if (_version >= NameSeparatorSupport)
+        {
+            arguments.Add("--");
+        }
 
-        return error.Contains("No such remote: '--'", StringComparison.Ordinal)
-            || (error.Contains("unknown option", StringComparison.OrdinalIgnoreCase)
-                && error.Contains("--", StringComparison.Ordinal))
-            || (error.Contains("unknown switch", StringComparison.OrdinalIgnoreCase)
-                && error.Contains("--", StringComparison.Ordinal));
+        arguments.AddRange(names);
+
+        return arguments;
     }
 
     /// <summary>

@@ -40,7 +40,8 @@ public class RemoteWriterTests
         GitWriter gitWriter = new(runner, queue);
         RemoteReader reader = new(runner);
 
-        return new Harness(repository, new RemoteWriter(gitWriter, runner, reader), reader, queue);
+        return new Harness(
+            repository, new RemoteWriter(gitWriter, runner, reader, executable), reader, queue);
     }
 
     /// <summary>Produces a remote repository that can really be fetched from.</summary>

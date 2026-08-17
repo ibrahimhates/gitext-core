@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using GitExt.Core.Git;
 
 namespace GitExt.Core.Tests.Fixtures;
 
@@ -13,6 +14,12 @@ namespace GitExt.Core.Tests.Fixtures;
 /// </remarks>
 public sealed class TestRepository : IDisposable
 {
+    /// <summary>
+    /// The first git version that knows <c>gpg.format=ssh</c>; below it the signing tests are
+    /// skipped.
+    /// </summary>
+    private static readonly GitVersion SshSigningSupport = new(2, 34, 0);
+
     private readonly string _root;
     private bool _disposed;
 
@@ -160,6 +167,11 @@ public sealed class TestRepository : IDisposable
     /// <returns><see langword="true"/> if signing could be set up.</returns>
     public bool TryEnableSshSigning()
     {
+        if (!SupportsSshSigning())
+        {
+            return false;
+        }
+
         string keyPath = System.IO.Path.Combine(_root, "imza-anahtari");
 
         try
@@ -184,19 +196,26 @@ public sealed class TestRepository : IDisposable
             return false;
         }
 
-        if (TryGit("config", "--local", "gpg.format", "ssh").ExitCode != 0)
-        {
-            // SSH commit signing was added after the minimum supported git.
-            return false;
-        }
-
-        if (TryGit("config", "--local", "user.signingkey", keyPath + ".pub").ExitCode != 0)
-        {
-            return false;
-        }
+        Git("config", "--local", "gpg.format", "ssh");
+        Git("config", "--local", "user.signingkey", keyPath + ".pub");
 
         return true;
     }
+
+    /// <summary>
+    /// Whether this git can sign with SSH (<c>gpg.format=ssh</c>, git 2.34).
+    /// </summary>
+    /// <remarks>
+    /// <b>MEASURED (git 2.30.2):</b> the exit code of the write CANNOT be used as the check —
+    /// <c>git config gpg.format ssh</c> returns <b>0</b>, git does not validate config values while
+    /// writing them. The error only shows up at <c>commit -S</c>
+    /// (<c>error: unsupported value for gpg.format: ssh</c>), and by then the invalid value is
+    /// sitting in <c>.git/config</c>: from that point on <b>every</b> command in the repository dies
+    /// with 128 (<c>fatal: bad config variable 'gpg.format'</c>) — even a plain
+    /// <c>git log --format=%G?</c>. So the version has to be asked BEFORE writing.
+    /// </remarks>
+    private bool SupportsSshSigning() =>
+        GitVersion.TryParse(Git("--version"), out GitVersion version) && version >= SshSigningSupport;
 
     /// <summary>
     /// Adds the signing key to the list of allowed signers.

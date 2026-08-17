@@ -328,7 +328,7 @@ public class CommitLogReaderTests
 
         if (!repository.TryEnableSshSigning())
         {
-            Assert.Skip("ssh-keygen bulunamadı; imzalama testi atlandı.");
+            Assert.Skip("SSH imzalama kurulamadı (ssh-keygen yok ya da git < 2.34); imzalama testi atlandı.");
         }
 
         repository.Git("commit", "-S", "-m", "imzalı başlık", "-m", "gövde satırı bir\ngövde satırı iki");
