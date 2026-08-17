@@ -278,18 +278,27 @@ public sealed class GitProcessRunner : IGitProcessRunner
             Task<string> stderrTask = ReadStandardErrorAsync(process, command.Progress, cancellationToken);
             Task stdinTask = WriteStandardInputAsync(process, command, cancellationToken);
 
-            await Task.WhenAll(stdoutTask, stderrTask, stdinTask).ConfigureAwait(false);
-
+            // 🔴 MEASURED — stdout is awaited ON ITS OWN, before the other two. Waiting for all
+            // three together (`Task.WhenAll`) DEADLOCKS as soon as the output limit trips:
+            // reading stops, so git blocks writing into a full stdout pipe; blocked, it never
+            // exits; not exiting, it never closes stderr — and the wait for stderr therefore never
+            // ends. The command only came back at the 120-second timeout.
+            // The pipe's buffer is what hides this: on Linux 64 KB is enough for the rest of a
+            // small output, so git finishes anyway, while the Windows buffer (4 KB) blocks
+            // immediately. The bug is not Windows-specific — with an output large enough it
+            // reproduces on Linux too, and the test now uses such a size.
             (byte[] bytes, bool truncated) = await stdoutTask.ConfigureAwait(false);
 
             if (truncated)
             {
                 // We stopped reading the output; the process stays blocked trying to write. It
                 // has to be killed instead of waited for, otherwise `WaitForExitAsync` never
-                // returns.
+                // returns. This must happen BEFORE stderr is awaited — killing it is what lets
+                // that wait finish.
                 TryKill(process);
             }
 
+            await Task.WhenAll(stderrTask, stdinTask).ConfigureAwait(false);
             await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
             return new GitResult(

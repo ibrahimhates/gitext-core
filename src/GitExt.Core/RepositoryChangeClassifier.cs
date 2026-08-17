@@ -52,8 +52,28 @@ public static class RepositoryChangeClassifier
     /// <param name="relativePath">
     /// The path relative to the root directory. Either <c>/</c> or the platform separator is accepted.
     /// </param>
+    /// <param name="contentChangeOnly">
+    /// <see langword="true"/> when the event only reports a change of content/timestamp
+    /// (<c>Changed</c>) — not a creation, deletion or rename.
+    /// </param>
     /// <returns>The refresh required, or <see langword="null"/> when the event is to be ignored.</returns>
-    public static RepositoryChangeKind? ClassifyWorkingTreePath(string relativePath)
+    /// <remarks>
+    /// 🔴 MEASURED (Windows CI) — <paramref name="contentChangeOnly"/> exists because of the
+    /// <c>.git</c> DIRECTORY ITSELF. Creating a file inside it changes the directory's own timestamp,
+    /// and Windows reports that as a separate <c>Changed</c> event whose path is exactly <c>.git</c>;
+    /// Linux raises no such event. Taken as a repository change, writing the commit-message draft
+    /// (<c>.git/GITEXT_COMMITMESSAGE</c>, P05-T13) triggered a full refresh — the very thing the
+    /// draft filter exists to prevent — and the test that asserts "the draft triggers nothing" was
+    /// red on Windows alone.
+    /// <para>
+    /// Nothing is lost by ignoring it: whatever really happened inside <c>.git</c> produces its own
+    /// event with its own path. A <b>creation/deletion/rename</b> of <c>.git</c> is a different
+    /// matter — that is the repository appearing or disappearing, and it is still reported.
+    /// </para>
+    /// </remarks>
+    public static RepositoryChangeKind? ClassifyWorkingTreePath(
+        string relativePath,
+        bool contentChangeOnly = false)
     {
         ArgumentNullException.ThrowIfNull(relativePath);
 
@@ -76,9 +96,14 @@ public static class RepositoryChangeClassifier
             // The parts are not rejoined and re-split: that would mean an extra join plus an array
             // allocation for every `.git` event, and this path is hot — a single branch switch
             // produces 2102 events (measured).
-            return i == segments.Length - 1
-                ? RepositoryChangeKind.Repository
-                : ClassifySegments(segments.AsSpan(i + 1));
+            if (i != segments.Length - 1)
+            {
+                return ClassifySegments(segments.AsSpan(i + 1));
+            }
+
+            // The event is about `.git` itself: meaningful when it appears/disappears, pure noise
+            // when it is only the directory's timestamp (see the summary).
+            return contentChangeOnly ? null : RepositoryChangeKind.Repository;
         }
 
         return IsLockFile(segments[^1]) ? null : RepositoryChangeKind.WorkingTree;

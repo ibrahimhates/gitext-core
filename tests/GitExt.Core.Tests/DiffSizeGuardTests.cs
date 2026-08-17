@@ -181,7 +181,16 @@ public class DiffSizeGuardTests
     public async Task Cikti_siniri_asilinca_yarim_veri_ayristirilmaz()
     {
         // The last line of defence: parsing truncated output would mean silently showing an INCOMPLETE diff.
-        using TestRepository repository = CreateWithLargeChange(2000);
+        //
+        // 🔴 REGRESSION (Windows CI): the line count has to be large enough that what is left over
+        // after the limit STILL DOES NOT FIT in the pipe's buffer. Reaching the limit stops the
+        // reading and git blocks writing; if it is not killed right there, the wait for stderr never
+        // ends and the command only returns at the 120-second timeout. With 2000 lines the leftover
+        // fitted in Linux's 64 KB buffer, git finished anyway and the deadlock only appeared on
+        // Windows (4 KB buffer). At this size it reproduces on every platform.
+        const int lines = 20_000;
+
+        using TestRepository repository = CreateWithLargeChange(lines);
 
         DiffReader reader = await CreateReaderAsync();
 
@@ -199,7 +208,7 @@ public class DiffSizeGuardTests
         diffs.ShouldAllBe(d => d.IsTooLarge);
 
         // The line counts are still correct.
-        diffs.Single(d => d.Path.Value == "buyuk.txt").AddedLines.ShouldBe(2000);
+        diffs.Single(d => d.Path.Value == "buyuk.txt").AddedLines.ShouldBe(lines);
     }
 
     [Fact]

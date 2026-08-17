@@ -156,7 +156,7 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
                 if (!IsInside(gitDir, root))
                 {
                     _gitDirectoryWatcher = CreateWatcher(
-                        gitDir, RepositoryChangeClassifier.ClassifyGitDirectoryPath);
+                        gitDir, (path, _) => RepositoryChangeClassifier.ClassifyGitDirectoryPath(path));
                 }
 
                 // ⚠️ In a linked working tree, refs live here; NOT in the git directory. If
@@ -165,7 +165,7 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
                 if (!PathsEqual(commonDir, gitDir) && !IsInside(commonDir, root) && !IsInside(commonDir, gitDir))
                 {
                     _commonDirectoryWatcher = CreateWatcher(
-                        commonDir, RepositoryChangeClassifier.ClassifyGitDirectoryPath);
+                        commonDir, (path, _) => RepositoryChangeClassifier.ClassifyGitDirectoryPath(path));
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
@@ -247,11 +247,11 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
     /// </remarks>
     private FileSystemWatcher CreateWatcher(
         string root,
-        Func<string, RepositoryChangeKind?> classifier)
+        Func<string, bool, RepositoryChangeKind?> classifier)
     {
-        void Handle(string fullPath)
+        void Handle(string fullPath, bool contentChangeOnly)
         {
-            if (classifier(Path.GetRelativePath(root, fullPath)) is { } kind)
+            if (classifier(Path.GetRelativePath(root, fullPath), contentChangeOnly) is { } kind)
             {
                 OnRawChange(kind);
             }
@@ -270,13 +270,16 @@ public sealed class RepositoryWatcher : IRepositoryWatcher
                 | NotifyFilters.Size,
         };
 
-        watcher.Changed += (_, e) => Handle(e.FullPath);
-        watcher.Created += (_, e) => Handle(e.FullPath);
-        watcher.Deleted += (_, e) => Handle(e.FullPath);
+        // Only `Changed` reports a pure content/timestamp change; the other three mean the entry
+        // itself appeared, disappeared or was renamed. The classifier needs the difference for the
+        // `.git` directory's own timestamp event (measured on Windows).
+        watcher.Changed += (_, e) => Handle(e.FullPath, contentChangeOnly: true);
+        watcher.Created += (_, e) => Handle(e.FullPath, contentChangeOnly: false);
+        watcher.Deleted += (_, e) => Handle(e.FullPath, contentChangeOnly: false);
 
         // The NEW name is used on rename: a ref update's source is `refs/heads/x.lock`, its
         // target `refs/heads/x`. Using the old name would let the lock filter eat the real signal.
-        watcher.Renamed += (_, e) => Handle(e.FullPath);
+        watcher.Renamed += (_, e) => Handle(e.FullPath, contentChangeOnly: false);
 
         // If the event queue overflows, which files were missed is unknown; the only correct
         // answer is to re-read everything.

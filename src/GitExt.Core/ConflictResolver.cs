@@ -254,13 +254,20 @@ public sealed class ConflictResolver : IConflictResolver
     /// </summary>
     /// <remarks>
     /// <c>true</c> always exits successfully having written nothing; git reads that as "the user did
-    /// not change the message". There is no <c>true</c> on Windows, so the equivalent
-    /// <c>cmd /c exit 0</c> is used.
+    /// not change the message".
+    /// <para>
+    /// 🔴 MEASURED (Git for Windows 2.55, under Wine) — <c>true</c> is the right value <b>on Windows
+    /// too</b>, and the <c>cmd /c exit 0</c> that used to stand in for it is what was broken:
+    /// <c>git merge --continue</c> came back with <c>error: there was a problem with the editor
+    /// 'cmd /c exit 0'</c> (rc=1), while with <c>true</c> the merge commit was created (rc=0). The
+    /// reason is that git runs the editor through <b>the bundled MSYS <c>sh</c></b>, where
+    /// <c>true</c> is a builtin — it is not looked up in <c>PATH</c> as a Windows executable.
+    /// </para>
     /// </remarks>
     private static IReadOnlyDictionary<string, string> NonInteractiveEditor =>
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["GIT_EDITOR"] = OperatingSystem.IsWindows() ? "cmd /c exit 0" : "true",
+            ["GIT_EDITOR"] = "true",
         };
 
     private async Task<string> ResolveVerbAsync(

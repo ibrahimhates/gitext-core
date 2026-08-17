@@ -214,9 +214,10 @@ public sealed class RebaseTodoSession : IDisposable
         else
         {
             // When no message is given the editor must not open at all; `true` always succeeds
-            // silently and git reads that as "the user did not change it".
-            session._environment["GIT_EDITOR"] =
-                OperatingSystem.IsWindows() ? "cmd /c exit 0" : "true";
+            // silently and git reads that as "the user did not change it". On Windows as well:
+            // git runs the editor through the bundled MSYS `sh`, where `true` is a builtin
+            // (measured — see ConflictResolver.NonInteractiveEditor).
+            session._environment["GIT_EDITOR"] = "true";
         }
 
         return session;
@@ -259,8 +260,27 @@ public sealed class RebaseTodoSession : IDisposable
         }
 
         _paths.Add(path);
-        return path;
+        return ShellSafePath(path);
     }
+
+    /// <summary>
+    /// The form of the script path git can hand to <b>the shell</b>.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 MEASURED (Git for Windows 2.55, under Wine) — git does not start the editor directly, it
+    /// runs it through <c>sh -c</c>, and in MSYS <c>sh</c> a backslash is an <b>escape character</b>:
+    /// <c>C:\temp\seq.cmd</c> arrives as <c>C:tempseq.cmd</c> (the <c>\t</c> even becomes a real tab)
+    /// and git answers <c>error: there was a problem with the editor</c>. Every interactive rebase
+    /// failed on Windows for this reason and the rebase never started.
+    /// <para>
+    /// Forward slashes take care of the escaping and the quotes take care of a temp path containing
+    /// a space; both were measured (rc=0, the todo really applied). The path added to
+    /// <see cref="_paths"/> stays the ORIGINAL one — deletion goes through the file system, not
+    /// through a shell.
+    /// </para>
+    /// </remarks>
+    private static string ShellSafePath(string path) =>
+        OperatingSystem.IsWindows() ? $"\"{path.Replace('\\', '/')}\"" : path;
 
     [UnsupportedOSPlatform("windows")]
     private static void MakeExecutable(string path) => File.SetUnixFileMode(

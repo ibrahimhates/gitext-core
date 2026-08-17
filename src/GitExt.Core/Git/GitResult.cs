@@ -55,7 +55,15 @@ public sealed class GitResult
     /// <summary>
     /// Is the exit code one of the success codes the command declared?
     /// </summary>
-    public bool IsSuccess => Command.SuccessExitCodes.Contains(ExitCode);
+    /// <remarks>
+    /// 🔴 A <b>truncated</b> output counts as success. The exit code says nothing there: reaching
+    /// the limit is OUR decision, and the process is killed for it — so what comes back is a
+    /// termination code, not git's verdict. Reading it literally would turn the size guard
+    /// (a protection) into an error, and the caller would never see the partial file list it is
+    /// entitled to. Truncation is signalled by <see cref="OutputTruncated"/>, which every caller
+    /// must handle anyway.
+    /// </remarks>
+    public bool IsSuccess => OutputTruncated || Command.SuccessExitCodes.Contains(ExitCode);
 
     /// <summary>
     /// Returns stdout as UTF-8 text.

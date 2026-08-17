@@ -59,6 +59,30 @@ public class RepositoryWatcherTests
 
             return false;
         }
+
+        /// <summary>Waits until an event OF THE GIVEN KIND has arrived.</summary>
+        /// <remarks>
+        /// 🔴 REGRESSION (Windows CI): counting is not enough when the test performs two actions
+        /// that produce different kinds. Writing a file and then committing was expected to arrive
+        /// coalesced into a single <c>Repository</c> event; on the slower Windows file system the
+        /// working-tree event won the debounce window on its own, <c>WaitAsync(1)</c> came back
+        /// satisfied, and the assertion ran before the commit's event existed. What the test cares
+        /// about is the kind, so that is what is waited for.
+        /// </remarks>
+        public async Task<bool> WaitForAsync(RepositoryChangeKind kind, int timeoutMs = 5000)
+        {
+            for (int waited = 0; waited < timeoutMs; waited += 25)
+            {
+                if (Events.Contains(kind))
+                {
+                    return true;
+                }
+
+                await Task.Delay(25, Ct);
+            }
+
+            return false;
+        }
     }
 
     private static bool Start(RepositoryWatcher watcher, TestRepository repository)
@@ -100,8 +124,7 @@ public class RepositoryWatcherTests
         repository.WriteFile("harici.txt", "içerik");
         repository.Commit("harici commit");
 
-        (await recorder.WaitAsync(1)).ShouldBeTrue();
-        recorder.Events.ShouldContain(RepositoryChangeKind.Repository);
+        (await recorder.WaitForAsync(RepositoryChangeKind.Repository)).ShouldBeTrue();
     }
 
     [Fact]

@@ -630,6 +630,14 @@ public class WorkingTreeWriterTests
         // 🔴 MEASURED: writing the name RAW silently fails for `#`, `!`, `[`, and `\` — git
         // gives no error, and the file isn't ignored either. Verification is done by actually
         // asking real git via `check-ignore`; the pattern merely "looking correct" isn't enough.
+
+        // `*` is one of the characters Windows forbids in a file name; the file cannot be created
+        // there, so there is nothing to ignore either. The escaping rule itself is platform
+        // independent and the other cases exercise it.
+        Assert.SkipWhen(
+            OperatingSystem.IsWindows() && name.Contains('*', StringComparison.Ordinal),
+            "Windows dosya adında `*` kabul etmiyor.");
+
         using Harness harness = await CreateAsync();
         harness.Repository.WriteFile(name, "x\n");
 

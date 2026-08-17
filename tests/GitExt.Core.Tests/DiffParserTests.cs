@@ -182,17 +182,25 @@ public class DiffParserTests
         repository.WriteFile("bosluklu ad.txt", "a\n");
         repository.WriteFile("türkçe-şğüöçİ.txt", "b\n");
 
-        Directory.CreateDirectory(Path.Combine(repository.Path, "alt dizin"));
-        repository.WriteFile(Path.Combine("alt dizin", "b -> c.txt"), "c\n");
+        List<string> expected = ["bosluklu ad.txt", "türkçe-şğüöçİ.txt"];
+
+        // `>` is one of the characters Windows forbids in a file name, so the name that imitates the
+        // rename arrow cannot be created there — the file system refuses it, not git. On the other
+        // platforms it stays in: a parser reading paths from the `diff --git` header would take
+        // " -> " for a rename marker, and that is exactly what this name catches.
+        if (!OperatingSystem.IsWindows())
+        {
+            Directory.CreateDirectory(Path.Combine(repository.Path, "alt dizin"));
+            repository.WriteFile(Path.Combine("alt dizin", "b -> c.txt"), "c\n");
+            expected.Add("alt dizin/b -> c.txt");
+        }
 
         repository.Git("add", "-A");
         repository.Git("commit", "-m", "zor yollar");
 
         IReadOnlyList<FileDiff> diffs = DiffOfHead(repository);
 
-        diffs.Select(d => d.Path.Value).ShouldBe(
-            ["alt dizin/b -> c.txt", "bosluklu ad.txt", "türkçe-şğüöçİ.txt"],
-            ignoreOrder: true);
+        diffs.Select(d => d.Path.Value).ShouldBe(expected, ignoreOrder: true);
     }
 
     [Fact]

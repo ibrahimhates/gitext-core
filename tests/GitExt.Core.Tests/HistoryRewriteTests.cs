@@ -624,11 +624,17 @@ public class HistoryRewriteTests
         // and conflict.
         using RebaseTodoSession session = RebaseTodoSession.Create("pick abc\n");
 
-        string scriptPath = session.Environment["GIT_SEQUENCE_EDITOR"];
+        // On Windows the value is QUOTED and uses forward slashes — git hands the editor to `sh`,
+        // where a backslash would be an escape character (measured; see RebaseTodoSession).
+        string scriptPath = session.Environment["GIT_SEQUENCE_EDITOR"].Trim('"');
         string script = File.ReadAllText(scriptPath);
 
-        script.ShouldContain("> \"$1\"");
-        script.ShouldNotContain(">> \"$1\"");
+        // The redirection target is `$1` in the shell script and `%1` in the batch file; what is
+        // being verified is the same thing in both — TRUNCATE, not append.
+        string target = OperatingSystem.IsWindows() ? "%1" : "\"$1\"";
+
+        script.ShouldContain("> " + target);
+        script.ShouldNotContain(">> " + target);
     }
 
     [Fact]
@@ -640,7 +646,7 @@ public class HistoryRewriteTests
 
         using RebaseTodoSession session = RebaseTodoSession.Create(todo);
 
-        File.ReadAllText(session.Environment["GIT_SEQUENCE_EDITOR"]).ShouldNotContain("ÖZEL");
+        File.ReadAllText(session.Environment["GIT_SEQUENCE_EDITOR"].Trim('"')).ShouldNotContain("ÖZEL");
         File.ReadAllText(session.Environment[RebaseTodoSession.TodoVariable]).ShouldBe(todo);
     }
 
@@ -652,7 +658,8 @@ public class HistoryRewriteTests
 
         using (RebaseTodoSession session = RebaseTodoSession.Create("pick abc\n"))
         {
-            scriptPath = session.Environment["GIT_SEQUENCE_EDITOR"];
+            // Windows: the value is quoted (measured; see RebaseTodoSession.ShellSafePath).
+            scriptPath = session.Environment["GIT_SEQUENCE_EDITOR"].Trim('"');
             todoPath = session.Environment[RebaseTodoSession.TodoVariable];
 
             File.Exists(scriptPath).ShouldBeTrue();

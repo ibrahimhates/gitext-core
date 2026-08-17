@@ -305,10 +305,14 @@ public sealed class RebaseWriter : IRebaseWriter
     }
 
     /// <summary>The environment that makes it impossible for an editor to lock up the UI.</summary>
+    /// <remarks>
+    /// <c>true</c> on Windows as well: git runs the editor through the bundled MSYS <c>sh</c>, where
+    /// it is a builtin. Measured — see <c>ConflictResolver.NonInteractiveEditor</c>.
+    /// </remarks>
     private static IReadOnlyDictionary<string, string> NonInteractiveEditor =>
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["GIT_EDITOR"] = OperatingSystem.IsWindows() ? "cmd /c exit 0" : "true",
+            ["GIT_EDITOR"] = "true",
         };
 
     private sealed record RebaseState(int Current, int Total, string BranchName);

@@ -298,8 +298,17 @@ public class ConflictResolverTests
                 UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         }
 
+        // 🔴 The path goes into the configuration in a form THE SHELL can read: git runs the merge
+        // command through `sh`, and in MSYS sh a backslash is an escape character — `C:\…\arac.sh`
+        // would arrive as `C:…arac.sh` (measured with Git for Windows under Wine, the same trap as
+        // the sequence editor in RebaseTodoSession). Forward slashes plus quotes work on every
+        // platform; on Unix the path is used unchanged.
+        string command = OperatingSystem.IsWindows()
+            ? $"\"{script.Replace('\\', '/')}\""
+            : script;
+
         harness.Repository.Git(
-            "config", "--local", "mergetool.sahte.cmd", $"{script} $LOCAL $REMOTE $BASE $MERGED");
+            "config", "--local", "mergetool.sahte.cmd", $"{command} $LOCAL $REMOTE $BASE $MERGED");
 
         // 🔴 MEASURED (macOS CI): without `trustExitCode` git does not believe the tool, it looks at
         // the FILE'S TIMESTAMP — `test "$MERGED" -nt "$BACKUP"` in git-mergetool--lib. The backup is

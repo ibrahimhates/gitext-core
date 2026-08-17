@@ -121,6 +121,28 @@ public class RepositoryChangeClassifierTests
     }
 
     [Fact]
+    public void Git_dizininin_KENDI_zaman_damgasi_tazeleme_tetiklemez()
+    {
+        // 🔴 REGRESSION (Windows CI): creating a file inside `.git` changes the directory's own
+        // timestamp, and Windows reports that as a separate `Changed` event whose path is exactly
+        // `.git` — Linux does not. Counted as a repository change, writing the commit-message draft
+        // triggered a full refresh on Windows, which is what the draft filter exists to prevent.
+        // Reproduced on every platform here: the difference is the event's kind, not the OS.
+        RepositoryChangeClassifier.ClassifyWorkingTreePath(".git", contentChangeOnly: true)
+            .ShouldBeNull();
+
+        // Counter-evidence: appearing/disappearing is NOT a timestamp event and stays meaningful —
+        // that is the repository itself being created or removed.
+        RepositoryChangeClassifier.ClassifyWorkingTreePath(".git", contentChangeOnly: false)
+            .ShouldBe(RepositoryChangeKind.Repository);
+
+        // And the filter must not reach anything else: a real file under `.git` is judged on its
+        // own path, `Changed` or not.
+        RepositoryChangeClassifier.ClassifyWorkingTreePath(".git/refs/heads/main", contentChangeOnly: true)
+            .ShouldBe(RepositoryChangeKind.Repository);
+    }
+
+    [Fact]
     public void Git_dizinine_goreli_yollar_ayri_siniflandirilir()
     {
         // In a linked working tree the git directory is OUTSIDE the working tree; the paths from
