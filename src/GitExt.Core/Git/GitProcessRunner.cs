@@ -451,7 +451,23 @@ public sealed class GitProcessRunner : IGitProcessRunner
         {
             // stdin MUST be closed. If it is not, commands waiting for input (such as
             // `git commit -F -`) never finish.
-            process.StandardInput.Close();
+            //
+            // 🔴 MEASURED — closing FLUSHES, so it throws on the same broken pipe the write above
+            // is protected from, and outside that protection it escaped as a raw IOException. The
+            // scenario is an everyday one: `git commit -F -` runs the pre-commit hook BEFORE it
+            // reads the message, so a hook that rejects the commit exits without ever reading
+            // stdin. Whether the write or the close is the one to hit the closed pipe is a race —
+            // which is why this surfaced as a test failing "sometimes". What the caller saw in
+            // that case was an IOException instead of the GitException carrying the hook's own
+            // message: the user is told "I/O error" about a commit their hook deliberately refused.
+            try
+            {
+                process.StandardInput.Close();
+            }
+            catch (IOException)
+            {
+                // The outcome of the command is the exit code and stderr, not this.
+            }
         }
     }
 

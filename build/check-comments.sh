@@ -25,6 +25,18 @@
 # real input is what makes those notes verifiable; paraphrasing it would lose the finding.
 # So `…`, "…" and <c>…</c> spans are stripped before the check, and only the prose around
 # them has to be English.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# CI AND BUILD FILES ARE CHECKED MORE STRICTLY
+#
+# In workflow and build files the exemption above does not apply: there is no fixture
+# data and no translation work in them, so a quoted string is not a citation, it is a
+# message someone will read in a CI log. The release workflow used to print
+# `::error::Sürüm boş` and version.sh `HATA: sürüm okunamadı`; both were translated by
+# hand, and nothing stopped them coming back.
+#
+# The two files that are ABOUT Turkish are exempt by path: this script carries the
+# alphabet as its own pattern, and the i18n tooling produces the Turkish locale.
 
 set -euo pipefail
 
@@ -97,5 +109,53 @@ if findings:
         file=sys.stderr)
     sys.exit(1)
 
+# CI and build files: the WHOLE line is checked, strings included. What is written there
+# is not fixture data, it is what a person reads in a CI log.
+CI_GLOBS = (
+    (".github/workflows", "*.yml"),
+    (".github/workflows", "*.yaml"),
+    ("build", "*.sh"),
+    ("build", "*.py"),
+    ("tools", "*.py"),
+)
+
+# Exempt by path: these two carry the Turkish alphabet as data, not as prose.
+CI_EXEMPT = ("build/check-comments.sh", "tools/i18n/")
+
+ci_findings = []
+
+for root, pattern in CI_GLOBS:
+    directory = pathlib.Path(root)
+
+    if not directory.is_dir():
+        continue
+
+    for path in sorted(directory.rglob(pattern)):
+        text = str(path).replace("\\", "/")
+
+        if not path.is_file() or any(exempt in text for exempt in CI_EXEMPT):
+            continue
+
+        for number, line in enumerate(
+                path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            if any(character in line for character in TURKISH):
+                ci_findings.append((path, number, line.strip()[:88]))
+
+if ci_findings:
+    print(f"Turkish characters in CI/build files: {len(ci_findings)}\n", file=sys.stderr)
+
+    for path, number, text in ci_findings[:20]:
+        print(f"  {path}:{number}  {text}", file=sys.stderr)
+
+    if len(ci_findings) > 20:
+        print(f"  … and {len(ci_findings) - 20} more", file=sys.stderr)
+
+    print(
+        "\nWorkflow and build files are English throughout — comments AND the messages\n"
+        "they print. A CI log is read by whoever is on call, not only by the author.",
+        file=sys.stderr)
+    sys.exit(1)
+
 print("OK: no Turkish found in comments.")
+print("OK: no Turkish found in CI/build files.")
 PY
