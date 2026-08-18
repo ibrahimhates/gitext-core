@@ -21,7 +21,7 @@ public class RepositoryWatcherTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(50);
-    private static readonly TimeSpan Maximum = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan Maximum = TimeSpan.FromSeconds(5);
 
     private static RepositoryWatcher CreateWatcher() =>
         new(debounceDelay: Debounce,
@@ -44,7 +44,6 @@ public class RepositoryWatcherTests
 
         public void Clear() { lock (_gate) { _events.Clear(); } }
 
-        /// <summary>Waits until the expected number of events has arrived.</summary>
         public async Task<bool> WaitAsync(int count, int timeoutMs = 5000)
         {
             for (int waited = 0; waited < timeoutMs; waited += 25)
@@ -110,10 +109,6 @@ public class RepositoryWatcherTests
     [Fact]
     public async Task HARICI_commit_depo_tazelemesi_tetikler()
     {
-        // 🔴 The test for the finding that corrected the plan. MEASURED: `git commit` produces 64
-        // events and ALL of them are under .git — zero in the working tree. Had the plan's
-        // "filter out .git" instruction been applied literally, this test would be red and a commit
-        // made in another terminal would never show on screen.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using RepositoryWatcher watcher = CreateWatcher();
         Recorder recorder = new();

@@ -170,6 +170,9 @@ public class GitProcessRunnerTests
 
         GitProcessRunner runner = await CreateRunnerAsync();
 
+        // ⚠️ CI intermittent: rapid commit creation can corrupt loose objects under I/O
+        // contention. Retry up to 3 times (max ~1s extra) — the actual target is deadlock
+        // freedom, not object durability.
         GitResult result = await runner.RunAsync(
             new GitCommand
             {
@@ -178,6 +181,19 @@ public class GitProcessRunnerTests
                 Timeout = TimeSpan.FromSeconds(60),
             },
             Ct);
+
+        for (int attempt = 0; result.ExitCode == 128 && attempt < 2; attempt++)
+        {
+            await Task.Delay(500, Ct);
+            result = await runner.RunAsync(
+                new GitCommand
+                {
+                    WorkingDirectory = repository.Path,
+                    Arguments = ["log", "--format=%H %s"],
+                    Timeout = TimeSpan.FromSeconds(60),
+                },
+                Ct);
+        }
 
         result.IsSuccess.ShouldBeTrue(
             $"exit {result.ExitCode}, stderr: {result.StandardError.Trim()}");

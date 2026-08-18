@@ -233,7 +233,7 @@ jobs:
       # Icon generation needs rsvg-convert and magick — installed via MSYS2 below,
       # matching the apt (Linux) and brew (macOS) tool steps.
       - name: Tools (MSYS2)
-        uses: msys2/setup-msys2@v3
+        uses: msys2/setup-msys2@master
         with:
           msystem: MINGW64
           install: >-
