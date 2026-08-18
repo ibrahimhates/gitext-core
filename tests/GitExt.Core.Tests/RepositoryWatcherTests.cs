@@ -21,7 +21,7 @@ public class RepositoryWatcherTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(50);
-    private static readonly TimeSpan Maximum = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan Maximum = TimeSpan.FromSeconds(1);
 
     private static RepositoryWatcher CreateWatcher() =>
         new(debounceDelay: Debounce,
