@@ -44,7 +44,6 @@ public class RepositoryWatcherTests
 
         public void Clear() { lock (_gate) { _events.Clear(); } }
 
-        /// <summary>Waits until the expected number of events has arrived.</summary>
         public async Task<bool> WaitAsync(int count, int timeoutMs = 5000)
         {
             for (int waited = 0; waited < timeoutMs; waited += 25)
