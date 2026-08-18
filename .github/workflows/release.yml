@@ -230,8 +230,16 @@ jobs:
           dotnet-version: '10.0.x'
 
       # package.sh is a bash script; Git Bash is available on the Windows runner.
-      # rsvg-convert isn't, so the icons come from a pre-generated .ico — the build
-      # doesn't break if the script skips icon generation (conditional ApplicationIcon).
+      # Icon generation needs rsvg-convert and magick — installed via MSYS2 below,
+      # matching the apt (Linux) and brew (macOS) tool steps.
+      - name: Tools (MSYS2)
+        uses: msys2/setup-msys2@v3
+        with:
+          msystem: MINGW64
+          install: >-
+            mingw-w64-x86_64-librsvg
+            mingw-w64-x86_64-imagemagick
+
       - name: ZIP + Inno Setup script
         shell: bash
         env:

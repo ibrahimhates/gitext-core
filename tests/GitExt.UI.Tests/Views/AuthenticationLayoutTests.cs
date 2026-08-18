@@ -45,6 +45,7 @@ public class AuthenticationLayoutTests
         window.GetControl<StackPanel>("SuggestionPanel").IsVisible.ShouldBeTrue();
 
         window.Close();
+        Dispatcher.UIThread.RunJobs();
     }
 
     [AvaloniaFact]
@@ -63,6 +64,7 @@ public class AuthenticationLayoutTests
         window.GetControl<TextBox>("SecretBox").PasswordChar.ShouldNotBe('\0');
 
         window.Close();
+        Dispatcher.UIThread.RunJobs();
     }
 
     [AvaloniaFact]
@@ -79,6 +81,7 @@ public class AuthenticationLayoutTests
             .ShouldContain("not stored anywhere");
 
         window.Close();
+        Dispatcher.UIThread.RunJobs();
     }
 
     [AvaloniaFact]
@@ -94,5 +97,6 @@ public class AuthenticationLayoutTests
         window.GetControl<StackPanel>("SuggestionPanel").IsVisible.ShouldBeFalse();
 
         window.Close();
+        Dispatcher.UIThread.RunJobs();
     }
 }

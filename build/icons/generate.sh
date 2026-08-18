@@ -75,4 +75,11 @@ fi
 
 count=$(find "$OUT" -type f | wc -l)
 echo "== icon set ready: $OUT ($count files)"
-find "$OUT" -type f -printf '   %P\n' | sort
+# BSD/macOS find lacks `-printf`; fall back to sed-based formatting.
+if find "$OUT" -maxdepth 1 -printf . >/dev/null 2>&1; then
+    # GNU find (Linux)
+    find "$OUT" -type f -printf '   %P\n' | sort
+else
+    # BSD find (macOS)
+    find "$OUT" -type f | sed "s|^$OUT/||" | sort | while IFS= read -r p; do echo "   $p"; done
+fi

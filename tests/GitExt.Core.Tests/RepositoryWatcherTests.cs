@@ -322,7 +322,7 @@ public class RepositoryWatcherTests
         linked.WriteFile("baglidosya.txt", "içerik");
         linked.Commit("bağlı ağaçta commit");
 
-        (await recorder.WaitAsync(1)).ShouldBeTrue();
+        (await recorder.WaitForAsync(RepositoryChangeKind.Repository)).ShouldBeTrue();
         recorder.Events.ShouldContain(RepositoryChangeKind.Repository);
     }
 
