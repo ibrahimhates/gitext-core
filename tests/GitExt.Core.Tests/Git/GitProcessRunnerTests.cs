@@ -179,7 +179,8 @@ public class GitProcessRunnerTests
             },
             Ct);
 
-        result.IsSuccess.ShouldBeTrue();
+        result.IsSuccess.ShouldBeTrue(
+            $"exit {result.ExitCode}, stderr: {result.StandardError.Trim()}");
         result.GetStandardOutputText()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Length.ShouldBe(500);
