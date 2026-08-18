@@ -163,16 +163,19 @@ public class GitProcessRunnerTests
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
 
+        // ⚠️ CI: 500 rapid commits can corrupt loose objects under I/O contention (exit 128).
+        // A small delay between commits serialises the writes and prevents corruption.
         for (int i = 0; i < 500; i++)
         {
             repository.Commit($"commit {i} — gövdeyi biraz uzatmak için ek metin ekliyoruz");
+
+            if (i % 10 == 9) await Task.Delay(2, Ct);
         }
 
         GitProcessRunner runner = await CreateRunnerAsync();
 
-        // ⚠️ CI intermittent: rapid commit creation can corrupt loose objects under I/O
-        // contention. Retry up to 3 times (max ~1s extra) — the actual target is deadlock
-        // freedom, not object durability.
+        // Retry once for transient I/O contention (exit 128). The delay above prevents most
+        // corruption; this catches the rare remaining case.
         GitResult result = await runner.RunAsync(
             new GitCommand
             {
