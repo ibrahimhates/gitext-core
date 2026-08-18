@@ -21,10 +21,6 @@ public class RepositoryWatcherTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(50);
-    /// <remarks>
-    /// Windows CI'da 200 dosya yazması ~3-4 saniye sürebilir. Her MaxDelay sonu yeni bir fire
-    /// tetikler; bu yüzden pencere tüm yazmaları kapsayacak kadar geniş olmalı (P10-T15).
-    /// </remarks>
     private static readonly TimeSpan Maximum = TimeSpan.FromSeconds(5);
 
     private static RepositoryWatcher CreateWatcher() =>
