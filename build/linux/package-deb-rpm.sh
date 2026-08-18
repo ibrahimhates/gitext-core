@@ -41,7 +41,7 @@ WHAT="${1:-both}"
 #         ordering, i.e. 1.0.0~rc.1 < 1.0.0. That is exactly the correct behavior.
 #   rpm — '-' can't be used at all; '~' is used for the same reason.
 # Only the FIRST '-' is converted: "1.0.1-alpha.0.3" → "1.0.1~alpha.0.3".
-PKG_VERSION="${VERSION/-/\~}"
+PKG_VERSION="${VERSION/-/~}"
 
 # Prepare Docker if needed. The user's global docker configuration is NOT TOUCHED:
 # a broken credsStore/context left over from Docker Desktop is common (measured in P10-T00).
@@ -132,7 +132,7 @@ make_rpm() {
     cat > "$work/SPECS/gitext-core.spec" <<EOF
 Name:           gitext-core
 Version:        $PKG_VERSION
-Release:        1%{?dist}
+Release:        1.fc41
 Summary:        Fast native Git GUI
 
 License:        GPL-3.0-or-later

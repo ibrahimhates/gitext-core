@@ -194,7 +194,7 @@ jobs:
         env:
           V: ${{ needs.version.outputs.value }}
         run: |
-          deb_version="${V/-/\~}"
+          deb_version="${V/-/~}"
 
           docker run --rm -v "$PWD/dist:/dist:ro" debian:12 sh -c "
             apt-get update -qq >/dev/null &&
@@ -202,7 +202,7 @@ jobs:
             gitext-core --version"
 
           docker run --rm -v "$PWD/dist:/dist:ro" fedora:41 sh -c "
-            dnf install -y -q /dist/gitext-core-${deb_version}-1.fc41.x86_64.rpm >/dev/null &&
+            dnf install -y -q /dist/gitext-core-${V}-1.fc41.x86_64.rpm >/dev/null &&
             gitext-core --version"
 
       - uses: actions/upload-artifact@v7
