@@ -35,7 +35,7 @@ mkdir -p "$STAGE"
 
 # The icon is embedded into the Windows executable; it must be generated BEFORE publish.
 echo "== icons"
-build/icons/generate.sh "$OUT/icons" >/dev/null
+build/icons/generate.sh "$OUT/icons"
 
 echo "== publish (self-contained, single file)"
 dotnet publish src/GitExt.Desktop \

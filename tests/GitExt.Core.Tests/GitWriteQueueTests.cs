@@ -227,25 +227,41 @@ public class GitWriteQueueTests
     {
         // Counter-evidence: to show that the queue really solves something, the problem is first shown
         // to exist. This test does NOT USE the queue.
+        // ⚠️ RACE CONDITION — timing-dependent; on a slow CI machine parallelism drops and it may
+        // come out as zero on the first try. Retries up to 3 times (max ~450 ms wall-clock) to
+        // cover for that, but the test stops immediately when collisions are observed. For the
+        // DETERMINISTIC proof of lock-file behavior see `GERCEK_git_kilit_varken_BEKLEMEZ_hemen_duser`.
         using TestRepository repository = CreateRepositoryWithChanges();
 
-        int failures = 0;
+        const int maxAttempts = 3;
 
-        await Task.WhenAll(Enumerable.Range(0, Writers).Select(_ => Task.Run(() =>
+        for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
-            (int exitCode, string error) = repository.TryGit("add", "-A");
+            int failures = 0;
 
-            if (exitCode != 0 && error.Contains("index.lock", StringComparison.Ordinal))
+            await Task.WhenAll(Enumerable.Range(0, Writers).Select(_ => Task.Run(() =>
             {
-                Interlocked.Increment(ref failures);
-            }
-        }, Ct)));
+                (int exitCode, string error) = repository.TryGit("add", "-A");
 
-        // In the measurement 7 out of 8 writers failed. Because it depends on timing, "at least one"
-        // is asserted. ⚠️ On a slow/single-core CI machine parallelism drops and it can come out as
-        // zero; for the DETERMINISTIC proof of the behaviour there is
-        // `GERCEK_git_kilit_varken_BEKLEMEZ_hemen_duser`.
-        failures.ShouldBeGreaterThan(0);
+                if (exitCode != 0 && error.Contains("index.lock", StringComparison.Ordinal))
+                {
+                    Interlocked.Increment(ref failures);
+                }
+            }, Ct)));
+
+            if (failures > 0)
+            {
+                // Collision observed — test passes.
+                return;
+            }
+
+            // Retry: the repository was fully restored by the failed attempt's git add, so
+            // subsequent parallel runs hit the same state again. A brief pause reduces the
+            // chance that all processes enter within a single scheduling window.
+            await Task.Delay(150, Ct);
+        }
+
+        Assert.Fail($"all {maxAttempts} attempts produced zero collisions (CI race condition)");
     }
 
     [Fact]
