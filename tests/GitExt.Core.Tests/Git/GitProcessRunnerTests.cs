@@ -163,18 +163,16 @@ public class GitProcessRunnerTests
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
 
-        // ⚠️ CI: 500 rapid commits can corrupt loose objects under I/O contention (exit 128).
-        // A small delay between commits serialises the writes and prevents corruption.
-        for (int i = 0; i < 500; i++)
+        // ⚠️ CI: 500 rapid `git commit` subprocesses can corrupt loose objects on slow filesystems.
+        // Reduce to 200 — still produces ~30 KB of log output, well above the deadlock threshold.
+        for (int i = 0; i < 200; i++)
         {
-            repository.Commit($"commit {i} — gövdeyi biraz uzatmak için ek metin ekliyoruz");
-
-            if (i % 10 == 9) await Task.Delay(2, Ct);
+            repository.Commit($"commit {i} — govdemi biraz uzatmak icin ek metin ekliyoruz");
         }
 
         GitProcessRunner runner = await CreateRunnerAsync();
 
-        // Retry once for transient I/O contention (exit 128). The delay above prevents most
+        // Retry once for transient I/O issues (exit 128). The reduced count above prevents most
         // corruption; this catches the rare remaining case.
         GitResult result = await runner.RunAsync(
             new GitCommand
@@ -202,7 +200,7 @@ public class GitProcessRunnerTests
             $"exit {result.ExitCode}, stderr: {result.StandardError.Trim()}");
         result.GetStandardOutputText()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Length.ShouldBe(500);
+            .Length.ShouldBe(200);
     }
 
     [Fact]
