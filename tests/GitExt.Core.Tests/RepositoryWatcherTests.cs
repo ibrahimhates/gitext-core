@@ -109,10 +109,6 @@ public class RepositoryWatcherTests
     [Fact]
     public async Task HARICI_commit_depo_tazelemesi_tetikler()
     {
-        // 🔴 The test for the finding that corrected the plan. MEASURED: `git commit` produces 64
-        // events and ALL of them are under .git — zero in the working tree. Had the plan's
-        // "filter out .git" instruction been applied literally, this test would be red and a commit
-        // made in another terminal would never show on screen.
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
         using RepositoryWatcher watcher = CreateWatcher();
         Recorder recorder = new();
