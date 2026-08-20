@@ -37,17 +37,27 @@ public partial class WorkingTreeWindow : Window
     }
 
     /// <summary>Opens the commit screen <b>modally</b> above its owner.</summary>
-    internal static Task Open(WorkingTreeViewModel viewModel, Window owner, ICommandRegistry? registry = null)
+    internal static Task Open(
+        WorkingTreeViewModel viewModel,
+        Window owner,
+        ICommandRegistry? registry = null,
+        Action? solveConflicts = null)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(owner);
 
         WorkingTreeWindow window = new() { DataContext = viewModel };
 
+        WorkingTreeView view = window.GetControl<WorkingTreeView>("Files");
+
         if (registry is not null)
         {
-            window.GetControl<WorkingTreeView>("Files").AttachShortcuts(registry);
+            view.AttachShortcuts(registry);
         }
+
+        // The conflict strip opens the SAME screen the main window's banner opens (P12-T16); the
+        // commit screen does not start a second flow of its own.
+        view.SolveConflicts = solveConflicts;
 
         // The confirmation dialog will open above this window; the owner window is only known here
         // (P05-T15).

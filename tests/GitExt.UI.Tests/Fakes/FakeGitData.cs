@@ -472,6 +472,12 @@ public sealed class FakeStatusReader : IStatusReader
 
     public IList<FileStatus> Entries => _entries;
 
+    /// <summary>The branch the status reports — the commit screen's status bar shows it (P12-T16).</summary>
+    public string BranchName { get; set; } = "main";
+
+    /// <summary>The upstream branch, or <see langword="null"/> when there is none.</summary>
+    public string? Upstream { get; set; }
+
     public Task<WorkingTreeStatus> ReadAsync(
         string workingDirectory,
         bool includeIgnored = false,
@@ -487,7 +493,8 @@ public sealed class FakeStatusReader : IStatusReader
 
         return Task.FromResult(new WorkingTreeStatus
         {
-            BranchName = "main",
+            BranchName = BranchName,
+            Upstream = Upstream,
             Entries = [.. _entries],
         });
     }

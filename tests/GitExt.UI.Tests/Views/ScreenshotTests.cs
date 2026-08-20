@@ -248,6 +248,70 @@ public class ScreenshotTests
     }
 
     /// <summary>
+    /// The commit screen (P12-T16).
+    /// </summary>
+    /// <remarks>
+    /// It gets its own image because it is where the day's work actually happens, and because the
+    /// status strip and the conflict strip only exist there.
+    /// </remarks>
+    [AvaloniaTheory]
+    [InlineData(ThemePreference.Light, "screenshot-commit-light.png")]
+    public async Task Commit_ekrani_goruntusu_uretiliyor(ThemePreference theme, string fileName)
+    {
+        InMemorySettingsStore settings = new();
+        AppearanceService appearance = new(Application.Current!, settings);
+        appearance.SetTheme(theme);
+
+        Translator translator = new(settings);
+        translator.Use("en");
+        TranslateExtension.Attach(translator);
+        Loc.Attach(translator);
+
+        using EnglishAfterwards _ = new();
+
+        Fakes.FakeStatusReader status = new(
+        [
+            File("src/GitExt.UI/Views/MainWindow.axaml", staged: true),
+            File("src/GitExt.UI/Themes/Icons.axaml", staged: true),
+            File("docs/adr/0007-commit-graph-layout.md", staged: false),
+            File("README.md", staged: false),
+        ]);
+
+        WorkingTreeViewModel model = new(
+            status,
+            new Fakes.FakeStagingWriter(status),
+            new Fakes.FakeCommitWriter(status),
+            new DiffViewModel(new Fakes.FakeDiffReader()),
+            messageStore: new Fakes.FakeCommitMessageStore());
+
+        await model.OpenAsync("/repo");
+
+        model.AuthorLabel = "Committing as Ada Lovelace <ada@example.com>";
+        model.Message.Text = "feat(ui): toolbars follow GitExtensions";
+
+        WorkingTreeWindow window = new() { DataContext = model, Width = 1200, Height = 760 };
+        window.Show();
+
+        using Bitmap frame = window.CaptureRenderedFrame()
+            ?? throw new InvalidOperationException("Render edilmiş kare alınamadı.");
+
+        Directory.CreateDirectory(AssetDirectory);
+        string path = Path.Combine(AssetDirectory, fileName);
+        frame.Save(path, new PngBitmapEncoderOptions());
+
+        new FileInfo(path).Length.ShouldBeGreaterThan(5_000, $"{fileName} boş görünüyor");
+
+        window.Close();
+
+        static FileStatus File(string path, bool staged) => new()
+        {
+            Path = RepositoryPath.Parse(path),
+            StagedChange = staged ? FileChangeKind.Modified : FileChangeKind.Unmodified,
+            UnstagedChange = staged ? FileChangeKind.Unmodified : FileChangeKind.Modified,
+        };
+    }
+
+    /// <summary>
     /// The dashboard — the screen the application starts on (P12-T03).
     /// </summary>
     /// <remarks>

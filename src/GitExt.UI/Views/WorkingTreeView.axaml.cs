@@ -34,6 +34,8 @@ public partial class WorkingTreeView : UserControl
 
         // Tunnelling: the inner `ScrollViewer` swallows the bubbling key event (measured in Phase 03).
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+
+        TrackCaret();
     }
 
     private ShortcutDispatcher? _dispatcher;
@@ -135,6 +137,68 @@ public partial class WorkingTreeView : UserControl
 
         return true;
     }
+
+    /// <summary>
+    /// Keeps the status bar's Ln/Col in step with the message box's caret (P12-T16).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// GitExtensions writes the caret position on the commit screen's status strip, and it is not
+    /// decoration there either: the commit message convention (a subject line of at most ~50
+    /// characters, a blank second line) is about lines and columns, and the box itself shows
+    /// neither.
+    /// </para>
+    /// <para>
+    /// ⚠️ The position is computed from <c>CaretIndex</c>, not from a "caret moved" event — there
+    /// is none. `CaretIndex` is a property, so a property listener sees every move, including the
+    /// ones made with the mouse.
+    /// </para>
+    /// </remarks>
+    private void TrackCaret()
+    {
+        MessageBox.PropertyChanged += (_, e) =>
+        {
+            if (e.Property != TextBox.CaretIndexProperty && e.Property != TextBox.TextProperty)
+            {
+                return;
+            }
+
+            if (DataContext is not WorkingTreeViewModel model)
+            {
+                return;
+            }
+
+            string text = MessageBox.Text ?? string.Empty;
+            int caret = Math.Clamp(MessageBox.CaretIndex, 0, text.Length);
+
+            int line = 1;
+            int lineStart = 0;
+
+            for (int index = 0; index < caret; index++)
+            {
+                if (text[index] == '\n')
+                {
+                    line++;
+                    lineStart = index + 1;
+                }
+            }
+
+            model.CursorLine = line;
+            model.CursorColumn = caret - lineStart + 1;
+        };
+    }
+
+    /// <summary>
+    /// Opens the conflict resolver (P12-T16).
+    /// </summary>
+    /// <remarks>
+    /// The same screen the main window's banner opens — the staging view does not start a second
+    /// flow of its own.
+    /// </remarks>
+    private void OnSolveConflictsClick(object? sender, RoutedEventArgs e) => SolveConflicts?.Invoke();
+
+    /// <summary>Shows the conflict resolver; supplied by the window that hosts this view.</summary>
+    public Action? SolveConflicts { get; set; }
 
     private void OnStageClick(object? sender, RoutedEventArgs e) =>
         Run(ViewModel?.StageSelectedAsync());

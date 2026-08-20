@@ -667,7 +667,13 @@ public partial class MainWindow : Window
         }
 
         await workingTree.OpenAsync(model.Commits.Repository?.WorkingDirectory);
-        await WorkingTreeWindow.Open(workingTree, this, _registry);
+
+        await WorkingTreeWindow.Open(
+            workingTree,
+            this,
+            _registry,
+            solveConflicts: () => model.ResolveConflictsCommand.Execute(null));
+
         await model.RefreshAsync();
     }
 }

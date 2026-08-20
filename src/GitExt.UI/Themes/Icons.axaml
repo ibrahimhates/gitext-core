@@ -116,4 +116,12 @@
     <!-- A tag. -->
     <StreamGeometry x:Key="IconTag">F0 M1.6,1.6 H8.4 L14.4,7.6 L7.6,14.4 L1.6,8.4 Z M4.4,3.6 A1.4,1.4 0 1 0 4.41,3.6 Z</StreamGeometry>
 
+    <!-- Staging (`toolbarStaged`) .................................................. -->
+
+    <!-- Stage everything: everything moves down into the index. -->
+    <StreamGeometry x:Key="IconStageAll">M2,1.6 H14 V3.2 H2 Z M7,4.6 H9 V9.6 H11.8 L8,13.8 L4.2,9.6 H7 Z</StreamGeometry>
+
+    <!-- Unstage everything: everything comes back up. -->
+    <StreamGeometry x:Key="IconUnstageAll">M8,2.2 L11.8,6.4 H9 V11.4 H7 V6.4 H4.2 Z M2,12.8 H14 V14.4 H2 Z</StreamGeometry>
+
 </ResourceDictionary>

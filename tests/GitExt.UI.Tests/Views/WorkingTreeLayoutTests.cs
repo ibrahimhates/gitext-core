@@ -84,6 +84,16 @@ public class WorkingTreeLayoutTests
     private static FileStatus Staged(string path) =>
         new() { Path = RepositoryPath.Parse(path), StagedChange = FileChangeKind.Modified };
 
+    /// <summary>A file with an unresolved conflict (P12-T16).</summary>
+    private static FileStatus Conflicted(string path) =>
+        new()
+        {
+            Path = RepositoryPath.Parse(path),
+            StagedChange = FileChangeKind.Unmerged,
+            UnstagedChange = FileChangeKind.Unmerged,
+            Conflict = ConflictKind.BothModified,
+        };
+
     [AvaloniaFact]
     public async Task Unstaged_USTTE_staged_ALTTA()
     {
@@ -339,4 +349,93 @@ public class WorkingTreeLayoutTests
         flyout.Hide();
         window.Close();
     }
+    // ------------------------------------------------- P12-T16: `commitStatusStrip`
+
+    [AvaloniaFact]
+    public async Task Durum_cubugu_GitExtensions_sirasinda()
+    {
+        // `commitStatusStrip.Items`: author · branch · remote · "Staged" + count · Ln · Col.
+        (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
+
+        string[] order = [.. view.GetControl<Border>("CommitStatusBar")
+            .GetVisualDescendants()
+            .OfType<TextBlock>()
+            .Where(t => t.Name is { Length: > 0 })
+            .Select(t => t.Name!)];
+
+        order.ShouldBe([
+            "StatusAuthor",
+            "StatusBranch",
+            "StatusUpstream",
+            "StatusStaged",
+            "StatusCursor",
+            "StatusColumn",
+        ]);
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Durum_cubugu_dali_ve_hazirlanan_sayisini_yaziyor()
+    {
+        (Window window, WorkingTreeView view) = await ShowAsync(Staged("a.txt"), Staged("b.txt"));
+
+        WorkingTreeViewModel model = (WorkingTreeViewModel)view.DataContext!;
+
+        model.BranchLabel.ShouldBe("main");
+        model.StagedCount.ShouldBe(2);
+
+        view.GetControl<TextBlock>("StatusStaged").Text.ShouldBe("Staged 2");
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Imlec_konumu_mesaj_kutusunu_TAKIP_ediyor()
+    {
+        // 🔴 GitExtensions writes Ln/Col on the strip and it is not decoration: the commit message
+        // convention (a subject of ~50 characters, a blank second line) is about lines and
+        // columns, and the box shows neither.
+        (Window window, WorkingTreeView view) = await ShowAsync(Unstaged("a.txt"));
+
+        WorkingTreeViewModel model = (WorkingTreeViewModel)view.DataContext!;
+        TextBox message = view.GetControl<TextBox>("MessageBox");
+
+        message.Text = "subject line\n\nbody";
+        Dispatcher.UIThread.RunJobs();
+
+        message.CaretIndex = "subject line\n\nbo".Length;
+        Dispatcher.UIThread.RunJobs();
+
+        model.CursorLine.ShouldBe(3);
+        model.CursorColumn.ShouldBe(3);
+
+        // …and back to the first line.
+        message.CaretIndex = 4;
+        Dispatcher.UIThread.RunJobs();
+
+        model.CursorLine.ShouldBe(1);
+        model.CursorColumn.ShouldBe(5);
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Cakisma_seridi_yalnizca_cakisma_VARKEN_gorunuyor()
+    {
+        // A conflicted file looks like an ordinary modified one in the list, and committing it as
+        // it stands writes the conflict markers into history. The strip says so beforehand.
+        (Window clean, WorkingTreeView cleanView) = await ShowAsync(Unstaged("a.txt"));
+
+        cleanView.GetControl<Border>("ConflictNoticeBar").IsVisible.ShouldBeFalse();
+        clean.Close();
+
+        (Window window, WorkingTreeView view) = await ShowAsync(Conflicted("merge.txt"));
+
+        view.GetControl<Border>("ConflictNoticeBar").IsVisible.ShouldBeTrue();
+        ((WorkingTreeViewModel)view.DataContext!).ConflictCount.ShouldBe(1);
+
+        window.Close();
+    }
+
 }

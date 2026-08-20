@@ -81,6 +81,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IAuthenticationDiagnostics? _authDiagnostics;
     private readonly IMergeWriter? _mergeWriter;
     private readonly IGitCommandLog? _commandLog;
+    private readonly IGitConfigReader? _configReader;
     private readonly IPerformanceDiagnostics? _diagnostics;
 
     /// <summary>
@@ -110,7 +111,8 @@ public partial class MainWindowViewModel : ViewModelBase
             _messageReader,
             _messageStore,
             _watcher,
-            _workingTreeWriter);
+            _workingTreeWriter,
+            _configReader);
     }
 
     public MainWindowViewModel(
@@ -134,6 +136,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IAuthenticationDiagnostics? authenticationDiagnostics = null,
         IMergeWriter? mergeWriter = null,
         IGitCommandLog? commandLog = null,
+        IGitConfigReader? configReader = null,
         IPerformanceDiagnostics? diagnostics = null,
         AdvancedOperationServices? advanced = null)
     {
@@ -158,6 +161,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _authDiagnostics = authenticationDiagnostics;
         _mergeWriter = mergeWriter;
         _commandLog = commandLog;
+        _configReader = configReader;
         _diagnostics = diagnostics;
         _advanced = advanced ?? new AdvancedOperationServices();
 
