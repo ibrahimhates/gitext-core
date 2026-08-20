@@ -47,12 +47,20 @@ echo "== gitext-core $VERSION ($RID)"
 rm -rf "$OUT/$RID"
 mkdir -p "$STAGE"
 
+# 🔴 IncludeNativeLibrariesForSelfExtract is REQUIRED alongside PublishSingleFile. MEASURED on
+# the v0.1.0 release: without it .NET leaves the native libraries (libSkiaSharp, libHarfBuzzSharp)
+# NEXT TO the binary instead of embedding them, so "single file" was not single at all. install.sh
+# copies only the binary, and the installed application died at startup with
+#   DllNotFoundException: Unable to load shared library 'libSkiaSharp'
+# Verified after the fix: the binary is alone in its directory and runs from an isolated directory
+# with no libraries beside it.
 echo "== publish (self-contained, single file)"
 dotnet publish src/GitExt.Desktop \
     -c Release \
     -r "$RID" \
     --self-contained \
     -p:PublishSingleFile=true \
+    -p:IncludeNativeLibrariesForSelfExtract=true \
     -p:PublishTrimmed=true \
     -p:PublishReadyToRun=true \
     -p:MinVerVersionOverride="$VERSION" \
@@ -74,6 +82,22 @@ if [ "$EMBEDDED" != "$VERSION" ]; then
 fi
 
 echo "   version verified: $EMBEDDED"
+
+# 🔴 A stray native library means the binary is NOT self-contained, and install.sh — which
+# copies only the binary — would produce an installation that dies at startup with
+# "Unable to load shared library 'libSkiaSharp'". That is exactly how v0.1.0 shipped broken:
+# nothing in the pipeline noticed, the release went out, and the failure only appeared on the
+# user's machine. Checked here so it can never leave silently again.
+stray="$(find "$STAGE" -maxdepth 1 -name '*.so' -o -maxdepth 1 -name '*.so.*' | sort)"
+
+if [ -n "$stray" ]; then
+    echo "!! NOT SELF-CONTAINED: native libraries were left beside the binary:" >&2
+    echo "$stray" | sed 's|^|   |' >&2
+    echo "   IncludeNativeLibrariesForSelfExtract=true is missing from the publish step." >&2
+    exit 1
+fi
+
+echo "   self-contained: no native libraries left beside the binary"
 
 # Debug symbols in the publish folder bloat the tarball for no reason.
 rm -f "$STAGE"/*.pdb

@@ -54,12 +54,20 @@ mkdir -p "$STAGE"
 echo "== icons"
 build/icons/generate.sh "$OUT/icons"
 
+# 🔴 IncludeNativeLibrariesForSelfExtract is REQUIRED alongside PublishSingleFile. MEASURED on
+# the v0.1.0 release: without it .NET leaves the native libraries (libSkiaSharp, libHarfBuzzSharp)
+# NEXT TO the binary instead of embedding them, so "single file" was not single at all. install.sh
+# copies only the binary, and the installed application died at startup with
+#   DllNotFoundException: Unable to load shared library 'libSkiaSharp'
+# Verified after the fix: the binary is alone in its directory and runs from an isolated directory
+# with no libraries beside it.
 echo "== publish (self-contained, single file)"
 dotnet publish src/GitExt.Desktop \
     -c Release \
     -r "$RID" \
     --self-contained \
     -p:PublishSingleFile=true \
+    -p:IncludeNativeLibrariesForSelfExtract=true \
     -p:PublishTrimmed=true \
     -p:PublishReadyToRun=true \
     -p:MinVerVersionOverride="$VERSION" \
