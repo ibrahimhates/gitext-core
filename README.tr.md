@@ -31,6 +31,15 @@
 
 </details>
 
+<details>
+<summary>Kontrol paneli</summary>
+
+![gitext-core — kontrol paneli, koyu tema](./docs/assets/screenshot-dashboard-dark.png)
+
+![gitext-core — kontrol paneli, açık tema](./docs/assets/screenshot-dashboard-light.png)
+
+</details>
+
 ---
 
 ## Bu proje neden var?

@@ -41,10 +41,11 @@ public class WelcomeViewRenderTests
         return window;
     }
 
+    /// <summary>The repository tiles on the dashboard.</summary>
     private static IReadOnlyList<Control> RecentButtons(Visual root) =>
         [.. root.GetVisualDescendants()
             .OfType<Button>()
-            .Where(b => b.DataContext is RecentRepositoryItem)];
+            .Where(b => b.DataContext is DashboardRepositoryItem)];
 
     [AvaloniaFact]
     public async Task Son_acilanlar_ekranda_gercekten_gorunur()

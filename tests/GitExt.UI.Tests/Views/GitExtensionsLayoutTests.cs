@@ -144,12 +144,23 @@ public class GitExtensionsLayoutTests
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
+        // The label lives in a TextBlock next to the icon, so `Content` is the panel, not the text.
         string[] links = [.. view.GetVisualDescendants()
             .OfType<Button>()
             .Where(b => b.Classes.Contains("link"))
-            .Select(b => b.Content?.ToString() ?? string.Empty)];
+            .Select(b => b.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault()?.Text ?? string.Empty)];
 
-        links.ShouldBe(["Create new repository", "Open repository", "Clone repository", "Develop", "Report an issue"]);
+        // GitExtensions' order, top to bottom: the three start links, then Contribute →
+        // Develop · Donate · Translate · Issues. "Donate" is left out — this project takes no
+        // donations, and an item that leads nowhere is worse than a missing one.
+        links.ShouldBe([
+            "Create new repository",
+            "Open repository",
+            "Clone repository",
+            "Develop",
+            "Translate",
+            "Report an issue",
+        ]);
 
         window.Close();
     }

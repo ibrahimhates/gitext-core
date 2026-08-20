@@ -71,6 +71,18 @@ public sealed class GeneralSettings
     [JsonPropertyName("hasCompletedFirstRun")]
     public bool HasCompletedFirstRun { get; set; }
 
+    /// <summary>
+    /// Should the repository that was open at shutdown be reopened at startup (P12-T04)?
+    /// </summary>
+    /// <remarks>
+    /// <b>Off by default</b>, and that is GitExtensions' default too
+    /// (<c>AppSettings.StartWithRecentWorkingDir</c>, <c>GetBool(…, false)</c>): starting the
+    /// application lands on the dashboard, and the repository is chosen from there. Turning it on
+    /// restores the P08-T16 behaviour.
+    /// </remarks>
+    [JsonPropertyName("startWithRecentWorkingDir")]
+    public bool StartWithRecentWorkingDir { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
 }

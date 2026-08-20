@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:loc="using:GitExt.UI.Localization"
+             xmlns:loc="using:GitExt.UI.Localization"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GitExt.UI.ViewModels"
@@ -11,182 +11,409 @@
              x:DataType="vm:MainWindowViewModel">
 
     <!--
-        The welcome screen — the LAYOUT was taken from GitExtensions' `Dashboard` (P08-T25):
-        a fixed-width panel on the left, "Start" links at the top
-        (Create new repository · Open repository · Clone repository), "Contribute" below;
-        the list of recently opened repositories in the middle/right.
+        The dashboard — the screen the application starts on (P08-T25, rebuilt in P12-T03).
+        Its counterpart in GitExtensions is `Dashboard` + `UserRepositoriesList`, and the
+        dimensions below are that control's own (`Dashboard.Designer.cs`):
 
-        The user's rule: it does not have to look identical, but the BUTTONS MUST BE IN THE SAME
-        PLACE — someone used to GitExtensions must be able to look in the same spot.
+            pnlLeft            213 wide
+            pnlLogo            68 high, padding 20,0,20,14
+            flpnlStart         padding 20
+            flpnlContribute    docked to the bottom, padding 20,20,20,30
+            pnlHeader (right)  as high as the logo, padding 20,0,20,11
+            pnlBody            padding 20,18,20,3, the search row 45 high
+
+        The user's rule: it does not have to look identical, but a person coming from
+        GitExtensions must find every button in the same place.
     -->
 
     <UserControl.Styles>
-        <!-- An entry whose folder no longer exists looks dimmed but stays in the list. -->
-        <Style Selector="Button.missing">
-            <Setter Property="Opacity" Value="0.45" />
-        </Style>
 
         <!-- The links in the left panel: buttons that look like plain text. -->
         <Style Selector="Button.link">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="4,5" />
+            <Setter Property="Padding" Value="3,4" />
+            <Setter Property="Margin" Value="0,0,0,8" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtDashboardPrimaryTextBrush}" />
+        </Style>
+
+        <!-- GitExtensions colours the link on hover (`MouseHover` → AccentedText). -->
+        <Style Selector="Button.link:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource GitExtDashboardFavouriteBrush}" />
+        </Style>
+
+        <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
         </Style>
 
         <Style Selector="Button.link:disabled">
-            <Setter Property="Opacity" Value="0.4" />
+            <Setter Property="Opacity" Value="0.45" />
         </Style>
 
-        <Style Selector="TextBlock.section">
-            <Setter Property="FontSize" Value="15" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Opacity" Value="0.8" />
-            <Setter Property="Margin" Value="4,0,0,6" />
+        <Style Selector="Button.link PathIcon">
+            <Setter Property="Width" Value="15" />
+            <Setter Property="Height" Value="15" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtDashboardHeadingBrush}" />
+        </Style>
+
+        <!-- The section headings: `lblContribute` and `lblRecentRepositories`, 18pt DimGray. -->
+        <Style Selector="TextBlock.dashboardHeading">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="Foreground" Value="{DynamicResource GitExtDashboardHeadingBrush}" />
+        </Style>
+
+        <!-- A repository tile (`listView1` in tile mode). -->
+        <Style Selector="Button.tile">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4,6" />
+            <Setter Property="Width" Value="260" />
+            <Setter Property="Height" Value="50" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="Button.tile:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource GitExtDashboardHoverBrush}" />
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="230,*">
+    <Grid ColumnDefinitions="213,*" Background="{DynamicResource GitExtDashboardBackgroundBrush}">
 
-        <!-- SOL PANEL — GitExtensions'ta `pnlLeft` -->
-        <Border Grid.Column="0"
-                BorderThickness="0,0,1,0"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+        <!-- ===================================================== LEFT PANEL (`pnlLeft`) -->
+        <Grid Grid.Column="0" RowDefinitions="68,*,Auto">
 
-            <Grid RowDefinitions="Auto,*,Auto" Margin="16,18">
-
-                <!-- Logo area (`pnlLogo`) -->
-                <StackPanel Grid.Row="0" Spacing="2" Margin="4,0,0,18">
-                    <TextBlock Text="{loc:Translate welcome.gitext_core}" FontSize="20" FontWeight="SemiBold" />
-                    <TextBlock Text="{loc:Translate welcome.git_extensions_core}" FontSize="11" Opacity="0.55" />
-                </StackPanel>
-
-                <!-- Start links (`flpnlStart`) — in GitExtensions' order -->
-                <StackPanel Grid.Row="1" Spacing="2">
-                    <TextBlock Text="{loc:Translate welcome.start}" Classes="section" />
-
-                    <!--
-                        Commands that are not implemented yet are NOT REMOVED, they are disabled:
-                        breaking the order is worse than slotting one in later (muscle memory).
-                        Creating and cloning a repository arrive in Phase 06.
-                    -->
-                    <Button Name="CreateRepositoryButton"
-                            Classes="link"
-                            Content="{loc:Translate welcome.create_new_repository}"
-                            IsEnabled="False"
-                            ToolTip.Tip="{loc:Translate welcome.coming_in_phase_06}" />
-
-                    <Button Name="OpenFolderButton"
-                            Classes="link"
-                            Content="{loc:Translate welcome.open_repository}"
-                            Click="OnOpenFolderClick" />
-
-                    <Button Name="CloneRepositoryButton"
-                            Classes="link"
-                            Content="{loc:Translate welcome.clone_repository}"
-                            IsEnabled="False"
-                            ToolTip.Tip="{loc:Translate welcome.coming_in_phase_06}" />
-
-                    <TextBlock Text="{loc:Translate welcome.or_drag_a_folder_onto_the_window}"
+            <!-- `pnlLogo` — a coloured strip; GitExtensions puts its logo here. -->
+            <Border Grid.Row="0"
+                    Name="LogoPanel"
+                    Background="{DynamicResource GitExtDashboardLogoBackgroundBrush}"
+                    Padding="20,0,20,14">
+                <StackPanel VerticalAlignment="Bottom" Spacing="1">
+                    <TextBlock Text="{loc:Translate welcome.gitext_core}"
+                               FontSize="20"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource GitExtDashboardLogoForegroundBrush}" />
+                    <TextBlock Text="{loc:Translate welcome.git_extensions_core}"
                                FontSize="11"
-                               Opacity="0.5"
-                               TextWrapping="Wrap"
-                               Margin="4,10,0,0" />
-                </StackPanel>
-
-                <!-- Contribute (`flpnlContribute`) — altta sabit -->
-                <StackPanel Grid.Row="2" Spacing="2">
-                    <TextBlock Text="{loc:Translate welcome.contribute}" Classes="section" />
-
-                    <Button Name="DevelopButton"
-                            Classes="link"
-                            Content="{loc:Translate welcome.develop}"
-                            Click="OnDevelopClick" />
-
-                    <Button Name="IssuesButton"
-                            Classes="link"
-                            Content="{loc:Translate welcome.report_an_issue}"
-                            Click="OnIssuesClick" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- RIGHT/MIDDLE — recently opened repositories (`userRepositoriesList`) -->
-        <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" Margin="20,18">
-
-            <TextBlock Grid.Row="0"
-                       Text="{loc:Translate welcome.recently_opened_repositories}"
-                       Classes="section" />
-
-            <!-- If opening failed, the reason is here; visible without leaving the screen. -->
-            <Border Grid.Row="1"
-                    IsVisible="{Binding Commits.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Background="{DynamicResource GitExtErrorBackgroundBrush}"
-                    BorderBrush="{DynamicResource GitExtErrorBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Padding="10,7"
-                    Margin="0,0,0,10">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="{Binding Commits.ErrorMessage}"
-                               FontSize="12"
-                               Foreground="{DynamicResource GitExtErrorForegroundBrush}"
-                               TextWrapping="Wrap" />
-
-                    <!--
-                        P05-T07 — git's actual output. This is the MOST FREQUENT error path
-                        ("this folder is not a Git repository"); the summary alone does not let
-                        anyone diagnose it.
-                    -->
-                    <views:GitErrorDetailsButton Details="{Binding Commits.ErrorDetails}"
-                                                 HorizontalAlignment="Left" />
+                               Opacity="0.8"
+                               Foreground="{DynamicResource GitExtDashboardLogoForegroundBrush}" />
                 </StackPanel>
             </Border>
 
             <!--
-                ⚠️ `IsVisible="{Binding …Count}"` silently does not work in Avalonia (measured in
-                Phase 03); a separate bool property is used.
-            -->
-            <TextBlock Grid.Row="2"
-                       Text="{loc:Translate welcome.no_repository_open_yet_start_with_open_repos}"
-                       IsVisible="{Binding !HasRecentRepositories}"
-                       FontSize="12"
-                       Opacity="0.55"
-                       Margin="4,6,0,0" />
+                `flpnlStart` — the start links. There is no heading above them in GitExtensions
+                either; the links come straight after the logo.
 
-            <ScrollViewer Grid.Row="2" IsVisible="{Binding HasRecentRepositories}">
-                <ItemsControl ItemsSource="{Binding RecentRepositories}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="vm:RecentRepositoryItem">
-                            <Button Command="{Binding OpenCommand}"
-                                    CommandParameter="{Binding Path}"
-                                    Classes.missing="{Binding !Exists}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Left"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Padding="8,6"
-                                    Margin="0,0,0,2">
-                                <StackPanel Spacing="1">
-                                    <TextBlock Text="{Binding Name}" FontSize="13" />
+                ⚠️ Commands that are not implemented yet are NOT REMOVED, they are disabled:
+                breaking the order is worse than slotting one in later (muscle memory).
+            -->
+            <Border Grid.Row="1"
+                    Name="StartPanel"
+                    Background="{DynamicResource GitExtDashboardStartBackgroundBrush}"
+                    Padding="20">
+                <StackPanel>
+                    <Button Name="CreateRepositoryButton"
+                            Classes="link"
+                            IsEnabled="False"
+                            ToolTip.Tip="{loc:Translate welcome.coming_in_phase_06}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconRepositoryCreate}" />
+                            <TextBlock Text="{loc:Translate welcome.create_new_repository}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Name="OpenFolderButton" Classes="link" Click="OnOpenFolderClick">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconRepositoryOpen}" />
+                            <TextBlock Text="{loc:Translate welcome.open_repository}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Name="CloneRepositoryButton"
+                            Classes="link"
+                            IsEnabled="False"
+                            ToolTip.Tip="{loc:Translate welcome.coming_in_phase_06}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconRepositoryClone}" />
+                            <TextBlock Text="{loc:Translate welcome.clone_repository}" />
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Text="{loc:Translate welcome.or_drag_a_folder_onto_the_window}"
+                               FontSize="11"
+                               Opacity="0.6"
+                               TextWrapping="Wrap"
+                               Margin="3,6,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- `flpnlContribute` — pinned to the bottom, with its own heading. -->
+            <Border Grid.Row="2"
+                    Name="ContributePanel"
+                    Background="{DynamicResource GitExtDashboardContributeBackgroundBrush}"
+                    Padding="20,20,20,30">
+                <StackPanel>
+                    <TextBlock Text="{loc:Translate welcome.contribute}"
+                               Classes="dashboardHeading"
+                               Margin="0,0,0,10" />
+
+                    <Button Name="DevelopButton" Classes="link" Click="OnDevelopClick">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconDevelop}" />
+                            <TextBlock Text="{loc:Translate welcome.develop}" />
+                        </StackPanel>
+                    </Button>
+
+                    <!--
+                        GitExtensions' order here is Develop · Donate · Translate · Issues.
+                        "Donate" is left out — this project takes no donations and an item that
+                        leads nowhere is worse than a missing one; the rest keep their order.
+                    -->
+                    <Button Name="TranslateButton" Classes="link" Click="OnTranslateClick">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconTranslate}" />
+                            <TextBlock Text="{loc:Translate dashboard.translate}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Name="IssuesButton" Classes="link" Click="OnIssuesClick" Margin="0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconIssue}" />
+                            <TextBlock Text="{loc:Translate welcome.report_an_issue}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ======================================= RIGHT (`userRepositoriesList`) -->
+        <Grid Grid.Column="1" RowDefinitions="68,*">
+
+            <!-- `pnlHeader` — as high as the logo strip, the heading sitting on its bottom edge. -->
+            <Border Grid.Row="0"
+                    Name="RecentHeaderPanel"
+                    Background="{DynamicResource GitExtDashboardHeaderBackgroundBrush}"
+                    Padding="20,0,20,11">
+                <TextBlock Name="RecentHeader"
+                           Text="{loc:Translate dashboard.recent_repositories}"
+                           Classes="dashboardHeading"
+                           VerticalAlignment="Bottom" />
+            </Border>
+
+            <!-- `pnlBody` — the search box and the tiles. -->
+            <Grid Grid.Row="1" RowDefinitions="Auto,45,*" Margin="20,18,20,3">
+
+                <!-- If opening failed, the reason is here; visible without leaving the screen. -->
+                <Border Grid.Row="0"
+                        IsVisible="{Binding Commits.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        Background="{DynamicResource GitExtErrorBackgroundBrush}"
+                        BorderBrush="{DynamicResource GitExtErrorBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10,7"
+                        Margin="0,0,0,10">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding Commits.ErrorMessage}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource GitExtErrorForegroundBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <!--
+                            P05-T07 — git's actual output. This is the MOST FREQUENT error path
+                            ("this folder is not a Git repository"); the summary alone does not let
+                            anyone diagnose it.
+                        -->
+                        <views:GitErrorDetailsButton Details="{Binding Commits.ErrorDetails}"
+                                                     HorizontalAlignment="Left" />
+                    </StackPanel>
+                </Border>
+
+                <!--
+                    The search box. In GitExtensions it sits above the list, and typing filters
+                    WITHOUT re-reading the repositories; Enter opens the first result and ↓ moves
+                    into the list.
+                -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*" VerticalAlignment="Top">
+                    <PathIcon Grid.Column="0"
+                              Data="{StaticResource IconSearch}"
+                              Width="14"
+                              Height="14"
+                              Margin="0,0,8,0"
+                              Foreground="{DynamicResource GitExtDashboardHeadingBrush}"
+                              VerticalAlignment="Center" />
+
+                    <TextBox Grid.Column="1"
+                             Name="SearchBox"
+                             Text="{Binding Dashboard.SearchText, Mode=TwoWay}"
+                             PlaceholderText="{loc:Translate dashboard.search_repositories}"
+                             Background="{DynamicResource GitExtDashboardSearchBackgroundBrush}"
+                             KeyDown="OnSearchKeyDown"
+                             IsVisible="{Binding Dashboard.HasRepositories}" />
+                </Grid>
+
+                <!-- Nothing has ever been opened: the way forward, not an empty screen. -->
+                <TextBlock Grid.Row="2"
+                           Name="EmptyDashboardText"
+                           Text="{loc:Translate welcome.no_repository_open_yet_start_with_open_repos}"
+                           IsVisible="{Binding !Dashboard.HasRepositories}"
+                           FontSize="12"
+                           Opacity="0.6"
+                           TextWrapping="Wrap"
+                           Margin="0,6,0,0" />
+
+                <!-- The search matched nothing — a different situation from "nothing opened yet". -->
+                <TextBlock Grid.Row="2"
+                           Name="NoSearchResultText"
+                           Text="{loc:Translate dashboard.no_repository_matches_the_search}"
+                           FontSize="12"
+                           Opacity="0.6"
+                           Margin="0,6,0,0">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="Dashboard.HasRepositories" />
+                            <Binding Path="!Dashboard.HasResults" />
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
+
+                <ScrollViewer Grid.Row="2" IsVisible="{Binding Dashboard.HasResults}">
+                    <ItemsControl Name="RepositoryGroups" ItemsSource="{Binding Dashboard.Groups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:DashboardGroup">
+                                <StackPanel Margin="0,0,0,14">
 
                                     <!--
-                                        A missing folder is not removed, it is shown dimmed: a
-                                        drive that is not mounted is no reason to prune the list.
+                                        The group header. In GitExtensions the actions hang off the
+                                        group's "Actions" task link; here they are the header's
+                                        context menu — same actions, and a right click is where a
+                                        desktop user looks for them.
                                     -->
-                                    <TextBlock Text="{Binding Path}"
-                                               FontSize="11"
-                                               Opacity="0.55"
-                                               TextTrimming="CharacterEllipsis" />
+                                    <Border Background="Transparent" Padding="2,4">
+                                        <TextBlock Text="{Binding Header}"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource GitExtDashboardHeadingBrush}" />
+
+                                        <Border.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="{loc:Translate dashboard.rename_category}"
+                                                          IsVisible="{Binding !IsRecent}"
+                                                          Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).Dashboard.RenameCategoryCommand}"
+                                                          CommandParameter="{Binding}" />
+                                                <MenuItem Header="{loc:Translate dashboard.delete_category}"
+                                                          IsVisible="{Binding !IsRecent}"
+                                                          Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).Dashboard.DeleteCategoryCommand}"
+                                                          CommandParameter="{Binding}" />
+                                                <MenuItem Header="{loc:Translate dashboard.clear_all_recent_repositories}"
+                                                          IsVisible="{Binding IsRecent}"
+                                                          Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).Dashboard.ClearRecentCommand}" />
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+                                    </Border>
+
+                                    <ItemsControl ItemsSource="{Binding Items}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:DashboardRepositoryItem">
+                                                <Button Classes="tile"
+                                                        Command="{Binding OpenCommand}"
+                                                        CommandParameter="{Binding Path}"
+                                                        ToolTip.Tip="{Binding Path}"
+                                                        ContextRequested="OnTileContextRequested">
+                                                    <Grid ColumnDefinitions="Auto,*">
+
+                                                        <!-- The folder icon, with the star of a filed repository on top of it. -->
+                                                        <Panel Grid.Column="0" Width="34" Height="34" Margin="2,0,4,0">
+                                                            <PathIcon Data="{StaticResource IconRepositoryFolder}"
+                                                                      Width="22"
+                                                                      Height="22"
+                                                                      IsVisible="{Binding IsValid}"
+                                                                      Foreground="{DynamicResource GitExtDashboardFolderBrush}" />
+
+                                                            <PathIcon Data="{StaticResource IconRepositoryFolderMissing}"
+                                                                      Width="22"
+                                                                      Height="22"
+                                                                      IsVisible="{Binding !IsValid}"
+                                                                      Foreground="{DynamicResource GitExtDashboardFolderMissingBrush}" />
+
+                                                            <PathIcon Data="{StaticResource IconStar}"
+                                                                      Width="11"
+                                                                      Height="11"
+                                                                      IsVisible="{Binding IsFavourite}"
+                                                                      HorizontalAlignment="Right"
+                                                                      VerticalAlignment="Top"
+                                                                      Foreground="{DynamicResource GitExtDashboardFavouriteBrush}" />
+                                                        </Panel>
+
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       FontSize="13"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Foreground="{DynamicResource GitExtDashboardPrimaryTextBrush}" />
+
+                                                            <!-- The branch, in the smaller font — `_secondaryFont` in GitExtensions. -->
+                                                            <StackPanel Orientation="Horizontal"
+                                                                        Spacing="4"
+                                                                        IsVisible="{Binding HasBranch}">
+                                                                <PathIcon Data="{StaticResource IconBranch}"
+                                                                          Width="10"
+                                                                          Height="10"
+                                                                          Foreground="{DynamicResource GitExtDashboardBranchBrush}" />
+                                                                <TextBlock Text="{Binding Branch}"
+                                                                           FontSize="11"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Foreground="{DynamicResource GitExtDashboardBranchBrush}" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Grid>
+
+                                                    <!--
+                                                        The tile's context menu, in GitExtensions' order
+                                                        (`contextMenuStripRepository.Items.AddRange`):
+                                                        Show in folder · ─ · Categories · ─ ·
+                                                        Remove project · Remove missing projects.
+                                                    -->
+                                                    <Button.ContextMenu>
+                                                        <ContextMenu>
+                                                            <MenuItem Header="{loc:Translate dashboard.show_in_folder}"
+                                                                      Command="{Binding Owner.ShowInFolderCommand}" />
+                                                            <Separator />
+                                                            <MenuItem Header="{loc:Translate dashboard.categories}"
+                                                                      ItemsSource="{Binding Owner.CategoryChoices}">
+                                                                <MenuItem.Styles>
+                                                                    <Style Selector="MenuItem > MenuItem" x:DataType="vm:DashboardCategoryChoice">
+                                                                        <Setter Property="Header" Value="{Binding Header}" />
+                                                                        <Setter Property="Command" Value="{Binding Command}" />
+                                                                        <Setter Property="CommandParameter" Value="{Binding Parameter}" />
+                                                                        <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                                                    </Style>
+                                                                </MenuItem.Styles>
+                                                            </MenuItem>
+                                                            <Separator />
+                                                            <MenuItem Header="{loc:Translate dashboard.remove_from_list}"
+                                                                      Command="{Binding Owner.RemoveFromListCommand}" />
+                                                            <MenuItem Header="{loc:Translate dashboard.remove_missing}"
+                                                                      IsVisible="{Binding Owner.HasInvalidRepositories}"
+                                                                      Command="{Binding Owner.RemoveMissingCommand}" />
+                                                        </ContextMenu>
+                                                    </Button.ContextMenu>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>

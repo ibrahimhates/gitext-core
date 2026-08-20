@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        x:Class="GitExt.UI.Views.ConfirmDialog"
+        Width="420"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        A yes/no question before something that cannot be undone (P12-T03).
+
+        🔴 The default button is **No** — GitExtensions passes `MessageBoxDefaultButton.Button2`
+        for exactly these two questions. A question whose default answer is "yes" is answered by
+        the Enter key rather than by the user.
+    -->
+    <StackPanel Margin="16" Spacing="14">
+        <TextBlock Name="QuestionText" TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="NoButton"
+                    Content="{loc:Translate dashboard.no}"
+                    MinWidth="90"
+                    IsCancel="True"
+                    IsDefault="True"
+                    Click="OnNoClick" />
+            <Button Name="YesButton"
+                    Content="{loc:Translate dashboard.yes}"
+                    MinWidth="90"
+                    Click="OnYesClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -4,18 +4,44 @@ using System.Text.Json.Serialization;
 namespace GitExt.UI.Storage;
 
 /// <summary>
+/// One entry of the repository list (P03-T16, category P12-T02).
+/// </summary>
+/// <param name="Path">The repository's working directory.</param>
+/// <param name="Category">
+/// The category the user filed it under, or <see langword="null"/> when it is simply recent.
+/// </param>
+/// <remarks>
+/// The category is what GitExtensions calls a <b>favourite</b>: on the dashboard a categorised
+/// repository moves out of "Recent repositories" and into a group of its own, and it is
+/// <b>never pruned</b> by the size cap.
+/// </remarks>
+public sealed record RecentRepository(string Path, string? Category = null)
+{
+    /// <summary>Is this a favourite (i.e. filed under a category)?</summary>
+    public bool IsFavourite => !string.IsNullOrWhiteSpace(Category);
+}
+
+/// <summary>
 /// Stores the list of recently opened repositories (P03-T16).
 /// </summary>
 public interface IRecentRepositoryStore
 {
-    /// <summary>Returns recently opened repositories, newest first.</summary>
-    Task<IReadOnlyList<string>> LoadAsync(CancellationToken cancellationToken = default);
+    /// <summary>Returns the repository list, most recently opened first.</summary>
+    Task<IReadOnlyList<RecentRepository>> LoadAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Moves a repository to the front of the list (or adds it) and saves.</summary>
     Task AddAsync(string workingDirectory, CancellationToken cancellationToken = default);
 
     /// <summary>Removes a repository from the list.</summary>
     Task RemoveAsync(string workingDirectory, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Files a repository under a category, or removes it from one with <see langword="null"/>.
+    /// </summary>
+    Task SetCategoryAsync(
+        string workingDirectory,
+        string? category,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -36,15 +62,26 @@ public interface IRecentRepositoryStore
 public sealed class RecentRepositoryStore : IRecentRepositoryStore
 {
     /// <summary>
-    /// Maximum number of repositories kept in the list.
+    /// Maximum number of <b>uncategorised</b> repositories kept in the list.
     /// </summary>
     /// <remarks>
     /// Kept short so it fits in the menu and is easy to scan; an unbounded list would
-    /// eventually fill up with repositories the user never opens.
+    /// eventually fill up with repositories the user never opens. 🔴 Favourites are
+    /// <b>outside</b> the cap: the user filed those deliberately, and silently dropping one
+    /// because twelve other repositories were opened since would throw away a decision the
+    /// user made — the exact opposite of what the category is for.
     /// </remarks>
     public const int MaximumCount = 12;
 
-    private const int SchemaVersion = 1;
+    /// <summary>
+    /// The version written into the file.
+    /// </summary>
+    /// <remarks>
+    /// v1 held plain path strings; v2 holds objects so a category can travel with the path. v1
+    /// files are still read (see <see cref="ParseRepositories"/>) — an upgrade must not empty
+    /// the user's list.
+    /// </remarks>
+    private const int SchemaVersion = 2;
 
     private readonly string _filePath;
 
@@ -89,39 +126,90 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
         return Path.Combine(root, "gitext-core");
     }
 
-    public async Task<IReadOnlyList<string>> LoadAsync(CancellationToken cancellationToken = default)
-    {
-        RecentFile? file = await ReadAsync(cancellationToken).ConfigureAwait(false);
-
-        return file?.Repositories ?? [];
-    }
+    public async Task<IReadOnlyList<RecentRepository>> LoadAsync(
+        CancellationToken cancellationToken = default) =>
+        await ReadAsync(cancellationToken).ConfigureAwait(false);
 
     public async Task AddAsync(string workingDirectory, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
 
-        IReadOnlyList<string> current = await LoadAsync(cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<RecentRepository> current = await LoadAsync(cancellationToken).ConfigureAwait(false);
 
-        List<string> updated = [workingDirectory];
+        // The category the repository already carries is kept: reopening a favourite must not
+        // demote it back into "Recent repositories".
+        RecentRepository? existing = current.FirstOrDefault(r => PathsEqual(r.Path, workingDirectory));
+
+        List<RecentRepository> updated = [new RecentRepository(workingDirectory, existing?.Category)];
 
         // The same repository must not appear twice; reopening it moves it to the front.
-        updated.AddRange(current.Where(p => !PathsEqual(p, workingDirectory)));
+        updated.AddRange(current.Where(r => !PathsEqual(r.Path, workingDirectory)));
 
-        if (updated.Count > MaximumCount)
-        {
-            updated.RemoveRange(MaximumCount, updated.Count - MaximumCount);
-        }
-
-        await WriteAsync(updated, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(Trim(updated), cancellationToken).ConfigureAwait(false);
     }
 
     public async Task RemoveAsync(string workingDirectory, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<string> current = await LoadAsync(cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<RecentRepository> current = await LoadAsync(cancellationToken).ConfigureAwait(false);
 
         await WriteAsync(
-            [.. current.Where(p => !PathsEqual(p, workingDirectory))],
+            [.. current.Where(r => !PathsEqual(r.Path, workingDirectory))],
             cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SetCategoryAsync(
+        string workingDirectory,
+        string? category,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
+
+        IReadOnlyList<RecentRepository> current = await LoadAsync(cancellationToken).ConfigureAwait(false);
+
+        string? cleaned = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
+
+        List<RecentRepository> updated =
+        [
+            .. current.Select(r => PathsEqual(r.Path, workingDirectory) ? r with { Category = cleaned } : r),
+        ];
+
+        // Filing a repository the list has never seen is legitimate: it is added rather than
+        // silently ignored.
+        if (!updated.Any(r => PathsEqual(r.Path, workingDirectory)))
+        {
+            updated.Insert(0, new RecentRepository(workingDirectory, cleaned));
+        }
+
+        await WriteAsync(Trim(updated), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Applies the size cap — to the uncategorised entries only.
+    /// </summary>
+    private static IReadOnlyList<RecentRepository> Trim(IReadOnlyList<RecentRepository> repositories)
+    {
+        int kept = 0;
+        List<RecentRepository> result = [];
+
+        foreach (RecentRepository repository in repositories)
+        {
+            if (repository.IsFavourite)
+            {
+                result.Add(repository);
+                continue;
+            }
+
+
+            if (kept >= MaximumCount)
+            {
+                continue;
+            }
+
+            kept++;
+            result.Add(repository);
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -141,35 +229,101 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
     private static string Normalize(string path) =>
         path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-    private async Task<RecentFile?> ReadAsync(CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<RecentRepository>> ReadAsync(CancellationToken cancellationToken)
     {
         try
         {
             if (!File.Exists(_filePath))
             {
-                return null;
+                return [];
             }
 
             await using FileStream stream = File.OpenRead(_filePath);
 
-            return await JsonSerializer
-                .DeserializeAsync(stream, RecentJsonContext.Default.RecentFile, cancellationToken)
+            using JsonDocument document = await JsonDocument
+                .ParseAsync(stream, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            return ParseRepositories(document.RootElement);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             // Corrupt or unreadable file: proceed as if the list didn't exist.
-            return null;
+            return [];
         }
     }
 
-    private async Task WriteAsync(IReadOnlyList<string> repositories, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads the entries out of the file, in <b>both</b> schema versions.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 The document is walked by hand rather than deserialised into a type: v1 wrote
+    /// <c>"repositories": ["/a", "/b"]</c> and v2 writes
+    /// <c>"repositories": [{"path": "/a"}]</c>. A typed read of the v2 shape throws
+    /// <see cref="JsonException"/> on a v1 file, and this class treats an unreadable file as an
+    /// empty list — so upgrading would have <b>silently wiped</b> the user's repository list.
+    /// <see cref="JsonDocument"/> is also trimming-safe (see <see cref="RecentJsonContext"/>).
+    /// </remarks>
+    private static IReadOnlyList<RecentRepository> ParseRepositories(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("repositories", out JsonElement repositories)
+            || repositories.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        List<RecentRepository> result = [];
+
+        foreach (JsonElement element in repositories.EnumerateArray())
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.String when element.GetString() is { Length: > 0 } path:
+                    // Schema v1.
+                    result.Add(new RecentRepository(path));
+                    break;
+
+                case JsonValueKind.Object
+                    when element.TryGetProperty("path", out JsonElement pathElement)
+                        && pathElement.GetString() is { Length: > 0 } objectPath:
+
+                    string? category = element.TryGetProperty("category", out JsonElement categoryElement)
+                        && categoryElement.ValueKind == JsonValueKind.String
+                            ? categoryElement.GetString()
+                            : null;
+
+                    result.Add(new RecentRepository(
+                        objectPath,
+                        string.IsNullOrWhiteSpace(category) ? null : category));
+                    break;
+
+                default:
+                    // An entry we do not understand is skipped, not fatal.
+                    break;
+            }
+        }
+
+        return result;
+    }
+
+    private async Task WriteAsync(
+        IReadOnlyList<RecentRepository> repositories,
+        CancellationToken cancellationToken)
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
 
-            RecentFile file = new() { Version = SchemaVersion, Repositories = repositories };
+            RecentFile file = new()
+            {
+                Version = SchemaVersion,
+                Repositories = [.. repositories.Select(r => new RecentEntry
+                {
+                    Path = r.Path,
+                    Category = r.Category,
+                })],
+            };
 
             await using FileStream stream = File.Create(_filePath);
 
@@ -183,7 +337,6 @@ public sealed class RecentRepositoryStore : IRecentRepositoryStore
             // repositories must not stop the app.
         }
     }
-
 }
 
 /// <summary>
@@ -195,7 +348,17 @@ internal sealed class RecentFile
     public int Version { get; set; }
 
     [JsonPropertyName("repositories")]
-    public IReadOnlyList<string> Repositories { get; set; } = [];
+    public IReadOnlyList<RecentEntry> Repositories { get; set; } = [];
+}
+
+/// <summary>One entry in the file (schema v2).</summary>
+internal sealed class RecentEntry
+{
+    [JsonPropertyName("path")]
+    public string Path { get; set; } = string.Empty;
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
 }
 
 /// <summary>

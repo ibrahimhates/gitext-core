@@ -31,6 +31,15 @@
 
 </details>
 
+<details>
+<summary>The dashboard</summary>
+
+![gitext-core — the dashboard, dark theme](./docs/assets/screenshot-dashboard-dark.png)
+
+![gitext-core — the dashboard, light theme](./docs/assets/screenshot-dashboard-light.png)
+
+</details>
+
 ---
 
 ## Why does this exist?

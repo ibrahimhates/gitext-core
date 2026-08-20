@@ -101,6 +101,10 @@ public partial class MainWindow : Window
                 model.ResetPrompt = new DialogResetPrompt(this);
                 model.SequencerPrompt = new DialogSequencerPrompt(this);
                 model.RebasePrompt = new DialogRebasePrompt(this);
+
+                // The dashboard (P12-T03): its dialogs and "Show in folder" also need the window.
+                model.Dashboard.Prompt = new DialogDashboardPrompt(this);
+                model.Dashboard.OpenFolderInShell = OpenFolderInShell;
             }
 
             BuildShortcuts();
@@ -255,6 +259,43 @@ public partial class MainWindow : Window
         _registry is { } registry
             ? ShortcutReferenceWindow.ShowAsync(new ShortcutReferenceViewModel(registry), this)
             : Task.CompletedTask;
+
+    /// <summary>
+    /// Opens a folder in the system's file manager (P12-T03, "Show in folder").
+    /// </summary>
+    /// <remarks>
+    /// <c>UseShellExecute</c> is essential: without it .NET takes the path for an executable and
+    /// errors out. A failure is swallowed — a message box because a file manager could not be
+    /// started would be a bigger nuisance than the action is worth.
+    /// </remarks>
+    private static void OpenFolderInShell(string path)
+    {
+        try
+        {
+            using System.Diagnostics.Process? _ = System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception exception) when (
+            exception is System.ComponentModel.Win32Exception
+                or System.PlatformNotSupportedException
+                or InvalidOperationException)
+        {
+        }
+    }
+
+    /// <summary>Shows the dashboard's small dialogs in real windows (P12-T03).</summary>
+    private sealed class DialogDashboardPrompt : IDashboardPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogDashboardPrompt(Window owner) => _owner = owner;
+
+        public Task<string?> AskCategoryNameAsync(IReadOnlyList<string> existingCategories, string? currentName) =>
+            DashboardCategoryDialog.ShowAsync(existingCategories, currentName, _owner);
+
+        public Task<bool> ConfirmAsync(string caption, string question) =>
+            ConfirmDialog.ShowAsync(caption, question, _owner);
+    }
 
     /// <summary>Shows the conflict resolution screen in a real window (P07-T03).</summary>
     private sealed class DialogConflictPrompt : IConflictPrompt

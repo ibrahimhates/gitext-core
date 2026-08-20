@@ -88,6 +88,28 @@
 
             <SolidColorBrush x:Key="GitExtStashBadgeBackgroundBrush" Color="#7D3C98" />
             <SolidColorBrush x:Key="GitExtStashBadgeForegroundBrush" Color="#FFFFFF" />
+
+            <!--
+                Dashboard (P12-T03). These values are GitExtensions' own: `DashboardTheme.Light`
+                in the source (the palette it links to is paletton.com/#uid=13I0u0k7UUa3cZA5wXlaiQ5cFL3).
+                The dashboard is the first thing the user sees; taking the colours from anywhere
+                else would make the application look like something other than GitExtensions at
+                exactly the moment recognition matters most.
+            -->
+            <SolidColorBrush x:Key="GitExtDashboardBackgroundBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="GitExtDashboardLogoBackgroundBrush" Color="#137AD4" />
+            <SolidColorBrush x:Key="GitExtDashboardLogoForegroundBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="GitExtDashboardStartBackgroundBrush" Color="#DBEBF8" />
+            <SolidColorBrush x:Key="GitExtDashboardContributeBackgroundBrush" Color="#E6F1FA" />
+            <SolidColorBrush x:Key="GitExtDashboardHeaderBackgroundBrush" Color="#ACD0EF" />
+            <SolidColorBrush x:Key="GitExtDashboardSearchBackgroundBrush" Color="#F8F8FF" />
+            <SolidColorBrush x:Key="GitExtDashboardPrimaryTextBrush" Color="#1E1E1E" />
+            <SolidColorBrush x:Key="GitExtDashboardHeadingBrush" Color="#696969" />
+            <SolidColorBrush x:Key="GitExtDashboardBranchBrush" Color="#647FD2" />
+            <SolidColorBrush x:Key="GitExtDashboardFavouriteBrush" Color="#B8860B" />
+            <SolidColorBrush x:Key="GitExtDashboardHoverBrush" Color="#DBEBF8" />
+            <SolidColorBrush x:Key="GitExtDashboardFolderBrush" Color="#E0A030" />
+            <SolidColorBrush x:Key="GitExtDashboardFolderMissingBrush" Color="#CF222E" />
         </ResourceDictionary>
 
         <!-- ======================================================================= KOYU -->
@@ -146,6 +168,29 @@
 
             <SolidColorBrush x:Key="GitExtStashBadgeBackgroundBrush" Color="#6B3486" />
             <SolidColorBrush x:Key="GitExtStashBadgeForegroundBrush" Color="#FFFFFF" />
+
+            <!--
+                Dashboard, dark (P12-T03). GitExtensions' dark dashboard is built from the system
+                control colours, which do not exist here — the values are the same ROLES carried
+                over onto the GitHub-dark palette this file already uses: the light theme's blue
+                identity survives in the logo strip and in the branch name, the rest goes grey.
+                The blue of the light theme cannot be reused as-is: #DBEBF8 on a dark background
+                is a white slab.
+            -->
+            <SolidColorBrush x:Key="GitExtDashboardBackgroundBrush" Color="#0D1117" />
+            <SolidColorBrush x:Key="GitExtDashboardLogoBackgroundBrush" Color="#0B3A75" />
+            <SolidColorBrush x:Key="GitExtDashboardLogoForegroundBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="GitExtDashboardStartBackgroundBrush" Color="#161B22" />
+            <SolidColorBrush x:Key="GitExtDashboardContributeBackgroundBrush" Color="#1C2128" />
+            <SolidColorBrush x:Key="GitExtDashboardHeaderBackgroundBrush" Color="#22272E" />
+            <SolidColorBrush x:Key="GitExtDashboardSearchBackgroundBrush" Color="#0D1117" />
+            <SolidColorBrush x:Key="GitExtDashboardPrimaryTextBrush" Color="#E6EDF3" />
+            <SolidColorBrush x:Key="GitExtDashboardHeadingBrush" Color="#9198A1" />
+            <SolidColorBrush x:Key="GitExtDashboardBranchBrush" Color="#79C0FF" />
+            <SolidColorBrush x:Key="GitExtDashboardFavouriteBrush" Color="#D29922" />
+            <SolidColorBrush x:Key="GitExtDashboardHoverBrush" Color="#30363D" />
+            <SolidColorBrush x:Key="GitExtDashboardFolderBrush" Color="#D9A036" />
+            <SolidColorBrush x:Key="GitExtDashboardFolderMissingBrush" Color="#F85149" />
         </ResourceDictionary>
 
     </ResourceDictionary.ThemeDictionaries>

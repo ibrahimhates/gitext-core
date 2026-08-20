@@ -206,6 +206,10 @@ public partial class MainWindowViewModel : ViewModelBase
         RevertCommand = new AsyncRelayCommand(RevertAsync, () => CanRevert);
         RebaseCommand = new AsyncRelayCommand(RebaseAsync, () => CanRebase);
 
+        // The dashboard shares the store and the open command with the Start menu: two lists
+        // reading the file separately would sooner or later show two different things.
+        Dashboard = new DashboardViewModel(_recentStore, OpenRecentCommand);
+
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
 
@@ -257,6 +261,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Commit history list.</summary>
     public CommitListViewModel Commits { get; }
+
+    /// <summary>
+    /// The dashboard shown when no repository is open (P12-T03).
+    /// </summary>
+    /// <remarks>
+    /// Its counterpart in GitExtensions is the <c>Dashboard</c> control: it is not a placeholder
+    /// screen but the way into the application — the repository is picked from there.
+    /// </remarks>
+    public DashboardViewModel Dashboard { get; }
 
     /// <summary>Recently opened repositories, newest first.</summary>
     public ObservableCollection<RecentRepositoryItem> RecentRepositories { get; } = [];
@@ -1719,10 +1732,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// the user — it is the user who asked for that path.
     /// </para>
     /// <para>
-    /// If it was not given, the working directory is tried <b>silently</b>. When the
-    /// application is started from the desktop or a menu the working directory is some random
-    /// place; showing a "this is not a repository" error would be meaningless. If it is not a
-    /// repository the welcome screen opens.
+    /// If it was not given, <b>the dashboard opens</b> (P12-T04). That is GitExtensions'
+    /// behaviour: <c>Program.cs</c> looks at the working directory only when it was started with
+    /// an argument, and reopening the last repository is a setting that is <b>off by default</b>
+    /// (<c>StartWithRecentWorkingDir</c>). The repository is picked from the dashboard.
+    /// </para>
+    /// <para>
+    /// 🔴 Until P12-T04 the current working directory was tried silently. Launched from a
+    /// terminal that happened to sit inside a repository, the application went straight into it
+    /// and the user never saw their list — the dashboard was only reachable by closing the
+    /// repository. Passing the path (<c>gitext-core .</c>) still opens it directly.
     /// </para>
     /// </remarks>
     public async Task StartAsync(string? explicitPath, CancellationToken cancellationToken = default)
@@ -1735,17 +1754,12 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // The repository that was open at shutdown is reopened (P08-T16). It is tried BEFORE
-        // the working directory: started from the desktop the working directory is some random
-        // place, whereas the last repository is the place the user deliberately opened.
-        if (Session?.LastRepository is { Length: > 0 } last
-            && await TryOpenQuietlyAsync(last, cancellationToken).ConfigureAwait(true))
+        // The repository open at shutdown is reopened only when the user asked for it (P08-T16,
+        // now behind the P12-T04 setting).
+        if (Session is { StartWithLastRepository: true, LastRepository: { Length: > 0 } last })
         {
-            return;
+            await TryOpenQuietlyAsync(last, cancellationToken).ConfigureAwait(true);
         }
-
-        await TryOpenQuietlyAsync(Directory.GetCurrentDirectory(), cancellationToken)
-            .ConfigureAwait(true);
     }
 
     /// <summary>
@@ -1928,7 +1942,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task LoadRecentAsync(CancellationToken cancellationToken)
     {
-        IReadOnlyList<string> recent;
+        IReadOnlyList<Storage.RecentRepository> recent;
 
         try
         {
@@ -1941,10 +1955,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
         RecentRepositories.Clear();
 
-        foreach (string path in recent)
+        foreach (Storage.RecentRepository repository in recent)
         {
-            RecentRepositories.Add(new RecentRepositoryItem(path, OpenRecentCommand));
+            RecentRepositories.Add(new RecentRepositoryItem(repository.Path, OpenRecentCommand));
         }
+
+        // The dashboard reads the same store; refreshing it from here keeps the menu and the
+        // dashboard from drifting apart.
+        await Dashboard.LoadAsync(cancellationToken).ConfigureAwait(true);
     }
 
     private async Task AddRecentAsync(string workingDirectory, CancellationToken cancellationToken)

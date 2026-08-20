@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
+using GitExt.Core;
 using GitExt.Core.Model;
 using GitExt.UI.Localization;
 using GitExt.UI.Settings;
@@ -55,7 +56,7 @@ public class ScreenshotTests
     /// on every run. With a real repository the image would change along with the commit history and
     /// the picture in the README would differ on every release.
     /// </remarks>
-    private static MainWindowViewModel BuildModel()
+    private static MainWindowViewModel BuildModel(Fakes.FakeRecentRepositoryStore? recent = null)
     {
         string[] shas =
         [
@@ -90,7 +91,7 @@ public class ScreenshotTests
             new Fakes.FakeCommitSignatureReader(),
             new Fakes.FakeDiffReader());
 
-        return new MainWindowViewModel(list, new Fakes.FakeRecentRepositoryStore());
+        return new MainWindowViewModel(list, recent ?? new Fakes.FakeRecentRepositoryStore());
     }
 
     private static CommitInfo Commit(
@@ -176,5 +177,70 @@ public class ScreenshotTests
             $"{fileName} boş görünüyor — pencere çizilmemiş olabilir");
 
         frame.PixelSize.Width.ShouldBeGreaterThan(1000);
+    }
+
+    /// <summary>
+    /// The dashboard — the screen the application starts on (P12-T03).
+    /// </summary>
+    /// <remarks>
+    /// It gets its own screenshot because it is the <b>first</b> thing anyone sees, of the
+    /// application and of the README alike. The repository list, the branch names and the
+    /// categories are fixed data: with real repositories the image would change with whatever
+    /// happens to be on the machine.
+    /// </remarks>
+    [AvaloniaTheory]
+    [InlineData(ThemePreference.Light, "screenshot-dashboard-light.png")]
+    [InlineData(ThemePreference.Dark, "screenshot-dashboard-dark.png")]
+    public async Task Kontrol_paneli_ekran_goruntusu_uretiliyor(ThemePreference theme, string fileName)
+    {
+        InMemorySettingsStore settings = new();
+        AppearanceService appearance = new(Application.Current!, settings);
+        appearance.SetTheme(theme);
+
+        Translator translator = new(settings);
+        translator.Use("en");
+        TranslateExtension.Attach(translator);
+        Loc.Attach(translator);
+
+        Fakes.FakeRecentRepositoryStore store = new(
+            "/home/dev/projects/gitext-core",
+            "/home/dev/projects/avalonia",
+            "/home/dev/projects/roslyn",
+            "/home/dev/work/payments-api",
+            "/media/backup/archived-tools");
+
+        store.WithCategory("/home/dev/work/payments-api", "Work");
+
+        MainWindowViewModel model = BuildModel(store);
+
+        // The probe is replaced BEFORE loading: the list is built while it is being read, and a
+        // probe handed over afterwards would arrive too late.
+        model.Dashboard.Probe = HeadOf;
+        await model.StartAsync(explicitPath: null);
+
+        MainWindow window = new() { DataContext = model, Width = 1440, Height = 900 };
+        window.Show();
+
+        using Bitmap frame = window.CaptureRenderedFrame()
+            ?? throw new InvalidOperationException("Render edilmiş kare alınamadı.");
+
+        Directory.CreateDirectory(AssetDirectory);
+        string path = Path.Combine(AssetDirectory, fileName);
+        frame.Save(path, new PngBitmapEncoderOptions());
+
+        new FileInfo(path).Length.ShouldBeGreaterThan(
+            5_000,
+            $"{fileName} boş görünüyor — pencere çizilmemiş olabilir");
+
+        static RepositoryHeadInfo HeadOf(string path) => path switch
+        {
+            // One entry is deliberately unreachable: that is the state the dashboard draws with
+            // the struck-out folder, and a screenshot that never shows it hides half the design.
+            "/media/backup/archived-tools" => RepositoryHeadInfo.NotARepository,
+            "/home/dev/projects/gitext-core" => new RepositoryHeadInfo(true, "main"),
+            "/home/dev/projects/avalonia" => new RepositoryHeadInfo(true, "release/11.2"),
+            "/home/dev/projects/roslyn" => new RepositoryHeadInfo(true, null),
+            _ => new RepositoryHeadInfo(true, "feature/checkout-flow"),
+        };
     }
 }
