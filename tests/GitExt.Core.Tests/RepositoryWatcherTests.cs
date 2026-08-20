@@ -23,10 +23,43 @@ public class RepositoryWatcherTests
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan Maximum = TimeSpan.FromSeconds(5);
 
+    /// <summary>
+    /// The shortest gap between two refreshes, for the coalescing test.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 REGRESSION, repeatedly misdiagnosed. `Cok_sayida_degisiklik_TEK_tazelemede_birlesir`
+    /// kept failing on CI with 3 or 5 events against an expected 2, and raising
+    /// <see cref="Maximum"/> (200 ms → 1 s → 5 s) changed NOTHING — because the upper bound was
+    /// never what limited the coalescing.
+    ///
+    /// What limits consecutive refreshes in the application is <c>MinimumInterval</c>, whose
+    /// production default is 5 seconds. The watcher built here passed <c>TimeSpan.Zero</c>, i.e.
+    /// the test switched that protection OFF and then asserted the behaviour it provides.
+    ///
+    /// MEASURED, replaying the coalescer's own rule against events arriving spread out the way
+    /// they do on a slow runner ([0, 5, 12, 20, 35, 60, 120, 180, 260, 340, 430] ms):
+    ///   debounce 50 ms, minimum 0     → 6 refreshes   ← what the test was asking for
+    ///   production defaults           → 1 refresh
+    ///   debounce 50 ms, minimum 1 s   → 2 refreshes
+    /// Locally all 200 writes land within 8 ms, so a single window swallowed them and the test
+    /// passed — which is why this only ever went red on CI.
+    ///
+    /// The production value (5 s) is used rather than an invented one. MEASURED across event
+    /// spreads from "all within 8 ms" to "spread over 4.5 s", against the assertion of at most
+    /// two refreshes:
+    ///   minimum 0    → 1, 6, 9, 10, 10 refreshes
+    ///   minimum 1 s  → 1, 2, 3,  4,  6
+    ///   minimum 2 s  → 1, 2, 2,  3,  4
+    ///   minimum 5 s  → 1, 2, 2,  2,  2   ← the only one that holds everywhere
+    /// A shorter value would have gone red again on a slow enough runner; the other tests in this
+    /// class do not go through the coalescer twice, so the longer interval does not slow them.
+    /// </remarks>
+    private static readonly TimeSpan Minimum = RepositoryWatcher.DefaultMinimumInterval;
+
     private static RepositoryWatcher CreateWatcher() =>
         new(debounceDelay: Debounce,
             maximumDelay: Maximum,
-            minimumInterval: TimeSpan.Zero,
+            minimumInterval: Minimum,
             periodicInterval: Timeout.InfiniteTimeSpan);
 
     private sealed class Recorder
