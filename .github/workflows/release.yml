@@ -396,7 +396,7 @@ jobs:
 
   # ───────────────────────────────────────────────────────────────────────────
   release:
-    name: GitHub Release draft
+    name: GitHub Release
     runs-on: ubuntu-latest
     needs: [version, linux, windows, macos]
     if: startsWith(github.ref, 'refs/tags/')
@@ -432,9 +432,20 @@ jobs:
       - name: Release notes
         run: build/release-notes.sh "${GITHUB_REF_NAME}" > release-notes.md
 
+      # `draft: false` — the release is published as soon as it is created.
+      #
+      # Everything that could go wrong has ALREADY been checked by this point: the guard
+      # confirms the tag is on main, every platform's tests are green, each binary was smoke
+      # tested by running `--version`, and SHA256SUMS was produced. Leaving the result as a
+      # draft only added a manual step that had to be remembered after a long pipeline.
+      #
+      # `prerelease` follows the tag: a version carrying a pre-release suffix (v1.0.0-rc.1,
+      # -alpha, -beta) is marked as a pre-release on GitHub, a plain v1.0.0 is a full release.
+      # Without this an -rc tag would be published as if it were stable.
       - uses: softprops/action-gh-release@v3
         with:
-          draft: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
           body_path: release-notes.md
           files: |
             dist/gitext-core[-_]*
