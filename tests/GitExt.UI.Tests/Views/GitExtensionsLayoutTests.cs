@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GitExt.UI.Controls;
 using GitExt.UI.Tests.Fakes;
 using GitExt.UI.ViewModels;
 using GitExt.UI.Views;
@@ -188,6 +189,74 @@ public class GitExtensionsLayoutTests
         model.HasRecentRepositories.ShouldBeTrue();
 
         window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Commit_satiri_sutunlari_GitExtensions_sirasinda()
+    {
+        // Source: `RevisionGridControl`, the order the column providers are added —
+        // graph · message · (notes · avatar) · author · date · commit id.
+        //
+        // 🔴 The SHA used to sit right after the graph here. In GitExtensions it is the LAST
+        // column and the ref badges live INSIDE the message column, in front of the subject
+        // (`MessageColumnProvider` draws them there). Notes, avatar and build status are the three
+        // columns we do not have.
+        CommitListViewModel list = new(
+            new FakeRepositoryLocator(),
+            new FakeCommitLogReader(FakeGitData.LinearHistory(3)),
+            new FakeRefReader(),
+            new FakeCommitSignatureReader(),
+            new FakeDiffReader());
+
+        await list.OpenAsync("/tmp/depo");
+
+        CommitListView view = new() { DataContext = list };
+        Window window = new() { Width = 900, Height = 300, Content = view };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        // The row template's own Grid: the one whose DIRECT children include the graph cell.
+        // (An ancestor container would also match "contains a graph cell somewhere".)
+        Grid row = view.GetVisualDescendants()
+            .OfType<Grid>()
+            .First(g => g.Children.OfType<CommitGraphCell>().Any());
+
+        // Left to right: the graph, the badges, the subject, the author, the date, the SHA.
+        string[] columns = [.. row.Children
+            .OrderBy(child => Grid.GetColumn((Control)child))
+            .Select(child => child switch
+            {
+                CommitGraphCell => "graph",
+                ItemsControl => "badges",
+                TextBlock text when text.GetValue(TextBlock.TextProperty) is { } value => Describe(value, list),
+                _ => "?",
+            })];
+
+        columns.ShouldBe(["graph", "badges", "subject", "author", "date", "sha"]);
+
+        window.Close();
+
+        static string Describe(string text, CommitListViewModel list)
+        {
+            CommitRowViewModel first = list.Rows[0];
+
+            if (text == first.Subject)
+            {
+                return "subject";
+            }
+
+            if (text == first.AuthorName)
+            {
+                return "author";
+            }
+
+            if (text == first.DateText)
+            {
+                return "date";
+            }
+
+            return text == first.ShortId ? "sha" : "?";
+        }
     }
 
     [AvaloniaFact]

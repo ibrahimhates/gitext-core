@@ -179,10 +179,20 @@
 
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="vm:CommitRowViewModel">
-                    <Grid Height="22"
-                          ColumnDefinitions="Auto,70,*,Auto,140,120">
+                    <!--
+                        The column order is GitExtensions' own (`RevisionGridControl`, the order
+                        the providers are added): graph · message · author · date · commit id.
+                        The SHA is LAST there, not next to the graph — and the ref badges sit
+                        INSIDE the message column, in front of the subject
+                        (`MessageColumnProvider` draws them there).
 
-                        <!-- Graph column — the one piece that draws itself -->
+                        Notes, avatar and build status are the three columns we do not have; they
+                        sit between message and author in GitExtensions.
+                    -->
+                    <Grid Height="22"
+                          ColumnDefinitions="Auto,Auto,*,140,120,70">
+
+                        <!-- Graph column - the one piece that draws itself -->
                         <!--
                             The graph column has a FIXED width and every row shows the same lane
                             window (P03-T21). Tying the width to the per-row lane count made the
@@ -195,35 +205,26 @@
                         <controls:CommitGraphCell
                             Grid.Column="0"
                             Row="{Binding GraphRow}"
+                            PreviousRow="{Binding PreviousGraphRow}"
+                            HasRefs="{Binding HasBadges}"
+                            IsHead="{Binding IsHead}"
+                            IsRelative="{Binding IsRelative}"
+                            PreviousIsRelative="{Binding PreviousIsRelative}"
                             ClipToBounds="True"
                             Margin="4,0,8,0"
                             FirstLane="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).FirstVisibleLane}"
                             VisibleLanes="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).VisibleLanes}" />
-
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding ShortId}"
-                                   FontFamily="{DynamicResource ContentControlThemeFontFamily}"
-                                   FontSize="12"
-                                   Opacity="0.65"
-                                   VerticalAlignment="Center" />
-
-                        <TextBlock Grid.Column="2"
-                                   Text="{Binding Subject}"
-                                   FontSize="12"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,8,0" />
 
                         <!--
                             Ref badges, in separate styles BY KIND (P03-T12).
                             The kind comes from for-each-ref, not from git's %D field; %D does not
                             tell a local branch from a remote one (measured).
                         -->
-                        <ItemsControl Grid.Column="3"
+                        <ItemsControl Grid.Column="1"
                                       ItemsSource="{Binding Badges}"
                                       IsVisible="{Binding HasBadges}"
                                       VerticalAlignment="Center"
-                                      Margin="0,0,8,0">
+                                      Margin="0,0,6,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal" Spacing="4" />
@@ -248,7 +249,14 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <TextBlock Grid.Column="4"
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding Subject}"
+                                   FontSize="12"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+
+                        <TextBlock Grid.Column="3"
                                    Text="{Binding AuthorName}"
                                    FontSize="12"
                                    Opacity="0.75"
@@ -256,8 +264,16 @@
                                    VerticalAlignment="Center"
                                    Margin="0,0,8,0" />
 
-                        <TextBlock Grid.Column="5"
+                        <TextBlock Grid.Column="4"
                                    Text="{Binding DateText}"
+                                   FontSize="12"
+                                   Opacity="0.65"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+
+                        <TextBlock Grid.Column="5"
+                                   Text="{Binding ShortId}"
+                                   FontFamily="{DynamicResource GitExtMonospaceFont}"
                                    FontSize="12"
                                    Opacity="0.65"
                                    VerticalAlignment="Center" />

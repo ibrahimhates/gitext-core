@@ -1,6 +1,7 @@
 using System.Windows.Input;
 using Avalonia.Input;
 using GitExt.UI.Commands;
+using GitExt.UI.Localization;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Tests.ViewModels;
@@ -185,12 +186,30 @@ public class CommandPaletteTests
 
     // -------------------------------------------------- P08-T06 the reference screen
 
+    /// <summary>
+    /// Pins the interface language for the tests that assert on translated text.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 The language is <b>process-wide</b> (<see cref="Loc"/>), and the screenshot tests switch
+    /// it while producing the Turkish image. A test asserting an English heading therefore passed
+    /// or failed depending on which test ran before it — the flakiness recorded as an open issue
+    /// since Phase 11. Pinning it here removes the dependency on test order.
+    /// </remarks>
+    private static void UseEnglish()
+    {
+        Translator translator = new(new InMemorySettingsStore());
+        translator.Use("en");
+        Loc.Attach(translator);
+    }
+
     [Fact]
     public void Referans_baglama_gore_grupluyor()
     {
+        UseEnglish();
+
         ShortcutReferenceViewModel model = new(TestCommands.Registry());
 
-        model.Groups.Select(g => g.Title).ShouldContain("Her yerde");
+        model.Groups.Select(g => g.Title).ShouldContain("Everywhere");
         model.Groups.Select(g => g.Title).ShouldContain("Diff view");
 
         model.Groups.Single(g => g.Title == "Diff view").Rows
@@ -202,9 +221,11 @@ public class CommandPaletteTests
     [Fact]
     public void Kisayolsuz_komutlar_sonda()
     {
+        UseEnglish();
+
         ShortcutReferenceViewModel model = new(TestCommands.Registry());
 
-        IReadOnlyList<ShortcutRow> rows = model.Groups.Single(g => g.Title == "Her yerde").Rows;
+        IReadOnlyList<ShortcutRow> rows = model.Groups.Single(g => g.Title == "Everywhere").Rows;
 
         int firstWithout = rows.Select((r, i) => (r, i)).First(x => x.r.Gesture is null).i;
         int lastWith = rows.Select((r, i) => (r, i)).Last(x => x.r.Gesture is not null).i;

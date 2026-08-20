@@ -100,13 +100,22 @@ public sealed partial class ShortcutReferenceViewModel : ViewModelBase
                 .Contains(Filter, StringComparison.OrdinalIgnoreCase) == true;
     }
 
+    /// <summary>
+    /// The context's name as shown to the user.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Three of these were <b>hard-coded Turkish</b> ("Her yerde", "Commit listesi", "Dal
+    /// paneli") in an interface that is English by default — Phase 11 translated the XAML and the
+    /// ViewModel strings, but a `switch` returning literals looked like code, not like text. An
+    /// English user saw Turkish group headings in the shortcut window and nothing failed.
+    /// </remarks>
     private static string ContextName(CommandContext context) => context switch
     {
-        CommandContext.Global => "Her yerde",
-        CommandContext.CommitList => "Commit listesi",
+        CommandContext.Global => Loc.T("shortcut.context_everywhere"),
+        CommandContext.CommitList => Loc.T("shortcut.context_commit_list"),
         CommandContext.Diff => Loc.T("shortcut_reference.diff_view"),
         CommandContext.WorkingTree => Loc.T("shortcut_reference.working_tree_commit_screen"),
-        CommandContext.RefTree => "Dal paneli",
+        CommandContext.RefTree => Loc.T("shortcut.context_branch_panel"),
         _ => context.ToString(),
     };
 }

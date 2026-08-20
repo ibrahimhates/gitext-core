@@ -773,6 +773,13 @@ public sealed partial class CommitListViewModel : ViewModelBase
         // TopologicalOrder is on by default — layout depends on it (ADR-0007).
         CommitLogQuery query = BuildQuery();
 
+        // What the graph needs beyond the layout (P12-T09…T11): the row above (its lines come
+        // down into this one), whether the commit is HEAD, and whether it is an ancestor of HEAD.
+        GraphRow? previousRow = null;
+        bool previousRelative = true;
+        CommitId headId = Refs?.Head is { IsUnborn: false } head ? head.Commit : default;
+        HashSet<CommitId> relatives = headId == default ? [] : [headId];
+
         try
         {
             await foreach (CommitInfo commit in _logReader
@@ -780,7 +787,32 @@ public sealed partial class CommitListViewModel : ViewModelBase
                                .ConfigureAwait(false))
             {
                 GraphRow row = engine.Add(ToDagCommit(commit));
-                batch.Add(new CommitRowViewModel(commit, row, badges.For(commit.Id)));
+
+                // 🔴 Reachability is computed IN ONE PASS, and it can be, because `--topo-order`
+                // guarantees every child arrives before its parents (ADR-0007): by the time a
+                // commit is read, every child that could have marked it has already been seen.
+                // Walking the graph again per row would be quadratic on a 500k-row history.
+                bool relative = relatives.Count == 0 || relatives.Contains(commit.Id);
+
+                if (relative && relatives.Count > 0)
+                {
+                    foreach (CommitId parent in commit.Parents)
+                    {
+                        relatives.Add(parent);
+                    }
+                }
+
+                batch.Add(new CommitRowViewModel(
+                    commit,
+                    row,
+                    badges.For(commit.Id),
+                    previousRow,
+                    isHead: headId != default && commit.Id == headId,
+                    isRelative: relative,
+                    previousIsRelative: previousRelative));
+
+                previousRow = row;
+                previousRelative = relative;
 
                 if (batch.Count >= BatchSize)
                 {

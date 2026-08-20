@@ -29,6 +29,18 @@ namespace GitExt.UI.Tests.Views;
 /// </remarks>
 public class ScreenshotTests
 {
+    /// <summary>Puts the process-wide language back to English when the test ends.</summary>
+    private sealed class EnglishAfterwards : IDisposable
+    {
+        public void Dispose()
+        {
+            Translator english = new(new InMemorySettingsStore());
+            english.Use("en");
+            TranslateExtension.Attach(english);
+            Loc.Attach(english);
+        }
+    }
+
     /// <summary>
     /// Where the images that go into the README are written. Fixed relative to the repository root.
     /// </summary>
@@ -84,10 +96,25 @@ public class ScreenshotTests
             Commit(shas[7], [], "refactor: move lane assignment out of the view", "Grace Hopper", 40),
         ];
 
+        // The refs are given for real, not left empty: the badges, the square nodes of the
+        // commits that carry refs and the outline around HEAD are all part of the picture, and an
+        // image without them shows a graph the application never actually draws (P12-T10).
+        RepositoryRefs refs = Fakes.FakeGitData.Refs(
+            localBranches: [Fakes.FakeGitData.LocalBranch("main", shas[0], isCurrent: true)],
+            remoteBranches: [Fakes.FakeGitData.RemoteBranch("origin/main", shas[2])],
+            tags: [Fakes.FakeGitData.Tag("v0.9.0", shas[6])],
+            head: new HeadState
+            {
+                IsDetached = false,
+                IsUnborn = false,
+                BranchName = "main",
+                Commit = CommitId.Parse(shas[0]),
+            });
+
         CommitListViewModel list = new(
             new Fakes.FakeRepositoryLocator(),
             new Fakes.FakeCommitLogReader(commits),
-            new Fakes.FakeRefReader(),
+            new Fakes.FakeRefReader(refs),
             new Fakes.FakeCommitSignatureReader(),
             new Fakes.FakeDiffReader());
 
@@ -134,10 +161,17 @@ public class ScreenshotTests
         appearance.SetTheme(theme);
 
         // A Turkish image is visible proof that the translation ACTUALLY reaches the UI.
+        //
+        // 🔴 The language is PROCESS-WIDE, so this test used to leave whatever it last set behind
+        // it and the next test asserting a translated string passed or failed depending on the
+        // order the tests happened to run in. Whatever is set here is put back to English at the
+        // end of the test.
         Translator translator = new(settings);
         translator.Use(language);
         TranslateExtension.Attach(translator);
         Loc.Attach(translator);
+
+        using EnglishAfterwards _ = new();
 
         MainWindowViewModel model = BuildModel();
 
