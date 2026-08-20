@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using GitExt.Core;
 using GitExt.Core.Model;
+using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
 
@@ -23,6 +25,60 @@ public enum RefNodeKind
 
     /// <summary>Etiket.</summary>
     Tag,
+
+    /// <summary>A linked working tree (P12-T13).</summary>
+    WorkTree,
+
+    /// <summary>Alt modül (P12-T13).</summary>
+    Submodule,
+
+    /// <summary>A stash entry (P12-T13).</summary>
+    Stash,
+}
+
+/// <summary>
+/// Which sections the panel shows (P12-T13).
+/// </summary>
+/// <remarks>
+/// GitExtensions puts a toggle for each tree on the panel's own toolbar
+/// (<c>tsbShowBranches</c> … <c>tsbShowStashes</c>) and remembers them. A user who never uses
+/// submodules should not have to look at the heading for the rest of their life.
+/// </remarks>
+public sealed record RefTreeSections
+{
+    public bool Branches { get; init; } = true;
+
+    public bool Remotes { get; init; } = true;
+
+    public bool WorkTrees { get; init; } = true;
+
+    public bool Tags { get; init; } = true;
+
+    public bool Submodules { get; init; } = true;
+
+    public bool Stashes { get; init; } = true;
+}
+
+/// <summary>
+/// Everything the panel draws, in one package (P12-T13).
+/// </summary>
+/// <remarks>
+/// 🔑 The panel does not read anything itself — the same rule as the refs since P06-T13. Asking
+/// the same question through a second code path has already produced silently different answers
+/// twice in this project.
+/// </remarks>
+public sealed record RefTreeData
+{
+    public RepositoryRefs? Refs { get; init; }
+
+    /// <summary>The repository's working directory — a submodule's path is relative to it.</summary>
+    public string RootPath { get; init; } = string.Empty;
+
+    public IReadOnlyList<WorkTree> WorkTrees { get; init; } = [];
+
+    public IReadOnlyList<Submodule> Submodules { get; init; } = [];
+
+    public IReadOnlyList<StashEntry> Stashes { get; init; } = [];
 }
 
 /// <summary>
@@ -55,6 +111,19 @@ public sealed class RefNodeViewModel : ViewModelBase
     /// <summary>Can it be double-clicked (checkout)?</summary>
     public bool IsCheckoutable => Kind is RefNodeKind.LocalBranch or RefNodeKind.RemoteBranch;
 
+    /// <summary>
+    /// The path behind the node — a worktree's or a submodule's directory.
+    /// </summary>
+    /// <remarks>
+    /// Both can be <b>opened as a repository</b>, which is what GitExtensions' "Open" does on
+    /// them. The path is kept separately from <see cref="FullName"/> because a submodule's name is
+    /// relative to the repository while the thing to open is an absolute path.
+    /// </remarks>
+    public string Path { get; init; } = string.Empty;
+
+    /// <summary>Can this node be opened as a repository of its own?</summary>
+    public bool IsOpenable => Kind is RefNodeKind.WorkTree or RefNodeKind.Submodule && Path.Length > 0;
+
     public ObservableCollection<RefNodeViewModel> Children { get; } = [];
 
     public bool IsExpanded
@@ -82,9 +151,11 @@ public sealed class RefNodeViewModel : ViewModelBase
 /// </remarks>
 public sealed class RefTreeViewModel : ViewModelBase
 {
-    private RepositoryRefs? _refs;
+    private RefTreeData _data = new();
+    private string _rootPath = string.Empty;
     private string _filter = string.Empty;
     private RefNodeViewModel? _selected;
+    private RefTreeSections _sections = new();
 
     /// <summary>The roots of the tree.</summary>
     public ObservableCollection<RefNodeViewModel> Roots { get; } = [];
@@ -116,6 +187,13 @@ public sealed class RefTreeViewModel : ViewModelBase
                 OnPropertyChanged(nameof(CanPushSelected));
                 OnPropertyChanged(nameof(CanCopySelectedName));
                 OnPropertyChanged(nameof(CanBranchFromSelected));
+                OnPropertyChanged(nameof(IsStashSelected));
+                OnPropertyChanged(nameof(IsSubmoduleSelected));
+                OnPropertyChanged(nameof(IsWorkTreeSelected));
+                OnPropertyChanged(nameof(CanOpenSelected));
+                OnPropertyChanged(nameof(IsRemotesSectionSelected));
+                OnPropertyChanged(nameof(IsBranchesSectionSelected));
+                OnPropertyChanged(nameof(IsStashesSectionSelected));
             }
         }
     }
@@ -151,31 +229,207 @@ public sealed class RefTreeViewModel : ViewModelBase
     /// <summary>Can a new branch be created from here?</summary>
     public bool CanBranchFromSelected => Selected is { FullName.Length: > 0 };
 
+    // ---- P12-T14: the menu items of the new node kinds.
+    //
+    // The decisions stay HERE for the same reason as the ones above: an `Opening` handler never
+    // fires headless, so an enabled state decided on the view side cannot be tested at all.
+
+    /// <summary>Is a stash entry selected? (Apply · Pop · Drop · Show)</summary>
+    public bool IsStashSelected => Selected?.Kind == RefNodeKind.Stash;
+
+    /// <summary>Is a submodule selected?</summary>
+    public bool IsSubmoduleSelected => Selected?.Kind == RefNodeKind.Submodule;
+
+    /// <summary>Is a linked working tree selected?</summary>
+    public bool IsWorkTreeSelected => Selected?.Kind == RefNodeKind.WorkTree;
+
+    /// <summary>Can the selection be opened as a repository of its own?</summary>
+    public bool CanOpenSelected => Selected?.IsOpenable == true;
+
+    /// <summary>
+    /// Is the <i>Remotes</i> heading selected? (Manage · Fetch all · Fetch and prune all)
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions hangs these off the root node (<c>mnuBtnManageRemotesFromRootNode</c>,
+    /// <c>mnuBtnFetchAllRemotes</c>, <c>mnuBtnPruneAllRemotes</c>), and that is where someone
+    /// looking for "fetch everything" right-clicks.
+    /// </remarks>
+    public bool IsRemotesSectionSelected =>
+        Selected is { Kind: RefNodeKind.Section } section
+        && string.Equals(section.Name, Loc.T("ref_tree.section_remotes"), StringComparison.Ordinal);
+
+    /// <summary>Is the <i>Branches</i> heading selected? (Create branch)</summary>
+    public bool IsBranchesSectionSelected =>
+        Selected is { Kind: RefNodeKind.Section } section
+        && string.Equals(section.Name, Loc.T("ref_tree.section_branches"), StringComparison.Ordinal);
+
+    /// <summary>Is the <i>Stashes</i> heading selected? (Stash all · Manage stashes)</summary>
+    public bool IsStashesSectionSelected =>
+        Selected is { Kind: RefNodeKind.Section } section
+        && string.Equals(section.Name, Loc.T("ref_tree.section_stashes"), StringComparison.Ordinal);
+
     /// <summary>Did filtering leave nothing at all?</summary>
     public bool IsEmpty => Roots.Count == 0;
 
     /// <summary>Has the panel been populated?</summary>
-    public bool HasRefs => _refs is not null;
+    public bool HasRefs => _data.Refs is not null;
 
     /// <summary>Takes the refs and builds the tree.</summary>
-    public void Load(RepositoryRefs? refs)
+    public void Load(RepositoryRefs? refs) => Load(new RefTreeData { Refs = refs });
+
+    /// <summary>Takes everything the panel shows and builds the tree (P12-T13).</summary>
+    public void Load(RefTreeData data)
     {
-        _refs = refs;
+        ArgumentNullException.ThrowIfNull(data);
+
+        _data = data;
+        _rootPath = data.RootPath;
         Rebuild();
         OnPropertyChanged(nameof(HasRefs));
+    }
+
+    /// <summary>
+    /// Which sections are shown — the panel's own toolbar toggles (P12-T13).
+    /// </summary>
+    /// <remarks>
+    /// Changing this rebuilds the tree. The setting is stored by the window, not here: the panel
+    /// does not know where settings live (ADR-0004).
+    /// </remarks>
+    public RefTreeSections Sections
+    {
+        get => _sections;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            if (_sections == value)
+            {
+                return;
+            }
+
+            _sections = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowBranches));
+            OnPropertyChanged(nameof(ShowRemotes));
+            OnPropertyChanged(nameof(ShowWorkTrees));
+            OnPropertyChanged(nameof(ShowTags));
+            OnPropertyChanged(nameof(ShowSubmodules));
+            OnPropertyChanged(nameof(ShowStashes));
+
+            Rebuild();
+            SectionsChanged?.Invoke(this, value);
+        }
+    }
+
+    /// <summary>Raised when a section is toggled, so the choice can be saved.</summary>
+    public event EventHandler<RefTreeSections>? SectionsChanged;
+
+    // The toolbar's toggles bind to these; each one writes the whole record back through
+    // `Sections`, so there is a single place that rebuilds and reports the change.
+
+    public bool ShowBranches
+    {
+        get => _sections.Branches;
+        set => Sections = _sections with { Branches = value };
+    }
+
+    public bool ShowRemotes
+    {
+        get => _sections.Remotes;
+        set => Sections = _sections with { Remotes = value };
+    }
+
+    public bool ShowWorkTrees
+    {
+        get => _sections.WorkTrees;
+        set => Sections = _sections with { WorkTrees = value };
+    }
+
+    public bool ShowTags
+    {
+        get => _sections.Tags;
+        set => Sections = _sections with { Tags = value };
+    }
+
+    public bool ShowSubmodules
+    {
+        get => _sections.Submodules;
+        set => Sections = _sections with { Submodules = value };
+    }
+
+    public bool ShowStashes
+    {
+        get => _sections.Stashes;
+        set => Sections = _sections with { Stashes = value };
+    }
+
+    /// <summary>Collapses every node (GitExtensions' <c>tsbCollapseAll</c>).</summary>
+    public void CollapseAll()
+    {
+        foreach (RefNodeViewModel root in Roots)
+        {
+            Collapse(root);
+        }
+
+        static void Collapse(RefNodeViewModel node)
+        {
+            node.IsExpanded = false;
+
+            foreach (RefNodeViewModel child in node.Children)
+            {
+                Collapse(child);
+            }
+        }
     }
 
     private void Rebuild()
     {
         Roots.Clear();
 
-        if (_refs is not { } refs)
+        RepositoryRefs? refs = _data.Refs;
+
+        if (refs is null)
         {
             OnPropertyChanged(nameof(IsEmpty));
             return;
         }
 
-        RefNodeViewModel branches = new() { Name = "Branches", Kind = RefNodeKind.Section };
+        // The order is GitExtensions' own (`RepoObjectsTree`, the order the trees are created):
+        // Branches · Remotes · Worktrees · Tags · Submodules · Stashes.
+        RefNodeViewModel branches = BuildBranches(refs);
+        RefNodeViewModel remotes = BuildRemotes(refs);
+        RefNodeViewModel worktrees = BuildWorkTrees();
+        RefNodeViewModel tags = BuildTags(refs);
+        RefNodeViewModel submodules = BuildSubmodules();
+        RefNodeViewModel stashes = BuildStashes();
+
+        // An empty section is not shown: while filtering, nothing under a "Tags" heading tells the
+        // user anything. A section switched off on the toolbar is not shown either.
+        AddSection(branches, _sections.Branches);
+        AddSection(remotes, _sections.Remotes);
+        AddSection(worktrees, _sections.WorkTrees);
+        AddSection(tags, _sections.Tags);
+        AddSection(submodules, _sections.Submodules);
+        AddSection(stashes, _sections.Stashes);
+
+        OnPropertyChanged(nameof(IsEmpty));
+
+        void AddSection(RefNodeViewModel section, bool visible)
+        {
+            if (visible && section.Children.Count > 0)
+            {
+                Roots.Add(section);
+            }
+        }
+    }
+
+    private RefNodeViewModel BuildBranches(RepositoryRefs refs)
+    {
+        RefNodeViewModel branches = new()
+        {
+            Name = Loc.T("ref_tree.section_branches"),
+            Kind = RefNodeKind.Section,
+        };
 
         foreach (BranchInfo branch in refs.LocalBranches)
         {
@@ -197,12 +451,21 @@ public sealed class RefTreeViewModel : ViewModelBase
                 });
         }
 
-        RefNodeViewModel remotes = new() { Name = "Remotes", Kind = RefNodeKind.Section };
+        return branches;
+    }
+
+    private RefNodeViewModel BuildRemotes(RepositoryRefs refs)
+    {
+        RefNodeViewModel remotes = new()
+        {
+            Name = Loc.T("ref_tree.section_remotes"),
+            Kind = RefNodeKind.Section,
+        };
 
         foreach (BranchInfo branch in refs.RemoteBranches)
         {
-            // The symbolic `origin/HEAD` is skipped: it would look like a second "branch" on the same
-            // commit. That same ref sets a trap for the fifth time in this project.
+            // The symbolic `origin/HEAD` is skipped: it would look like a second "branch" on the
+            // same commit. That same ref sets a trap for the fifth time in this project.
             if (branch.Ref.IsSymbolic || !Matches(branch.Name))
             {
                 continue;
@@ -231,7 +494,16 @@ public sealed class RefTreeViewModel : ViewModelBase
                 });
         }
 
-        RefNodeViewModel tags = new() { Name = "Tags", Kind = RefNodeKind.Section };
+        return remotes;
+    }
+
+    private RefNodeViewModel BuildTags(RepositoryRefs refs)
+    {
+        RefNodeViewModel tags = new()
+        {
+            Name = Loc.T("ref_tree.section_tags"),
+            Kind = RefNodeKind.Section,
+        };
 
         foreach (TagInfo tag in refs.Tags)
         {
@@ -249,17 +521,125 @@ public sealed class RefTreeViewModel : ViewModelBase
             }
         }
 
-        // An empty section is not shown: while filtering, nothing under a "Tags" heading tells the
-        // user anything.
-        foreach (RefNodeViewModel section in new[] { branches, remotes, tags })
+        return tags;
+    }
+
+    /// <summary>
+    /// The linked working trees (P12-T13).
+    /// </summary>
+    /// <remarks>
+    /// The main working tree is in the list too and is marked, because "which one am I looking at"
+    /// is the first question the list raises. A worktree whose directory is gone is marked as
+    /// prunable rather than hidden — hiding it would leave the user wondering where it went.
+    /// </remarks>
+    private RefNodeViewModel BuildWorkTrees()
+    {
+        RefNodeViewModel worktrees = new()
         {
-            if (section.Children.Count > 0)
+            Name = Loc.T("ref_tree.section_worktrees"),
+            Kind = RefNodeKind.Section,
+        };
+
+        foreach (WorkTree worktree in _data.WorkTrees)
+        {
+            string name = LastPathSegment(worktree.Path);
+
+            if (!Matches(name) && !Matches(worktree.BranchName ?? string.Empty))
             {
-                Roots.Add(section);
+                continue;
             }
+
+            worktrees.Children.Add(new RefNodeViewModel
+            {
+                Name = name,
+                FullName = worktree.Path,
+                Path = worktree.Path,
+                Kind = RefNodeKind.WorkTree,
+                IsCurrent = worktree.IsMain,
+                AheadBehind = worktree.IsPrunable
+                    ? Loc.T("ref_tree.worktree_missing")
+                    : worktree.BranchName ?? Loc.T("dashboard.detached_head"),
+            });
         }
 
-        OnPropertyChanged(nameof(IsEmpty));
+        return worktrees;
+    }
+
+    private RefNodeViewModel BuildSubmodules()
+    {
+        RefNodeViewModel submodules = new()
+        {
+            Name = Loc.T("ref_tree.section_submodules"),
+            Kind = RefNodeKind.Section,
+        };
+
+        string root = _data.Refs is not null ? _rootPath : string.Empty;
+
+        foreach (Submodule submodule in _data.Submodules)
+        {
+            string name = submodule.Path.Value;
+
+            if (!Matches(name))
+            {
+                continue;
+            }
+
+            submodules.Children.Add(new RefNodeViewModel
+            {
+                Name = LastPathSegment(name),
+                FullName = name,
+                Path = root.Length > 0 ? submodule.ResolvePath(root) : name,
+                Kind = RefNodeKind.Submodule,
+                AheadBehind = DescribeSubmodule(submodule.Status),
+            });
+        }
+
+        return submodules;
+    }
+
+    private RefNodeViewModel BuildStashes()
+    {
+        RefNodeViewModel stashes = new()
+        {
+            Name = Loc.T("ref_tree.section_stashes"),
+            Kind = RefNodeKind.Section,
+        };
+
+        foreach (StashEntry stash in _data.Stashes)
+        {
+            if (!Matches(stash.Message) && !Matches(stash.Selector))
+            {
+                continue;
+            }
+
+            stashes.Children.Add(new RefNodeViewModel
+            {
+                // GitExtensions shows the message; the selector is what every command needs.
+                Name = stash.Message.Length > 0 ? stash.Message : stash.Selector,
+                FullName = stash.Selector,
+                Kind = RefNodeKind.Stash,
+                AheadBehind = stash.ShortSelector,
+            });
+        }
+
+        return stashes;
+    }
+
+    /// <summary>The submodule's state, in words.</summary>
+    private static string DescribeSubmodule(SubmoduleStatusKind status) => status switch
+    {
+        SubmoduleStatusKind.NotInitialized => Loc.T("ref_tree.submodule_not_initialized"),
+        SubmoduleStatusKind.Modified => Loc.T("ref_tree.submodule_modified"),
+        SubmoduleStatusKind.Conflicted => Loc.T("ref_tree.submodule_conflicted"),
+        _ => string.Empty,
+    };
+
+    private static string LastPathSegment(string path)
+    {
+        string trimmed = path.TrimEnd('/', '\\');
+        int slash = trimmed.LastIndexOfAny(['/', '\\']);
+
+        return slash >= 0 ? trimmed[(slash + 1)..] : trimmed;
     }
 
     private bool Matches(string name) =>
@@ -319,7 +699,7 @@ public sealed class RefTreeViewModel : ViewModelBase
 
         if (tracking.IsGone)
         {
-            return "upstream yok";
+            return Loc.T("ref_tree.upstream_gone");
         }
 
         return tracking.IsUpToDate ? string.Empty : $"↑{tracking.Ahead} ↓{tracking.Behind}";

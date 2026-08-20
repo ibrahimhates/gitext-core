@@ -118,7 +118,41 @@ public class ScreenshotTests
             new Fakes.FakeCommitSignatureReader(),
             new Fakes.FakeDiffReader());
 
-        return new MainWindowViewModel(list, recent ?? new Fakes.FakeRecentRepositoryStore());
+        MainWindowViewModel model = new(list, recent ?? new Fakes.FakeRecentRepositoryStore());
+
+        // The left panel is filled too (P12-T13): its six sections are part of the picture, and a
+        // screenshot with an empty panel shows a window the application never actually draws.
+        model.RefTree.Load(new RefTreeData
+        {
+            Refs = refs,
+            RootPath = "/repo",
+            WorkTrees =
+            [
+                new Core.WorkTree { Path = "/repo", BranchName = "main", IsMain = true },
+                new Core.WorkTree { Path = "/repo-hotfix", BranchName = "hotfix/crash" },
+            ],
+            Submodules =
+            [
+                new Core.Submodule
+                {
+                    Path = RepositoryPath.Parse("externals/skia"),
+                    ObjectId = shas[3],
+                    Status = Core.SubmoduleStatusKind.UpToDate,
+                },
+            ],
+            Stashes =
+            [
+                new Core.StashEntry
+                {
+                    Selector = "stash@{0}",
+                    ObjectId = shas[4],
+                    Message = "WIP: partial staging",
+                    Index = 0,
+                },
+            ],
+        });
+
+        return model;
     }
 
     private static CommitInfo Commit(

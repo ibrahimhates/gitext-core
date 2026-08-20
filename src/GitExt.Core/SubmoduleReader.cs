@@ -79,17 +79,60 @@ public sealed class SubmoduleReader : ISubmoduleReader
         _runner = runner;
     }
 
+    /// <summary>
+    /// Lists the submodules; an empty list when the repository has none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 <b>MEASURED (P12-T13):</b> <c>git submodule status</c> costs <b>12–49 ms</b> in a
+    /// repository that has <b>no submodules at all</b> — it is one of the few git commands that is
+    /// still a shell script, so the price is the shell, not the work. Three benchmark repositories
+    /// (linux, git, this one) all have no <c>.gitmodules</c>, and the left panel refreshes on every
+    /// repository change; that would be tens of milliseconds paid on every refresh for a list that
+    /// is always empty.
+    /// </para>
+    /// <para>
+    /// Checking for <c>.gitmodules</c> first is a file-existence test. It is also the right
+    /// question: a repository without that file has no submodules by definition, and one whose
+    /// file lists them still goes through git for their status.
+    /// </para>
+    /// </remarks>
     public async Task<IReadOnlyList<Submodule>> ListAsync(
         string workingDirectory,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
 
+        if (!HasSubmodules(workingDirectory))
+        {
+            return [];
+        }
+
         GitResult result = await _runner.RunAsync(
             GitCommand.Create(workingDirectory, "submodule", "status"),
             cancellationToken).ConfigureAwait(false);
 
         return result.IsSuccess ? Parse(result.GetStandardOutputText()) : [];
+    }
+
+    /// <summary>
+    /// Does the working directory declare submodules at all?
+    /// </summary>
+    /// <remarks>
+    /// A failure to look (an unreadable path) answers <see langword="true"/>: git is then asked and
+    /// gives the real answer. Guessing "no" on an error would hide submodules that are there.
+    /// </remarks>
+    private static bool HasSubmodules(string workingDirectory)
+    {
+        try
+        {
+            return File.Exists(Path.Combine(workingDirectory, ".gitmodules"));
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return true;
+        }
     }
 
     internal static IReadOnlyList<Submodule> Parse(string output)

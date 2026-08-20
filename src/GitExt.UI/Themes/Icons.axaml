@@ -102,4 +102,18 @@
     <!-- The reflog: where HEAD has been. -->
     <StreamGeometry x:Key="IconReflog">F0 M8,1.4 A6.6,6.6 0 1 0 8.01,1.4 Z M8,3.2 A4.8,4.8 0 1 1 7.99,3.2 Z M7.3,4.4 H8.7 V8.2 H11.4 V9.6 H7.3 Z</StreamGeometry>
 
+    <!-- Left panel (`leftPanelToolStrip`) ......................................... -->
+
+    <!-- Collapse everything: arrows meeting in the middle. -->
+    <StreamGeometry x:Key="IconCollapseAll">M4,2.4 L8,6.4 L12,2.4 L13.4,3.8 L8,9.2 L2.6,3.8 Z M2.6,11 H13.4 V12.6 H2.6 Z</StreamGeometry>
+
+    <!-- A remote repository: a box on the network. -->
+    <StreamGeometry x:Key="IconRemote">M2,3 H14 V8 H2 Z M7.2,9.2 H8.8 V11.4 H7.2 Z M3.4,12 H12.6 V13.8 H3.4 Z</StreamGeometry>
+
+    <!-- A linked working tree: a second copy of the tree. -->
+    <StreamGeometry x:Key="IconWorkTree">M2,2 H7 V6.6 H2 Z M9,2 H14 V6.6 H9 Z M4,7.6 H5 V10 H11 V7.6 H12 V11.4 H4 Z M7.2,12 H8.8 V14 H7.2 Z</StreamGeometry>
+
+    <!-- A tag. -->
+    <StreamGeometry x:Key="IconTag">F0 M1.6,1.6 H8.4 L14.4,7.6 L7.6,14.4 L1.6,8.4 Z M4.4,3.6 A1.4,1.4 0 1 0 4.41,3.6 Z</StreamGeometry>
+
 </ResourceDictionary>

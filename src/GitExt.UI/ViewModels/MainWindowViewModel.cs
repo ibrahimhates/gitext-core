@@ -1956,7 +1956,7 @@ public partial class MainWindowViewModel : ViewModelBase
             // The branch panel (P06-T13) is fed from the same ref read: writing a second read
             // meant the two panels silently diverging. The toolbar's branch button (P12-T06)
             // comes from the very same place, for the very same reason.
-            RefTree.Load(Commits.Refs);
+            RefTree.Load(await ReadPanelDataAsync(path, cancellationToken).ConfigureAwait(true));
             UpdateBranches();
 
             CurrentOperation = _operations is null
@@ -1966,7 +1966,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (Commits.Repository?.WorkingDirectory is not { Length: > 0 })
         {
-            RefTree.Load(null);
+            RefTree.Load(new RefTreeData());
         }
 
         OnPropertyChanged(nameof(ShowDetachedBanner));
@@ -1978,6 +1978,213 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CurrentBranchLabel));
         OnPropertyChanged(nameof(WindowTitle));
         OnPropertyChanged(nameof(RepositoryLabel));
+    }
+
+    // ------------------------------------------------- P12-T14: the left panel's node actions
+
+    /// <summary>
+    /// Applies a stash entry, optionally dropping it afterwards (<c>apply</c> / <c>pop</c>).
+    /// </summary>
+    /// <remarks>
+    /// The result is reported in the notice strip, conflicts included: <c>stash pop</c> leaves the
+    /// entry in place when it conflicts (measured in P07-T12) and a user who is not told that
+    /// applies it a second time.
+    /// </remarks>
+    public async Task ApplyStashAsync(string selector, bool drop)
+    {
+        if (_advanced.Stash is not { } stash
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path
+            || string.IsNullOrWhiteSpace(selector))
+        {
+            return;
+        }
+
+        try
+        {
+            StashApplyResult result = await stash.ApplyAsync(path, selector, drop).ConfigureAwait(true);
+
+            BranchNotice = result.HasConflicts
+                ? Loc.F("ref_tree.stash_applied_with_conflicts", selector, result.ConflictedPaths.Count)
+                : Loc.F(drop ? "ref_tree.stash_popped" : "ref_tree.stash_applied", selector);
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Drops a stash entry.</summary>
+    /// <remarks>
+    /// 🔴 This cannot be undone through the interface, so it asks first — the P05-T15 rule. The
+    /// entry does survive in the reflog, and the message says so instead of pretending otherwise.
+    /// </remarks>
+    public async Task DropStashAsync(string selector)
+    {
+        if (_advanced.Stash is not { } stash
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path
+            || string.IsNullOrWhiteSpace(selector)
+            || DashboardConfirmer is not { } confirmer)
+        {
+            return;
+        }
+
+        bool confirmed = await confirmer.ConfirmAsync(
+                Loc.T("ref_tree.drop_stash"),
+                Loc.F("ref_tree.drop_stash_question", selector))
+            .ConfigureAwait(true);
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            await stash.DropAsync(path, selector).ConfigureAwait(true);
+            BranchNotice = Loc.F("ref_tree.stash_dropped", selector);
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Sets the whole working tree aside (the <i>Stashes</i> heading's "Stash all").</summary>
+    public async Task StashAllAsync()
+    {
+        if (_advanced.Stash is not { } stash
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        try
+        {
+            bool stashed = await stash.PushAsync(path, new StashPushOptions()).ConfigureAwait(true);
+
+            // "Nothing to stash" is an answer, not a failure — and without it the user is left
+            // wondering whether the click did anything at all.
+            BranchNotice = stashed
+                ? Loc.T("ref_tree.stash_created")
+                : Loc.T("ref_tree.nothing_to_stash");
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Fetches from every remote, optionally pruning (the <i>Remotes</i> heading).</summary>
+    public async Task FetchAllRemotesAsync(bool prune)
+    {
+        if (_fetchWriter is null || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        try
+        {
+            // Remote = null means --all (see FetchOptions).
+            FetchResult result = await _fetchWriter
+                .FetchAsync(path, new FetchOptions { Remote = null, Prune = prune })
+                .ConfigureAwait(true);
+
+            // 🔴 A partial failure is REPORTED: git keeps going after one remote fails and exits
+            // 0, so a silent "done" would hide the fact that half the remotes were not reached
+            // (P09, the parallel-fetch finding).
+            BranchNotice = result.Failures.Count > 0
+                ? Loc.F("ref_tree.fetch_partly_failed", result.Changes.Count, result.Failures.Count)
+                : Loc.F("ref_tree.fetch_finished", result.Changes.Count);
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Updates a submodule (<c>git submodule update --init</c>).</summary>
+    public async Task UpdateSubmoduleAsync(string relativePath)
+    {
+        if (_advanced.Submodules is not { } submodules
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path
+            || string.IsNullOrWhiteSpace(relativePath))
+        {
+            return;
+        }
+
+        try
+        {
+            await submodules
+                .InitializeAsync(path, RepositoryPath.Parse(relativePath), recursive: true)
+                .ConfigureAwait(true);
+
+            BranchNotice = Loc.F("ref_tree.submodule_updated", relativePath);
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Shows the dialogs the panel needs (the drop-stash question).</summary>
+    public IDashboardPrompt? DashboardConfirmer { get; set; }
+
+    /// <summary>
+    /// Reads everything the left panel shows: refs, worktrees, submodules and stashes (P12-T13).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The refs are already in hand; the other three are separate reads. <b>MEASURED</b> on three
+    /// repositories: <c>stash list</c> and <c>worktree list</c> cost 0,6–2 ms each — cheap enough
+    /// to do on every refresh. <c>submodule status</c> costs <b>12–49 ms</b> even where there are
+    /// no submodules, and <c>SubmoduleReader</c> now skips it when there is no <c>.gitmodules</c>,
+    /// so the common case pays nothing.
+    /// </para>
+    /// <para>
+    /// A failure in any of the three is <b>not</b> an error: the section stays empty. The panel is
+    /// an aid, and a repository must not fail to open because a stash could not be listed.
+    /// </para>
+    /// </remarks>
+    private async Task<RefTreeData> ReadPanelDataAsync(string path, CancellationToken cancellationToken)
+    {
+        return new RefTreeData
+        {
+            Refs = Commits.Refs,
+            RootPath = path,
+            WorkTrees = await SafeAsync(
+                () => _advanced.WorkTrees?.ListAsync(path, cancellationToken),
+                Array.Empty<WorkTree>()).ConfigureAwait(true),
+            Submodules = await SafeAsync(
+                () => _advanced.Submodules?.ListAsync(path, cancellationToken),
+                Array.Empty<Submodule>()).ConfigureAwait(true),
+            Stashes = await SafeAsync(
+                () => _advanced.Stash?.ListAsync(path, cancellationToken),
+                Array.Empty<StashEntry>()).ConfigureAwait(true),
+        };
+
+        static async Task<IReadOnlyList<T>> SafeAsync<T>(
+            Func<Task<IReadOnlyList<T>>?> read,
+            IReadOnlyList<T> fallback)
+        {
+            try
+            {
+                return read() is { } task ? await task.ConfigureAwait(true) : fallback;
+            }
+            catch (Exception exception) when (exception is GitException or IOException)
+            {
+                return fallback;
+            }
+        }
     }
 
     private async Task<InProgressOperation> ReadOperationAsync(

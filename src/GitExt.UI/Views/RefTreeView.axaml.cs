@@ -240,6 +240,112 @@ public partial class RefTreeView : UserControl
         }
     }
 
+    // ------------------------------------------------- P12-T14: the new node kinds' actions
+    //
+    // Every one of them calls the SAME command as the rest of the application; the menu does not
+    // write its own flow. A second path meant one of them ending up without a guard (P06-T14).
+
+    private void OnCollapseAllClick(object? sender, RoutedEventArgs e) =>
+        (DataContext as RefTreeViewModel)?.CollapseAll();
+
+    private async void OnManageRemotesClick(object? sender, RoutedEventArgs e)
+    {
+        if (Commands is { } model)
+        {
+            await model.ManageRemotesCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnFetchAllClick(object? sender, RoutedEventArgs e)
+    {
+        if (Commands is { } model)
+        {
+            await model.FetchAllRemotesAsync(prune: false);
+        }
+    }
+
+    private async void OnFetchPruneAllClick(object? sender, RoutedEventArgs e)
+    {
+        if (Commands is { } model)
+        {
+            await model.FetchAllRemotesAsync(prune: true);
+        }
+    }
+
+    private async void OnStashAllClick(object? sender, RoutedEventArgs e)
+    {
+        if (Commands is { } model)
+        {
+            await model.StashAllAsync();
+        }
+    }
+
+    private async void OnManageStashesClick(object? sender, RoutedEventArgs e)
+    {
+        if (Commands is { } model)
+        {
+            await model.ShowStashCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnApplyStashClick(object? sender, RoutedEventArgs e)
+    {
+        if (Selected is { Kind: RefNodeKind.Stash } node && Commands is { } model)
+        {
+            await model.ApplyStashAsync(node.FullName, drop: false);
+        }
+    }
+
+    private async void OnPopStashClick(object? sender, RoutedEventArgs e)
+    {
+        if (Selected is { Kind: RefNodeKind.Stash } node && Commands is { } model)
+        {
+            await model.ApplyStashAsync(node.FullName, drop: true);
+        }
+    }
+
+    private async void OnDropStashClick(object? sender, RoutedEventArgs e)
+    {
+        if (Selected is { Kind: RefNodeKind.Stash } node && Commands is { } model)
+        {
+            await model.DropStashAsync(node.FullName);
+        }
+    }
+
+    private async void OnUpdateSubmoduleClick(object? sender, RoutedEventArgs e)
+    {
+        if (Selected is { Kind: RefNodeKind.Submodule } node && Commands is { } model)
+        {
+            await model.UpdateSubmoduleAsync(node.FullName);
+        }
+    }
+
+    /// <summary>
+    /// Opens the selected worktree or submodule <b>as a repository</b>.
+    /// </summary>
+    /// <remarks>
+    /// That is what GitExtensions' "Open" does on those nodes. The path really is a repository of
+    /// its own: a linked worktree has its own HEAD, and a submodule is a separate repository.
+    /// </remarks>
+    private async void OnOpenPathClick(object? sender, RoutedEventArgs e)
+    {
+        if (Selected is { IsOpenable: true } node && Commands is { } model)
+        {
+            await model.OpenRepositoryAsync(node.Path);
+        }
+    }
+
+    private void OnShowInFolderClick(object? sender, RoutedEventArgs e)
+    {
+        if (Selected is { IsOpenable: true } node)
+        {
+            OpenFolder?.Invoke(node.Path);
+        }
+    }
+
+    /// <summary>Opens a folder in the file manager; supplied by the window (P12-T14).</summary>
+    internal Action<string>? OpenFolder { get; set; }
+
     private async void OnCopyNameClick(object? sender, RoutedEventArgs e)
     {
         if (Selected is { FullName.Length: > 0 } node

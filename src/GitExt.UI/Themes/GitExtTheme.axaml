@@ -70,6 +70,43 @@
         <Setter Property="Height" Value="15" />
     </Style>
 
+    <!-- The left panel's toolbar is narrower; its icons are a size smaller. -->
+    <Style Selector="Border#PanelToolbar PathIcon">
+        <Setter Property="Width" Value="13" />
+        <Setter Property="Height" Value="13" />
+    </Style>
+
+    <!--
+        A toggle in a toolbar (the left panel's section switches). The default Fluent look fills a
+        checked toggle with the accent colour, which turns a row of seven of them into a blue wall
+        and hides the icons; GitExtensions marks the pressed state with a quiet background instead.
+    -->
+    <Style Selector="Border.toolbar ToggleButton.tool">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="4,3" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.toolbar ToggleButton.tool:checked /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource GitExtSubtleBackgroundBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource GitExtAccentBrush}" />
+    </Style>
+
+    <Style Selector="Border.toolbar ToggleButton.tool:checked PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource GitExtAccentBrush}" />
+    </Style>
+
+    <!-- An unchecked section switch is dimmed: the section is off, and that has to be visible. -->
+    <Style Selector="Border.toolbar ToggleButton.tool PathIcon">
+        <Setter Property="Opacity" Value="0.45" />
+    </Style>
+
+    <Style Selector="Border.toolbar ToggleButton.tool:checked PathIcon">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
     <!-- A disabled toolbar button stays IN PLACE; it is dimmed, not removed. -->
     <Style Selector="Border.toolbar Button:disabled, Border.toolbar SplitButton:disabled, Border.toolbar DropDownButton:disabled">
         <Setter Property="Opacity" Value="0.4" />

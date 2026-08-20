@@ -105,6 +105,10 @@ public partial class MainWindow : Window
                 // The dashboard (P12-T03): its dialogs and "Show in folder" also need the window.
                 model.Dashboard.Prompt = new DialogDashboardPrompt(this);
                 model.Dashboard.OpenFolderInShell = OpenFolderInShell;
+
+                // The left panel asks the same question before dropping a stash (P12-T14).
+                model.DashboardConfirmer = new DialogDashboardPrompt(this);
+                BranchPanel.OpenFolder = OpenFolderInShell;
             }
 
             BuildShortcuts();

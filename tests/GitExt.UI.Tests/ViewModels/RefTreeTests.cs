@@ -126,7 +126,7 @@ public class RefTreeTests
             },
         ]));
 
-        Root(model, "Branches").Children.Single().AheadBehind.ShouldBe("upstream yok");
+        Root(model, "Branches").Children.Single().AheadBehind.ShouldBe("upstream gone");
     }
 
     [AvaloniaFact]
@@ -194,7 +194,7 @@ public class RefTreeTests
     {
         RefTreeViewModel model = Create();
 
-        model.Load(null);
+        model.Load(refs: null);
 
         model.Roots.ShouldBeEmpty();
         model.HasRefs.ShouldBeFalse();

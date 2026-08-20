@@ -87,6 +87,31 @@ public sealed class GeneralSettings
     public Dictionary<string, JsonElement>? Unknown { get; set; }
 }
 
+/// <summary>Which sections the left panel shows (P12-T13).</summary>
+public sealed class LeftPanelSections
+{
+    [JsonPropertyName("branches")]
+    public bool Branches { get; set; } = true;
+
+    [JsonPropertyName("remotes")]
+    public bool Remotes { get; set; } = true;
+
+    [JsonPropertyName("worktrees")]
+    public bool WorkTrees { get; set; } = true;
+
+    [JsonPropertyName("tags")]
+    public bool Tags { get; set; } = true;
+
+    [JsonPropertyName("submodules")]
+    public bool Submodules { get; set; } = true;
+
+    [JsonPropertyName("stashes")]
+    public bool Stashes { get; set; } = true;
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Unknown { get; set; }
+}
+
 /// <summary>Tema, palet ve tipografi (P08-T07…T10).</summary>
 public sealed class AppearanceSettings
 {
@@ -128,6 +153,18 @@ public sealed class LayoutSettings
 
     [JsonPropertyName("bottomPanelVisible")]
     public bool BottomPanelVisible { get; set; } = true;
+
+    /// <summary>
+    /// Which sections the left panel shows (P12-T13).
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions keeps the same six toggles
+    /// (<c>RepoObjectsTreeShowBranches</c> … <c>RepoObjectsTreeShowStashes</c>). All on by
+    /// default: a repository with no submodules does not show the heading anyway, because an
+    /// empty section is not drawn.
+    /// </remarks>
+    [JsonPropertyName("leftPanelSections")]
+    public LeftPanelSections LeftPanel { get; set; } = new();
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
