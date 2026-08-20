@@ -238,12 +238,43 @@ jobs:
       # "unable to resolve action"); the default branch is `main` and the newest release
       # is v2.32.0. Checked with `git ls-remote`, not guessed.
       - name: Tools (MSYS2)
+        id: msys2
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           install: >-
             mingw-w64-x86_64-librsvg
             mingw-w64-x86_64-imagemagick
+
+      # ⚠️ Installing the packages is NOT enough on its own — that was the first attempt and the
+      # job still died with "rsvg-convert not found". setup-msys2 puts the tools inside the MSYS2
+      # installation and exposes them through its OWN shell (`shell: msys2 {0}`), while the
+      # packaging step below runs under `shell: bash`, which on a Windows runner is GIT BASH — a
+      # separate environment whose PATH does not contain /mingw64/bin.
+      #
+      # The step is deliberately NOT switched to `shell: msys2 {0}`: package.sh also needs
+      # `dotnet` (installed on the Windows side by setup-dotnet) and `python3`, and those would
+      # be the ones missing instead. Adding the MinGW64 bin directory to PATH gives Git Bash the
+      # icon tools while leaving everything else it already has intact.
+      - name: MinGW64 bin -> PATH
+        shell: bash
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          set -euo pipefail
+          # The location comes back as a Windows path; Git Bash wants forward slashes.
+          # ⚠️ NOT `echo`: the runner's workspace is D:\a\..., and echo eats the \a as an escape,
+          # silently producing D:/_temp/... with the "a" missing. Verified both forms locally.
+          mingw_bin="${MSYS2_LOCATION//\\//}/mingw64/bin"
+          echo "$mingw_bin" >> "$GITHUB_PATH"
+
+          # Fail HERE, with a clear message, rather than inside package.sh: a missing tool at
+          # this point means the assumption about where setup-msys2 puts things is wrong again.
+          for tool in rsvg-convert magick; do
+            test -e "$mingw_bin/$tool.exe" \
+              || { echo "::error::$tool not found in $mingw_bin" >&2; ls "$mingw_bin" | head -50; exit 1; }
+          done
+          echo "OK: rsvg-convert and magick found in $mingw_bin"
 
       - name: ZIP + Inno Setup script
         shell: bash
