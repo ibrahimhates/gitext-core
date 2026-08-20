@@ -39,16 +39,27 @@ fi
 
 REPO_URL="https://github.com/ibrahimhates/gitext-core"
 
+# ⚠️ The tag is used as a git REVISION below. On a manual (workflow_dispatch) run it does not
+# exist yet, and every `git log` here then fails with "unknown revision" — the notes come out
+# empty while the log fills with fatal: lines. MEASURED with a made-up tag. Fall back to HEAD,
+# which is exactly the commit such a run is building.
+if git rev-parse --verify --quiet "${TAG}^{commit}" >/dev/null; then
+    REVISION="$TAG"
+else
+    REVISION="HEAD"
+    echo "note: tag '$TAG' does not exist yet; notes are generated from HEAD." >&2
+fi
+
 # If the previous tag isn't given: the nearest version tag before this one.
 if [ -z "$PREVIOUS" ]; then
-    PREVIOUS="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+    PREVIOUS="$(git describe --tags --abbrev=0 "${REVISION}^" 2>/dev/null || true)"
 fi
 
 if [ -n "$PREVIOUS" ]; then
-    RANGE="${PREVIOUS}..${TAG}"
+    RANGE="${PREVIOUS}..${REVISION}"
 else
     # First release: the entire history.
-    RANGE="$TAG"
+    RANGE="$REVISION"
 fi
 
 # Formats a commit: "- subject ([sha](url))"
