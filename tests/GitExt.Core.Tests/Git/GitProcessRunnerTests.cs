@@ -163,8 +163,18 @@ public class GitProcessRunnerTests
         repository.WriteFile("a.txt", "a\n");
         repository.Git("add", "a.txt");
 
-        // ⚠️ CI: 500 rapid `git commit` subprocesses can corrupt loose objects on slow filesystems.
-        // Reduce to 200 — still produces ~30 KB of log output, well above the deadlock threshold.
+        // ⚠️ CI-ONLY FAILURE, cause not yet identified. On the Ubuntu runner `git log` sometimes
+        // comes back with exit 128, "Could not read <oid> / Failed to traverse parents". Retrying
+        // does NOT help, so whatever is wrong is permanent, not a transient read.
+        //
+        // What has been RULED OUT by measurement (none of these reproduce it, locally or under
+        // load): commit count and write speed (500 → 200 changed nothing), auto gc (204 loose
+        // objects against a 6700 threshold — it never triggers), tmpfs vs. real disk, CPU
+        // starvation on all cores, and HOME being pointed at the repository root by the fixture.
+        //
+        // Rather than guess again, the test now CAPTURES THE EVIDENCE when it fails: `fsck` says
+        // whether the object store is genuinely damaged, and the object count says whether the
+        // history was fully written in the first place. The next red run will show which.
         for (int i = 0; i < 200; i++)
         {
             repository.Commit($"commit {i} — govdemi biraz uzatmak icin ek metin ekliyoruz");
@@ -172,8 +182,6 @@ public class GitProcessRunnerTests
 
         GitProcessRunner runner = await CreateRunnerAsync();
 
-        // Retry once for transient I/O issues (exit 128). The reduced count above prevents most
-        // corruption; this catches the rare remaining case.
         GitResult result = await runner.RunAsync(
             new GitCommand
             {
@@ -183,21 +191,26 @@ public class GitProcessRunnerTests
             },
             Ct);
 
-        for (int attempt = 0; result.ExitCode == 128 && attempt < 2; attempt++)
+        if (!result.IsSuccess)
         {
-            await Task.Delay(500, Ct);
-            result = await runner.RunAsync(
-                new GitCommand
-                {
-                    WorkingDirectory = repository.Path,
-                    Arguments = ["log", "--format=%H %s"],
-                    Timeout = TimeSpan.FromSeconds(60),
-                },
-                Ct);
-        }
+            (int fsckExit, string fsckError) = repository.TryGit("fsck", "--no-progress");
+            (_, string countError) = repository.TryGit("count-objects", "-v");
 
-        result.IsSuccess.ShouldBeTrue(
-            $"exit {result.ExitCode}, stderr: {result.StandardError.Trim()}");
+            string objectsDirectory = System.IO.Path.Combine(repository.Path, ".git", "objects");
+            int looseObjects = Directory.Exists(objectsDirectory)
+                ? Directory.EnumerateFiles(objectsDirectory, "*", SearchOption.AllDirectories).Count()
+                : -1;
+
+            result.IsSuccess.ShouldBeTrue(
+                $"""
+                 git log exit {result.ExitCode}
+                 stderr    : {result.StandardError.Trim()}
+                 fsck exit : {fsckExit}
+                 fsck      : {fsckError.Trim()}
+                 count     : {countError.Trim()}
+                 loose obj : {looseObjects} (200 commits expected)
+                 """);
+        }
         result.GetStandardOutputText()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Length.ShouldBe(200);
