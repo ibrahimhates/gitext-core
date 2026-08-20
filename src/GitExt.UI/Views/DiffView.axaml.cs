@@ -1,3 +1,4 @@
+using GitExt.Core;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -308,6 +309,50 @@ public partial class DiffView : UserControl
     // P05-T15: destructive — confirmation and backup live on the WorkingTreeViewModel side.
     private void OnResetLinesClick(object? sender, RoutedEventArgs e) =>
         Apply(model => model.DiscardSelectionAsync(SelectedLineIndices()));
+
+    // ---------------------------------------------- P12-T20: the git-side diff options
+    //
+    // Both the toolbar button and the context menu call these; a second path would be a second
+    // place to forget the re-read that has to follow.
+
+    private void OnWhitespaceNoneClick(object? sender, RoutedEventArgs e) =>
+        Model?.SetWhitespaceMode(WhitespaceMode.Include);
+
+    private void OnWhitespaceEolClick(object? sender, RoutedEventArgs e) =>
+        Toggle(WhitespaceMode.IgnoreEol);
+
+    private void OnWhitespaceChangeClick(object? sender, RoutedEventArgs e) =>
+        Toggle(WhitespaceMode.IgnoreChange);
+
+    private void OnWhitespaceAllClick(object? sender, RoutedEventArgs e) =>
+        Toggle(WhitespaceMode.IgnoreAll);
+
+    /// <summary>
+    /// Turns a level on, or back off when it is already the active one.
+    /// </summary>
+    /// <remarks>
+    /// In the context menu the items are checkboxes (as they are in GitExtensions), so clicking
+    /// the active one has to mean "stop ignoring" — otherwise the box could be unticked on
+    /// screen while the diff carried on ignoring whitespace.
+    /// </remarks>
+    private void Toggle(WhitespaceMode mode)
+    {
+        if (Model is not { } model)
+        {
+            return;
+        }
+
+        model.SetWhitespaceMode(model.IgnoreWhitespace == mode ? WhitespaceMode.Include : mode);
+    }
+
+    private void OnMoreContextClick(object? sender, RoutedEventArgs e) =>
+        Model?.IncreaseContextLines();
+
+    private void OnLessContextClick(object? sender, RoutedEventArgs e) =>
+        Model?.DecreaseContextLines();
+
+    private void OnEntireFileClick(object? sender, RoutedEventArgs e) =>
+        Model?.ToggleEntireFile();
 
     private void OnCopyCodeClick(object? sender, RoutedEventArgs e) => Copy(DiffCopyMode.Code);
 

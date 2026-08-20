@@ -370,10 +370,12 @@ public class GitExtensionsLayoutTests
     {
         // GitExtensions `FileViewer.Designer.cs` → `contextMenu.Items.AddRange`:
         //   stageSelectedLines · unstageSelectedLines · resetSelectedLines ·
-        //   copy · copyPatch · copyNewVersion · copyOldVersion · separator · display options
+        //   copy · copyPatch · copyNewVersion · copyOldVersion · separator ·
+        //   increase/decrease context · show entire file · … · the three whitespace levels.
         //
-        // The display options live in our toolbar (P04-T13); the menu's first seven items are in
-        // exactly the same order.
+        // Since P12-T20 the git-side options are here as well, in that order. The purely visual
+        // settings (tab width, font size, wrap) stay on the toolbar: they change how the text in
+        // hand is drawn, not what git is asked for.
         DiffViewModel model = new(new FakeDiffReader());
 
         DiffView view = new() { DataContext = model };
@@ -402,6 +404,12 @@ public class GitExtensionsLayoutTests
             "Copy as _patch",
             "Copy new version",
             "Copy old version",
+            "More context lines",
+            "Fewer context lines",
+            "Show entire file",
+            "Ignore at end of line",
+            "Ignore whitespace changes",
+            "Ignore all whitespace",
         ]);
 
         // ⚠️ Availability is NOT tested here, only the order. Until the menu is opened the bindings are

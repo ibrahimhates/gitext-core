@@ -162,6 +162,15 @@ public sealed class FakeDiffReader : IDiffReader
 
     public int ReadCallCount { get; private set; }
 
+    /// <summary>
+    /// The options of the last read — the diff option tests assert on these (P12-T20).
+    /// </summary>
+    /// <remarks>
+    /// Whitespace and context are git's job; what has to be verified is <b>what git was asked
+    /// for</b>, not what a fake chose to return.
+    /// </remarks>
+    public DiffOptions? LastOptions { get; private set; }
+
     public FakeDiffReader(IReadOnlyList<FileDiff>? diffs = null, Exception? failure = null)
     {
         _diffs = diffs ?? [];
@@ -175,6 +184,7 @@ public sealed class FakeDiffReader : IDiffReader
         CancellationToken cancellationToken = default)
     {
         ReadCallCount++;
+        LastOptions = options;
 
         return _failure is not null
             ? Task.FromException<IReadOnlyList<FileDiff>>(_failure)
@@ -196,6 +206,7 @@ public sealed class FakeDiffReader : IDiffReader
         CancellationToken cancellationToken = default)
     {
         ReadCallCount++;
+        LastOptions = options;
 
         return _failure is not null
             ? Task.FromException<IReadOnlyList<FileDiff>>(_failure)

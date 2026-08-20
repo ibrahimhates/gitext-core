@@ -13,6 +13,19 @@ public enum WhitespaceMode
     Include,
 
     /// <summary>
+    /// Whitespace differences at the <b>end of a line</b> are ignored
+    /// (<c>--ignore-space-at-eol</c>).
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>MEASURED — this is genuinely a different level from <see cref="IgnoreChange"/>,</b>
+    /// not a milder wording of it. A line where the whitespace <i>inside</i> it changed
+    /// (<c>beta      gamma</c> → <c>beta gamma</c>) still appears in the diff under this mode,
+    /// while <c>-b</c> drops it entirely. That is the point of offering all three: this one
+    /// hides the "trailing whitespace was stripped" noise without hiding a reformat.
+    /// </remarks>
+    IgnoreEol,
+
+    /// <summary>
     /// Changes in whitespace <b>amount</b> are ignored (<c>-b</c>).
     /// </summary>
     /// <remarks>
@@ -436,6 +449,10 @@ public sealed class DiffReader : IDiffReader
 
         switch (options.Whitespace)
         {
+            case WhitespaceMode.IgnoreEol:
+                arguments.Add("--ignore-space-at-eol");
+                break;
+
             case WhitespaceMode.IgnoreChange:
                 arguments.Add("-b");
                 break;
