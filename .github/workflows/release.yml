@@ -61,6 +61,34 @@ jobs:
 
           echo "OK: $GITHUB_SHA is on main."
 
+      # ⚠️ Being ON main is not the same as being CURRENT with main. A tag left behind by later
+      # work still passes the check above, and the release then builds and TESTS a stale tree —
+      # so fixes that are already on main appear to "not work", because this run never had them.
+      #
+      # MEASURED: v0.1.1 sat 26 commits behind main. Its tree still had the un-fixed versions of
+      # tests that had since been repaired (Buyuk_cikti at 500 commits, the cancellation test
+      # still cancelling from a progress callback, no UI parallelism attribute, no MSYS2 step),
+      # so the release kept failing on faults that no longer existed on main.
+      #
+      # This does not block the release — an intentional re-release of an older tag is legitimate.
+      # It makes the situation VISIBLE, so a stale tree is never mistaken for a broken fix.
+      - name: How far behind main is this tag?
+        run: |
+          set -euo pipefail
+
+          behind="$(git rev-list --count "$GITHUB_SHA"..origin/main)"
+
+          if [ "$behind" -eq 0 ]; then
+            echo "OK: the tag is the tip of main."
+            exit 0
+          fi
+
+          echo "::warning::This tag is $behind commit(s) behind main — an OLDER tree is being released."
+          echo "Commits on main that this release does NOT contain:"
+          git log --oneline --no-decorate "$GITHUB_SHA"..origin/main | head -30
+          echo
+          echo "If a fix you expect is in that list, it is not in this release: tag the current main."
+
   # ───────────────────────────────────────────────────────────────────────────
   # The version is determined once and distributed to all jobs from here.
   #
