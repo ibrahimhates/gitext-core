@@ -47,6 +47,15 @@ public sealed class FakeCommitLogReader : ICommitLogReader
     /// <summary>How many times it was awaited while streaming — to test batched updates.</summary>
     public int StreamCallCount { get; private set; }
 
+    /// <summary>
+    /// The query of the last read — this is what the filter tests assert on (P12-T07).
+    /// </summary>
+    /// <remarks>
+    /// The filtering is git's job, so what has to be verified is <b>the query handed to git</b>,
+    /// not which rows a fake happened to return.
+    /// </remarks>
+    public CommitLogQuery? LastQuery { get; private set; }
+
     public FakeCommitLogReader(IReadOnlyList<CommitInfo>? commits = null, Exception? failure = null)
     {
         _commits = commits ?? [];
@@ -56,10 +65,14 @@ public sealed class FakeCommitLogReader : ICommitLogReader
     public Task<IReadOnlyList<CommitInfo>> ReadAsync(
         string workingDirectory,
         CommitLogQuery query,
-        CancellationToken cancellationToken = default) =>
-        _failure is not null
+        CancellationToken cancellationToken = default)
+    {
+        LastQuery = query;
+
+        return _failure is not null
             ? Task.FromException<IReadOnlyList<CommitInfo>>(_failure)
             : Task.FromResult(_commits);
+    }
 
     public async IAsyncEnumerable<CommitInfo> StreamAsync(
         string workingDirectory,
@@ -67,6 +80,7 @@ public sealed class FakeCommitLogReader : ICommitLogReader
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         StreamCallCount++;
+        LastQuery = query;
 
         if (_failure is not null)
         {

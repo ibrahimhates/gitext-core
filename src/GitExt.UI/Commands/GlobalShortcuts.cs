@@ -27,6 +27,7 @@ public sealed class GlobalShortcuts : IDisposable
     private readonly ICommandRegistry _registry;
     private readonly Dictionary<string, ICommand> _commands = new(StringComparer.Ordinal);
     private readonly Dictionary<string, MenuItem> _menuItems = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Control> _buttons = new(StringComparer.Ordinal);
 
     public GlobalShortcuts(Window window, ICommandRegistry registry)
     {
@@ -74,6 +75,36 @@ public sealed class GlobalShortcuts : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Binds a toolbar button to an id: the command and the <b>tooltip</b> come from the registry.
+    /// </summary>
+    /// <remarks>
+    /// The same reasoning as <see cref="BindMenu"/>, one step further: a toolbar button shows no
+    /// text, so its tooltip is the only place its name and its shortcut are written. Taking them
+    /// from anywhere else would let the tooltip and the working shortcut drift apart — which is
+    /// exactly the defect this class was created for.
+    /// </remarks>
+    public GlobalShortcuts BindButton(string commandId, Control button)
+    {
+        _buttons[commandId] = button;
+
+        if (_commands.TryGetValue(commandId, out ICommand? command))
+        {
+            switch (button)
+            {
+                case Button plain when plain.Command is null:
+                    plain.Command = command;
+                    break;
+
+                case SplitButton split when split.Command is null:
+                    split.Command = command;
+                    break;
+            }
+        }
+
+        return this;
+    }
+
     /// <summary>Applies the bindings to the window. Repeats itself whenever the registry changes.</summary>
     public void Apply()
     {
@@ -90,6 +121,14 @@ public sealed class GlobalShortcuts : IDisposable
                 // The label is always updated — even when the command is not bound, so the
                 // shortcut in the menu and the one that actually runs never drift apart.
                 item.InputGesture = gesture;
+            }
+
+            if (_buttons.TryGetValue(definition.Id, out Control? button))
+            {
+                // "Refresh (F5)" — the name plus the key, from the one source that knows both.
+                ToolTip.SetTip(
+                    button,
+                    gesture is null ? definition.Title : $"{definition.Title} ({gesture})");
             }
 
             if (gesture is null || !_commands.TryGetValue(definition.Id, out ICommand? command))

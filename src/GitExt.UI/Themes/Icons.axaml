@@ -59,4 +59,47 @@
     <!-- The search box. -->
     <StreamGeometry x:Key="IconSearch">F0 M6.5,1 A5.5,5.5 0 1 0 6.51,1 Z M6.5,3 A3.5,3.5 0 1 1 6.49,3 Z M10.2,11.3 L11.3,10.2 L15.3,14.2 L14.2,15.3 Z</StreamGeometry>
 
+    <!-- Main toolbar (`ToolStripMain`) ............................................ -->
+
+    <!-- Refresh: an arrow going round. -->
+    <StreamGeometry x:Key="IconRefresh">M8,1.6 V0 L11.8,2.6 L8,5.2 V3.4 A4.6,4.6 0 1 0 12.6,8 H14.4 A6.4,6.4 0 1 1 8,1.6 Z</StreamGeometry>
+
+    <!-- Toggle the left panel: a window with its left column filled. -->
+    <StreamGeometry x:Key="IconLayoutSidebarLeft">F0 M1.5,2.5 H14.5 V13.5 H1.5 Z M6.2,4 H13 V12 H6.2 Z</StreamGeometry>
+
+    <!-- Toggle the bottom panel: a window with its bottom band filled. -->
+    <StreamGeometry x:Key="IconLayoutFooter">F0 M1.5,2.5 H14.5 V13.5 H1.5 Z M3,4 H13 V9.2 H3 Z</StreamGeometry>
+
+    <!-- Where the commit info sits. -->
+    <StreamGeometry x:Key="IconLayoutFooterTab">F0 M1.5,2.5 H14.5 V13.5 H1.5 Z M3,4 H13 V8.4 H3 Z M3,9.8 H7 V12 H3 Z</StreamGeometry>
+
+    <!-- Submodules: repositories inside the repository. -->
+    <StreamGeometry x:Key="IconSubmodules">M2,2 H7 V7 H2 Z M9,2 H14 V7 H9 Z M2,9 H7 V14 H2 Z</StreamGeometry>
+
+    <!-- Pull: an arrow coming down onto the working tree. -->
+    <StreamGeometry x:Key="IconPull">M7,1.4 H9 V7.8 H11.6 L8,12 L4.4,7.8 H7 Z M3,13.2 H13 V14.6 H3 Z</StreamGeometry>
+
+    <!-- Push: an arrow going up out of it. -->
+    <StreamGeometry x:Key="IconPush">M8,1.4 L11.6,5.6 H9 V12 H7 V5.6 H4.4 Z M3,13.2 H13 V14.6 H3 Z</StreamGeometry>
+
+    <!-- Commit: a node on the line. -->
+    <StreamGeometry x:Key="IconCommit">M1.6,7.2 H5 V8.8 H1.6 Z M11,7.2 H14.4 V8.8 H11 Z M5,8 A3,3 0 1 1 11,8 A3,3 0 1 1 5,8 Z</StreamGeometry>
+
+    <!-- Stash: work put in a box for later. -->
+    <StreamGeometry x:Key="IconStash">M1.8,2.6 H14.2 V6 H1.8 Z M3,7.2 H13 V13.4 H3 Z M6.2,8.8 H9.8 V10.2 H6.2 Z</StreamGeometry>
+
+    <!-- A terminal in the repository. -->
+    <StreamGeometry x:Key="IconTerminal">M3,4.4 L4.4,3 L8.4,7 L4.4,11 L3,9.6 L5.6,7 Z M8.5,10.4 H13 V12.2 H8.5 Z</StreamGeometry>
+
+    <!-- Settings. -->
+    <StreamGeometry x:Key="IconSettings">M2,3.9 H14 V5.3 H2 Z M2,10.7 H14 V12.1 H2 Z M5,2.2 H6.6 V7 H5 Z M9.4,9 H11 V13.8 H9.4 Z</StreamGeometry>
+
+    <!-- Filter toolbar (`ToolStripFilters`) ........................................ -->
+
+    <!-- The filter itself: a funnel. -->
+    <StreamGeometry x:Key="IconFilter">M1.6,2.4 H14.4 L9.4,8.4 V13.6 L6.6,12.1 V8.4 Z</StreamGeometry>
+
+    <!-- The reflog: where HEAD has been. -->
+    <StreamGeometry x:Key="IconReflog">F0 M8,1.4 A6.6,6.6 0 1 0 8.01,1.4 Z M8,3.2 A4.8,4.8 0 1 1 7.99,3.2 Z M7.3,4.4 H8.7 V8.2 H11.4 V9.6 H7.3 Z</StreamGeometry>
+
 </ResourceDictionary>

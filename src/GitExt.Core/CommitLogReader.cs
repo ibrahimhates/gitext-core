@@ -57,6 +57,63 @@ public sealed record CommitLogQuery
 
     /// <summary>Filter by author (<c>--author</c>).</summary>
     public string? Author { get; init; }
+
+    /// <summary>Filter by committer (<c>--committer</c>).</summary>
+    /// <remarks>
+    /// The author wrote the change, the committer put it on this branch; after a rebase or a
+    /// cherry-pick they are different people. GitExtensions offers both, so the filter can answer
+    /// "what did I write" and "what did I land" separately.
+    /// </remarks>
+    public string? Committer { get; init; }
+
+    /// <summary>
+    /// Commits whose <b>diff</b> contains the pattern (<c>-G</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>-G</c>, not <c>-S</c> — the same choice GitExtensions makes. MEASURED on a repository
+    /// where a line containing the word was <b>moved</b>: <c>-S</c> misses that commit (the number
+    /// of occurrences did not change) while <c>-G</c> finds it. For someone asking "which commit
+    /// touched this text", the moved line is a hit, not a miss.
+    /// </para>
+    /// <para>
+    /// This is the slow filter: git has to produce a diff for every commit. GitExtensions writes
+    /// "(SLOW)" next to it in the menu for that reason.
+    /// </para>
+    /// </remarks>
+    public string? DiffContains { get; init; }
+
+    /// <summary>
+    /// Should the patterns match regardless of case (<c>--regexp-ignore-case</c>)?
+    /// </summary>
+    /// <remarks>
+    /// <b>On by default.</b> MEASURED: git's pattern filters are case-SENSITIVE without it —
+    /// <c>--committer=GRACE</c> returns nothing in a repository full of commits by <c>grace</c>.
+    /// In a filter box the user types what they remember, not what was typed originally.
+    /// </remarks>
+    public bool IgnoreCase { get; init; } = true;
+
+    /// <summary>
+    /// Are the patterns plain text rather than regular expressions (<c>--fixed-strings</c>)?
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 This is <b>query-wide and cannot be otherwise</b>: git's <c>--fixed-strings</c> applies
+    /// to every limiting pattern at once — <c>--grep</c>, <c>--author</c> and <c>--committer</c>
+    /// alike. MEASURED: <c>--fixed-strings --author="a.a"</c> finds nothing where
+    /// <c>--author="a.a"</c> finds two commits.
+    /// </para>
+    /// <para>
+    /// The earlier version added <c>--fixed-strings</c> whenever a message filter was present, so
+    /// switching on a message filter silently turned an existing author filter into literal
+    /// matching. One switch for the whole query at least makes the rule visible.
+    /// </para>
+    /// <para>
+    /// It does <b>not</b> reach <see cref="DiffContains"/>: <c>-G</c> stays a regular expression
+    /// under <c>--fixed-strings</c> (measured).
+    /// </para>
+    /// </remarks>
+    public bool LiteralPatterns { get; init; }
 }
 
 /// <summary>
@@ -178,6 +235,20 @@ public sealed class CommitLogReader : ICommitLogReader
         }
     }
 
+    /// <summary>
+    /// Is there any pattern filter at all?
+    /// </summary>
+    /// <remarks>
+    /// The two global switches are only added when something is actually being matched. They are
+    /// harmless on their own, but an argument list that carries them without a pattern is a
+    /// puzzle for whoever reads the command log.
+    /// </remarks>
+    private static bool HasPatternFilter(CommitLogQuery query) =>
+        !string.IsNullOrWhiteSpace(query.MessageContains)
+        || !string.IsNullOrWhiteSpace(query.Author)
+        || !string.IsNullOrWhiteSpace(query.Committer)
+        || !string.IsNullOrWhiteSpace(query.DiffContains);
+
     private static GitCommand BuildCommand(string workingDirectory, CommitLogQuery query)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
@@ -214,10 +285,34 @@ public sealed class CommitLogReader : ICommitLogReader
             arguments.Add($"--author={query.Author}");
         }
 
+        if (!string.IsNullOrWhiteSpace(query.Committer))
+        {
+            arguments.Add($"--committer={query.Committer}");
+        }
+
         if (!string.IsNullOrWhiteSpace(query.MessageContains))
         {
-            arguments.Add("--fixed-strings");
             arguments.Add($"--grep={query.MessageContains}");
+        }
+
+        // -G rather than -S: a commit that only MOVES a line containing the text is a hit for the
+        // person searching for it, and -S misses exactly that case (measured).
+        if (!string.IsNullOrWhiteSpace(query.DiffContains))
+        {
+            arguments.Add($"-G{query.DiffContains}");
+        }
+
+        // 🔴 Both switches are query-wide in git; they are added once, after the patterns, so it
+        // is visible that they govern all of them. Adding --fixed-strings next to a single filter
+        // was how the author filter silently changed meaning.
+        if (query.LiteralPatterns && HasPatternFilter(query))
+        {
+            arguments.Add("--fixed-strings");
+        }
+
+        if (query.IgnoreCase && HasPatternFilter(query))
+        {
+            arguments.Add("--regexp-ignore-case");
         }
 
         if (!string.IsNullOrWhiteSpace(query.Revision))

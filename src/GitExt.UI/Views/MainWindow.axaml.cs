@@ -198,6 +198,18 @@ public partial class MainWindow : Window
             .BindMenu(CommandIds.HelpAbout, MenuAbout)
             .BindMenu(CommandIds.AppExit, MenuExit);
 
+        // The toolbar buttons come from the same registry: the tooltip's shortcut and the key
+        // that actually works cannot drift apart (P12-T06).
+        shortcuts
+            .BindButton(CommandIds.RepositoryRefresh, ToolRefresh)
+            .BindButton(CommandIds.ViewToggleLeftPanel, ToolToggleLeftPanel)
+            .BindButton(CommandIds.ViewToggleBottomPanel, ToolToggleBottomPanel)
+            .BindButton(CommandIds.RemotePull, ToolPull)
+            .BindButton(CommandIds.RemotePush, ToolPush)
+            .BindButton(CommandIds.CommitShow, ToolCommit)
+            .BindButton(CommandIds.StashManage, ToolStash)
+            .BindButton(CommandIds.ToolsSettings, ToolSettings);
+
         shortcuts.Apply();
 
         _shortcuts = shortcuts;
@@ -589,6 +601,41 @@ public partial class MainWindow : Window
         {
             await viewModel.TryOpenDroppedAsync(paths);
         }
+    }
+
+    // ----------------------------------------------------------- P12-T06: the toolbar
+
+    // 🔴 The panel toggles have NO Click handler of their own. They had one at first, on top of
+    // the command that `BindButton` attaches from the registry — so a single click ran the toggle
+    // TWICE and the panel appeared not to move at all. The command is the only path: it is the
+    // same one the shortcut and the menu use, so the layout is saved the same way from all three.
+
+    /// <summary>Opens the repository in the system's file manager (`toolStripFileExplorer`).</summary>
+    private void OnFileExplorerClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { Commits.Repository.WorkingDirectory: { Length: > 0 } path })
+        {
+            OpenFolderInShell(path);
+        }
+    }
+
+    /// <summary>
+    /// Enter applies the filter in the toolbar's filter box.
+    /// </summary>
+    /// <remarks>
+    /// On Enter, not while typing: every application starts a fresh <c>git log</c>, and the
+    /// diff-content filter has to diff every commit to answer. Filtering per keystroke would
+    /// start — and cancel — a process for every letter.
+    /// </remarks>
+    private void OnRevisionFilterKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || DataContext is not MainWindowViewModel model)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        model.Commits.ApplyFilterCommand.Execute(null);
     }
 
     private void OnDismissBranchNoticeClick(object? sender, RoutedEventArgs e)

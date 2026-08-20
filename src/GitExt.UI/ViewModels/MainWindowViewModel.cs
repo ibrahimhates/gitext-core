@@ -210,6 +210,15 @@ public partial class MainWindowViewModel : ViewModelBase
         // reading the file separately would sooner or later show two different things.
         Dashboard = new DashboardViewModel(_recentStore, OpenRecentCommand);
 
+        CheckoutBranchCommand = new AsyncRelayCommand<string>(
+            async name =>
+            {
+                if (!string.IsNullOrEmpty(name))
+                {
+                    await CheckoutRefAsync(name).ConfigureAwait(true);
+                }
+            });
+
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
 
@@ -225,6 +234,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 or nameof(CommitListViewModel.Repository))
             {
                 OnPropertyChanged(nameof(ShowWelcome));
+                OnPropertyChanged(nameof(WindowTitle));
+                OnPropertyChanged(nameof(RepositoryLabel));
                 NotifyRepositoryDependents();
             }
 
@@ -364,6 +375,110 @@ public partial class MainWindowViewModel : ViewModelBase
     /// of them silently ending up unguarded (P06-T02's rule: no path may lose changes).
     /// </remarks>
     public Task CheckoutRefAsync(string refName) => CheckoutCoreAsync(refName);
+
+    // ------------------------------------------------------------- P12-T06: the main toolbar
+
+    /// <summary>
+    /// The window title: repository and branch, then the application name.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions' own title carries the same three parts. It is the only place the repository
+    /// is named while the window is not focused — in the task bar and in the window switcher —
+    /// and it is why the separate subtitle strip could go: it was saying the same thing twice.
+    /// </remarks>
+    public string WindowTitle =>
+        Commits.Repository is { } repository
+            ? $"{RepositoryLabel} ({CurrentBranchLabel}) - {Loc.T("main.gitext_core")}"
+            : Loc.T("main.gitext_core");
+
+    /// <summary>The open repository's folder name; empty when none is open.</summary>
+    public string RepositoryLabel =>
+        Commits.Repository is { WorkingDirectory: { Length: > 0 } directory }
+            ? System.IO.Path.GetFileName(directory.TrimEnd(
+                System.IO.Path.DirectorySeparatorChar,
+                System.IO.Path.AltDirectorySeparatorChar)) is { Length: > 0 } name
+                ? name
+                : directory
+            : string.Empty;
+
+    /// <summary>
+    /// What the toolbar's branch button shows.
+    /// </summary>
+    /// <remarks>
+    /// A detached HEAD is not left blank — an empty button would read as "still loading". The
+    /// same wording as the dashboard's tiles, so the two never disagree.
+    /// </remarks>
+    public string CurrentBranchLabel =>
+        Commits.Refs?.Head switch
+        {
+            { IsUnborn: true } => Loc.T("main.unborn_branch"),
+            { IsDetached: true } => Loc.T("dashboard.detached_head"),
+            { BranchName: { Length: > 0 } branch } => branch,
+            _ => Loc.T("dashboard.detached_head"),
+        };
+
+    /// <summary>The local branches, for the toolbar's branch dropdown.</summary>
+    /// <remarks>
+    /// Local branches only — GitExtensions' branch button switches branches, and checking out a
+    /// remote-tracking ref detaches HEAD instead. That is a different operation and belongs to a
+    /// deliberate menu item, not to the button people use dozens of times a day.
+    /// </remarks>
+    public ObservableCollection<ToolbarBranchItem> Branches { get; } = [];
+
+    /// <summary>Rebuilds the toolbar's branch list from the last ref read.</summary>
+    private void UpdateBranches()
+    {
+        Branches.Clear();
+
+        if (Commits.Refs is not { } refs)
+        {
+            return;
+        }
+
+        string? current = refs.Head.BranchName;
+
+        foreach (BranchInfo branch in refs.LocalBranches.OrderBy(b => b.Name, StringComparer.CurrentCulture))
+        {
+            Branches.Add(new ToolbarBranchItem(
+                branch.Name,
+                string.Equals(branch.Name, current, StringComparison.Ordinal),
+                CheckoutBranchCommand));
+        }
+    }
+
+    /// <summary>Checks out the branch named by the parameter (the toolbar dropdown).</summary>
+    public IAsyncRelayCommand<string> CheckoutBranchCommand { get; }
+
+    /// <summary>
+    /// The branch chosen in the filter toolbar's branch box (P12-T07).
+    /// </summary>
+    /// <remarks>
+    /// Picking one switches the history to <see cref="BranchFilterMode.FilteredBranches"/> —
+    /// otherwise the box would look like it did nothing, which is exactly how a control gets a
+    /// reputation for being broken.
+    /// </remarks>
+    public ToolbarBranchItem? SelectedBranchFilter
+    {
+        get;
+        set
+        {
+            if (ReferenceEquals(field, value))
+            {
+                return;
+            }
+
+            field = value;
+            OnPropertyChanged();
+
+            Commits.BranchFilter = value?.Name;
+
+            if (value is not null)
+            {
+                Commits.BranchMode = BranchFilterMode.FilteredBranches;
+                _ = Commits.ApplyFilterAsync();
+            }
+        }
+    }
 
     /// <summary>Refreshes the enablement of the commands tied to the selected commit (P07-T06 … T08).</summary>
     private void NotifySelectionDependents()
@@ -1839,8 +1954,10 @@ public partial class MainWindowViewModel : ViewModelBase
             IsDetachedHead = Commits.Refs?.Head.IsDetached == true;
 
             // The branch panel (P06-T13) is fed from the same ref read: writing a second read
-            // meant the two panels silently diverging.
+            // meant the two panels silently diverging. The toolbar's branch button (P12-T06)
+            // comes from the very same place, for the very same reason.
             RefTree.Load(Commits.Refs);
+            UpdateBranches();
 
             CurrentOperation = _operations is null
                 ? InProgressOperation.None
@@ -1855,6 +1972,12 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowDetachedBanner));
         OnPropertyChanged(nameof(ShowOperationBanner));
         OnPropertyChanged(nameof(OperationText));
+
+        // The title and the toolbar's branch button both name the current branch; they are
+        // notified here, where the branch is actually known.
+        OnPropertyChanged(nameof(CurrentBranchLabel));
+        OnPropertyChanged(nameof(WindowTitle));
+        OnPropertyChanged(nameof(RepositoryLabel));
     }
 
     private async Task<InProgressOperation> ReadOperationAsync(
@@ -1978,4 +2101,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
         await LoadRecentAsync(cancellationToken).ConfigureAwait(true);
     }
+}
+
+/// <summary>
+/// One entry of the toolbar's branch dropdown (P12-T06).
+/// </summary>
+public sealed class ToolbarBranchItem
+{
+    public ToolbarBranchItem(string name, bool isCurrent, ICommand checkoutCommand)
+    {
+        Name = name;
+        IsCurrent = isCurrent;
+        CheckoutCommand = checkoutCommand;
+    }
+
+    public string Name { get; }
+
+    /// <summary>The branch that is checked out — it is marked and cannot be checked out again.</summary>
+    public bool IsCurrent { get; }
+
+    public bool CanCheckout => !IsCurrent;
+
+    public ICommand CheckoutCommand { get; }
+
+    public override string ToString() => Name;
 }
