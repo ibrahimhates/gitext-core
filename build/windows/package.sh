@@ -28,6 +28,23 @@ RID="${RID:-win-x64}"
 OUT="$ROOT/dist"
 STAGE="$OUT/$RID/gitext-core"
 
+# ⚠️ The Inno Setup script needs WINDOWS paths. Under Git Bash `pwd` yields an MSYS path
+# (/d/a/...), and Inno cannot read it — it treats the value as relative and glues it onto
+# OutputDir, producing the nonsense the compiler reported:
+#   Could not read "D:\a\...\dist\/d/a/.../win-x64/gitext-core\LICENSE"
+# Everything else in this script keeps using the MSYS form, which is what the shell and
+# `dotnet publish` want; only the values embedded into the .iss are converted.
+to_windows_path() {
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -w "$1"
+    else
+        # No cygpath (running on Linux for a local trial): /d/a/x -> D:\a\x
+        printf '%s' "$1" | sed -E 's|^/([a-zA-Z])/|\U\1:/|; s|/|\\|g'
+    fi
+}
+
+STAGE_WIN="$(to_windows_path "$STAGE")"
+
 echo "== gitext-core $VERSION ($RID)"
 
 rm -rf "$OUT/$RID"
@@ -108,7 +125,7 @@ AppSupportURL={#AppURL}/issues
 DefaultDirName={autopf}\\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
-LicenseFile=$STAGE\\LICENSE
+LicenseFile=$STAGE_WIN\\LICENSE
 OutputDir=.
 OutputBaseFilename=gitext-core-{#AppVersion}-setup
 Compression=lzma2/max
@@ -129,7 +146,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "addtopath"; Description: "Add gitext-core to PATH"; GroupDescription: "Integration:"; Flags: unchecked
 
 [Files]
-Source: "$STAGE\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "$STAGE_WIN\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\\{#AppName}"; Filename: "{app}\\{#AppExe}"
