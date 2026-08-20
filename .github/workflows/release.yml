@@ -232,8 +232,13 @@ jobs:
       # package.sh is a bash script; Git Bash is available on the Windows runner.
       # Icon generation needs rsvg-convert and magick — installed via MSYS2 below,
       # matching the apt (Linux) and brew (macOS) tool steps.
+      #
+      # ⚠️ The ref is `v2` — the floating major tag. Neither `v3` nor `master` exists in
+      # that repository (both were tried and the job died in "Set up job" with
+      # "unable to resolve action"); the default branch is `main` and the newest release
+      # is v2.32.0. Checked with `git ls-remote`, not guessed.
       - name: Tools (MSYS2)
-        uses: msys2/setup-msys2@master
+        uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           install: >-

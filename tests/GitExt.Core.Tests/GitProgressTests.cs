@@ -1,3 +1,4 @@
+using System.Text;
 using GitExt.Core.Git;
 using GitExt.Core.Tests.Fixtures;
 
@@ -104,6 +105,40 @@ public class GitProgressTests
             Local.Dispose();
             Upstream.Dispose();
         }
+
+        /// <summary>
+        /// Writes an <c>upload-pack</c> wrapper that sleeps before serving, and returns its path.
+        /// </summary>
+        /// <remarks>
+        /// Makes a cancellation test deterministic: a <c>file://</c> fetch of a small repository
+        /// finishes in milliseconds (measured: 12 ms), so a test that wants to cancel a RUNNING
+        /// fetch has nothing to cancel. With the wrapper in place the fetch stays alive for as long
+        /// as we ask (measured: 5019 ms for a 5-second sleep).
+        /// </remarks>
+        public string InstallSlowUploadPack(TimeSpan delay)
+        {
+            // Next to the repository, not inside it: a file under .git would show up in the
+            // leftover-lock scan the test performs afterwards.
+            string path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                $"gitext-slow-upload-pack-{Guid.NewGuid():N}.sh");
+
+            File.WriteAllText(
+                path,
+                $"#!/bin/sh\nsleep {delay.TotalSeconds:0}\nexec git-upload-pack \"$@\"\n"
+                    .ReplaceLineEndings("\n"),
+                new UTF8Encoding(false));
+
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(
+                    path,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+
+            // git runs the value through sh, so a Windows path has to use forward slashes.
+            return path.Replace('\\', '/');
+        }
     }
 
     /// <remarks>
@@ -204,16 +239,30 @@ public class GitProgressTests
 
         using CancellationTokenSource cancellation = new();
 
+        // 🔴 REGRESSION (Windows CI): the cancellation used to be triggered from the first progress
+        // notification. That ASSUMES the fetch is still running when the notification is handled —
+        // and it very often is not. MEASURED: a `file://` fetch is not a network operation at all,
+        // it finishes in 12 ms; `IProgress<T>` posts its callback asynchronously, so on a slow
+        // runner the command was already done by the time Cancel() ran and nothing was cancelled.
+        // The test then failed with "should throw OperationCanceledException but did not".
+        //
+        // The fix removes the race instead of widening it: `--upload-pack` points at a wrapper that
+        // sleeps before serving, so the fetch is GUARANTEED to still be running when we cancel.
+        // MEASURED: 12 ms → 5019 ms. Cancellation is requested straight away; no timing assumption
+        // is left in the test. (`sleep` in an sh script is what the timeout tests already rely on,
+        // and those are green on Windows — Git for Windows ships its own sh.)
+        string slowUploadPack = harness.InstallSlowUploadPack(TimeSpan.FromSeconds(10));
+
         Task<GitResult> running = harness.Runner.RunAsync(
             new GitCommand
             {
                 WorkingDirectory = harness.Local.Path,
-                Arguments = ["fetch", "--progress", "origin"],
-
-                // Cancel on the first progress notification: while the process is really running.
-                Progress = new Progress<GitProgress>(_ => cancellation.Cancel()),
+                Arguments = ["fetch", "--progress", $"--upload-pack={slowUploadPack}", "origin"],
             },
             cancellation.Token);
+
+        // The wrapper is still sleeping, so the process is certainly alive here.
+        await cancellation.CancelAsync();
 
         await Should.ThrowAsync<OperationCanceledException>(() => running);
 
