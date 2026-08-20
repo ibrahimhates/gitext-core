@@ -82,6 +82,25 @@ public class StartupTests
     }
 
     [AvaloniaFact]
+    public void Ayar_ekranindaki_kutucuk_ayari_gercekten_yaziyor()
+    {
+        // A checkbox that changes nothing is worse than no checkbox: the user believes they set
+        // it. This asserts the value really reaches the settings store.
+        InMemorySettingsStore settings = new();
+
+        SettingsViewModel model = new(
+            new GitExt.UI.Themes.AppearanceService(Avalonia.Application.Current!, settings),
+            settings,
+            new GitExt.UI.Commands.CommandRegistry(settings));
+
+        model.StartWithRecentRepository.ShouldBeFalse();
+
+        model.StartWithRecentRepository = true;
+
+        settings.Current.General.StartWithRecentWorkingDir.ShouldBeTrue();
+    }
+
+    [AvaloniaFact]
     public async Task Komut_satirindan_verilen_yol_dogrudan_aciliyor()
     {
         // `gitext-core .` must still go straight in — the dashboard is the default, not a toll gate.
