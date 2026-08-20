@@ -172,12 +172,65 @@ public class GitProcessRunnerTests
         // objects against a 6700 threshold — it never triggers), tmpfs vs. real disk, CPU
         // starvation on all cores, and HOME being pointed at the repository root by the fixture.
         //
-        // Rather than guess again, the test now CAPTURES THE EVIDENCE when it fails: `fsck` says
-        // whether the object store is genuinely damaged, and the object count says whether the
-        // history was fully written in the first place. The next red run will show which.
+        // Rather than guess again, the test CAPTURES THE EVIDENCE when it fails.
+        //
+        // 🔴 The evidence from the last red run moved the problem: it is no longer `git log` that
+        // dies, it is the FIXTURE, at commit 57 of 200, with `fatal: could not parse HEAD`.
+        // REPRODUCED locally what produces exactly that message: a ref whose content is a
+        // well-formed object id that no longer EXISTS. (An empty/short/non-hex ref gives
+        // "reference broken" instead, and a damaged HEAD file gives "not a git repository".)
+        //
+        // So the ref is written while its object is missing — which is why retrying never helped
+        // and why `git log` failed the same way earlier: same fault, seen one step later.
         for (int i = 0; i < 200; i++)
         {
-            repository.Commit($"commit {i} — govdemi biraz uzatmak icin ek metin ekliyoruz");
+            try
+            {
+                repository.Commit($"commit {i} — govdemi biraz uzatmak icin ek metin ekliyoruz");
+            }
+            catch (InvalidOperationException ex)
+            {
+                string gitDirectory = System.IO.Path.Combine(repository.Path, ".git");
+                string headFile = System.IO.Path.Combine(gitDirectory, "HEAD");
+                string objectsDirectory = System.IO.Path.Combine(gitDirectory, "objects");
+
+                string head = File.Exists(headFile) ? File.ReadAllText(headFile).Trim() : "<HEAD YOK>";
+
+                // Where HEAD points, and whether that ref's object actually exists.
+                string refState = "<cozulemedi>";
+                if (head.StartsWith("ref: ", StringComparison.Ordinal))
+                {
+                    string refFile = System.IO.Path.Combine(gitDirectory, head[5..].Replace('/', System.IO.Path.DirectorySeparatorChar));
+                    if (File.Exists(refFile))
+                    {
+                        string oid = File.ReadAllText(refFile).Trim();
+                        (int catExit, _) = repository.TryGit("cat-file", "-e", oid);
+                        refState = $"{head[5..]} = {oid} (nesne var mi: {(catExit == 0 ? "EVET" : "HAYIR")})";
+                    }
+                    else
+                    {
+                        refState = $"{head[5..]} DOSYASI YOK";
+                    }
+                }
+
+                int looseObjects = Directory.Exists(objectsDirectory)
+                    ? Directory.EnumerateFiles(objectsDirectory, "*", SearchOption.AllDirectories).Count()
+                    : -1;
+
+                (_, string fsck) = repository.TryGit("fsck", "--no-progress");
+
+                throw new InvalidOperationException(
+                    $"""
+                     Fixture {i}. commit'te coktu.
+                     HEAD      : {head}
+                     ref       : {refState}
+                     gevsek obj: {looseObjects}
+                     fsck      : {fsck.Trim()}
+                     ---
+                     {ex.Message}
+                     """,
+                    ex);
+            }
         }
 
         GitProcessRunner runner = await CreateRunnerAsync();
