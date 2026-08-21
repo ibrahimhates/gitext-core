@@ -23,13 +23,13 @@ public enum RefNodeKind
     /// <summary>A remote (above the remote branches).</summary>
     Remote,
 
-    /// <summary>Etiket.</summary>
+    /// <summary>A tag entry shown as text rather than an arrow (P12-T13).</summary>
     Tag,
 
     /// <summary>A linked working tree (P12-T13).</summary>
     WorkTree,
 
-    /// <summary>Alt modül (P12-T13).</summary>
+    /// <summary>A submodule (P12-T13).</summary>
     Submodule,
 
     /// <summary>A stash entry (P12-T13).</summary>

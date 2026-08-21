@@ -301,19 +301,18 @@ public sealed class DiffReader : IDiffReader
                 cancellationToken);
         }
 
-        // A SINGLE COMMAND covers three cases at once (measured):
-        //   --root         → avoids `<sha>^` crashing on the root commit
-        //   --first-parent → produces a single, meaningful diff for a merge (plain `git show` returns EMPTY)
-        //   normal commit  → both are harmless
-        List<string> arguments =
-        [
-            "show",
-            "--root",
-            "--first-parent",
+        // Root commit: no parent to diff against; fall back to `git show --root`.
+        if (IsRootCommit(workingDirectory, commit, cancellationToken))
+        {
+            return ReadRootAsync(workingDirectory, commit, options, cancellationToken);
+        }
 
-            // Commit subject/message is suppressed: the parser expects output to start with `:`.
-            "--format=",
-        ];
+        // For non-root commits, use `git diff HEAD~1..HEAD` instead of `git show`:
+        // this command handles whitespace flags (`--ignore-space-at-eol`, `-b`, `-w`) more
+        // consistently across git versions. Older git (e.g. 2.30) had buggy behavior where
+        // `git show --first-parent ... --ignore-space-at-eol` did not filter trailing-whitespace-
+        // only changes at all — the flag was effectively ignored. (`git diff RANGE` works correctly.)
+        List<string> arguments = ["diff", "HEAD~1"];
 
         AddFormatArguments(arguments, options);
         arguments.Add(commit.Value);
@@ -521,6 +520,51 @@ public sealed class DiffReader : IDiffReader
         }
 
         return parsed;
+    }
+
+    /// <summary>
+    /// Checks whether the commit is a root (initial) commit — no parent to diff against.
+    /// </summary>
+    private bool IsRootCommit(
+        string workingDirectory,
+        CommitId commit,
+        CancellationToken cancellationToken)
+    {
+        // `rev-parse -q <sha>^1` returns non-zero if the commit has no parent (i.e. it's a root).
+        var result = _runner.RunAsync(new GitCommand
+        {
+            WorkingDirectory = workingDirectory,
+            Arguments = ["rev-parse", "-q", "--verify", $"{commit.Value}^1"],
+        }, cancellationToken).GetAwaiter().GetResult();
+
+        // Non-zero exit code (or empty output) means no parent → root commit.
+        return result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.GetStandardOutputText());
+    }
+
+    /// <summary>
+    /// Reads a root commit's diff via `git show --root` — the only way to see its changes.
+    /// </summary>
+    private async Task<IReadOnlyList<FileDiff>> ReadRootAsync(
+        string workingDirectory,
+        CommitId commit,
+        DiffOptions options,
+        CancellationToken cancellationToken)
+    {
+        List<string> arguments =
+        [
+            "show",
+            "--root",
+            "--first-parent",
+            // Commit subject/message is suppressed: the parser expects output to start with `:`.
+            "--format=",
+        ];
+
+        AddFormatArguments(arguments, options);
+        arguments.Add(commit.Value);
+        arguments.Add("--");
+
+        return await RunAsync(workingDirectory, arguments, options, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>

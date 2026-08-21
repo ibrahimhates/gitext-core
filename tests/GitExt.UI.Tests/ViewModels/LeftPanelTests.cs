@@ -89,7 +89,12 @@ public class LeftPanelTests
 
         submodule.Name.ShouldBe("core");
         submodule.FullName.ShouldBe("libs/core");
-        submodule.Path.ShouldBe(Path.Combine("/tmp/depo", "libs/core"));
+
+        // The path is built from RootPath + the submodule's relative path.
+        // Use GetFullPath so it matches the production code's normalization on all platforms.
+        string expected = Path.GetFullPath(Path.Combine("/tmp/depo", "libs", "core"));
+        submodule.Path.ShouldBe(expected);
+
         submodule.AheadBehind.ShouldBe("modified");
         submodule.IsOpenable.ShouldBeTrue();
     }
