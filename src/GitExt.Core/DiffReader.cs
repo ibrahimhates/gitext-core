@@ -504,35 +504,45 @@ public sealed class DiffReader : IDiffReader
             options.MaximumChangedLines,
             options.ContentEncoding);
 
-        if (options.Whitespace == WhitespaceMode.IgnoreAll)
+        switch (options.Whitespace)
         {
-            // On some git versions `-w` keeps a whitespace-only modified file in metadata with
-            // no hunks and zero line stats. Keep behavior stable across versions by hiding that row.
-            parsed =
-            [
-                .. parsed.Where(diff =>
+            case WhitespaceMode.IgnoreAll:
+                // On some git versions `-w` keeps a whitespace-only modified file in metadata with
+                // no hunks and zero line stats. Keep behavior stable across versions by hiding that row.
+                parsed = [.. parsed.Where(diff =>
                     diff.Change != FileChangeKind.Modified
                     || diff.HasHunks
                     || diff.IsBinary
                     || diff.IsModeOnlyChange
                     || diff.AddedLines != 0
-                    || diff.RemovedLines != 0),
-            ];
-        }
+                    || diff.RemovedLines != 0)];
+                break;
 
-        if (options.Whitespace == WhitespaceMode.IgnoreEol)
-        {
-            // MEASURED: `git --ignore-space-at-eol` has a long-standing bug in git ≤ 2.34 where it
-            // does NOT filter out files whose only changes are trailing-whitespace additions/removals.
-            // The flag was introduced in git 1.6, but the filtering logic was buggy until at least
-            // 2.35 (some reports go further). Since we must support git 2.30, we do client-side
-            // post-processing: remove diffs whose hunks contain ONLY trailing-whitespace changes.
-            parsed =
-            [
-                .. parsed.Where(diff => HasNonEolChange(diff)),
-            ];
-        }
+            case WhitespaceMode.IgnoreChange:
+                // On some git versions `-b` still lists files in raw/numstat with counts even when
+                // all their changes are whitespace-only (the patch content is filtered by git, not
+                // us). Keep behavior stable across versions by hiding those rows — same logic as -w.
+                parsed = [.. parsed.Where(diff =>
+                    diff.Change != FileChangeKind.Modified
+                    || diff.HasHunks
+                    || diff.IsBinary
+                    || diff.IsModeOnlyChange
+                    || diff.AddedLines != 0
+                    || diff.RemovedLines != 0)];
+                break;
 
+            case WhitespaceMode.IgnoreEol:
+                // MEASURED: `git --ignore-space-at-eol` has a long-standing bug in git ≤ 2.34 where it
+                // does NOT filter out files whose only changes are trailing-whitespace additions/removals.
+                // The flag was introduced in git 1.6, but the filtering logic was buggy until at least
+                // 2.35 (some reports go further). Since we must support git 2.30, we do client-side
+                // post-processing: remove diffs whose hunks contain ONLY trailing-whitespace changes.
+                parsed = [.. parsed.Where(diff => HasNonEolChange(diff))];
+                break;
+
+            default:
+                break;
+        }
         return parsed;
     }
 
