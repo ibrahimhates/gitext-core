@@ -543,11 +543,18 @@ public sealed class DiffReader : IDiffReader
     /// </summary>
     private static bool HasNonEolChange(FileDiff diff)
     {
-        if (diff.HasHunks == false || diff.IsBinary || diff.IsModeOnlyChange)
+        if (diff.IsBinary || diff.IsModeOnlyChange)
         {
-            // Binary, mode-only, or no hunks — we cannot determine trailing-whitespace-only status.
-            // Keep the file to avoid silently hiding real changes.
+            // Binary or mode-only changes — keep them.
             return true;
+        }
+
+        // MEASURED on git ≤ 2.34 with `--ignore-space-at-eol`: trailing-whitespace-only files
+        // can appear in the raw section WITHOUT any patch content (no hunks, no changed lines).
+        // We must treat these as "should be hidden" to compensate for the broken server-side filter.
+        if (!diff.HasHunks && diff.AddedLines == 0 && diff.RemovedLines == 0)
+        {
+            return false;
         }
 
         foreach (DiffHunk hunk in diff.Hunks)

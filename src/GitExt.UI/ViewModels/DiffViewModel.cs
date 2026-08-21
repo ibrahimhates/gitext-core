@@ -581,13 +581,15 @@ public sealed partial class DiffViewModel : ViewModelBase
     /// <summary>The context value that means "the whole file".</summary>
     private const int EntireFileContext = 1_000_000;
 
-    partial void OnIgnoreWhitespaceChanged(WhitespaceMode value) => ReloadForOptions();
+    // Fire-and-forget from synchronous property setter. The async reload runs immediately;
+    // tests that need to wait for completion call the public ReloadAsync() method instead.
+    partial void OnIgnoreWhitespaceChanged(WhitespaceMode value) => _ = ReloadForOptionsAsync();
 
     partial void OnContextLinesChanged(int value)
     {
         OnPropertyChanged(nameof(ShowEntireFile));
         OnPropertyChanged(nameof(ContextLinesLabel));
-        ReloadForOptions();
+        _ = ReloadForOptionsAsync();
     }
 
     /// <summary>What the toolbar shows for the current context setting.</summary>
@@ -609,6 +611,15 @@ public sealed partial class DiffViewModel : ViewModelBase
     /// <summary>Chooses a whitespace level (the menu items bind to this).</summary>
     public void SetWhitespaceMode(WhitespaceMode mode) => IgnoreWhitespace = mode;
 
+    /// <summary>Re-reads the diff with the current options.
+    /// </summary>
+    /// <remarks>
+    /// For tests: <c>SetWhitespaceMode</c> fires property changed notifications, which trigger
+    /// <c>ReloadForOptionsAsync</c>. The reload is fire-and-forget from the property setter, so
+    /// <b>this method must be called after</b> any option change to wait for it to complete.
+    /// </remarks>
+    public Task ReloadAsync() => ReloadForOptionsAsync();
+
     public bool IsWhitespaceIncluded => IgnoreWhitespace == WhitespaceMode.Include;
 
     public bool IsWhitespaceEolIgnored => IgnoreWhitespace == WhitespaceMode.IgnoreEol;
@@ -617,15 +628,15 @@ public sealed partial class DiffViewModel : ViewModelBase
 
     public bool IsWhitespaceAllIgnored => IgnoreWhitespace == WhitespaceMode.IgnoreAll;
 
-    /// <summary>
-    /// Re-reads the diff with the changed options.
+    /// <summary>Re-reads the diff with changed options.
     /// </summary>
+    /// <returns>A task completing when the re-read finishes (for test synchronization).</returns>
     /// <remarks>
     /// The last read is remembered so the option can be applied to it; without that the switch
     /// would only take effect the next time the user clicked another file — which reads as "the
     /// setting does nothing".
     /// </remarks>
-    private void ReloadForOptions()
+    private async Task ReloadForOptionsAsync()
     {
         OnPropertyChanged(nameof(IsWhitespaceIncluded));
         OnPropertyChanged(nameof(IsWhitespaceEolIgnored));
@@ -634,7 +645,7 @@ public sealed partial class DiffViewModel : ViewModelBase
 
         if (_reload is { } reload)
         {
-            _ = reload();
+            await reload();
         }
     }
 

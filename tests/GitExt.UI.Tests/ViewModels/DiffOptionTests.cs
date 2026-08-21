@@ -61,7 +61,7 @@ public class DiffOptionTests
         (DiffViewModel model, FakeDiffReader reader) = await ShowAsync();
 
         model.SetWhitespaceMode(mode);
-        await Task.Delay(260);
+        await model.ReloadAsync();
 
         reader.LastOptions.ShouldNotBeNull().Whitespace.ShouldBe(mode);
     }
@@ -76,7 +76,7 @@ public class DiffOptionTests
         int before = reader.ReadCallCount;
 
         model.SetWhitespaceMode(WhitespaceMode.IgnoreAll);
-        await Task.Delay(260);
+        await model.ReloadAsync();
 
         reader.ReadCallCount.ShouldBeGreaterThan(before);
     }
@@ -87,13 +87,13 @@ public class DiffOptionTests
         (DiffViewModel model, FakeDiffReader reader) = await ShowAsync();
 
         model.IncreaseContextLines();
-        await Task.Delay(260);
+        await model.ReloadAsync();
         model.ContextLines.ShouldBe(4);
         reader.LastOptions.ShouldNotBeNull().ContextLines.ShouldBe(4);
 
         model.DecreaseContextLines();
         model.DecreaseContextLines();
-        await Task.Delay(260);
+        await model.ReloadAsync();
         model.ContextLines.ShouldBe(2);
 
         // -U0 is a legitimate view (only the changed lines); it does not go below zero.
@@ -112,13 +112,13 @@ public class DiffOptionTests
         (DiffViewModel model, FakeDiffReader reader) = await ShowAsync();
 
         model.ToggleEntireFile();
-        await Task.Delay(260);
+        await model.ReloadAsync();
 
         model.ShowEntireFile.ShouldBeTrue();
         reader.LastOptions.ShouldNotBeNull().ContextLines.ShouldNotBeNull().ShouldBeGreaterThan(1000);
 
         model.ToggleEntireFile();
-        await Task.Delay(260);
+        await model.ReloadAsync();
 
         model.ShowEntireFile.ShouldBeFalse();
         model.ContextLines.ShouldBe(3);
