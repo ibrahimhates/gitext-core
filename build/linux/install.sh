@@ -194,7 +194,38 @@ if [ -n "$MISSING_TOOLS" ]; then
     echo "      glib2-update (Arch) — then run: $0 --system" >&2
 fi
 
-echo
+# Desktop environment–specific cache rebuilds so the app appears in the menu.
+DE_TOOLS=""
+
+case "${XDG_CURRENT_DESKTOP:-}" in
+    *KDE*)
+        if command -v kbuildsycoca6 >/dev/null 2>&1; then
+            kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+            DE_TOOLS="kbuildsycoca6 (Plasma 6)"
+        elif command -v kbuildsycoca5 >/dev/null 2>&1; then
+            kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
+            DE_TOOLS="kbuildsycoca5 (Plasma 5)"
+        fi
+        ;;
+    *GNOME*)
+        # GNOME Shell uses glib's desktop database — already handled above.
+        ;;
+    *)
+        # Try the most common DE cache tools regardless of XDG_CURRENT_DESKTOP.
+        if command -v kbuildsycoca6 >/dev/null 2>&1; then
+            kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+            DE_TOOLS="${DE_TOOLS:+$DE_TOOLS, }kbuildsycoca6"
+        elif command -v kbuildsycoca5 >/dev/null 2>&1; then
+            kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
+            DE_TOOLS="${DE_TOOLS:+$DE_TOOLS, }kbuildsycoca5"
+        fi
+        if command -v lxsession-compile >/dev/null 2>&1; then
+            lxsession-compile "$APP_DIR" >/dev/null 2>&1 || true
+            DE_TOOLS="${DE_TOOLS:+$DE_TOOLS, }lxsession-compile"
+        fi
+        ;;
+esac
+
 echo "== installed: $("$BIN_DIR/$BINARY" --version 2>/dev/null | head -1)"
 
 # Verify critical files landed where the desktop environment expects them.

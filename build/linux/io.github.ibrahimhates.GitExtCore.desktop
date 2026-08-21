@@ -1,14 +1,14 @@
 [Desktop Entry]
 Type=Application
 Version=1.5
-Name=gitext-core
+Name=GitExt Core
 GenericName=Git GUI
 Comment=Browse history, stage changes and manage branches in Git repositories
 Exec=gitext-core %f
 TryExec=gitext-core
 Icon=io.github.ibrahimhates.GitExtCore
 Terminal=false
-Categories=Development;RevisionControl;
+Categories=Development;IDE;Utility;
 Keywords=git;vcs;version control;commit;branch;merge;diff;repository;
 StartupNotify=true
 StartupWMClass=gitext-core
