@@ -6,6 +6,7 @@ using GitExt.UI.Localization;
 using GitExt.UI.Settings;
 using GitExt.UI.Themes;
 using GitExt.UI.Storage;
+using GitExt.UI.Updates;
 using GitExt.UI.ViewModels;
 using GitExt.UI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -151,6 +152,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDiffReader, DiffReader>();
         services.AddSingleton<IRecentRepositoryStore>(_ => new RecentRepositoryStore());
 
+        // The release feed (P13-T01). A single instance because it owns an HttpClient; the check
+        // runs at most once a week and once more if the user asks.
+        services.AddSingleton<IReleaseFeed>(_ => new GitHubReleaseFeed());
+
         // Settings (P08-T14). Must be read BEFORE the window opens: theme, font, and panel
         // layout come from here; reading it later would mean the app opening with the wrong
         // theme first and visibly jumping. Synchronous for the same reason as GitExecutable.
@@ -217,6 +222,16 @@ public static class ServiceCollectionExtensions
         {
             MainWindowViewModel model = ActivatorUtilities.CreateInstance<MainWindowViewModel>(provider);
             model.Session = provider.GetRequiredService<SessionTracker>();
+
+            // The version notice (P13-T01). The version itself is known HERE — `VersionInfo` reads
+            // the value MinVer embedded at build time, and the UI layer has no business knowing
+            // how that works (ADR-0003).
+            model.VersionLabel = VersionInfo.Version;
+
+            model.Updates = new UpdateService(
+                provider.GetRequiredService<IReleaseFeed>(),
+                provider.GetRequiredService<ISettingsStore>(),
+                VersionInfo.Version);
 
             return model;
         });

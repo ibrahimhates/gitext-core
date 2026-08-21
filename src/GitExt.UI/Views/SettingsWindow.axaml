@@ -76,6 +76,23 @@
                 </StackPanel>
 
                 <StackPanel Spacing="4">
+                    <TextBlock Text="{loc:Translate update.updates}" FontWeight="SemiBold" />
+
+                    <!--
+                        GitExtensions' `chkCheckForUpdates`, on by default there too. What it does
+                        is one public GET a week; nothing is downloaded and nothing is installed
+                        (P13-T01).
+                    -->
+                    <CheckBox Name="CheckForUpdatesBox"
+                              Content="{loc:Translate update.check_for_new_versions}"
+                              IsChecked="{Binding CheckForUpdates}" />
+                    <TextBlock Text="{loc:Translate update.check_explains}"
+                               Opacity="0.65"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
                     <TextBlock Text="{loc:Translate settings.font}" FontWeight="SemiBold" />
 
                     <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" >

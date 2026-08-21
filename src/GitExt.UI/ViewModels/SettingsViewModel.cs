@@ -55,6 +55,10 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _startWithRecentRepository;
 
+    /// <summary>Should the application check for newer versions (P13-T01)?</summary>
+    [ObservableProperty]
+    private bool _checkForUpdates;
+
     [ObservableProperty]
     private string _globalUserName = string.Empty;
 
@@ -180,6 +184,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     partial void OnMonospaceFontSizeChanged(double value) => ApplyFontSizes();
 
+    partial void OnCheckForUpdatesChanged(bool value) =>
+        Apply(() => _settings.Update(settings => settings.General.CheckForUpdates = value));
+
     partial void OnStartWithRecentRepositoryChanged(bool value) =>
         Apply(() => _settings.Update(settings => settings.General.StartWithRecentWorkingDir = value));
 
@@ -226,6 +233,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
             MonospaceFontSize = appearance.MonospaceFontSize;
             MonospaceFontFamily = appearance.MonospaceFontFamily;
             StartWithRecentRepository = _settings.Current.General.StartWithRecentWorkingDir;
+            CheckForUpdates = _settings.Current.General.CheckForUpdates;
         }
         finally
         {

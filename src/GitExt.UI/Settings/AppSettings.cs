@@ -83,6 +83,25 @@ public sealed class GeneralSettings
     [JsonPropertyName("startWithRecentWorkingDir")]
     public bool StartWithRecentWorkingDir { get; set; }
 
+    /// <summary>
+    /// Should the application check whether a newer version has been published (P13-T01)?
+    /// </summary>
+    /// <remarks>
+    /// <b>On by default</b>, as it is in GitExtensions (<c>chkCheckForUpdates.Checked = true</c>).
+    /// The check is a single public GET to the release page, at most once a week; nothing is
+    /// downloaded and nothing is installed.
+    /// </remarks>
+    [JsonPropertyName("checkForUpdates")]
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>When the last check ran (round-trip format); empty when it never has.</summary>
+    /// <remarks>
+    /// Kept as text rather than <see cref="DateTimeOffset"/>: the settings file is versioned
+    /// (ADR-0006) and a string survives a change of serializer without a migration.
+    /// </remarks>
+    [JsonPropertyName("lastUpdateCheck")]
+    public string LastUpdateCheck { get; set; } = "";
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
 }

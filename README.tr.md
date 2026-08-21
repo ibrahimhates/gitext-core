@@ -87,6 +87,13 @@ Aksi belirtilmedikçe aşağıdakilerin tamamı **uygulandı ve test edildi**.
 - **Git LFS** — gerçek `git`'i çalıştırdığımız için çalışıyor (LFS bir clean/smudge filtresi,
   kendiliğinden devreye giriyor). Henüz **LFS'e özel arayüz yok**: pointer mı gerçek içerik mi
   göstergesi yok, LFS nesnelerini açıkça çekme yok.
+- **Sürüm bildirimi** — uygulama haftada bir kez yayın sayfasına daha yeni bir sürüm olup
+  olmadığını sorar ve varsa kapatılabilir bir şeritte söyler. **Hiçbir şey indirilmez, hiçbir
+  şey kurulmaz**: otomatik güncelleme yok ve olmayacak — Linux'ta bu paket yöneticisinin işi.
+  Yapılan tek şey `api.github.com/repos/ibrahimhates/gitext-core/releases/latest` adresine tek
+  bir genel `GET`; hakkınızda hiçbir şey göndermez. *Ayarlar → Görünüm → Güncellemeler* ile
+  tamamen kapatılır (o zaman hiç istek yapılmaz). *Yardım → Güncellemeleri denetle* ile
+  istediğinizde sorabilirsiniz.
 
 ---
 

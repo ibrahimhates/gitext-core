@@ -15,7 +15,7 @@
         WindowStartupLocation="CenterScreen"
         DragDrop.AllowDrop="True">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
         <!--
             MAIN MENU — the order and item names were taken from GitExtensions (P08-T26):
@@ -115,6 +115,13 @@
             </MenuItem>
 
             <MenuItem Header="{loc:Translate main.help}">
+                <!--
+                    GitExtensions' Help menu ends with "Check for updates" and then "About"
+                    (`HelpToolStripMenuItem.Designer.cs`); the same two, in the same order.
+                -->
+                <MenuItem Name="MenuCheckForUpdates"
+                          Header="{loc:Translate update.check_for_updates}"
+                          Click="OnCheckForUpdatesClick" />
                 <MenuItem Name="MenuAbout" Header="{loc:Translate main.about}" />
             </MenuItem>
         </Menu>
@@ -504,7 +511,54 @@
             but an obstacle waiting to be dismissed. Errors go here too; not raw stderr, but the
             classified message.
         -->
+        <!--
+            The version notice (P13-T01). A strip, not a dialog: the same reasoning as every other
+            notice in this application (P05-T15) - a modal box shown at start is an obstacle to be
+            dismissed, and this news is worth a line, not a click.
+
+            🔴 There is NO automatic update. Nothing is downloaded and nothing is run; the button
+            opens the release page in the browser and the rest is the user's business (on Linux,
+            usually their package manager's).
+        -->
+        <!--
+            🔴 Its OWN ROW, not an overlay. Floating it over the content the way the branch notice
+            does put it straight on top of the dashboard's logo panel — the text sat on the blue
+            band and could not be read. A strip that announces something must not cover something
+            else to do it.
+        -->
         <Border Grid.Row="3"
+                Name="UpdateNoticeBar"
+                IsVisible="{Binding UpdateNotice, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="{DynamicResource GitExtSubtleBackgroundBrush}"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource GitExtSeparatorBrush}"
+                Padding="10,6">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Name="UpdateNoticeText"
+                           Text="{Binding UpdateNotice}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           FontSize="12" />
+
+                <Button Grid.Column="1"
+                        Name="UpdateNotesButton"
+                        Content="{loc:Translate update.release_notes}"
+                        IsVisible="{Binding HasUpdateLink}"
+                        FontSize="12"
+                        Margin="8,0,0,0"
+                        Click="OnOpenReleaseNotesClick" />
+
+                <Button Grid.Column="2"
+                        Name="DismissUpdateNoticeButton"
+                        Content="✕"
+                        FontSize="12"
+                        Margin="4,0,0,0"
+                        Click="OnDismissUpdateNoticeClick" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="4"
                 Name="BranchNoticeBar"
                 VerticalAlignment="Top"
                 IsVisible="{Binding BranchNotice, Converter={x:Static ObjectConverters.IsNotNull}}"
@@ -538,7 +592,7 @@
             showing both strips would tell the user "you are both detached and mid-rebase", and
             "create a branch here" is not the thing to do at that point.
         -->
-        <Border Grid.Row="3"
+        <Border Grid.Row="4"
                 Name="DetachedBanner"
                 VerticalAlignment="Top"
                 IsVisible="{Binding ShowDetachedBanner}"
@@ -566,7 +620,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="3"
+        <Border Grid.Row="4"
                 Name="OperationBanner"
                 VerticalAlignment="Top"
                 IsVisible="{Binding ShowOperationBanner}"
@@ -607,7 +661,7 @@
         </Border>
 
         <!-- With no repository open, the welcome screen; rather than an empty window, a way forward. -->
-        <views:WelcomeView Grid.Row="3" IsVisible="{Binding ShowWelcome}" />
+        <views:WelcomeView Grid.Row="4" IsVisible="{Binding ShowWelcome}" />
 
         <!--
             List on top, details below — GitExtensions' layout. The splitter is draggable; with a
@@ -623,7 +677,7 @@
             frame. The dashboard is deliberately left flush: its own coloured panels run to the
             edge there too.
         -->
-        <Grid Grid.Row="3"
+        <Grid Grid.Row="4"
               Name="MainSplitGrid"
               ColumnDefinitions="220,4,*"
               Margin="6"

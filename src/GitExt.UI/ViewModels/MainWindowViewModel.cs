@@ -9,6 +9,7 @@ using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.UI.Storage;
 using GitExt.UI.Settings;
+using GitExt.UI.Updates;
 using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
@@ -2142,6 +2143,86 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Shows the dialogs the panel needs (the drop-stash question).</summary>
     public IDashboardPrompt? DashboardConfirmer { get; set; }
+
+    // ------------------------------------------------------ P13-T01: the version notice
+
+    /// <summary>
+    /// Checks whether a newer version exists. Supplied by the composition root; without it the
+    /// application simply never checks.
+    /// </summary>
+    public UpdateService? Updates { get; set; }
+
+    /// <summary>What the notice strip says about the version; <see langword="null"/> when silent.</summary>
+    [ObservableProperty]
+    public partial string? UpdateNotice { get; set; }
+
+    /// <summary>The page the "release notes" button opens; empty when there is nothing to open.</summary>
+    [ObservableProperty]
+    public partial string UpdateUrl { get; set; } = string.Empty;
+
+    public bool HasUpdateLink => UpdateUrl.Length > 0;
+
+    partial void OnUpdateUrlChanged(string value) => OnPropertyChanged(nameof(HasUpdateLink));
+
+    /// <summary>
+    /// Looks for a newer version.
+    /// </summary>
+    /// <param name="userRequested">
+    /// <see langword="true"/> when it came from the Help menu. Then the answer is shown even if
+    /// there is nothing new: a person who clicked "check for updates" is owed one.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>
+    /// <para>
+    /// 🔴 <b>There is no automatic update here and there is not going to be.</b> Nothing is
+    /// downloaded and nothing is run; the most that happens is a line on screen with a link. On
+    /// Linux the package manager owns installation, and an application that updates itself behind
+    /// the user's back is a bigger promise than this one wants to make.
+    /// </para>
+    /// <para>
+    /// A failure is silent on the automatic path: being offline is the normal state of a laptop on
+    /// a train, not something to report.
+    /// </para>
+    /// </remarks>
+    public async Task CheckForUpdatesAsync(bool userRequested, CancellationToken cancellationToken = default)
+    {
+        if (Updates is not { } updates)
+        {
+            return;
+        }
+
+        UpdateCheckResult result = await updates.CheckAsync(userRequested, cancellationToken)
+            .ConfigureAwait(true);
+
+        if (result.Update is { } release)
+        {
+            UpdateNotice = Loc.F("update.new_version_available", release.Version);
+            UpdateUrl = release.Url;
+            return;
+        }
+
+        if (!userRequested)
+        {
+            // Nothing new, or the check was not due: stay quiet.
+            return;
+        }
+
+        UpdateNotice = result.Checked
+            ? Loc.F("update.up_to_date", VersionLabel)
+            : Loc.T("update.check_disabled");
+
+        UpdateUrl = string.Empty;
+    }
+
+    /// <summary>Dismisses the version notice.</summary>
+    public void DismissUpdateNotice()
+    {
+        UpdateNotice = null;
+        UpdateUrl = string.Empty;
+    }
+
+    /// <summary>The running version, for the "you are up to date" message.</summary>
+    public string VersionLabel { get; set; } = string.Empty;
 
     /// <summary>
     /// Reads everything the left panel shows: refs, worktrees, submodules and stashes (P12-T13).

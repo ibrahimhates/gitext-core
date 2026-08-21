@@ -642,6 +642,27 @@ public partial class MainWindow : Window
         model.Commits.ApplyFilterCommand.Execute(null);
     }
 
+    // ------------------------------------------------------ P13-T01: the version notice
+
+    private async void OnCheckForUpdatesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel model)
+        {
+            await model.CheckForUpdatesAsync(userRequested: true);
+        }
+    }
+
+    private void OnOpenReleaseNotesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { UpdateUrl: { Length: > 0 } url })
+        {
+            OpenFolderInShell(url);
+        }
+    }
+
+    private void OnDismissUpdateNoticeClick(object? sender, RoutedEventArgs e) =>
+        (DataContext as MainWindowViewModel)?.DismissUpdateNotice();
+
     private void OnDismissBranchNoticeClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is MainWindowViewModel model)
