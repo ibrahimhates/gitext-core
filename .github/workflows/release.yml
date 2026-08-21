@@ -385,6 +385,7 @@ jobs:
           hdiutil create -volname gitext-core \
             -srcfolder "dist/${{ matrix.rid }}/gitext-core.app" \
             -ov -format UDZO \
+            -size 500m \
             "dist/gitext-core-$V-${{ matrix.rid }}.dmg"
 
       - uses: actions/upload-artifact@v7
