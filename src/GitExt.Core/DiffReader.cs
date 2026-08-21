@@ -301,18 +301,19 @@ public sealed class DiffReader : IDiffReader
                 cancellationToken);
         }
 
-        // Root commit: no parent to diff against; fall back to `git show --root`.
-        if (IsRootCommit(workingDirectory, commit, cancellationToken))
-        {
-            return ReadRootAsync(workingDirectory, commit, options, cancellationToken);
-        }
+        // A SINGLE COMMAND covers three cases at once (measured):
+        //   --root         → avoids `<sha>^` crashing on the root commit
+        //   --first-parent → produces a single, meaningful diff for a merge (plain `git show` returns EMPTY)
+        //   normal commit  → both are harmless
+        List<string> arguments =
+        [
+            "show",
+            "--root",
+            "--first-parent",
 
-        // For non-root commits, use `git diff HEAD~1..HEAD` instead of `git show`:
-        // this command handles whitespace flags (`--ignore-space-at-eol`, `-b`, `-w`) more
-        // consistently across git versions. Older git (e.g. 2.30) had buggy behavior where
-        // `git show --first-parent ... --ignore-space-at-eol` did not filter trailing-whitespace-
-        // only changes at all — the flag was effectively ignored. (`git diff RANGE` works correctly.)
-        List<string> arguments = ["diff", "HEAD~1"];
+            // Commit subject/message is suppressed: the parser expects output to start with `:`.
+            "--format=",
+        ];
 
         AddFormatArguments(arguments, options);
         arguments.Add(commit.Value);
@@ -519,52 +520,93 @@ public sealed class DiffReader : IDiffReader
             ];
         }
 
+        if (options.Whitespace == WhitespaceMode.IgnoreEol)
+        {
+            // MEASURED: `git --ignore-space-at-eol` has a long-standing bug in git ≤ 2.34 where it
+            // does NOT filter out files whose only changes are trailing-whitespace additions/removals.
+            // The flag was introduced in git 1.6, but the filtering logic was buggy until at least
+            // 2.35 (some reports go further). Since we must support git 2.30, we do client-side
+            // post-processing: remove diffs whose hunks contain ONLY trailing-whitespace changes.
+            parsed =
+            [
+                .. parsed.Where(diff => HasNonEolChange(diff)),
+            ];
+        }
+
         return parsed;
     }
 
     /// <summary>
-    /// Checks whether the commit is a root (initial) commit — no parent to diff against.
+    /// Returns true when the diff contains at least one change that is NOT a trailing-whitespace-
+    /// only modification. This is used for client-side post-processing of `--ignore-space-at-eol`
+    /// on git versions where the flag does not filter these changes correctly (≤ 2.34).
     /// </summary>
-    private bool IsRootCommit(
-        string workingDirectory,
-        CommitId commit,
-        CancellationToken cancellationToken)
+    private static bool HasNonEolChange(FileDiff diff)
     {
-        // `rev-parse -q <sha>^1` returns non-zero if the commit has no parent (i.e. it's a root).
-        var result = _runner.RunAsync(new GitCommand
+        if (diff.HasHunks == false || diff.IsBinary || diff.IsModeOnlyChange)
         {
-            WorkingDirectory = workingDirectory,
-            Arguments = ["rev-parse", "-q", "--verify", $"{commit.Value}^1"],
-        }, cancellationToken).GetAwaiter().GetResult();
+            // Binary, mode-only, or no hunks — we cannot determine trailing-whitespace-only status.
+            // Keep the file to avoid silently hiding real changes.
+            return true;
+        }
 
-        // Non-zero exit code (or empty output) means no parent → root commit.
-        return result.ExitCode != 0 || string.IsNullOrWhiteSpace(result.GetStandardOutputText());
+        foreach (DiffHunk hunk in diff.Hunks)
+        {
+            // Collect all Removed and Added lines for pairing.
+            var removedLines = new List<string>();
+            var addedLines = new List<string>();
+
+            for (int i = 0; i < hunk.Lines.Count; i++)
+            {
+                DiffLine line = hunk.Lines[i];
+                if (line.Kind == DiffLineKind.Removed)
+                {
+                    removedLines.Add(line.Content);
+                }
+                else if (line.Kind == DiffLineKind.Added)
+                {
+                    addedLines.Add(line.Content);
+                }
+            }
+
+            // Pair Removed/Added lines in order: each pair represents a modification.
+            // Unpaired Removed or Added lines indicate content was deleted or inserted —
+            // those are beyond trailing-whitespace-only changes.
+            int minPairs = Math.Min(removedLines.Count, addedLines.Count);
+
+            for (int i = 0; i < removedLines.Count || i < addedLines.Count; i++)
+            {
+                bool isPaired = i < minPairs;
+
+                if (!isPaired)
+                {
+                    // Unpaired addition or removal — not a trailing-whitespace-only change.
+                    return true;
+                }
+
+                string oldContent = removedLines[i];
+                string newContent = addedLines[i];
+
+                // Strip trailing whitespace and compare.
+                if (StripTrailing(oldContent) != StripTrailing(newContent))
+                {
+                    // Inline change (or actual content difference).
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
-    /// <summary>
-    /// Reads a root commit's diff via `git show --root` — the only way to see its changes.
-    /// </summary>
-    private async Task<IReadOnlyList<FileDiff>> ReadRootAsync(
-        string workingDirectory,
-        CommitId commit,
-        DiffOptions options,
-        CancellationToken cancellationToken)
+    private static string StripTrailing(string s)
     {
-        List<string> arguments =
-        [
-            "show",
-            "--root",
-            "--first-parent",
-            // Commit subject/message is suppressed: the parser expects output to start with `:`.
-            "--format=",
-        ];
-
-        AddFormatArguments(arguments, options);
-        arguments.Add(commit.Value);
-        arguments.Add("--");
-
-        return await RunAsync(workingDirectory, arguments, options, cancellationToken)
-            .ConfigureAwait(false);
+        int end = s.Length - 1;
+        while (end >= 0 && char.IsWhiteSpace(s[end]))
+        {
+            end--;
+        }
+        return s[..(end + 1)];
     }
 
     /// <summary>
