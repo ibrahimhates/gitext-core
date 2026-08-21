@@ -164,14 +164,60 @@ fi
 [ -f "$SELF_DIR/LICENSE" ] && install -m 644 "$SELF_DIR/LICENSE" "$LICENSE_DIR/"
 
 # Caches are refreshed so the desktop environment sees the new entry.
-# These tools may not exist on minimal systems — their absence is not an error.
-command -v update-desktop-database >/dev/null 2>&1 && \
+# These tools may not exist on minimal systems — their absence is not an error,
+# but we warn the user because without them icons or menu entries might not appear.
+MISSING_TOOLS=""
+
+if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$APP_DIR" 2>/dev/null || true
-command -v gtk-update-icon-cache >/dev/null 2>&1 && \
+else
+    MISSING_TOOLS="update-desktop-database"
+fi
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -f -t "$ICON_ROOT/hicolor" 2>/dev/null || true
+else
+    if [ -n "$MISSING_TOOLS" ]; then
+        MISSING_TOOLS="$MISSING_TOOLS, gtk-update-icon-cache"
+    else
+        MISSING_TOOLS="gtk-update-icon-cache"
+    fi
+fi
+
+# On systems without GTK (containers, minimal installs), the cache tools may be absent.
+# The desktop file and icons ARE installed — they just won't appear until the caches
+# are rebuilt or the user logs out/in. We tell them exactly what to do.
+if [ -n "$MISSING_TOOLS" ]; then
+    echo "   Note: '$MISSING_TOOLS' not found (minimal system?)." >&2
+    echo "   Icons and menus will update after logout/login." >&2
+    echo "   To fix permanently, install glib-2.0-bin (Debian/Ubuntu) or" >&2
+    echo "      glib2-update (Arch) — then run: $0 --system" >&2
+fi
 
 echo
 echo "== installed: $("$BIN_DIR/$BINARY" --version 2>/dev/null | head -1)"
+
+# Verify critical files landed where the desktop environment expects them.
+# If they're missing, something went wrong (permissions? readonly FS?) and we tell the user now.
+FAILED=""
+[ ! -f "$APP_DIR/$APP_ID.desktop" ] && FAILED="$APP_ID.desktop"
+if [ ! -d "$ICON_ROOT/hicolor/scalable/apps" ]; then
+    # Fallback: check any size icon exists (some systems only have raster sizes).
+    if ! ls "$ICON_ROOT/hicolor/"*/apps/$APP_ID.png >/dev/null 2>&1; then
+        if [ -n "$FAILED" ]; then
+            FAILED="$FAILED icons"
+        else
+            FAILED="icons"
+        fi
+    fi
+fi
+
+if [ -n "$FAILED" ]; then
+    echo
+    echo "!! Missing files after install: $FAILED" >&2
+    echo "   The desktop entry may not appear in your application menu." >&2
+    echo "   Check permissions on $PREFIX/share and re-run if needed." >&2
+fi
 
 # PATH warning: ~/.local/bin is NOT on the default PATH on some distros.
 # Staying silent would result in "I installed it but the command isn't found."
@@ -183,3 +229,9 @@ case ":$PATH:" in
         echo "     export PATH=\"$BIN_DIR:\$PATH\""
         ;;
 esac
+
+# Final hint: tell the user where to find the app after install.
+echo
+echo "== To launch: run 'gitext-core' in a terminal, or search for"
+echo "   '$APP_ID.desktop' (it should appear as gitext-core) in your"
+echo "   application menu."

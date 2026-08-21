@@ -93,6 +93,7 @@ Maintainer: gitext-core contributors <https://github.com/ibrahimhates/gitext-cor
 Installed-Size: $size
 Depends: git (>= 1:2.30)
 Homepage: https://github.com/ibrahimhates/gitext-core
+Triggers: icon-theme, desktop-file
 Description: Fast native Git GUI
  gitext-core is a fast, native Git GUI. It rebuilds the GitExtensions experience
  on modern .NET and Avalonia: a commit graph that makes tangled histories readable,
@@ -162,6 +163,17 @@ gitext-core collects no telemetry of any kind.
 /usr/share/metainfo/$APP_ID.metainfo.xml
 /usr/share/icons/hicolor
 %license /usr/share/doc/gitext-core/copyright
+
+# Rebuild caches so icons and menu entries appear after install/upgrade.
+# %posttrans runs AFTER all packages in a transaction are installed — this
+# prevents a partially-upgraded system from showing stale caches.
+%posttrans
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+fi
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications 2>/dev/null || true
+fi
 
 %changelog
 * $(LC_ALL=C date '+%a %b %d %Y') gitext-core contributors - $PKG_VERSION-1
