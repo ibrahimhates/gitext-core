@@ -35,6 +35,16 @@ public sealed class SessionTracker
     /// <summary>The repository open at shutdown; empty when there is none.</summary>
     public string LastRepository => _settings.Current.Session.LastRepository;
 
+    /// <summary>
+    /// Should that repository be reopened at startup (P12-T04)?
+    /// </summary>
+    /// <remarks>
+    /// Off by default: the application starts on the dashboard, like GitExtensions. The repository
+    /// is still remembered while the setting is off — turning it on later brings back the last one
+    /// rather than starting from nothing.
+    /// </remarks>
+    public bool StartWithLastRepository => _settings.Current.General.StartWithRecentWorkingDir;
+
     public void RememberRepository(string workingDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);

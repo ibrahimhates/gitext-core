@@ -234,11 +234,11 @@ public sealed record ShortcutRow(
     /// <summary>The context's name as shown to the user.</summary>
     public string ContextText => Context switch
     {
-        CommandContext.Global => "Her yerde",
-        CommandContext.CommitList => "Commit listesi",
+        CommandContext.Global => Loc.T("shortcut.context_everywhere"),
+        CommandContext.CommitList => Loc.T("shortcut.context_commit_list"),
         CommandContext.WorkingTree => Loc.T("shortcut_settings.working_tree"),
-        CommandContext.Diff => "Diff",
-        CommandContext.RefTree => "Dal paneli",
+        CommandContext.Diff => Loc.T("shortcut.context_diff"),
+        CommandContext.RefTree => Loc.T("shortcut.context_branch_panel"),
         _ => Context.ToString(),
     };
 }

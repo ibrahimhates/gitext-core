@@ -1,12 +1,13 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
-using GitExt.UI.ViewModels;
 using GitExt.UI.Localization;
+using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
 
 /// <summary>
-/// The welcome screen shown when no repository is open (P03-T16, layout P08-T25).
+/// The dashboard shown when no repository is open (P03-T16, layout P08-T25, rebuilt in P12-T03).
 /// </summary>
 /// <remarks>
 /// The folder picker is opened here, in the code-behind: <c>IStorageProvider</c> is bound to the window
@@ -19,6 +20,9 @@ public partial class WelcomeView : UserControl
     {
         InitializeComponent();
     }
+
+    private DashboardViewModel? Dashboard =>
+        (DataContext as MainWindowViewModel)?.Dashboard;
 
     private async void OnOpenFolderClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -51,8 +55,60 @@ public partial class WelcomeView : UserControl
         }
     }
 
+    /// <summary>
+    /// The context menu acts on the tile it was opened on.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions does the same thing (<c>_rightClickedItem</c>): the menu items read the
+    /// selection rather than taking a parameter, because the "Categories" submenu has to be built
+    /// for that one repository <b>before</b> it opens.
+    /// </remarks>
+    private void OnTileContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is Control { DataContext: DashboardRepositoryItem item })
+        {
+            item.Owner.SelectedItem = item;
+        }
+    }
+
+    /// <summary>
+    /// Enter opens the first result, ↓ moves into the list.
+    /// </summary>
+    /// <remarks>
+    /// Taken from GitExtensions' <c>TextBoxSearch_KeyDown</c>: typing part of a name and pressing
+    /// Enter is the fastest way into a repository, and it works without ever touching the mouse.
+    /// </remarks>
+    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (Dashboard is not { } dashboard)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            if (dashboard.FirstItem is { } first && first.OpenCommand.CanExecute(first.Path))
+            {
+                first.OpenCommand.Execute(first.Path);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (e.Key == Key.Down)
+        {
+            // The first tile takes the focus; from there the arrow keys walk the list.
+            RepositoryGroups.Focus(NavigationMethod.Directional);
+            e.Handled = true;
+        }
+    }
+
     private void OnDevelopClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
         OpenBrowser("https://github.com/ibrahimhates/gitext-core");
+
+    private void OnTranslateClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        OpenBrowser("https://github.com/ibrahimhates/gitext-core/tree/main/src/GitExt.UI/Locales");
 
     private void OnIssuesClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
         OpenBrowser("https://github.com/ibrahimhates/gitext-core/issues");

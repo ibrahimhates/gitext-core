@@ -31,6 +31,15 @@
 
 </details>
 
+<details>
+<summary>The dashboard</summary>
+
+![gitext-core — the dashboard, dark theme](./docs/assets/screenshot-dashboard-dark.png)
+
+![gitext-core — the dashboard, light theme](./docs/assets/screenshot-dashboard-light.png)
+
+</details>
+
 ---
 
 ## Why does this exist?
@@ -79,6 +88,13 @@ Everything below is **implemented and tested** unless marked otherwise.
 - **Git LFS** — works because we drive the real `git` (LFS is a clean/smudge filter, so it
   engages on its own). There is **no LFS-specific UI** yet: no pointer/actual-content
   indicator, no explicit fetch of LFS objects.
+- **Version notice** — once a week the application asks the release page whether a newer
+  version exists and, if so, says so in a strip you can dismiss. **Nothing is downloaded and
+  nothing is installed**: there is no auto-update, and there is not going to be one — on Linux
+  that is your package manager's job. It is a single public `GET` to
+  `api.github.com/repos/ibrahimhates/gitext-core/releases/latest`, it sends nothing about you,
+  and *Settings → Appearance → Updates* switches it off entirely (then no request is made at
+  all). *Help → Check for updates* asks on demand.
 
 ---
 

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GitExt.UI.Controls;
 using GitExt.UI.Tests.Fakes;
 using GitExt.UI.ViewModels;
 using GitExt.UI.Views;
@@ -144,12 +145,23 @@ public class GitExtensionsLayoutTests
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
+        // The label lives in a TextBlock next to the icon, so `Content` is the panel, not the text.
         string[] links = [.. view.GetVisualDescendants()
             .OfType<Button>()
             .Where(b => b.Classes.Contains("link"))
-            .Select(b => b.Content?.ToString() ?? string.Empty)];
+            .Select(b => b.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault()?.Text ?? string.Empty)];
 
-        links.ShouldBe(["Create new repository", "Open repository", "Clone repository", "Develop", "Report an issue"]);
+        // GitExtensions' order, top to bottom: the three start links, then Contribute →
+        // Develop · Donate · Translate · Issues. "Donate" is left out — this project takes no
+        // donations, and an item that leads nowhere is worse than a missing one.
+        links.ShouldBe([
+            "Create new repository",
+            "Open repository",
+            "Clone repository",
+            "Develop",
+            "Translate",
+            "Report an issue",
+        ]);
 
         window.Close();
     }
@@ -177,6 +189,74 @@ public class GitExtensionsLayoutTests
         model.HasRecentRepositories.ShouldBeTrue();
 
         window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Commit_satiri_sutunlari_GitExtensions_sirasinda()
+    {
+        // Source: `RevisionGridControl`, the order the column providers are added —
+        // graph · message · (notes · avatar) · author · date · commit id.
+        //
+        // 🔴 The SHA used to sit right after the graph here. In GitExtensions it is the LAST
+        // column and the ref badges live INSIDE the message column, in front of the subject
+        // (`MessageColumnProvider` draws them there). Notes, avatar and build status are the three
+        // columns we do not have.
+        CommitListViewModel list = new(
+            new FakeRepositoryLocator(),
+            new FakeCommitLogReader(FakeGitData.LinearHistory(3)),
+            new FakeRefReader(),
+            new FakeCommitSignatureReader(),
+            new FakeDiffReader());
+
+        await list.OpenAsync("/tmp/depo");
+
+        CommitListView view = new() { DataContext = list };
+        Window window = new() { Width = 900, Height = 300, Content = view };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        // The row template's own Grid: the one whose DIRECT children include the graph cell.
+        // (An ancestor container would also match "contains a graph cell somewhere".)
+        Grid row = view.GetVisualDescendants()
+            .OfType<Grid>()
+            .First(g => g.Children.OfType<CommitGraphCell>().Any());
+
+        // Left to right: the graph, the badges, the subject, the author, the date, the SHA.
+        string[] columns = [.. row.Children
+            .OrderBy(child => Grid.GetColumn((Control)child))
+            .Select(child => child switch
+            {
+                CommitGraphCell => "graph",
+                ItemsControl => "badges",
+                TextBlock text when text.GetValue(TextBlock.TextProperty) is { } value => Describe(value, list),
+                _ => "?",
+            })];
+
+        columns.ShouldBe(["graph", "badges", "subject", "author", "date", "sha"]);
+
+        window.Close();
+
+        static string Describe(string text, CommitListViewModel list)
+        {
+            CommitRowViewModel first = list.Rows[0];
+
+            if (text == first.Subject)
+            {
+                return "subject";
+            }
+
+            if (text == first.AuthorName)
+            {
+                return "author";
+            }
+
+            if (text == first.DateText)
+            {
+                return "date";
+            }
+
+            return text == first.ShortId ? "sha" : "?";
+        }
     }
 
     [AvaloniaFact]
@@ -290,10 +370,12 @@ public class GitExtensionsLayoutTests
     {
         // GitExtensions `FileViewer.Designer.cs` → `contextMenu.Items.AddRange`:
         //   stageSelectedLines · unstageSelectedLines · resetSelectedLines ·
-        //   copy · copyPatch · copyNewVersion · copyOldVersion · separator · display options
+        //   copy · copyPatch · copyNewVersion · copyOldVersion · separator ·
+        //   increase/decrease context · show entire file · … · the three whitespace levels.
         //
-        // The display options live in our toolbar (P04-T13); the menu's first seven items are in
-        // exactly the same order.
+        // Since P12-T20 the git-side options are here as well, in that order. The purely visual
+        // settings (tab width, font size, wrap) stay on the toolbar: they change how the text in
+        // hand is drawn, not what git is asked for.
         DiffViewModel model = new(new FakeDiffReader());
 
         DiffView view = new() { DataContext = model };
@@ -322,6 +404,12 @@ public class GitExtensionsLayoutTests
             "Copy as _patch",
             "Copy new version",
             "Copy old version",
+            "More context lines",
+            "Fewer context lines",
+            "Show entire file",
+            "Ignore at end of line",
+            "Ignore whitespace changes",
+            "Ignore all whitespace",
         ]);
 
         // ⚠️ Availability is NOT tested here, only the order. Until the menu is opened the bindings are

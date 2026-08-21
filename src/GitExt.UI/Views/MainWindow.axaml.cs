@@ -101,6 +101,14 @@ public partial class MainWindow : Window
                 model.ResetPrompt = new DialogResetPrompt(this);
                 model.SequencerPrompt = new DialogSequencerPrompt(this);
                 model.RebasePrompt = new DialogRebasePrompt(this);
+
+                // The dashboard (P12-T03): its dialogs and "Show in folder" also need the window.
+                model.Dashboard.Prompt = new DialogDashboardPrompt(this);
+                model.Dashboard.OpenFolderInShell = OpenFolderInShell;
+
+                // The left panel asks the same question before dropping a stash (P12-T14).
+                model.DashboardConfirmer = new DialogDashboardPrompt(this);
+                BranchPanel.OpenFolder = OpenFolderInShell;
             }
 
             BuildShortcuts();
@@ -194,6 +202,18 @@ public partial class MainWindow : Window
             .BindMenu(CommandIds.HelpAbout, MenuAbout)
             .BindMenu(CommandIds.AppExit, MenuExit);
 
+        // The toolbar buttons come from the same registry: the tooltip's shortcut and the key
+        // that actually works cannot drift apart (P12-T06).
+        shortcuts
+            .BindButton(CommandIds.RepositoryRefresh, ToolRefresh)
+            .BindButton(CommandIds.ViewToggleLeftPanel, ToolToggleLeftPanel)
+            .BindButton(CommandIds.ViewToggleBottomPanel, ToolToggleBottomPanel)
+            .BindButton(CommandIds.RemotePull, ToolPull)
+            .BindButton(CommandIds.RemotePush, ToolPush)
+            .BindButton(CommandIds.CommitShow, ToolCommit)
+            .BindButton(CommandIds.StashManage, ToolStash)
+            .BindButton(CommandIds.ToolsSettings, ToolSettings);
+
         shortcuts.Apply();
 
         _shortcuts = shortcuts;
@@ -255,6 +275,43 @@ public partial class MainWindow : Window
         _registry is { } registry
             ? ShortcutReferenceWindow.ShowAsync(new ShortcutReferenceViewModel(registry), this)
             : Task.CompletedTask;
+
+    /// <summary>
+    /// Opens a folder in the system's file manager (P12-T03, "Show in folder").
+    /// </summary>
+    /// <remarks>
+    /// <c>UseShellExecute</c> is essential: without it .NET takes the path for an executable and
+    /// errors out. A failure is swallowed — a message box because a file manager could not be
+    /// started would be a bigger nuisance than the action is worth.
+    /// </remarks>
+    private static void OpenFolderInShell(string path)
+    {
+        try
+        {
+            using System.Diagnostics.Process? _ = System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception exception) when (
+            exception is System.ComponentModel.Win32Exception
+                or System.PlatformNotSupportedException
+                or InvalidOperationException)
+        {
+        }
+    }
+
+    /// <summary>Shows the dashboard's small dialogs in real windows (P12-T03).</summary>
+    private sealed class DialogDashboardPrompt : IDashboardPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogDashboardPrompt(Window owner) => _owner = owner;
+
+        public Task<string?> AskCategoryNameAsync(IReadOnlyList<string> existingCategories, string? currentName) =>
+            DashboardCategoryDialog.ShowAsync(existingCategories, currentName, _owner);
+
+        public Task<bool> ConfirmAsync(string caption, string question) =>
+            ConfirmDialog.ShowAsync(caption, question, _owner);
+    }
 
     /// <summary>Shows the conflict resolution screen in a real window (P07-T03).</summary>
     private sealed class DialogConflictPrompt : IConflictPrompt
@@ -550,6 +607,62 @@ public partial class MainWindow : Window
         }
     }
 
+    // ----------------------------------------------------------- P12-T06: the toolbar
+
+    // 🔴 The panel toggles have NO Click handler of their own. They had one at first, on top of
+    // the command that `BindButton` attaches from the registry — so a single click ran the toggle
+    // TWICE and the panel appeared not to move at all. The command is the only path: it is the
+    // same one the shortcut and the menu use, so the layout is saved the same way from all three.
+
+    /// <summary>Opens the repository in the system's file manager (`toolStripFileExplorer`).</summary>
+    private void OnFileExplorerClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { Commits.Repository.WorkingDirectory: { Length: > 0 } path })
+        {
+            OpenFolderInShell(path);
+        }
+    }
+
+    /// <summary>
+    /// Enter applies the filter in the toolbar's filter box.
+    /// </summary>
+    /// <remarks>
+    /// On Enter, not while typing: every application starts a fresh <c>git log</c>, and the
+    /// diff-content filter has to diff every commit to answer. Filtering per keystroke would
+    /// start — and cancel — a process for every letter.
+    /// </remarks>
+    private void OnRevisionFilterKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || DataContext is not MainWindowViewModel model)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        model.Commits.ApplyFilterCommand.Execute(null);
+    }
+
+    // ------------------------------------------------------ P13-T01: the version notice
+
+    private async void OnCheckForUpdatesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel model)
+        {
+            await model.CheckForUpdatesAsync(userRequested: true);
+        }
+    }
+
+    private void OnOpenReleaseNotesClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { UpdateUrl: { Length: > 0 } url })
+        {
+            OpenFolderInShell(url);
+        }
+    }
+
+    private void OnDismissUpdateNoticeClick(object? sender, RoutedEventArgs e) =>
+        (DataContext as MainWindowViewModel)?.DismissUpdateNotice();
+
     private void OnDismissBranchNoticeClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is MainWindowViewModel model)
@@ -575,7 +688,13 @@ public partial class MainWindow : Window
         }
 
         await workingTree.OpenAsync(model.Commits.Repository?.WorkingDirectory);
-        await WorkingTreeWindow.Open(workingTree, this, _registry);
+
+        await WorkingTreeWindow.Open(
+            workingTree,
+            this,
+            _registry,
+            solveConflicts: () => model.ResolveConflictsCommand.Execute(null));
+
         await model.RefreshAsync();
     }
 }

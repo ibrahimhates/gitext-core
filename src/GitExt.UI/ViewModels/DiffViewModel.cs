@@ -554,6 +554,104 @@ public sealed partial class DiffViewModel : ViewModelBase
 
     partial void OnTabWidthChanged(int value) => ShowSelectedFileLines();
 
+    // ---- P12-T20: the options that change WHAT GIT PRODUCES ----
+    //
+    // 🔴 These are a different kind of setting from the ones above. Tab width and "show
+    // whitespace" change how the text already in hand is DRAWN; these change what git is asked
+    // for, so each one has to re-read the diff. Putting them in the same menu without that
+    // distinction is how a switch ends up looking broken.
+
+    /// <summary>How whitespace differences are treated (GitExtensions' three levels).</summary>
+    [ObservableProperty]
+    public partial WhitespaceMode IgnoreWhitespace { get; set; } = WhitespaceMode.Include;
+
+    /// <summary>
+    /// The number of context lines around a hunk.
+    /// </summary>
+    /// <remarks>
+    /// git's default is 3. "Show entire file" is not a mode of its own — in git it is a very
+    /// large <c>-U</c>, and MEASURED it really brings the whole file.
+    /// </remarks>
+    [ObservableProperty]
+    public partial int ContextLines { get; set; } = 3;
+
+    /// <summary>Is the whole file being shown (a very large context)?</summary>
+    public bool ShowEntireFile => ContextLines >= EntireFileContext;
+
+    /// <summary>The context value that means "the whole file".</summary>
+    private const int EntireFileContext = 1_000_000;
+
+    // Fire-and-forget from synchronous property setter. The async reload runs immediately;
+    // tests that need to wait for completion call the public ReloadAsync() method instead.
+    partial void OnIgnoreWhitespaceChanged(WhitespaceMode value) => _ = ReloadForOptionsAsync();
+
+    partial void OnContextLinesChanged(int value)
+    {
+        OnPropertyChanged(nameof(ShowEntireFile));
+        OnPropertyChanged(nameof(ContextLinesLabel));
+        _ = ReloadForOptionsAsync();
+    }
+
+    /// <summary>What the toolbar shows for the current context setting.</summary>
+    public string ContextLinesLabel => ShowEntireFile
+        ? Loc.T("diff.entire_file")
+        : Loc.F("diff.context_lines_n", ContextLines);
+
+    /// <summary>One more line of context (GitExtensions' "increase number of lines").</summary>
+    public void IncreaseContextLines() =>
+        ContextLines = ShowEntireFile ? EntireFileContext : Math.Min(ContextLines + 1, 100);
+
+    /// <summary>One fewer (never below zero — <c>-U0</c> is a legitimate view).</summary>
+    public void DecreaseContextLines() =>
+        ContextLines = ShowEntireFile ? 3 : Math.Max(ContextLines - 1, 0);
+
+    /// <summary>Shows the whole file, or goes back to git's default.</summary>
+    public void ToggleEntireFile() => ContextLines = ShowEntireFile ? 3 : EntireFileContext;
+
+    /// <summary>Chooses a whitespace level (the menu items bind to this).</summary>
+    public void SetWhitespaceMode(WhitespaceMode mode) => IgnoreWhitespace = mode;
+
+    /// <summary>Re-reads the diff with the current options.
+    /// </summary>
+    /// <remarks>
+    /// For tests: <c>SetWhitespaceMode</c> fires property changed notifications, which trigger
+    /// <c>ReloadForOptionsAsync</c>. The reload is fire-and-forget from the property setter, so
+    /// <b>this method must be called after</b> any option change to wait for it to complete.
+    /// </remarks>
+    public Task ReloadAsync() => ReloadForOptionsAsync();
+
+    public bool IsWhitespaceIncluded => IgnoreWhitespace == WhitespaceMode.Include;
+
+    public bool IsWhitespaceEolIgnored => IgnoreWhitespace == WhitespaceMode.IgnoreEol;
+
+    public bool IsWhitespaceChangeIgnored => IgnoreWhitespace == WhitespaceMode.IgnoreChange;
+
+    public bool IsWhitespaceAllIgnored => IgnoreWhitespace == WhitespaceMode.IgnoreAll;
+
+    /// <summary>Re-reads the diff with changed options.
+    /// </summary>
+    /// <returns>A task completing when the re-read finishes (for test synchronization).</returns>
+    /// <remarks>
+    /// The last read is remembered so the option can be applied to it; without that the switch
+    /// would only take effect the next time the user clicked another file — which reads as "the
+    /// setting does nothing".
+    /// </remarks>
+    private async Task ReloadForOptionsAsync()
+    {
+        OnPropertyChanged(nameof(IsWhitespaceIncluded));
+        OnPropertyChanged(nameof(IsWhitespaceEolIgnored));
+        OnPropertyChanged(nameof(IsWhitespaceChangeIgnored));
+        OnPropertyChanged(nameof(IsWhitespaceAllIgnored));
+
+        if (_reload is { } reload)
+        {
+            await reload();
+        }
+    }
+
+    /// <summary>How the last read is repeated. Set by whoever loaded the diff.</summary>
+    private Func<Task>? _reload;
+
     /// <summary>Display settings used when producing rows.</summary>
     private DiffTextOptions TextOptions => new()
     {
@@ -625,6 +723,11 @@ public sealed partial class DiffViewModel : ViewModelBase
 
         Subject = subject;
 
+        // Remembered so a changed option can be applied to the diff ALREADY on screen; without
+        // it the switch would only take effect the next time another file was clicked, which
+        // reads as "the setting does nothing".
+        _reload = () => ShowCommitAsync(workingDirectory, commit, subject, options);
+
         _loading = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         return LoadAsync(workingDirectory, commit, options, _loading.Token);
@@ -660,6 +763,8 @@ public sealed partial class DiffViewModel : ViewModelBase
         }
 
         Subject = subject;
+
+        _reload = () => ShowRangeAsync(workingDirectory, fromRevision, toRevision, subject, options);
 
         _loading = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -701,6 +806,8 @@ public sealed partial class DiffViewModel : ViewModelBase
         }
 
         Subject = subject;
+
+        _reload = () => ShowWorkingTreeAsync(workingDirectory, staged, subject, options);
 
         _loading = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -761,18 +868,23 @@ public sealed partial class DiffViewModel : ViewModelBase
             // Intra-line diff is on by default: seeing EXACTLY what changed in a changed line
             // is the real benefit of reading a diff. Because it is computed locally there is
             // no extra `git` process (P04-T05).
-            IReadOnlyList<FileDiff> diffs = await read(
-                    _reader,
-                    options ?? new DiffOptions
-                    {
-                        WordLevel = true,
+            // The caller's options win where it gave any; the user's own choices (whitespace,
+            // context) are layered on top, because they belong to the VIEW and not to whoever
+            // asked for the diff.
+            DiffOptions effective = (options ?? new DiffOptions
+            {
+                WordLevel = true,
 
-                        // The write path uses this encoding too; if the two diverge the produced
-                        // patch will not match the file's bytes and git rejects it (P05-T16).
-                        ContentEncoding = ContentEncoding,
-                    },
-                    token)
-                .ConfigureAwait(true);
+                // The write path uses this encoding too; if the two diverge the produced
+                // patch will not match the file's bytes and git rejects it (P05-T16).
+                ContentEncoding = ContentEncoding,
+            }) with
+            {
+                Whitespace = IgnoreWhitespace,
+                ContextLines = ContextLines == 3 ? null : ContextLines,
+            };
+
+            IReadOnlyList<FileDiff> diffs = await read(_reader, effective, token).ConfigureAwait(true);
 
             if (token.IsCancellationRequested)
             {

@@ -9,13 +9,13 @@
         d:DesignWidth="1000" d:DesignHeight="600"
         x:Class="GitExt.UI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="{loc:Translate main.gitext_core}"
+        Title="{Binding WindowTitle}"
         Width="1000" Height="600"
         MinWidth="640" MinHeight="400"
         WindowStartupLocation="CenterScreen"
         DragDrop.AllowDrop="True">
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
         <!--
             MAIN MENU — the order and item names were taken from GitExtensions (P08-T26):
@@ -115,43 +115,394 @@
             </MenuItem>
 
             <MenuItem Header="{loc:Translate main.help}">
+                <!--
+                    GitExtensions' Help menu ends with "Check for updates" and then "About"
+                    (`HelpToolStripMenuItem.Designer.cs`); the same two, in the same order.
+                -->
+                <MenuItem Name="MenuCheckForUpdates"
+                          Header="{loc:Translate update.check_for_updates}"
+                          Click="OnCheckForUpdatesClick" />
                 <MenuItem Name="MenuAbout" Header="{loc:Translate main.about}" />
             </MenuItem>
         </Menu>
 
-        <Border Grid.Row="1"
-                Padding="10,7"
-                BorderThickness="0,0,0,1"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+        <!--
+            ==================================================================================
+            MAIN TOOLBAR (`ToolStripMain`) — P12-T06
+            ==================================================================================
 
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <TextBlock Grid.Column="0"
-                           Text="{Binding Subtitle}"
-                           FontSize="12"
-                           Opacity="0.75"
-                           TextTrimming="CharacterEllipsis"
-                           VerticalAlignment="Center" />
+            The order is GitExtensions' own (`FormBrowse.Designer.cs`, `ToolStripMain.Items`):
+
+                Refresh · ─ · toggle left panel · toggle split view · commit info position · ─ ·
+                submodules · [worktrees] · working dir · branch · ─ ·
+                pull · push · commit · stash · ─ · file explorer · terminal · settings
+
+            ⚠️ Commands that are not implemented yet are NOT REMOVED, they are disabled in
+            place — the same rule as the menus. Worktrees is not here at all, because
+            GitExtensions hides it too (`toolStripWorktrees.Visible = false`).
+
+            🔴 The strip that used to be here ("path — N commits") is gone: it repeated what the
+            title bar and this toolbar already say. The loading indicator it carried moved to the
+            right-hand end of this row, where it stays visible.
+        -->
+        <Border Grid.Row="1" Name="MainToolbar" Classes="toolbar">
+            <Grid ColumnDefinitions="*,Auto">
+
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" Spacing="1" VerticalAlignment="Center">
+
+                        <Button Name="ToolRefresh" Classes="tool" Command="{Binding RefreshCommand}">
+                            <PathIcon Data="{StaticResource IconRefresh}" />
+                        </Button>
+
+                        <Border Classes="toolSeparator" />
+
+                        <Button Name="ToolToggleLeftPanel" Classes="tool">
+                            <PathIcon Data="{StaticResource IconLayoutSidebarLeft}" />
+                        </Button>
+
+                        <Button Name="ToolToggleBottomPanel" Classes="tool">
+                            <PathIcon Data="{StaticResource IconLayoutFooter}" />
+                        </Button>
+
+                        <DropDownButton Name="ToolCommitInfoPosition"
+                                        Classes="tool"
+                                        IsEnabled="False"
+                                        ToolTip.Tip="{loc:Translate toolbar.commit_info_position}">
+                            <PathIcon Data="{StaticResource IconLayoutFooterTab}" />
+                            <DropDownButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuItem Name="CommitInfoBelow" Header="{loc:Translate toolbar.commit_info_below_graph}" />
+                                    <MenuItem Name="CommitInfoLeft" Header="{loc:Translate toolbar.commit_info_left_of_graph}" IsEnabled="False" />
+                                    <MenuItem Name="CommitInfoRight" Header="{loc:Translate toolbar.commit_info_right_of_graph}" IsEnabled="False" />
+                                </MenuFlyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton>
+
+                        <Border Classes="toolSeparator" />
+
+                        <Button Name="ToolSubmodules"
+                                Classes="tool"
+                                IsEnabled="False"
+                                ToolTip.Tip="{loc:Translate toolbar.submodules}">
+                            <PathIcon Data="{StaticResource IconSubmodules}" />
+                        </Button>
+
+                        <!-- `_NO_TRANSLATE_WorkingDir`: the repository's name, with the recent list behind it. -->
+                        <DropDownButton Name="ToolWorkingDir"
+                                        Classes="toolText"
+                                        Content="{Binding RepositoryLabel}"
+                                        IsVisible="{Binding HasRepository}">
+                            <DropDownButton.Flyout>
+                                <MenuFlyout ItemsSource="{Binding RecentRepositories}">
+                                    <MenuFlyout.ItemTemplate>
+                                        <DataTemplate DataType="vm:RecentRepositoryItem">
+                                            <TextBlock Text="{Binding Path}" />
+                                        </DataTemplate>
+                                    </MenuFlyout.ItemTemplate>
+                                    <MenuFlyout.ItemContainerTheme>
+                                        <ControlTheme TargetType="MenuItem"
+                                                      BasedOn="{StaticResource {x:Type MenuItem}}"
+                                                      x:DataType="vm:RecentRepositoryItem">
+                                            <Setter Property="Command" Value="{Binding OpenCommand}" />
+                                            <Setter Property="CommandParameter" Value="{Binding Path}" />
+                                        </ControlTheme>
+                                    </MenuFlyout.ItemContainerTheme>
+                                </MenuFlyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton>
+
+                        <!-- `branchSelect`: the current branch; the dropdown switches to another. -->
+                        <SplitButton Name="ToolBranchSelect"
+                                     Classes="toolText"
+                                     Command="{Binding CheckoutCommand}"
+                                     IsVisible="{Binding HasRepository}"
+                                     ToolTip.Tip="{loc:Translate toolbar.change_current_branch}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <PathIcon Data="{StaticResource IconBranch}" />
+                                <TextBlock Name="ToolBranchName" Text="{Binding CurrentBranchLabel}" />
+                            </StackPanel>
+                            <SplitButton.Flyout>
+                                <MenuFlyout ItemsSource="{Binding Branches}">
+                                    <MenuFlyout.ItemTemplate>
+                                        <DataTemplate DataType="vm:ToolbarBranchItem">
+                                            <TextBlock Text="{Binding Name}" FontWeight="{Binding IsCurrent, Converter={x:Static vm:BoldWhenTrue.Instance}}" />
+                                        </DataTemplate>
+                                    </MenuFlyout.ItemTemplate>
+                                    <MenuFlyout.ItemContainerTheme>
+                                        <ControlTheme TargetType="MenuItem"
+                                                      BasedOn="{StaticResource {x:Type MenuItem}}"
+                                                      x:DataType="vm:ToolbarBranchItem">
+                                            <Setter Property="Command" Value="{Binding CheckoutCommand}" />
+                                            <Setter Property="CommandParameter" Value="{Binding Name}" />
+                                            <Setter Property="IsEnabled" Value="{Binding CanCheckout}" />
+                                        </ControlTheme>
+                                    </MenuFlyout.ItemContainerTheme>
+                                </MenuFlyout>
+                            </SplitButton.Flyout>
+                        </SplitButton>
+
+                        <Border Classes="toolSeparator" />
+
+                        <SplitButton Name="ToolPull" Classes="tool" Command="{Binding PullCommand}">
+                            <PathIcon Data="{StaticResource IconPull}" />
+                            <SplitButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuItem Name="PullOpenDialog"
+                                              Header="{loc:Translate toolbar.open_pull_dialog}"
+                                              Command="{Binding PullCommand}" />
+                                    <Separator />
+                                    <MenuItem Name="PullMerge" Header="{loc:Translate toolbar.pull_merge}" IsEnabled="False" />
+                                    <MenuItem Name="PullRebase" Header="{loc:Translate toolbar.pull_rebase}" IsEnabled="False" />
+                                    <MenuItem Name="PullFetch" Header="{loc:Translate toolbar.fetch}" IsEnabled="False" />
+                                    <MenuItem Name="PullFetchAll" Header="{loc:Translate toolbar.fetch_all}" IsEnabled="False" />
+                                    <MenuItem Name="PullFetchPruneAll" Header="{loc:Translate toolbar.fetch_and_prune_all}" IsEnabled="False" />
+                                </MenuFlyout>
+                            </SplitButton.Flyout>
+                        </SplitButton>
+
+                        <Button Name="ToolPush" Classes="tool" Command="{Binding PushCommand}">
+                            <PathIcon Data="{StaticResource IconPush}" />
+                        </Button>
+
+                        <!-- The one button GitExtensions gives a label to; it is the most used. -->
+                        <Button Name="ToolCommit" Classes="toolText">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <PathIcon Data="{StaticResource IconCommit}" />
+                                <TextBlock Text="{loc:Translate toolbar.commit}" />
+                            </StackPanel>
+                        </Button>
+
+                        <SplitButton Name="ToolStash" Classes="tool" Command="{Binding ShowStashCommand}">
+                            <PathIcon Data="{StaticResource IconStash}" />
+                            <SplitButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuItem Name="StashChanges" Header="{loc:Translate toolbar.stash}" IsEnabled="False" />
+                                    <MenuItem Name="StashStaged" Header="{loc:Translate toolbar.stash_staged}" IsEnabled="False" />
+                                    <MenuItem Name="StashPop" Header="{loc:Translate toolbar.stash_pop}" IsEnabled="False" />
+                                    <Separator />
+                                    <MenuItem Name="StashManage"
+                                              Header="{loc:Translate toolbar.manage_stashes}"
+                                              Command="{Binding ShowStashCommand}" />
+                                    <MenuItem Name="StashCreate" Header="{loc:Translate toolbar.create_a_stash}" IsEnabled="False" />
+                                </MenuFlyout>
+                            </SplitButton.Flyout>
+                        </SplitButton>
+
+                        <Border Classes="toolSeparator" />
+
+                        <Button Name="ToolFileExplorer"
+                                Classes="tool"
+                                IsEnabled="{Binding HasRepository}"
+                                ToolTip.Tip="{loc:Translate toolbar.file_explorer}"
+                                Click="OnFileExplorerClick">
+                            <PathIcon Data="{StaticResource IconRepositoryOpen}" />
+                        </Button>
+
+                        <Button Name="ToolTerminal"
+                                Classes="tool"
+                                IsEnabled="False"
+                                ToolTip.Tip="{loc:Translate toolbar.terminal}">
+                            <PathIcon Data="{StaticResource IconTerminal}" />
+                        </Button>
+
+                        <Button Name="ToolSettings" Classes="tool">
+                            <PathIcon Data="{StaticResource IconSettings}" />
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
 
                 <!--
-                    Loading indicator and cancel (P03-T17). In a very large repository the user may
-                    realise they opened the wrong folder; they must not have to wait for it to
-                    finish.
+                    Loading indicator and cancel (P03-T17). In a very large repository the user
+                    may realise they opened the wrong folder; they must not have to wait for it
+                    to finish.
                 -->
-                <TextBlock Grid.Column="1"
-                           Text="{Binding Commits.LoadedCountText}"
-                           IsVisible="{Binding Commits.IsLoading}"
-                           FontSize="12"
-                           Opacity="0.7"
-                           VerticalAlignment="Center"
-                           Margin="8,0" />
-
-                <Button Grid.Column="2"
-                        Content="{loc:Translate main.cancel}"
-                        Command="{Binding CancelLoadingCommand}"
-                        IsVisible="{Binding Commits.IsLoading}"
-                        FontSize="11"
-                        Padding="8,2" />
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="6"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding Commits.IsLoading}">
+                    <TextBlock Text="{Binding Commits.LoadedCountText}"
+                               FontSize="12"
+                               Opacity="0.7"
+                               VerticalAlignment="Center" />
+                    <Button Content="{loc:Translate main.cancel}"
+                            Command="{Binding CancelLoadingCommand}"
+                            FontSize="11"
+                            Padding="8,2" />
+                </StackPanel>
             </Grid>
+        </Border>
+
+        <!--
+            ==================================================================================
+            FILTER TOOLBAR (`ToolStripFilters`) — P12-T07
+            ==================================================================================
+
+            GitExtensions' order (`FilterToolBar.Designer.cs`, `Items.AddRange`):
+
+                advanced filter · reflog · show branches · "Branches:" · branch combo ·
+                branch type · ─ · "Filter:" · filter box · filter type · first parent
+
+            The filtering is REAL: it is git that filters (`-grep` · `-committer` · `-author` ·
+            `-G`), not us hiding rows that were read anyway. Two items are disabled — the reflog
+            view and the advanced filter dialog do not exist yet.
+        -->
+        <Border Grid.Row="2" Name="FilterToolbar" Classes="toolbar" IsVisible="{Binding HasRepository}">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+
+                    <!--
+                        In GitExtensions the funnel's own click opens the advanced filter dialog,
+                        which does not exist here. It is a plain dropdown rather than a split
+                        button, so "Reset revision filters" stays reachable instead of being
+                        locked behind a dead primary action.
+                    -->
+                    <DropDownButton Name="FilterAdvanced"
+                                    Classes="tool"
+                                    ToolTip.Tip="{loc:Translate toolbar.advanced_filter}">
+                        <PathIcon Data="{StaticResource IconFilter}" />
+                        <DropDownButton.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Name="FilterResetPaths" Header="{loc:Translate toolbar.reset_path_filter}" IsEnabled="False" />
+                                <MenuItem Name="FilterResetAll"
+                                          Header="{loc:Translate toolbar.reset_revision_filters}"
+                                          Command="{Binding Commits.ResetFiltersCommand}" />
+                                <Separator />
+                                <MenuItem Name="FilterAdvancedDialog" Header="{loc:Translate toolbar.advanced_filter}" IsEnabled="False" />
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
+
+                    <Button Name="FilterShowReflog"
+                            Classes="tool"
+                            IsEnabled="False"
+                            ToolTip.Tip="{loc:Translate toolbar.show_reflog}">
+                        <PathIcon Data="{StaticResource IconReflog}" />
+                    </Button>
+
+                    <DropDownButton Name="FilterShowBranches"
+                                    Classes="toolText"
+                                    Content="{Binding Commits.BranchModeLabel}">
+                        <DropDownButton.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Name="BranchesAll"
+                                          Header="{loc:Translate toolbar.all_branches}"
+                                          Command="{Binding Commits.SetBranchModeCommand}">
+                                    <MenuItem.CommandParameter>
+                                        <vm:BranchFilterMode>AllBranches</vm:BranchFilterMode>
+                                    </MenuItem.CommandParameter>
+                                </MenuItem>
+                                <MenuItem Name="BranchesCurrent"
+                                          Header="{loc:Translate toolbar.current_branch_only}"
+                                          Command="{Binding Commits.SetBranchModeCommand}">
+                                    <MenuItem.CommandParameter>
+                                        <vm:BranchFilterMode>CurrentBranch</vm:BranchFilterMode>
+                                    </MenuItem.CommandParameter>
+                                </MenuItem>
+                                <MenuItem Name="BranchesFiltered"
+                                          Header="{loc:Translate toolbar.filtered_branches}"
+                                          Command="{Binding Commits.SetBranchModeCommand}">
+                                    <MenuItem.CommandParameter>
+                                        <vm:BranchFilterMode>FilteredBranches</vm:BranchFilterMode>
+                                    </MenuItem.CommandParameter>
+                                </MenuItem>
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
+
+                    <TextBlock Text="{loc:Translate toolbar.branches_label}"
+                               VerticalAlignment="Center"
+                               Margin="6,0,2,0"
+                               FontSize="12" />
+
+                    <ComboBox Name="BranchFilterBox"
+                              ItemsSource="{Binding Branches}"
+                              DisplayMemberBinding="{Binding Name}"
+                              SelectedItem="{Binding SelectedBranchFilter, Mode=TwoWay}"
+                              MinWidth="150"
+                              FontSize="12"
+                              ToolTip.Tip="{loc:Translate toolbar.branch_filter}" />
+
+                    <DropDownButton Name="BranchFilterType"
+                                    Classes="tool"
+                                    IsEnabled="False"
+                                    ToolTip.Tip="{loc:Translate toolbar.branch_filter}">
+                        <PathIcon Data="{StaticResource IconFilter}" />
+                    </DropDownButton>
+
+                    <Border Classes="toolSeparator" />
+
+                    <TextBlock Text="{loc:Translate toolbar.filter_label}"
+                               VerticalAlignment="Center"
+                               Margin="6,0,2,0"
+                               FontSize="12" />
+
+                    <TextBox Name="RevisionFilterBox"
+                             Text="{Binding Commits.FilterText, Mode=TwoWay}"
+                             Width="190"
+                             FontSize="12"
+                             KeyDown="OnRevisionFilterKeyDown"
+                             ToolTip.Tip="{loc:Translate toolbar.text_filter}" />
+
+                    <DropDownButton Name="RevisionFilterType"
+                                    Classes="toolText"
+                                    Content="{Binding Commits.FilterKindLabel}"
+                                    ToolTip.Tip="{loc:Translate toolbar.filter_type}">
+                        <DropDownButton.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Name="FilterByMessage"
+                                          Header="{loc:Translate toolbar.commit_message}"
+                                          Command="{Binding Commits.SetFilterKindCommand}">
+                                    <MenuItem.CommandParameter>
+                                        <vm:RevisionFilterKind>Message</vm:RevisionFilterKind>
+                                    </MenuItem.CommandParameter>
+                                </MenuItem>
+                                <MenuItem Name="FilterByCommitter"
+                                          Header="{loc:Translate toolbar.committer}"
+                                          Command="{Binding Commits.SetFilterKindCommand}">
+                                    <MenuItem.CommandParameter>
+                                        <vm:RevisionFilterKind>Committer</vm:RevisionFilterKind>
+                                    </MenuItem.CommandParameter>
+                                </MenuItem>
+                                <MenuItem Name="FilterByAuthor"
+                                          Header="{loc:Translate toolbar.author}"
+                                          Command="{Binding Commits.SetFilterKindCommand}">
+                                    <MenuItem.CommandParameter>
+                                        <vm:RevisionFilterKind>Author</vm:RevisionFilterKind>
+                                    </MenuItem.CommandParameter>
+                                </MenuItem>
+                                <MenuItem Name="FilterByDiff"
+                                          Header="{loc:Translate toolbar.diff_contains_slow}"
+                                          Command="{Binding Commits.SetFilterKindCommand}">
+                                    <MenuItem.CommandParameter>
+                                        <vm:RevisionFilterKind>DiffContains</vm:RevisionFilterKind>
+                                    </MenuItem.CommandParameter>
+                                </MenuItem>
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
+
+                    <CheckBox Name="FilterFirstParent"
+                              Content="{loc:Translate toolbar.show_only_first_parent}"
+                              IsChecked="{Binding Commits.FirstParentOnly}"
+                              FontSize="12"
+                              Margin="6,0,0,0" />
+
+                    <!--
+                        🔴 A filter left on and forgotten is the classic way to conclude that a
+                        commit "is gone". While one is active it is said so, in words.
+                    -->
+                    <TextBlock Name="FilterActiveNotice"
+                               Text="{loc:Translate toolbar.filter_is_active}"
+                               IsVisible="{Binding Commits.HasActiveFilter}"
+                               VerticalAlignment="Center"
+                               Margin="10,0,0,0"
+                               FontSize="11"
+                               Foreground="{DynamicResource GitExtAttentionBrush}" />
+                </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <!--
@@ -160,7 +511,54 @@
             but an obstacle waiting to be dismissed. Errors go here too; not raw stderr, but the
             classified message.
         -->
-        <Border Grid.Row="2"
+        <!--
+            The version notice (P13-T01). A strip, not a dialog: the same reasoning as every other
+            notice in this application (P05-T15) - a modal box shown at start is an obstacle to be
+            dismissed, and this news is worth a line, not a click.
+
+            🔴 There is NO automatic update. Nothing is downloaded and nothing is run; the button
+            opens the release page in the browser and the rest is the user's business (on Linux,
+            usually their package manager's).
+        -->
+        <!--
+            🔴 Its OWN ROW, not an overlay. Floating it over the content the way the branch notice
+            does put it straight on top of the dashboard's logo panel — the text sat on the blue
+            band and could not be read. A strip that announces something must not cover something
+            else to do it.
+        -->
+        <Border Grid.Row="3"
+                Name="UpdateNoticeBar"
+                IsVisible="{Binding UpdateNotice, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="{DynamicResource GitExtSubtleBackgroundBrush}"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource GitExtSeparatorBrush}"
+                Padding="10,6">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0"
+                           Name="UpdateNoticeText"
+                           Text="{Binding UpdateNotice}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           FontSize="12" />
+
+                <Button Grid.Column="1"
+                        Name="UpdateNotesButton"
+                        Content="{loc:Translate update.release_notes}"
+                        IsVisible="{Binding HasUpdateLink}"
+                        FontSize="12"
+                        Margin="8,0,0,0"
+                        Click="OnOpenReleaseNotesClick" />
+
+                <Button Grid.Column="2"
+                        Name="DismissUpdateNoticeButton"
+                        Content="✕"
+                        FontSize="12"
+                        Margin="4,0,0,0"
+                        Click="OnDismissUpdateNoticeClick" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="4"
                 Name="BranchNoticeBar"
                 VerticalAlignment="Top"
                 IsVisible="{Binding BranchNotice, Converter={x:Static ObjectConverters.IsNotNull}}"
@@ -194,7 +592,7 @@
             showing both strips would tell the user "you are both detached and mid-rebase", and
             "create a branch here" is not the thing to do at that point.
         -->
-        <Border Grid.Row="2"
+        <Border Grid.Row="4"
                 Name="DetachedBanner"
                 VerticalAlignment="Top"
                 IsVisible="{Binding ShowDetachedBanner}"
@@ -222,7 +620,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2"
+        <Border Grid.Row="4"
                 Name="OperationBanner"
                 VerticalAlignment="Top"
                 IsVisible="{Binding ShowOperationBanner}"
@@ -263,7 +661,7 @@
         </Border>
 
         <!-- With no repository open, the welcome screen; rather than an empty window, a way forward. -->
-        <views:WelcomeView Grid.Row="2" IsVisible="{Binding ShowWelcome}" />
+        <views:WelcomeView Grid.Row="4" IsVisible="{Binding ShowWelcome}" />
 
         <!--
             List on top, details below — GitExtensions' layout. The splitter is draggable; with a
@@ -273,9 +671,16 @@
             P06-T13: the branch panel is on the LEFT with a draggable splitter — the same place as
             GitExtensions' RepoObjectsTree (§ 9).
         -->
-        <Grid Grid.Row="2"
+        <!--
+            GitExtensions' content panel has 6 px of padding around the splitters
+            (`toolPanel.ContentPanel.Padding`), so the panels do not sit flush against the window
+            frame. The dashboard is deliberately left flush: its own coloured panels run to the
+            edge there too.
+        -->
+        <Grid Grid.Row="4"
               Name="MainSplitGrid"
               ColumnDefinitions="220,4,*"
+              Margin="6"
               IsVisible="{Binding !ShowWelcome}">
 
             <!--

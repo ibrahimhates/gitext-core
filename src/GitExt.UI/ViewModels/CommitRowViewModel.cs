@@ -25,7 +25,14 @@ public sealed class CommitRowViewModel
     private string? _shortId;
     private string? _dateText;
 
-    public CommitRowViewModel(CommitInfo commit, GraphRow graphRow, IReadOnlyList<RefBadge> badges)
+    public CommitRowViewModel(
+        CommitInfo commit,
+        GraphRow graphRow,
+        IReadOnlyList<RefBadge> badges,
+        GraphRow? previousGraphRow = null,
+        bool isHead = false,
+        bool isRelative = true,
+        bool previousIsRelative = true)
     {
         ArgumentNullException.ThrowIfNull(commit);
         ArgumentNullException.ThrowIfNull(graphRow);
@@ -34,6 +41,10 @@ public sealed class CommitRowViewModel
         Commit = commit;
         GraphRow = graphRow;
         Badges = badges;
+        PreviousGraphRow = previousGraphRow;
+        IsHead = isHead;
+        IsRelative = isRelative;
+        PreviousIsRelative = previousIsRelative;
     }
 
     public CommitInfo Commit { get; }
@@ -71,6 +82,38 @@ public sealed class CommitRowViewModel
     public bool HasBadges => Badges.Count > 0;
 
     public bool IsMerge => Commit.IsMerge;
+
+    /// <summary>
+    /// The row above this one — the lines entering from above belong to it (P12-T09).
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>This is what fixed the broken graph.</b> A row used to draw only the lines LEAVING it
+    /// downwards, and the drawing is clipped to the row's own box, so the half between the previous
+    /// row's node and this one was never drawn by anybody: every lane appeared cut off above every
+    /// commit. GitExtensions draws each segment through three points — previous centre, this
+    /// centre, next centre — so both halves exist and the clipped ends meet exactly.
+    /// </remarks>
+    public GraphRow? PreviousGraphRow { get; }
+
+    /// <summary>Is this the commit <c>HEAD</c> points at?</summary>
+    /// <remarks>
+    /// Its node is drawn with an outline — the same mark GitExtensions puts on it. Without it the
+    /// question "which branch am I on" has no answer in the graph itself.
+    /// </remarks>
+    public bool IsHead { get; }
+
+    /// <summary>
+    /// Is this commit an ancestor of <c>HEAD</c> (or <c>HEAD</c> itself)?
+    /// </summary>
+    /// <remarks>
+    /// Commits that are not are drawn in grey, as GitExtensions does with
+    /// <c>DrawNonRelativesGray</c>: the history you are actually on stays in colour and the other
+    /// branches step back.
+    /// </remarks>
+    public bool IsRelative { get; }
+
+    /// <summary>Whether the row above is relative — it colours the lines coming down from it.</summary>
+    public bool PreviousIsRelative { get; }
 
     public override string ToString() => $"{ShortId} {Subject}";
 }

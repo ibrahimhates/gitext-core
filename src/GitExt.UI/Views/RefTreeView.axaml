@@ -10,15 +10,83 @@
         (§ 9): a search box on top, below it the Branches / Remotes / Tags tree.
         Double-click to check out — as it is in GitExtensions.
     -->
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!--
+            The panel's own toolbar (`leftPanelToolStrip`). GitExtensions' order:
+            collapse all - branches - remotes - worktrees - tags - submodules - stashes.
+            The toggles are remembered: someone who never uses submodules should not have to look
+            at the heading for the rest of their life.
+        -->
+        <Border Grid.Row="0" Name="PanelToolbar" Classes="toolbar" Padding="2,2">
+            <!--
+                Seven buttons have to fit into a panel that is 220 px wide by default, so the icons
+                are a size smaller than the main toolbar's and the padding is tighter. They wrap
+                rather than disappear when the panel is made narrower - GitExtensions pushes them
+                into an overflow menu instead, which hides them just as effectively.
+            -->
+            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Name="PanelCollapseAll"
+                        Classes="tool"
+                        Click="OnCollapseAllClick"
+                        ToolTip.Tip="{loc:Translate ref_tree.collapse_all}">
+                    <PathIcon Data="{StaticResource IconCollapseAll}" />
+                </Button>
+
+                <Border Classes="toolSeparator" />
+
+                <ToggleButton Name="PanelShowBranches"
+                              Classes="tool"
+                              IsChecked="{Binding ShowBranches}"
+                              ToolTip.Tip="{loc:Translate ref_tree.section_branches}">
+                    <PathIcon Data="{StaticResource IconBranch}" />
+                </ToggleButton>
+
+                <ToggleButton Name="PanelShowRemotes"
+                              Classes="tool"
+                              IsChecked="{Binding ShowRemotes}"
+                              ToolTip.Tip="{loc:Translate ref_tree.section_remotes}">
+                    <PathIcon Data="{StaticResource IconRemote}" />
+                </ToggleButton>
+
+                <ToggleButton Name="PanelShowWorkTrees"
+                              Classes="tool"
+                              IsChecked="{Binding ShowWorkTrees}"
+                              ToolTip.Tip="{loc:Translate ref_tree.section_worktrees}">
+                    <PathIcon Data="{StaticResource IconWorkTree}" />
+                </ToggleButton>
+
+                <ToggleButton Name="PanelShowTags"
+                              Classes="tool"
+                              IsChecked="{Binding ShowTags}"
+                              ToolTip.Tip="{loc:Translate ref_tree.section_tags}">
+                    <PathIcon Data="{StaticResource IconTag}" />
+                </ToggleButton>
+
+                <ToggleButton Name="PanelShowSubmodules"
+                              Classes="tool"
+                              IsChecked="{Binding ShowSubmodules}"
+                              ToolTip.Tip="{loc:Translate ref_tree.section_submodules}">
+                    <PathIcon Data="{StaticResource IconSubmodules}" />
+                </ToggleButton>
+
+                <ToggleButton Name="PanelShowStashes"
+                              Classes="tool"
+                              IsChecked="{Binding ShowStashes}"
+                              ToolTip.Tip="{loc:Translate ref_tree.section_stashes}">
+                    <PathIcon Data="{StaticResource IconStash}" />
+                </ToggleButton>
+            </WrapPanel>
+        </Border>
+
         <TextBox Name="FilterBox"
-                 Grid.Row="0"
+                 Grid.Row="1"
                  Margin="4"
                  PlaceholderText="{loc:Translate ref_tree.search}"
                  Text="{Binding Filter}" />
 
         <TreeView Name="RefTree"
-                  Grid.Row="1"
+                  Grid.Row="2"
                   ItemsSource="{Binding Roots}"
                   SelectedItem="{Binding Selected}"
                   DoubleTapped="OnDoubleTapped"
@@ -36,6 +104,18 @@
                 its own flow. A second path meant one of them ending up without the dirty-tree
                 guard.
             -->
+            <!--
+                🔴 The node's `IsExpanded` was NEVER BOUND to the container. The property existed
+                and defaulted to true, but the panel drew every section collapsed and nothing that
+                set it had any effect - so "collapse all" would have been a dead button. TwoWay,
+                so a section the user opens by hand is remembered by the node as well.
+            -->
+            <TreeView.Styles>
+                <Style Selector="TreeViewItem" x:DataType="vm:RefNodeViewModel">
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                </Style>
+            </TreeView.Styles>
+
             <TreeView.ContextMenu>
                 <ContextMenu Name="RefContextMenu">
                     <MenuItem Name="MenuRefCheckout" Header="{loc:Translate ref_tree.chec_k_out_this_branch}" Click="OnCheckoutClick" IsEnabled="{Binding CanCheckoutSelected}" />
@@ -48,6 +128,86 @@
                     <MenuItem Name="MenuRefPush" Header="{loc:Translate ref_tree.push}" Click="OnPushClick" IsEnabled="{Binding CanPushSelected}" />
                     <MenuItem Name="MenuRefRebase" Header="{loc:Translate ref_tree.rebase_current_branch_onto_this}" IsEnabled="False" />
                     <MenuItem Name="MenuRefSetUpstream" Header="{loc:Translate ref_tree.set_upstream}" IsEnabled="False" />
+
+                    <!--
+                        The heading's own items. GitExtensions hangs them off the root node
+                        (`mnuBtnManageRemotesFromRootNode`, `mnuBtnFetchAllRemotes`,
+                        `mnuBtnPruneAllRemotes`, `mnubtnCreateBranch`, `mnubtnStashAllFromRootNode`),
+                        and that is where someone looking for "fetch everything" right-clicks.
+                        They are hidden - not disabled - on other nodes, because a repository menu
+                        that always shows every action of every node kind is unreadable.
+                    -->
+                    <Separator IsVisible="{Binding IsRemotesSectionSelected}" />
+                    <MenuItem Name="MenuRefManageRemotes"
+                              Header="{loc:Translate ref_tree.manage_remotes}"
+                              IsVisible="{Binding IsRemotesSectionSelected}"
+                              Click="OnManageRemotesClick" />
+                    <MenuItem Name="MenuRefFetchAll"
+                              Header="{loc:Translate ref_tree.fetch_all_remotes}"
+                              IsVisible="{Binding IsRemotesSectionSelected}"
+                              Click="OnFetchAllClick" />
+                    <MenuItem Name="MenuRefFetchPruneAll"
+                              Header="{loc:Translate ref_tree.fetch_and_prune_all_remotes}"
+                              IsVisible="{Binding IsRemotesSectionSelected}"
+                              Click="OnFetchPruneAllClick" />
+
+                    <Separator IsVisible="{Binding IsStashesSectionSelected}" />
+                    <MenuItem Name="MenuRefStashAll"
+                              Header="{loc:Translate ref_tree.stash_all}"
+                              IsVisible="{Binding IsStashesSectionSelected}"
+                              Click="OnStashAllClick" />
+                    <MenuItem Name="MenuRefStashStaged"
+                              Header="{loc:Translate ref_tree.stash_staged}"
+                              IsVisible="{Binding IsStashesSectionSelected}"
+                              IsEnabled="False"
+                              ToolTip.Tip="{loc:Translate ref_tree.needs_newer_git}" />
+                    <MenuItem Name="MenuRefManageStashes"
+                              Header="{loc:Translate ref_tree.manage_stashes}"
+                              IsVisible="{Binding IsStashesSectionSelected}"
+                              Click="OnManageStashesClick" />
+
+                    <!-- A stash entry: Open - Apply - Pop - Drop, GitExtensions' order. -->
+                    <Separator IsVisible="{Binding IsStashSelected}" />
+                    <MenuItem Name="MenuRefStashOpen"
+                              Header="{loc:Translate ref_tree.open_stash}"
+                              IsVisible="{Binding IsStashSelected}"
+                              Click="OnManageStashesClick" />
+                    <MenuItem Name="MenuRefStashApply"
+                              Header="{loc:Translate ref_tree.apply_stash}"
+                              IsVisible="{Binding IsStashSelected}"
+                              Click="OnApplyStashClick" />
+                    <MenuItem Name="MenuRefStashPop"
+                              Header="{loc:Translate ref_tree.pop_stash}"
+                              IsVisible="{Binding IsStashSelected}"
+                              Click="OnPopStashClick" />
+                    <MenuItem Name="MenuRefStashDrop"
+                              Header="{loc:Translate ref_tree.drop_stash}"
+                              IsVisible="{Binding IsStashSelected}"
+                              Click="OnDropStashClick" />
+
+                    <!-- A submodule: Open - Update - Show in folder. -->
+                    <Separator IsVisible="{Binding IsSubmoduleSelected}" />
+                    <MenuItem Name="MenuRefOpenSubmodule"
+                              Header="{loc:Translate ref_tree.open}"
+                              IsVisible="{Binding IsSubmoduleSelected}"
+                              Click="OnOpenPathClick" />
+                    <MenuItem Name="MenuRefUpdateSubmodule"
+                              Header="{loc:Translate ref_tree.update_submodule}"
+                              IsVisible="{Binding IsSubmoduleSelected}"
+                              Click="OnUpdateSubmoduleClick" />
+
+                    <!-- A linked working tree: Open - copy path - show in folder. -->
+                    <Separator IsVisible="{Binding IsWorkTreeSelected}" />
+                    <MenuItem Name="MenuRefOpenWorkTree"
+                              Header="{loc:Translate ref_tree.open}"
+                              IsVisible="{Binding IsWorkTreeSelected}"
+                              Click="OnOpenPathClick" />
+
+                    <MenuItem Name="MenuRefShowInFolder"
+                              Header="{loc:Translate dashboard.show_in_folder}"
+                              IsVisible="{Binding CanOpenSelected}"
+                              Click="OnShowInFolderClick" />
+
                     <Separator />
                     <MenuItem Name="MenuRefCopyName" Header="{loc:Translate ref_tree.copy_name}" Click="OnCopyNameClick" IsEnabled="{Binding CanCopySelectedName}" />
                 </ContextMenu>
@@ -71,7 +231,7 @@
         </TreeView>
 
         <TextBlock Name="EmptyText"
-                   Grid.Row="1"
+                   Grid.Row="2"
                    Text="{loc:Translate ref_tree.no_matching_branch}"
                    FontSize="11"
                    Opacity="0.7"

@@ -71,6 +71,62 @@ public sealed class GeneralSettings
     [JsonPropertyName("hasCompletedFirstRun")]
     public bool HasCompletedFirstRun { get; set; }
 
+    /// <summary>
+    /// Should the repository that was open at shutdown be reopened at startup (P12-T04)?
+    /// </summary>
+    /// <remarks>
+    /// <b>Off by default</b>, and that is GitExtensions' default too
+    /// (<c>AppSettings.StartWithRecentWorkingDir</c>, <c>GetBool(…, false)</c>): starting the
+    /// application lands on the dashboard, and the repository is chosen from there. Turning it on
+    /// restores the P08-T16 behaviour.
+    /// </remarks>
+    [JsonPropertyName("startWithRecentWorkingDir")]
+    public bool StartWithRecentWorkingDir { get; set; }
+
+    /// <summary>
+    /// Should the application check whether a newer version has been published (P13-T01)?
+    /// </summary>
+    /// <remarks>
+    /// <b>On by default</b>, as it is in GitExtensions (<c>chkCheckForUpdates.Checked = true</c>).
+    /// The check is a single public GET to the release page, at most once a week; nothing is
+    /// downloaded and nothing is installed.
+    /// </remarks>
+    [JsonPropertyName("checkForUpdates")]
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>When the last check ran (round-trip format); empty when it never has.</summary>
+    /// <remarks>
+    /// Kept as text rather than <see cref="DateTimeOffset"/>: the settings file is versioned
+    /// (ADR-0006) and a string survives a change of serializer without a migration.
+    /// </remarks>
+    [JsonPropertyName("lastUpdateCheck")]
+    public string LastUpdateCheck { get; set; } = "";
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Unknown { get; set; }
+}
+
+/// <summary>Which sections the left panel shows (P12-T13).</summary>
+public sealed class LeftPanelSections
+{
+    [JsonPropertyName("branches")]
+    public bool Branches { get; set; } = true;
+
+    [JsonPropertyName("remotes")]
+    public bool Remotes { get; set; } = true;
+
+    [JsonPropertyName("worktrees")]
+    public bool WorkTrees { get; set; } = true;
+
+    [JsonPropertyName("tags")]
+    public bool Tags { get; set; } = true;
+
+    [JsonPropertyName("submodules")]
+    public bool Submodules { get; set; } = true;
+
+    [JsonPropertyName("stashes")]
+    public bool Stashes { get; set; } = true;
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
 }
@@ -116,6 +172,18 @@ public sealed class LayoutSettings
 
     [JsonPropertyName("bottomPanelVisible")]
     public bool BottomPanelVisible { get; set; } = true;
+
+    /// <summary>
+    /// Which sections the left panel shows (P12-T13).
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions keeps the same six toggles
+    /// (<c>RepoObjectsTreeShowBranches</c> … <c>RepoObjectsTreeShowStashes</c>). All on by
+    /// default: a repository with no submodules does not show the heading anyway, because an
+    /// empty section is not drawn.
+    /// </remarks>
+    [JsonPropertyName("leftPanelSections")]
+    public LeftPanelSections LeftPanel { get; set; } = new();
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }

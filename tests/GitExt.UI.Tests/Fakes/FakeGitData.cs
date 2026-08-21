@@ -47,6 +47,15 @@ public sealed class FakeCommitLogReader : ICommitLogReader
     /// <summary>How many times it was awaited while streaming — to test batched updates.</summary>
     public int StreamCallCount { get; private set; }
 
+    /// <summary>
+    /// The query of the last read — this is what the filter tests assert on (P12-T07).
+    /// </summary>
+    /// <remarks>
+    /// The filtering is git's job, so what has to be verified is <b>the query handed to git</b>,
+    /// not which rows a fake happened to return.
+    /// </remarks>
+    public CommitLogQuery? LastQuery { get; private set; }
+
     public FakeCommitLogReader(IReadOnlyList<CommitInfo>? commits = null, Exception? failure = null)
     {
         _commits = commits ?? [];
@@ -56,10 +65,14 @@ public sealed class FakeCommitLogReader : ICommitLogReader
     public Task<IReadOnlyList<CommitInfo>> ReadAsync(
         string workingDirectory,
         CommitLogQuery query,
-        CancellationToken cancellationToken = default) =>
-        _failure is not null
+        CancellationToken cancellationToken = default)
+    {
+        LastQuery = query;
+
+        return _failure is not null
             ? Task.FromException<IReadOnlyList<CommitInfo>>(_failure)
             : Task.FromResult(_commits);
+    }
 
     public async IAsyncEnumerable<CommitInfo> StreamAsync(
         string workingDirectory,
@@ -67,6 +80,7 @@ public sealed class FakeCommitLogReader : ICommitLogReader
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         StreamCallCount++;
+        LastQuery = query;
 
         if (_failure is not null)
         {
@@ -148,6 +162,15 @@ public sealed class FakeDiffReader : IDiffReader
 
     public int ReadCallCount { get; private set; }
 
+    /// <summary>
+    /// The options of the last read — the diff option tests assert on these (P12-T20).
+    /// </summary>
+    /// <remarks>
+    /// Whitespace and context are git's job; what has to be verified is <b>what git was asked
+    /// for</b>, not what a fake chose to return.
+    /// </remarks>
+    public DiffOptions? LastOptions { get; private set; }
+
     public FakeDiffReader(IReadOnlyList<FileDiff>? diffs = null, Exception? failure = null)
     {
         _diffs = diffs ?? [];
@@ -161,6 +184,7 @@ public sealed class FakeDiffReader : IDiffReader
         CancellationToken cancellationToken = default)
     {
         ReadCallCount++;
+        LastOptions = options;
 
         return _failure is not null
             ? Task.FromException<IReadOnlyList<FileDiff>>(_failure)
@@ -182,6 +206,7 @@ public sealed class FakeDiffReader : IDiffReader
         CancellationToken cancellationToken = default)
     {
         ReadCallCount++;
+        LastOptions = options;
 
         return _failure is not null
             ? Task.FromException<IReadOnlyList<FileDiff>>(_failure)
@@ -206,26 +231,64 @@ public sealed class FakeDiffReader : IDiffReader
 /// </summary>
 public sealed class FakeRecentRepositoryStore : IRecentRepositoryStore
 {
-    private readonly List<string> _repositories;
+    private readonly List<RecentRepository> _repositories;
 
     public FakeRecentRepositoryStore(params string[] initial)
     {
-        _repositories = [.. initial];
+        _repositories = [.. initial.Select(path => new RecentRepository(path))];
     }
 
-    public Task<IReadOnlyList<string>> LoadAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<string>>([.. _repositories]);
+    /// <summary>The paths in order — what most of the tests actually assert on.</summary>
+    public IReadOnlyList<string> Paths => [.. _repositories.Select(r => r.Path)];
+
+    /// <summary>Files a repository under a category up front (P12-T03).</summary>
+    public FakeRecentRepositoryStore WithCategory(string workingDirectory, string category)
+    {
+        int index = _repositories.FindIndex(r => r.Path == workingDirectory);
+
+        if (index >= 0)
+        {
+            _repositories[index] = _repositories[index] with { Category = category };
+        }
+        else
+        {
+            _repositories.Add(new RecentRepository(workingDirectory, category));
+        }
+
+        return this;
+    }
+
+    public Task<IReadOnlyList<RecentRepository>> LoadAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<RecentRepository>>([.. _repositories]);
 
     public Task AddAsync(string workingDirectory, CancellationToken cancellationToken = default)
     {
-        _repositories.Remove(workingDirectory);
-        _repositories.Insert(0, workingDirectory);
+        RecentRepository? existing = _repositories.FirstOrDefault(r => r.Path == workingDirectory);
+
+        _repositories.RemoveAll(r => r.Path == workingDirectory);
+        _repositories.Insert(0, new RecentRepository(workingDirectory, existing?.Category));
+
         return Task.CompletedTask;
     }
 
     public Task RemoveAsync(string workingDirectory, CancellationToken cancellationToken = default)
     {
-        _repositories.Remove(workingDirectory);
+        _repositories.RemoveAll(r => r.Path == workingDirectory);
+        return Task.CompletedTask;
+    }
+
+    public Task SetCategoryAsync(
+        string workingDirectory,
+        string? category,
+        CancellationToken cancellationToken = default)
+    {
+        int index = _repositories.FindIndex(r => r.Path == workingDirectory);
+
+        if (index >= 0)
+        {
+            _repositories[index] = _repositories[index] with { Category = category };
+        }
+
         return Task.CompletedTask;
     }
 }
@@ -420,6 +483,12 @@ public sealed class FakeStatusReader : IStatusReader
 
     public IList<FileStatus> Entries => _entries;
 
+    /// <summary>The branch the status reports — the commit screen's status bar shows it (P12-T16).</summary>
+    public string BranchName { get; set; } = "main";
+
+    /// <summary>The upstream branch, or <see langword="null"/> when there is none.</summary>
+    public string? Upstream { get; set; }
+
     public Task<WorkingTreeStatus> ReadAsync(
         string workingDirectory,
         bool includeIgnored = false,
@@ -435,7 +504,8 @@ public sealed class FakeStatusReader : IStatusReader
 
         return Task.FromResult(new WorkingTreeStatus
         {
-            BranchName = "main",
+            BranchName = BranchName,
+            Upstream = Upstream,
             Entries = [.. _entries],
         });
     }

@@ -168,6 +168,65 @@
                     ⚠️ They currently live only for the session — persisting them depends on
                     the settings infrastructure (`P08-T14`).
                 -->
+                <!--
+                    Whitespace and context change WHAT GIT PRODUCES, so they sit in their own
+                    button; the "View" flyout next to it only changes how the text in hand is
+                    drawn. GitExtensions keeps the same split (the first group is in the file
+                    viewer's context menu, the display ones on the toolbar).
+
+                    The three levels are GitExtensions' own
+                    (`ignoreWhitespaceAtEol` · `ignoreWhitespaceChanges` · `ignoreAllWhitespace`)
+                    and they really are three: MEASURED, a line whose whitespace changed INSIDE
+                    it is still shown by "at end of line" and dropped by "changes".
+                -->
+                <Button Name="DiffOptionsButton"
+                        Content="{loc:Translate diff.ignore_whitespace}"
+                        FontSize="11"
+                        Padding="8,2">
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuItem Name="WhitespaceNone"
+                                      Header="{loc:Translate diff.dont_ignore_whitespace}"
+                                      Click="OnWhitespaceNoneClick"
+                                      ToggleType="Radio"
+                                      IsChecked="{Binding IsWhitespaceIncluded, Mode=OneWay}" />
+                            <MenuItem Name="WhitespaceEol"
+                                      Header="{loc:Translate diff.ignore_whitespace_at_eol}"
+                                      Click="OnWhitespaceEolClick"
+                                      ToggleType="Radio"
+                                      IsChecked="{Binding IsWhitespaceEolIgnored, Mode=OneWay}" />
+                            <MenuItem Name="WhitespaceChange"
+                                      Header="{loc:Translate diff.ignore_whitespace_changes}"
+                                      Click="OnWhitespaceChangeClick"
+                                      ToggleType="Radio"
+                                      IsChecked="{Binding IsWhitespaceChangeIgnored, Mode=OneWay}" />
+                            <MenuItem Name="WhitespaceAll"
+                                      Header="{loc:Translate diff.ignore_all_whitespace}"
+                                      Click="OnWhitespaceAllClick"
+                                      ToggleType="Radio"
+                                      IsChecked="{Binding IsWhitespaceAllIgnored, Mode=OneWay}" />
+                            <Separator />
+                            <MenuItem Name="MoreContext"
+                                      Header="{loc:Translate diff.more_context_lines}"
+                                      Click="OnMoreContextClick" />
+                            <MenuItem Name="LessContext"
+                                      Header="{loc:Translate diff.fewer_context_lines}"
+                                      Click="OnLessContextClick" />
+                            <MenuItem Name="EntireFile"
+                                      Header="{loc:Translate diff.show_entire_file}"
+                                      Click="OnEntireFileClick"
+                                      ToggleType="CheckBox"
+                                      IsChecked="{Binding ShowEntireFile, Mode=OneWay}" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <TextBlock Name="ContextLabel"
+                           Text="{Binding ContextLinesLabel}"
+                           FontSize="11"
+                           Opacity="0.7"
+                           VerticalAlignment="Center" />
+
                 <Button Content="{loc:Translate diff.view}" FontSize="11" Padding="8,2">
                     <Button.Flyout>
                         <Flyout Placement="Bottom">
@@ -427,6 +486,41 @@
                         <MenuItem Header="{loc:Translate diff.copy_as_patch}" Click="OnCopyPatchClick" />
                         <MenuItem Header="{loc:Translate diff.copy_new_version}" Click="OnCopyNewClick" />
                         <MenuItem Header="{loc:Translate diff.copy_old_version}" Click="OnCopyOldClick" />
+
+                        <!--
+                            GitExtensions puts the context and whitespace items in this menu, in
+                            this order (`FileViewer.Designer.cs`): increase - decrease - show
+                            entire file - ... - ignore at eol - ignore changes - ignore all.
+                            They are the same commands the toolbar button carries; a second path
+                            would be a second place to forget the re-read.
+                        -->
+                        <Separator />
+                        <MenuItem Name="MenuMoreContext"
+                                  Header="{loc:Translate diff.more_context_lines}"
+                                  Click="OnMoreContextClick" />
+                        <MenuItem Name="MenuLessContext"
+                                  Header="{loc:Translate diff.fewer_context_lines}"
+                                  Click="OnLessContextClick" />
+                        <MenuItem Name="MenuEntireFile"
+                                  Header="{loc:Translate diff.show_entire_file}"
+                                  Click="OnEntireFileClick"
+                                  ToggleType="CheckBox"
+                                  IsChecked="{Binding ShowEntireFile, Mode=OneWay}" />
+                        <MenuItem Name="MenuWhitespaceEol"
+                                  Header="{loc:Translate diff.ignore_whitespace_at_eol}"
+                                  Click="OnWhitespaceEolClick"
+                                  ToggleType="CheckBox"
+                                  IsChecked="{Binding IsWhitespaceEolIgnored, Mode=OneWay}" />
+                        <MenuItem Name="MenuWhitespaceChange"
+                                  Header="{loc:Translate diff.ignore_whitespace_changes}"
+                                  Click="OnWhitespaceChangeClick"
+                                  ToggleType="CheckBox"
+                                  IsChecked="{Binding IsWhitespaceChangeIgnored, Mode=OneWay}" />
+                        <MenuItem Name="MenuWhitespaceAll"
+                                  Header="{loc:Translate diff.ignore_all_whitespace}"
+                                  Click="OnWhitespaceAllClick"
+                                  ToggleType="CheckBox"
+                                  IsChecked="{Binding IsWhitespaceAllIgnored, Mode=OneWay}" />
                     </ContextMenu>
                 </ListBox.ContextMenu>
 

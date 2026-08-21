@@ -1,0 +1,127 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ===================================================================================
+        Icons (P12-T03)
+        ===================================================================================
+
+        GitExtensions ships its icons as PNG resources. Here they are geometry: a vector scales
+        with the interface font (P08-T09 makes that adjustable), needs no per-DPI variants, and —
+        the reason that decides it — takes its colour from the theme. A bitmap drawn for a light
+        background is the thing that goes unreadable when the dark theme is switched on, and
+        nothing fails when it does.
+
+        All paths are drawn on a 16×16 box; `PathIcon` scales them. `F0` at the start of a path
+        means the even-odd fill rule — that is how the rings (globe, magnifier) get their hole.
+    -->
+
+    <!-- Start links (`flpnlStart`) ................................................. -->
+
+    <!-- Create new repository: a plus. -->
+    <StreamGeometry x:Key="IconRepositoryCreate">M7,3 H9 V7 H13 V9 H9 V13 H7 V9 H3 V7 H7 Z</StreamGeometry>
+
+    <!-- Open repository: an open folder. -->
+    <StreamGeometry x:Key="IconRepositoryOpen">M1.5,2.5 H6 L7.5,4.5 H13 V6 H5.2 L2.6,12.5 H1.5 Z M6.2,7 H15 L12.4,13.5 H3.6 Z</StreamGeometry>
+
+    <!-- Clone repository: a copy of one thing into another. -->
+    <StreamGeometry x:Key="IconRepositoryClone">M2,2 H9.5 V4 H4 V10.5 H2 Z M5.5,5.5 H14 V14 H5.5 Z</StreamGeometry>
+
+    <!-- Contribute links (`flpnlContribute`) ....................................... -->
+
+    <!-- Develop: code brackets. -->
+    <StreamGeometry x:Key="IconDevelop">M5.4,3.4 L6.8,4.8 L3.6,8 L6.8,11.2 L5.4,12.6 L0.8,8 Z M10.6,3.4 L15.2,8 L10.6,12.6 L9.2,11.2 L12.4,8 L9.2,4.8 Z</StreamGeometry>
+
+    <!-- Translate: a globe. -->
+    <StreamGeometry x:Key="IconTranslate">F0 M1,8 A7,7 0 1 0 15,8 A7,7 0 1 0 1,8 Z M3,8 A5,5 0 1 1 13,8 A5,5 0 1 1 3,8 Z M2,7.4 H14 V8.6 H2 Z M7.4,2 H8.6 V14 H7.4 Z</StreamGeometry>
+
+    <!-- Report an issue: a bug. -->
+    <StreamGeometry x:Key="IconIssue">M8,2.5 A3.5,3.5 0 0 1 11.5,6 V9.5 A3.5,3.5 0 0 1 4.5,9.5 V6 A3.5,3.5 0 0 1 8,2.5 Z M0.8,6 H3.6 V7.2 H0.8 Z M12.4,6 H15.2 V7.2 H12.4 Z M0.8,10 H3.6 V11.2 H0.8 Z M12.4,10 H15.2 V11.2 H12.4 Z</StreamGeometry>
+
+    <!-- Repository tiles (`listView1`) .............................................. -->
+
+    <!-- The folder of a repository. -->
+    <StreamGeometry x:Key="IconRepositoryFolder">M1.5,2.5 H6 L7.5,4.5 H14.5 V13.5 H1.5 Z</StreamGeometry>
+
+    <!--
+        A folder that can no longer be reached: the same shape with a gap struck out of it, so it
+        is told apart by its FORM and not only by its colour — colour alone is not a signal
+        everybody can see (P08-T11, the colour-blind palette).
+    -->
+    <StreamGeometry x:Key="IconRepositoryFolderMissing">F0 M1.5,2.5 H6 L7.5,4.5 H14.5 V13.5 H1.5 Z M5.4,6.6 L6.4,5.6 L8,7.2 L9.6,5.6 L10.6,6.6 L9,8.2 L10.6,9.8 L9.6,10.8 L8,9.2 L6.4,10.8 L5.4,9.8 L7,8.2 Z</StreamGeometry>
+
+    <!-- A repository filed under a category — GitExtensions draws the same star. -->
+    <StreamGeometry x:Key="IconStar">M8,1.4 L9.9,5.4 L14.3,6 L11.1,9.1 L11.9,13.5 L8,11.4 L4.1,13.5 L4.9,9.1 L1.7,6 L6.1,5.4 Z</StreamGeometry>
+
+    <!-- The branch the repository is on. -->
+    <StreamGeometry x:Key="IconBranch">M4.5,1.5 A2,2 0 1 1 3.9,5.4 V10.6 A2,2 0 1 1 5.1,10.6 V8.6 A3,3 0 0 0 8.1,5.6 H9.4 A2,2 0 1 0 9.4,4.4 H8.1 A3,3 0 0 0 5.1,1.5 Z</StreamGeometry>
+
+    <!-- The search box. -->
+    <StreamGeometry x:Key="IconSearch">F0 M6.5,1 A5.5,5.5 0 1 0 6.51,1 Z M6.5,3 A3.5,3.5 0 1 1 6.49,3 Z M10.2,11.3 L11.3,10.2 L15.3,14.2 L14.2,15.3 Z</StreamGeometry>
+
+    <!-- Main toolbar (`ToolStripMain`) ............................................ -->
+
+    <!-- Refresh: an arrow going round. -->
+    <StreamGeometry x:Key="IconRefresh">M8,1.6 V0 L11.8,2.6 L8,5.2 V3.4 A4.6,4.6 0 1 0 12.6,8 H14.4 A6.4,6.4 0 1 1 8,1.6 Z</StreamGeometry>
+
+    <!-- Toggle the left panel: a window with its left column filled. -->
+    <StreamGeometry x:Key="IconLayoutSidebarLeft">F0 M1.5,2.5 H14.5 V13.5 H1.5 Z M6.2,4 H13 V12 H6.2 Z</StreamGeometry>
+
+    <!-- Toggle the bottom panel: a window with its bottom band filled. -->
+    <StreamGeometry x:Key="IconLayoutFooter">F0 M1.5,2.5 H14.5 V13.5 H1.5 Z M3,4 H13 V9.2 H3 Z</StreamGeometry>
+
+    <!-- Where the commit info sits. -->
+    <StreamGeometry x:Key="IconLayoutFooterTab">F0 M1.5,2.5 H14.5 V13.5 H1.5 Z M3,4 H13 V8.4 H3 Z M3,9.8 H7 V12 H3 Z</StreamGeometry>
+
+    <!-- Submodules: repositories inside the repository. -->
+    <StreamGeometry x:Key="IconSubmodules">M2,2 H7 V7 H2 Z M9,2 H14 V7 H9 Z M2,9 H7 V14 H2 Z</StreamGeometry>
+
+    <!-- Pull: an arrow coming down onto the working tree. -->
+    <StreamGeometry x:Key="IconPull">M7,1.4 H9 V7.8 H11.6 L8,12 L4.4,7.8 H7 Z M3,13.2 H13 V14.6 H3 Z</StreamGeometry>
+
+    <!-- Push: an arrow going up out of it. -->
+    <StreamGeometry x:Key="IconPush">M8,1.4 L11.6,5.6 H9 V12 H7 V5.6 H4.4 Z M3,13.2 H13 V14.6 H3 Z</StreamGeometry>
+
+    <!-- Commit: a node on the line. -->
+    <StreamGeometry x:Key="IconCommit">M1.6,7.2 H5 V8.8 H1.6 Z M11,7.2 H14.4 V8.8 H11 Z M5,8 A3,3 0 1 1 11,8 A3,3 0 1 1 5,8 Z</StreamGeometry>
+
+    <!-- Stash: work put in a box for later. -->
+    <StreamGeometry x:Key="IconStash">M1.8,2.6 H14.2 V6 H1.8 Z M3,7.2 H13 V13.4 H3 Z M6.2,8.8 H9.8 V10.2 H6.2 Z</StreamGeometry>
+
+    <!-- A terminal in the repository. -->
+    <StreamGeometry x:Key="IconTerminal">M3,4.4 L4.4,3 L8.4,7 L4.4,11 L3,9.6 L5.6,7 Z M8.5,10.4 H13 V12.2 H8.5 Z</StreamGeometry>
+
+    <!-- Settings. -->
+    <StreamGeometry x:Key="IconSettings">M2,3.9 H14 V5.3 H2 Z M2,10.7 H14 V12.1 H2 Z M5,2.2 H6.6 V7 H5 Z M9.4,9 H11 V13.8 H9.4 Z</StreamGeometry>
+
+    <!-- Filter toolbar (`ToolStripFilters`) ........................................ -->
+
+    <!-- The filter itself: a funnel. -->
+    <StreamGeometry x:Key="IconFilter">M1.6,2.4 H14.4 L9.4,8.4 V13.6 L6.6,12.1 V8.4 Z</StreamGeometry>
+
+    <!-- The reflog: where HEAD has been. -->
+    <StreamGeometry x:Key="IconReflog">F0 M8,1.4 A6.6,6.6 0 1 0 8.01,1.4 Z M8,3.2 A4.8,4.8 0 1 1 7.99,3.2 Z M7.3,4.4 H8.7 V8.2 H11.4 V9.6 H7.3 Z</StreamGeometry>
+
+    <!-- Left panel (`leftPanelToolStrip`) ......................................... -->
+
+    <!-- Collapse everything: arrows meeting in the middle. -->
+    <StreamGeometry x:Key="IconCollapseAll">M4,2.4 L8,6.4 L12,2.4 L13.4,3.8 L8,9.2 L2.6,3.8 Z M2.6,11 H13.4 V12.6 H2.6 Z</StreamGeometry>
+
+    <!-- A remote repository: a box on the network. -->
+    <StreamGeometry x:Key="IconRemote">M2,3 H14 V8 H2 Z M7.2,9.2 H8.8 V11.4 H7.2 Z M3.4,12 H12.6 V13.8 H3.4 Z</StreamGeometry>
+
+    <!-- A linked working tree: a second copy of the tree. -->
+    <StreamGeometry x:Key="IconWorkTree">M2,2 H7 V6.6 H2 Z M9,2 H14 V6.6 H9 Z M4,7.6 H5 V10 H11 V7.6 H12 V11.4 H4 Z M7.2,12 H8.8 V14 H7.2 Z</StreamGeometry>
+
+    <!-- A tag. -->
+    <StreamGeometry x:Key="IconTag">F0 M1.6,1.6 H8.4 L14.4,7.6 L7.6,14.4 L1.6,8.4 Z M4.4,3.6 A1.4,1.4 0 1 0 4.41,3.6 Z</StreamGeometry>
+
+    <!-- Staging (`toolbarStaged`) .................................................. -->
+
+    <!-- Stage everything: everything moves down into the index. -->
+    <StreamGeometry x:Key="IconStageAll">M2,1.6 H14 V3.2 H2 Z M7,4.6 H9 V9.6 H11.8 L8,13.8 L4.2,9.6 H7 Z</StreamGeometry>
+
+    <!-- Unstage everything: everything comes back up. -->
+    <StreamGeometry x:Key="IconUnstageAll">M8,2.2 L11.8,6.4 H9 V11.4 H7 V6.4 H4.2 Z M2,12.8 H14 V14.4 H2 Z</StreamGeometry>
+
+</ResourceDictionary>

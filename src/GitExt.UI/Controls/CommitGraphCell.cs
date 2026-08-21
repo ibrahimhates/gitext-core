@@ -46,6 +46,35 @@ public sealed class CommitGraphCell : Control
         AvaloniaProperty.Register<CommitGraphCell, GraphRow?>(nameof(Row));
 
     /// <summary>
+    /// The row above — the lines that come down into this row belong to it (P12-T09).
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>The graph was broken without this.</b> Drawing is clipped to each row's own box, so a
+    /// row that only draws the lines LEAVING it downwards leaves the upper half of every
+    /// connection unpainted: the lanes look cut off above every commit. GitExtensions draws each
+    /// segment through three points — previous centre, this centre, next centre — so each half is
+    /// drawn by the row it belongs to and the clipped ends meet.
+    /// </remarks>
+    public static readonly StyledProperty<GraphRow?> PreviousRowProperty =
+        AvaloniaProperty.Register<CommitGraphCell, GraphRow?>(nameof(PreviousRow));
+
+    /// <summary>Does the commit carry refs? Then its node is a square, as in GitExtensions.</summary>
+    public static readonly StyledProperty<bool> HasRefsProperty =
+        AvaloniaProperty.Register<CommitGraphCell, bool>(nameof(HasRefs));
+
+    /// <summary>Is this the commit <c>HEAD</c> points at? Then its node gets an outline.</summary>
+    public static readonly StyledProperty<bool> IsHeadProperty =
+        AvaloniaProperty.Register<CommitGraphCell, bool>(nameof(IsHead));
+
+    /// <summary>Is the commit an ancestor of <c>HEAD</c>? If not, it is drawn grey.</summary>
+    public static readonly StyledProperty<bool> IsRelativeProperty =
+        AvaloniaProperty.Register<CommitGraphCell, bool>(nameof(IsRelative), true);
+
+    /// <summary>Is the row above relative? It colours the lines coming down from it.</summary>
+    public static readonly StyledProperty<bool> PreviousIsRelativeProperty =
+        AvaloniaProperty.Register<CommitGraphCell, bool>(nameof(PreviousIsRelative), true);
+
+    /// <summary>
     /// The lane colours.
     /// </summary>
     /// <remarks>
@@ -79,8 +108,9 @@ public sealed class CommitGraphCell : Control
     static CommitGraphCell()
     {
         AffectsRender<CommitGraphCell>(
-            RowProperty, LaneWidthProperty, NodeRadiusProperty, LineThicknessProperty,
-            PaletteProperty, FirstLaneProperty, VisibleLanesProperty);
+            RowProperty, PreviousRowProperty, LaneWidthProperty, NodeRadiusProperty,
+            LineThicknessProperty, PaletteProperty, FirstLaneProperty, VisibleLanesProperty,
+            HasRefsProperty, IsHeadProperty, IsRelativeProperty, PreviousIsRelativeProperty);
 
         AffectsMeasure<CommitGraphCell>(LaneWidthProperty, VisibleLanesProperty);
     }
@@ -119,6 +149,36 @@ public sealed class CommitGraphCell : Control
     {
         get => GetValue(RowProperty);
         set => SetValue(RowProperty, value);
+    }
+
+    public GraphRow? PreviousRow
+    {
+        get => GetValue(PreviousRowProperty);
+        set => SetValue(PreviousRowProperty, value);
+    }
+
+    public bool HasRefs
+    {
+        get => GetValue(HasRefsProperty);
+        set => SetValue(HasRefsProperty, value);
+    }
+
+    public bool IsHead
+    {
+        get => GetValue(IsHeadProperty);
+        set => SetValue(IsHeadProperty, value);
+    }
+
+    public bool IsRelative
+    {
+        get => GetValue(IsRelativeProperty);
+        set => SetValue(IsRelativeProperty, value);
+    }
+
+    public bool PreviousIsRelative
+    {
+        get => GetValue(PreviousIsRelativeProperty);
+        set => SetValue(PreviousIsRelativeProperty, value);
     }
 
     public IReadOnlyList<Color>? Palette
@@ -198,40 +258,184 @@ public sealed class CommitGraphCell : Control
         int first = FirstLane;
         int last = first + Math.Max(VisibleLanes, 1) - 1;
 
-        // Edges first, so the nodes are drawn over them.
+        // 🔴 The lines COMING DOWN from the row above are drawn first, and they are what used to
+        // be missing: drawing is clipped to this row's box, so the half of the connection above
+        // this commit belongs to nobody unless it is drawn here. Without it every lane looked cut
+        // off above every commit — the whole graph read as a column of dashes.
+        if (PreviousRow is { } previous)
+        {
+            foreach (GraphEdge edge in previous.Edges)
+            {
+                DrawSegment(
+                    context,
+                    palette,
+                    edge,
+                    PreviousIsRelative,
+                    thickness,
+                    laneWidth,
+                    first,
+                    last,
+                    fromY: centerY - height,
+                    toY: centerY);
+            }
+        }
+
+        // …and the lines leaving this row downwards. The two halves are drawn by the two rows
+        // they belong to and meet exactly on the boundary.
         foreach (GraphEdge edge in row.Edges)
         {
-            // An edge entirely outside the window is not drawn at all. An edge with one end inside
-            // is drawn, and clipping (ClipToBounds) keeps it inside the box — so the user can see
-            // that the lane carries on outwards.
-            if ((edge.FromLane < first && edge.ToLane < first)
-                || (edge.FromLane > last && edge.ToLane > last))
-            {
-                continue;
-            }
-
-            IPen pen = GetPen(palette[edge.ColorIndex % palette.Count], thickness);
-
-            double x1 = LaneCenter(edge.FromLane, first, laneWidth);
-            double x2 = LaneCenter(edge.ToLane, first, laneWidth);
-
-            // The edge starts at the middle of this row and reaches the middle of the next one.
-            // Because the lower bound is the bottom of the row, it joins the next row's line.
-            context.DrawLine(pen, new Point(x1, centerY), new Point(x2, centerY + height));
+            DrawSegment(
+                context,
+                palette,
+                edge,
+                IsRelative,
+                thickness,
+                laneWidth,
+                first,
+                last,
+                fromY: centerY,
+                toY: centerY + height);
         }
 
         if (row.Lane >= first && row.Lane <= last)
         {
-            context.DrawEllipse(
-                GetBrush(palette[row.ColorIndex % palette.Count]),
-                null,
-                new Point(LaneCenter(row.Lane, first, laneWidth), centerY),
-                NodeRadius,
-                NodeRadius);
+            DrawNode(context, row, palette, first, laneWidth, centerY);
         }
 
         DrawOverflowMarkers(context, row, first, last, laneWidth, centerY);
     }
+
+    /// <summary>
+    /// Draws one half of a connection.
+    /// </summary>
+    /// <remarks>
+    /// A lane that does not change is a straight line. A lane change is a <b>Bezier curve</b> whose
+    /// control points sit at the vertical midpoint — that is GitExtensions' "curvy" rendering
+    /// (<c>SegmentRenderer</c>), and it is what makes a branch leave its parent smoothly instead of
+    /// with the kink a straight diagonal produces.
+    /// </remarks>
+    private void DrawSegment(
+        DrawingContext context,
+        IReadOnlyList<Color> palette,
+        GraphEdge edge,
+        bool relative,
+        double thickness,
+        double laneWidth,
+        int firstLane,
+        int lastLane,
+        double fromY,
+        double toY)
+    {
+        // A segment entirely outside the lane window is not drawn at all. One with an end inside
+        // is drawn and clipped, so the user can see that the lane carries on outwards.
+        if ((edge.FromLane < firstLane && edge.ToLane < firstLane)
+            || (edge.FromLane > lastLane && edge.ToLane > lastLane))
+        {
+            return;
+        }
+
+        IPen pen = GetPen(SegmentColor(palette, edge, relative), thickness);
+
+        double x1 = LaneCenter(edge.FromLane, firstLane, laneWidth);
+        double x2 = LaneCenter(edge.ToLane, firstLane, laneWidth);
+
+        if (Math.Abs(x1 - x2) < 0.01)
+        {
+            context.DrawLine(pen, new Point(x1, fromY), new Point(x2, toY));
+            return;
+        }
+
+        double midY = (fromY + toY) / 2;
+
+        StreamGeometry geometry = new();
+
+        using (StreamGeometryContext path = geometry.Open())
+        {
+            path.BeginFigure(new Point(x1, fromY), isFilled: false);
+            path.CubicBezierTo(new Point(x1, midY), new Point(x2, midY), new Point(x2, toY));
+            path.EndFigure(isClosed: false);
+        }
+
+        context.DrawGeometry(null, pen, geometry);
+    }
+
+    /// <summary>
+    /// Draws the commit's node.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The shapes are GitExtensions': a <b>circle</b> for an ordinary commit, a <b>square</b> when
+    /// the commit carries refs (a branch tip or a tag), and an <b>outline</b> around the node
+    /// <c>HEAD</c> points at.
+    /// </para>
+    /// <para>
+    /// So every commit keeps a node — a commit without one could not be told from an empty row,
+    /// and every row in this list is a commit that can be selected and checked out. What the shape
+    /// says is not "you may click here" but "this one is a tip, and this one is where you are".
+    /// </para>
+    /// </remarks>
+    private void DrawNode(
+        DrawingContext context,
+        GraphRow row,
+        IReadOnlyList<Color> palette,
+        int firstLane,
+        double laneWidth,
+        double centerY)
+    {
+        double x = LaneCenter(row.Lane, firstLane, laneWidth);
+        double radius = NodeRadius;
+        IBrush brush = GetBrush(NodeColor(palette, row, IsRelative));
+
+        if (HasRefs)
+        {
+            context.FillRectangle(brush, new Rect(x - radius, centerY - radius, radius * 2, radius * 2));
+        }
+        else
+        {
+            context.DrawEllipse(brush, null, new Point(x, centerY), radius, radius);
+        }
+
+        if (!IsHead)
+        {
+            return;
+        }
+
+        // The outline is drawn in the foreground colour rather than the lane colour: it has to be
+        // visible against the node, and the node is already the lane colour.
+        IPen outline = GetPen(OutlineColor, 1.4);
+        double outer = radius + 1.5;
+
+        if (HasRefs)
+        {
+            context.DrawRectangle(null, outline, new Rect(x - outer, centerY - outer, outer * 2, outer * 2));
+        }
+        else
+        {
+            context.DrawEllipse(null, outline, new Point(x, centerY), outer, outer);
+        }
+    }
+
+    /// <summary>
+    /// The colour of a segment: the lane's own, or grey when it is not part of HEAD's history.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions calls this <c>DrawNonRelativesGray</c>. It is the answer to "which branch am
+    /// I on": the history you are actually on keeps its colours and everything else steps back.
+    /// </remarks>
+    private static Color SegmentColor(IReadOnlyList<Color> palette, GraphEdge edge, bool relative) =>
+        relative ? palette[edge.ColorIndex % palette.Count] : NonRelativeColor;
+
+    private static Color NodeColor(IReadOnlyList<Color> palette, GraphRow row, bool relative) =>
+        relative ? palette[row.ColorIndex % palette.Count] : NonRelativeColor;
+
+    /// <summary>The colour of the lanes that are not part of HEAD's history.</summary>
+    private static readonly Color NonRelativeColor = Color.FromRgb(0xA0, 0xA0, 0xA0);
+
+    /// <summary>The colour of the outline around the HEAD node.</summary>
+    private Color OutlineColor =>
+        ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark
+            ? Color.FromRgb(0xE6, 0xED, 0xF3)
+            : Color.FromRgb(0x1E, 0x1E, 0x1E);
 
     private static double LaneCenter(int lane, int firstLane, double laneWidth) =>
         ((lane - firstLane) * laneWidth) + (laneWidth / 2);

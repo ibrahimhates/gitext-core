@@ -174,13 +174,23 @@ public class ContextMenuTests
     [AvaloniaFact]
     public void Dal_menusunun_SIRASI_sabit()
     {
+        // Only the items VISIBLE on a branch node. Since P12-T14 the same menu also carries the
+        // items of the other node kinds (stash, submodule, worktree, the headings); GitExtensions
+        // does the same — one `menuMain` whose items appear according to the node. Hidden rather
+        // than disabled, because a menu that always shows every action of every kind is
+        // unreadable.
         RefTreeView view = CreateTree();
+
+        Select(view, "feature/login");
+        Open(view);
 
         ContextMenu menu = view.GetControl<ContextMenu>("RefContextMenu");
 
         IReadOnlyList<string> names =
         [
-            .. menu.Items.OfType<MenuItem>().Select(item => item.Name ?? string.Empty),
+            .. menu.Items.OfType<MenuItem>()
+                .Where(item => item.IsVisible)
+                .Select(item => item.Name ?? string.Empty),
         ];
 
         names.ShouldBe(

@@ -44,6 +44,21 @@ public sealed partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _monospaceFontFamily = string.Empty;
 
+    /// <summary>
+    /// Should the repository open at shutdown be reopened at startup (P12-T04)?
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions has the same switch (<c>StartWithRecentWorkingDir</c>) and it is off by
+    /// default there too: the application starts on the dashboard and the repository is picked
+    /// from the list.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _startWithRecentRepository;
+
+    /// <summary>Should the application check for newer versions (P13-T01)?</summary>
+    [ObservableProperty]
+    private bool _checkForUpdates;
+
     [ObservableProperty]
     private string _globalUserName = string.Empty;
 
@@ -169,6 +184,12 @@ public sealed partial class SettingsViewModel : ViewModelBase
 
     partial void OnMonospaceFontSizeChanged(double value) => ApplyFontSizes();
 
+    partial void OnCheckForUpdatesChanged(bool value) =>
+        Apply(() => _settings.Update(settings => settings.General.CheckForUpdates = value));
+
+    partial void OnStartWithRecentRepositoryChanged(bool value) =>
+        Apply(() => _settings.Update(settings => settings.General.StartWithRecentWorkingDir = value));
+
     partial void OnMonospaceFontFamilyChanged(string value) =>
         Apply(() => _appearance.SetMonospaceFont(value));
 
@@ -211,6 +232,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
             UiFontSize = appearance.UiFontSize;
             MonospaceFontSize = appearance.MonospaceFontSize;
             MonospaceFontFamily = appearance.MonospaceFontFamily;
+            StartWithRecentRepository = _settings.Current.General.StartWithRecentWorkingDir;
+            CheckForUpdates = _settings.Current.General.CheckForUpdates;
         }
         finally
         {

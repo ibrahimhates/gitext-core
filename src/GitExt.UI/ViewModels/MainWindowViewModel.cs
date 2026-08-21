@@ -9,6 +9,7 @@ using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.UI.Storage;
 using GitExt.UI.Settings;
+using GitExt.UI.Updates;
 using GitExt.UI.Localization;
 
 namespace GitExt.UI.ViewModels;
@@ -81,6 +82,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IAuthenticationDiagnostics? _authDiagnostics;
     private readonly IMergeWriter? _mergeWriter;
     private readonly IGitCommandLog? _commandLog;
+    private readonly IGitConfigReader? _configReader;
     private readonly IPerformanceDiagnostics? _diagnostics;
 
     /// <summary>
@@ -110,7 +112,8 @@ public partial class MainWindowViewModel : ViewModelBase
             _messageReader,
             _messageStore,
             _watcher,
-            _workingTreeWriter);
+            _workingTreeWriter,
+            _configReader);
     }
 
     public MainWindowViewModel(
@@ -134,6 +137,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IAuthenticationDiagnostics? authenticationDiagnostics = null,
         IMergeWriter? mergeWriter = null,
         IGitCommandLog? commandLog = null,
+        IGitConfigReader? configReader = null,
         IPerformanceDiagnostics? diagnostics = null,
         AdvancedOperationServices? advanced = null)
     {
@@ -158,6 +162,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _authDiagnostics = authenticationDiagnostics;
         _mergeWriter = mergeWriter;
         _commandLog = commandLog;
+        _configReader = configReader;
         _diagnostics = diagnostics;
         _advanced = advanced ?? new AdvancedOperationServices();
 
@@ -206,6 +211,19 @@ public partial class MainWindowViewModel : ViewModelBase
         RevertCommand = new AsyncRelayCommand(RevertAsync, () => CanRevert);
         RebaseCommand = new AsyncRelayCommand(RebaseAsync, () => CanRebase);
 
+        // The dashboard shares the store and the open command with the Start menu: two lists
+        // reading the file separately would sooner or later show two different things.
+        Dashboard = new DashboardViewModel(_recentStore, OpenRecentCommand);
+
+        CheckoutBranchCommand = new AsyncRelayCommand<string>(
+            async name =>
+            {
+                if (!string.IsNullOrEmpty(name))
+                {
+                    await CheckoutRefAsync(name).ConfigureAwait(true);
+                }
+            });
+
         RecentRepositories.CollectionChanged += (_, _) =>
             OnPropertyChanged(nameof(HasRecentRepositories));
 
@@ -221,6 +239,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 or nameof(CommitListViewModel.Repository))
             {
                 OnPropertyChanged(nameof(ShowWelcome));
+                OnPropertyChanged(nameof(WindowTitle));
+                OnPropertyChanged(nameof(RepositoryLabel));
                 NotifyRepositoryDependents();
             }
 
@@ -257,6 +277,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>Commit history list.</summary>
     public CommitListViewModel Commits { get; }
+
+    /// <summary>
+    /// The dashboard shown when no repository is open (P12-T03).
+    /// </summary>
+    /// <remarks>
+    /// Its counterpart in GitExtensions is the <c>Dashboard</c> control: it is not a placeholder
+    /// screen but the way into the application — the repository is picked from there.
+    /// </remarks>
+    public DashboardViewModel Dashboard { get; }
 
     /// <summary>Recently opened repositories, newest first.</summary>
     public ObservableCollection<RecentRepositoryItem> RecentRepositories { get; } = [];
@@ -351,6 +380,110 @@ public partial class MainWindowViewModel : ViewModelBase
     /// of them silently ending up unguarded (P06-T02's rule: no path may lose changes).
     /// </remarks>
     public Task CheckoutRefAsync(string refName) => CheckoutCoreAsync(refName);
+
+    // ------------------------------------------------------------- P12-T06: the main toolbar
+
+    /// <summary>
+    /// The window title: repository and branch, then the application name.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions' own title carries the same three parts. It is the only place the repository
+    /// is named while the window is not focused — in the task bar and in the window switcher —
+    /// and it is why the separate subtitle strip could go: it was saying the same thing twice.
+    /// </remarks>
+    public string WindowTitle =>
+        Commits.Repository is { } repository
+            ? $"{RepositoryLabel} ({CurrentBranchLabel}) - {Loc.T("main.gitext_core")}"
+            : Loc.T("main.gitext_core");
+
+    /// <summary>The open repository's folder name; empty when none is open.</summary>
+    public string RepositoryLabel =>
+        Commits.Repository is { WorkingDirectory: { Length: > 0 } directory }
+            ? System.IO.Path.GetFileName(directory.TrimEnd(
+                System.IO.Path.DirectorySeparatorChar,
+                System.IO.Path.AltDirectorySeparatorChar)) is { Length: > 0 } name
+                ? name
+                : directory
+            : string.Empty;
+
+    /// <summary>
+    /// What the toolbar's branch button shows.
+    /// </summary>
+    /// <remarks>
+    /// A detached HEAD is not left blank — an empty button would read as "still loading". The
+    /// same wording as the dashboard's tiles, so the two never disagree.
+    /// </remarks>
+    public string CurrentBranchLabel =>
+        Commits.Refs?.Head switch
+        {
+            { IsUnborn: true } => Loc.T("main.unborn_branch"),
+            { IsDetached: true } => Loc.T("dashboard.detached_head"),
+            { BranchName: { Length: > 0 } branch } => branch,
+            _ => Loc.T("dashboard.detached_head"),
+        };
+
+    /// <summary>The local branches, for the toolbar's branch dropdown.</summary>
+    /// <remarks>
+    /// Local branches only — GitExtensions' branch button switches branches, and checking out a
+    /// remote-tracking ref detaches HEAD instead. That is a different operation and belongs to a
+    /// deliberate menu item, not to the button people use dozens of times a day.
+    /// </remarks>
+    public ObservableCollection<ToolbarBranchItem> Branches { get; } = [];
+
+    /// <summary>Rebuilds the toolbar's branch list from the last ref read.</summary>
+    private void UpdateBranches()
+    {
+        Branches.Clear();
+
+        if (Commits.Refs is not { } refs)
+        {
+            return;
+        }
+
+        string? current = refs.Head.BranchName;
+
+        foreach (BranchInfo branch in refs.LocalBranches.OrderBy(b => b.Name, StringComparer.CurrentCulture))
+        {
+            Branches.Add(new ToolbarBranchItem(
+                branch.Name,
+                string.Equals(branch.Name, current, StringComparison.Ordinal),
+                CheckoutBranchCommand));
+        }
+    }
+
+    /// <summary>Checks out the branch named by the parameter (the toolbar dropdown).</summary>
+    public IAsyncRelayCommand<string> CheckoutBranchCommand { get; }
+
+    /// <summary>
+    /// The branch chosen in the filter toolbar's branch box (P12-T07).
+    /// </summary>
+    /// <remarks>
+    /// Picking one switches the history to <see cref="BranchFilterMode.FilteredBranches"/> —
+    /// otherwise the box would look like it did nothing, which is exactly how a control gets a
+    /// reputation for being broken.
+    /// </remarks>
+    public ToolbarBranchItem? SelectedBranchFilter
+    {
+        get;
+        set
+        {
+            if (ReferenceEquals(field, value))
+            {
+                return;
+            }
+
+            field = value;
+            OnPropertyChanged();
+
+            Commits.BranchFilter = value?.Name;
+
+            if (value is not null)
+            {
+                Commits.BranchMode = BranchFilterMode.FilteredBranches;
+                _ = Commits.ApplyFilterAsync();
+            }
+        }
+    }
 
     /// <summary>Refreshes the enablement of the commands tied to the selected commit (P07-T06 … T08).</summary>
     private void NotifySelectionDependents()
@@ -1719,10 +1852,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// the user — it is the user who asked for that path.
     /// </para>
     /// <para>
-    /// If it was not given, the working directory is tried <b>silently</b>. When the
-    /// application is started from the desktop or a menu the working directory is some random
-    /// place; showing a "this is not a repository" error would be meaningless. If it is not a
-    /// repository the welcome screen opens.
+    /// If it was not given, <b>the dashboard opens</b> (P12-T04). That is GitExtensions'
+    /// behaviour: <c>Program.cs</c> looks at the working directory only when it was started with
+    /// an argument, and reopening the last repository is a setting that is <b>off by default</b>
+    /// (<c>StartWithRecentWorkingDir</c>). The repository is picked from the dashboard.
+    /// </para>
+    /// <para>
+    /// 🔴 Until P12-T04 the current working directory was tried silently. Launched from a
+    /// terminal that happened to sit inside a repository, the application went straight into it
+    /// and the user never saw their list — the dashboard was only reachable by closing the
+    /// repository. Passing the path (<c>gitext-core .</c>) still opens it directly.
     /// </para>
     /// </remarks>
     public async Task StartAsync(string? explicitPath, CancellationToken cancellationToken = default)
@@ -1735,17 +1874,12 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // The repository that was open at shutdown is reopened (P08-T16). It is tried BEFORE
-        // the working directory: started from the desktop the working directory is some random
-        // place, whereas the last repository is the place the user deliberately opened.
-        if (Session?.LastRepository is { Length: > 0 } last
-            && await TryOpenQuietlyAsync(last, cancellationToken).ConfigureAwait(true))
+        // The repository open at shutdown is reopened only when the user asked for it (P08-T16,
+        // now behind the P12-T04 setting).
+        if (Session is { StartWithLastRepository: true, LastRepository: { Length: > 0 } last })
         {
-            return;
+            await TryOpenQuietlyAsync(last, cancellationToken).ConfigureAwait(true);
         }
-
-        await TryOpenQuietlyAsync(Directory.GetCurrentDirectory(), cancellationToken)
-            .ConfigureAwait(true);
     }
 
     /// <summary>
@@ -1825,8 +1959,10 @@ public partial class MainWindowViewModel : ViewModelBase
             IsDetachedHead = Commits.Refs?.Head.IsDetached == true;
 
             // The branch panel (P06-T13) is fed from the same ref read: writing a second read
-            // meant the two panels silently diverging.
-            RefTree.Load(Commits.Refs);
+            // meant the two panels silently diverging. The toolbar's branch button (P12-T06)
+            // comes from the very same place, for the very same reason.
+            RefTree.Load(await ReadPanelDataAsync(path, cancellationToken).ConfigureAwait(true));
+            UpdateBranches();
 
             CurrentOperation = _operations is null
                 ? InProgressOperation.None
@@ -1835,12 +1971,305 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (Commits.Repository?.WorkingDirectory is not { Length: > 0 })
         {
-            RefTree.Load(null);
+            RefTree.Load(new RefTreeData());
         }
 
         OnPropertyChanged(nameof(ShowDetachedBanner));
         OnPropertyChanged(nameof(ShowOperationBanner));
         OnPropertyChanged(nameof(OperationText));
+
+        // The title and the toolbar's branch button both name the current branch; they are
+        // notified here, where the branch is actually known.
+        OnPropertyChanged(nameof(CurrentBranchLabel));
+        OnPropertyChanged(nameof(WindowTitle));
+        OnPropertyChanged(nameof(RepositoryLabel));
+    }
+
+    // ------------------------------------------------- P12-T14: the left panel's node actions
+
+    /// <summary>
+    /// Applies a stash entry, optionally dropping it afterwards (<c>apply</c> / <c>pop</c>).
+    /// </summary>
+    /// <remarks>
+    /// The result is reported in the notice strip, conflicts included: <c>stash pop</c> leaves the
+    /// entry in place when it conflicts (measured in P07-T12) and a user who is not told that
+    /// applies it a second time.
+    /// </remarks>
+    public async Task ApplyStashAsync(string selector, bool drop)
+    {
+        if (_advanced.Stash is not { } stash
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path
+            || string.IsNullOrWhiteSpace(selector))
+        {
+            return;
+        }
+
+        try
+        {
+            StashApplyResult result = await stash.ApplyAsync(path, selector, drop).ConfigureAwait(true);
+
+            BranchNotice = result.HasConflicts
+                ? Loc.F("ref_tree.stash_applied_with_conflicts", selector, result.ConflictedPaths.Count)
+                : Loc.F(drop ? "ref_tree.stash_popped" : "ref_tree.stash_applied", selector);
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Drops a stash entry.</summary>
+    /// <remarks>
+    /// 🔴 This cannot be undone through the interface, so it asks first — the P05-T15 rule. The
+    /// entry does survive in the reflog, and the message says so instead of pretending otherwise.
+    /// </remarks>
+    public async Task DropStashAsync(string selector)
+    {
+        if (_advanced.Stash is not { } stash
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path
+            || string.IsNullOrWhiteSpace(selector)
+            || DashboardConfirmer is not { } confirmer)
+        {
+            return;
+        }
+
+        bool confirmed = await confirmer.ConfirmAsync(
+                Loc.T("ref_tree.drop_stash"),
+                Loc.F("ref_tree.drop_stash_question", selector))
+            .ConfigureAwait(true);
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            await stash.DropAsync(path, selector).ConfigureAwait(true);
+            BranchNotice = Loc.F("ref_tree.stash_dropped", selector);
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Sets the whole working tree aside (the <i>Stashes</i> heading's "Stash all").</summary>
+    public async Task StashAllAsync()
+    {
+        if (_advanced.Stash is not { } stash
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        try
+        {
+            bool stashed = await stash.PushAsync(path, new StashPushOptions()).ConfigureAwait(true);
+
+            // "Nothing to stash" is an answer, not a failure — and without it the user is left
+            // wondering whether the click did anything at all.
+            BranchNotice = stashed
+                ? Loc.T("ref_tree.stash_created")
+                : Loc.T("ref_tree.nothing_to_stash");
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Fetches from every remote, optionally pruning (the <i>Remotes</i> heading).</summary>
+    public async Task FetchAllRemotesAsync(bool prune)
+    {
+        if (_fetchWriter is null || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        try
+        {
+            // Remote = null means --all (see FetchOptions).
+            FetchResult result = await _fetchWriter
+                .FetchAsync(path, new FetchOptions { Remote = null, Prune = prune })
+                .ConfigureAwait(true);
+
+            // 🔴 A partial failure is REPORTED: git keeps going after one remote fails and exits
+            // 0, so a silent "done" would hide the fact that half the remotes were not reached
+            // (P09, the parallel-fetch finding).
+            BranchNotice = result.Failures.Count > 0
+                ? Loc.F("ref_tree.fetch_partly_failed", result.Changes.Count, result.Failures.Count)
+                : Loc.F("ref_tree.fetch_finished", result.Changes.Count);
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Updates a submodule (<c>git submodule update --init</c>).</summary>
+    public async Task UpdateSubmoduleAsync(string relativePath)
+    {
+        if (_advanced.Submodules is not { } submodules
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path
+            || string.IsNullOrWhiteSpace(relativePath))
+        {
+            return;
+        }
+
+        try
+        {
+            await submodules
+                .InitializeAsync(path, RepositoryPath.Parse(relativePath), recursive: true)
+                .ConfigureAwait(true);
+
+            BranchNotice = Loc.F("ref_tree.submodule_updated", relativePath);
+        }
+        catch (GitException exception)
+        {
+            BranchNotice = Loc.GitError(exception);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Shows the dialogs the panel needs (the drop-stash question).</summary>
+    public IDashboardPrompt? DashboardConfirmer { get; set; }
+
+    // ------------------------------------------------------ P13-T01: the version notice
+
+    /// <summary>
+    /// Checks whether a newer version exists. Supplied by the composition root; without it the
+    /// application simply never checks.
+    /// </summary>
+    public UpdateService? Updates { get; set; }
+
+    /// <summary>What the notice strip says about the version; <see langword="null"/> when silent.</summary>
+    [ObservableProperty]
+    public partial string? UpdateNotice { get; set; }
+
+    /// <summary>The page the "release notes" button opens; empty when there is nothing to open.</summary>
+    [ObservableProperty]
+    public partial string UpdateUrl { get; set; } = string.Empty;
+
+    public bool HasUpdateLink => UpdateUrl.Length > 0;
+
+    partial void OnUpdateUrlChanged(string value) => OnPropertyChanged(nameof(HasUpdateLink));
+
+    /// <summary>
+    /// Looks for a newer version.
+    /// </summary>
+    /// <param name="userRequested">
+    /// <see langword="true"/> when it came from the Help menu. Then the answer is shown even if
+    /// there is nothing new: a person who clicked "check for updates" is owed one.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <remarks>
+    /// <para>
+    /// 🔴 <b>There is no automatic update here and there is not going to be.</b> Nothing is
+    /// downloaded and nothing is run; the most that happens is a line on screen with a link. On
+    /// Linux the package manager owns installation, and an application that updates itself behind
+    /// the user's back is a bigger promise than this one wants to make.
+    /// </para>
+    /// <para>
+    /// A failure is silent on the automatic path: being offline is the normal state of a laptop on
+    /// a train, not something to report.
+    /// </para>
+    /// </remarks>
+    public async Task CheckForUpdatesAsync(bool userRequested, CancellationToken cancellationToken = default)
+    {
+        if (Updates is not { } updates)
+        {
+            return;
+        }
+
+        UpdateCheckResult result = await updates.CheckAsync(userRequested, cancellationToken)
+            .ConfigureAwait(true);
+
+        if (result.Update is { } release)
+        {
+            UpdateNotice = Loc.F("update.new_version_available", release.Version);
+            UpdateUrl = release.Url;
+            return;
+        }
+
+        if (!userRequested)
+        {
+            // Nothing new, or the check was not due: stay quiet.
+            return;
+        }
+
+        UpdateNotice = result.Checked
+            ? Loc.F("update.up_to_date", VersionLabel)
+            : Loc.T("update.check_disabled");
+
+        UpdateUrl = string.Empty;
+    }
+
+    /// <summary>Dismisses the version notice.</summary>
+    public void DismissUpdateNotice()
+    {
+        UpdateNotice = null;
+        UpdateUrl = string.Empty;
+    }
+
+    /// <summary>The running version, for the "you are up to date" message.</summary>
+    public string VersionLabel { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Reads everything the left panel shows: refs, worktrees, submodules and stashes (P12-T13).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The refs are already in hand; the other three are separate reads. <b>MEASURED</b> on three
+    /// repositories: <c>stash list</c> and <c>worktree list</c> cost 0,6–2 ms each — cheap enough
+    /// to do on every refresh. <c>submodule status</c> costs <b>12–49 ms</b> even where there are
+    /// no submodules, and <c>SubmoduleReader</c> now skips it when there is no <c>.gitmodules</c>,
+    /// so the common case pays nothing.
+    /// </para>
+    /// <para>
+    /// A failure in any of the three is <b>not</b> an error: the section stays empty. The panel is
+    /// an aid, and a repository must not fail to open because a stash could not be listed.
+    /// </para>
+    /// </remarks>
+    private async Task<RefTreeData> ReadPanelDataAsync(string path, CancellationToken cancellationToken)
+    {
+        return new RefTreeData
+        {
+            Refs = Commits.Refs,
+            RootPath = path,
+            WorkTrees = await SafeAsync(
+                () => _advanced.WorkTrees?.ListAsync(path, cancellationToken),
+                Array.Empty<WorkTree>()).ConfigureAwait(true),
+            Submodules = await SafeAsync(
+                () => _advanced.Submodules?.ListAsync(path, cancellationToken),
+                Array.Empty<Submodule>()).ConfigureAwait(true),
+            Stashes = await SafeAsync(
+                () => _advanced.Stash?.ListAsync(path, cancellationToken),
+                Array.Empty<StashEntry>()).ConfigureAwait(true),
+        };
+
+        static async Task<IReadOnlyList<T>> SafeAsync<T>(
+            Func<Task<IReadOnlyList<T>>?> read,
+            IReadOnlyList<T> fallback)
+        {
+            try
+            {
+                return read() is { } task ? await task.ConfigureAwait(true) : fallback;
+            }
+            catch (Exception exception) when (exception is GitException or IOException)
+            {
+                return fallback;
+            }
+        }
     }
 
     private async Task<InProgressOperation> ReadOperationAsync(
@@ -1928,7 +2357,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task LoadRecentAsync(CancellationToken cancellationToken)
     {
-        IReadOnlyList<string> recent;
+        IReadOnlyList<Storage.RecentRepository> recent;
 
         try
         {
@@ -1941,10 +2370,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
         RecentRepositories.Clear();
 
-        foreach (string path in recent)
+        foreach (Storage.RecentRepository repository in recent)
         {
-            RecentRepositories.Add(new RecentRepositoryItem(path, OpenRecentCommand));
+            RecentRepositories.Add(new RecentRepositoryItem(repository.Path, OpenRecentCommand));
         }
+
+        // The dashboard reads the same store; refreshing it from here keeps the menu and the
+        // dashboard from drifting apart.
+        await Dashboard.LoadAsync(cancellationToken).ConfigureAwait(true);
     }
 
     private async Task AddRecentAsync(string workingDirectory, CancellationToken cancellationToken)
@@ -1960,4 +2393,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
         await LoadRecentAsync(cancellationToken).ConfigureAwait(true);
     }
+}
+
+/// <summary>
+/// One entry of the toolbar's branch dropdown (P12-T06).
+/// </summary>
+public sealed class ToolbarBranchItem
+{
+    public ToolbarBranchItem(string name, bool isCurrent, ICommand checkoutCommand)
+    {
+        Name = name;
+        IsCurrent = isCurrent;
+        CheckoutCommand = checkoutCommand;
+    }
+
+    public string Name { get; }
+
+    /// <summary>The branch that is checked out — it is marked and cannot be checked out again.</summary>
+    public bool IsCurrent { get; }
+
+    public bool CanCheckout => !IsCurrent;
+
+    public ICommand CheckoutCommand { get; }
+
+    public override string ToString() => Name;
 }

@@ -357,6 +357,27 @@ public class RepositoryExplorerTests
         modules.ShouldHaveSingleItem().Path.Value.ShouldBe("dis");
     }
 
+    [Fact]
+    public async Task Alt_modulsuz_depoda_git_HIC_CALISTIRILMIYOR()
+    {
+        // 🔴 MEASURED (P12-T13): `git submodule status` costs 12-49 ms in a repository with NO
+        // submodules — it is one of the few git commands that is still a shell script, so the
+        // price is the shell rather than the work. The left panel refreshes on every repository
+        // change, so that would be tens of milliseconds per refresh for a list that is always
+        // empty. A repository without `.gitmodules` has no submodules by definition.
+        using TestRepository repository = TestRepository.CreateWithSingleCommit();
+
+        InMemoryGitCommandLog log = new();
+        GitProcessRunner logged = new(await GitExecutable.LocateAsync(cancellationToken: Ct), log);
+        using GitWriteQueue queue = new();
+        SubmoduleReader reader = new(new GitWriter(logged, queue), logged);
+
+        IReadOnlyList<Submodule> modules = await reader.ListAsync(repository.Path, Ct);
+
+        modules.ShouldBeEmpty();
+        log.Entries.ShouldBeEmpty("git süreci hiç başlatılmamalı");
+    }
+
     // ================================================= P07-T21 arama
 
     [Fact]

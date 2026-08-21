@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
+using GitExt.Core;
 using GitExt.Core.Model;
 using GitExt.UI.Localization;
 using GitExt.UI.Settings;
@@ -28,6 +29,18 @@ namespace GitExt.UI.Tests.Views;
 /// </remarks>
 public class ScreenshotTests
 {
+    /// <summary>Puts the process-wide language back to English when the test ends.</summary>
+    private sealed class EnglishAfterwards : IDisposable
+    {
+        public void Dispose()
+        {
+            Translator english = new(new InMemorySettingsStore());
+            english.Use("en");
+            TranslateExtension.Attach(english);
+            Loc.Attach(english);
+        }
+    }
+
     /// <summary>
     /// Where the images that go into the README are written. Fixed relative to the repository root.
     /// </summary>
@@ -55,7 +68,7 @@ public class ScreenshotTests
     /// on every run. With a real repository the image would change along with the commit history and
     /// the picture in the README would differ on every release.
     /// </remarks>
-    private static MainWindowViewModel BuildModel()
+    private static MainWindowViewModel BuildModel(Fakes.FakeRecentRepositoryStore? recent = null)
     {
         string[] shas =
         [
@@ -83,14 +96,63 @@ public class ScreenshotTests
             Commit(shas[7], [], "refactor: move lane assignment out of the view", "Grace Hopper", 40),
         ];
 
+        // The refs are given for real, not left empty: the badges, the square nodes of the
+        // commits that carry refs and the outline around HEAD are all part of the picture, and an
+        // image without them shows a graph the application never actually draws (P12-T10).
+        RepositoryRefs refs = Fakes.FakeGitData.Refs(
+            localBranches: [Fakes.FakeGitData.LocalBranch("main", shas[0], isCurrent: true)],
+            remoteBranches: [Fakes.FakeGitData.RemoteBranch("origin/main", shas[2])],
+            tags: [Fakes.FakeGitData.Tag("v0.9.0", shas[6])],
+            head: new HeadState
+            {
+                IsDetached = false,
+                IsUnborn = false,
+                BranchName = "main",
+                Commit = CommitId.Parse(shas[0]),
+            });
+
         CommitListViewModel list = new(
             new Fakes.FakeRepositoryLocator(),
             new Fakes.FakeCommitLogReader(commits),
-            new Fakes.FakeRefReader(),
+            new Fakes.FakeRefReader(refs),
             new Fakes.FakeCommitSignatureReader(),
             new Fakes.FakeDiffReader());
 
-        return new MainWindowViewModel(list, new Fakes.FakeRecentRepositoryStore());
+        MainWindowViewModel model = new(list, recent ?? new Fakes.FakeRecentRepositoryStore());
+
+        // The left panel is filled too (P12-T13): its six sections are part of the picture, and a
+        // screenshot with an empty panel shows a window the application never actually draws.
+        model.RefTree.Load(new RefTreeData
+        {
+            Refs = refs,
+            RootPath = "/repo",
+            WorkTrees =
+            [
+                new Core.WorkTree { Path = "/repo", BranchName = "main", IsMain = true },
+                new Core.WorkTree { Path = "/repo-hotfix", BranchName = "hotfix/crash" },
+            ],
+            Submodules =
+            [
+                new Core.Submodule
+                {
+                    Path = RepositoryPath.Parse("externals/skia"),
+                    ObjectId = shas[3],
+                    Status = Core.SubmoduleStatusKind.UpToDate,
+                },
+            ],
+            Stashes =
+            [
+                new Core.StashEntry
+                {
+                    Selector = "stash@{0}",
+                    ObjectId = shas[4],
+                    Message = "WIP: partial staging",
+                    Index = 0,
+                },
+            ],
+        });
+
+        return model;
     }
 
     private static CommitInfo Commit(
@@ -133,10 +195,17 @@ public class ScreenshotTests
         appearance.SetTheme(theme);
 
         // A Turkish image is visible proof that the translation ACTUALLY reaches the UI.
+        //
+        // 🔴 The language is PROCESS-WIDE, so this test used to leave whatever it last set behind
+        // it and the next test asserting a translated string passed or failed depending on the
+        // order the tests happened to run in. Whatever is set here is put back to English at the
+        // end of the test.
         Translator translator = new(settings);
         translator.Use(language);
         TranslateExtension.Attach(translator);
         Loc.Attach(translator);
+
+        using EnglishAfterwards _ = new();
 
         MainWindowViewModel model = BuildModel();
 
@@ -176,5 +245,134 @@ public class ScreenshotTests
             $"{fileName} boş görünüyor — pencere çizilmemiş olabilir");
 
         frame.PixelSize.Width.ShouldBeGreaterThan(1000);
+    }
+
+    /// <summary>
+    /// The commit screen (P12-T16).
+    /// </summary>
+    /// <remarks>
+    /// It gets its own image because it is where the day's work actually happens, and because the
+    /// status strip and the conflict strip only exist there.
+    /// </remarks>
+    [AvaloniaTheory]
+    [InlineData(ThemePreference.Light, "screenshot-commit-light.png")]
+    public async Task Commit_ekrani_goruntusu_uretiliyor(ThemePreference theme, string fileName)
+    {
+        InMemorySettingsStore settings = new();
+        AppearanceService appearance = new(Application.Current!, settings);
+        appearance.SetTheme(theme);
+
+        Translator translator = new(settings);
+        translator.Use("en");
+        TranslateExtension.Attach(translator);
+        Loc.Attach(translator);
+
+        using EnglishAfterwards _ = new();
+
+        Fakes.FakeStatusReader status = new(
+        [
+            File("src/GitExt.UI/Views/MainWindow.axaml", staged: true),
+            File("src/GitExt.UI/Themes/Icons.axaml", staged: true),
+            File("docs/adr/0007-commit-graph-layout.md", staged: false),
+            File("README.md", staged: false),
+        ]);
+
+        WorkingTreeViewModel model = new(
+            status,
+            new Fakes.FakeStagingWriter(status),
+            new Fakes.FakeCommitWriter(status),
+            new DiffViewModel(new Fakes.FakeDiffReader()),
+            messageStore: new Fakes.FakeCommitMessageStore());
+
+        await model.OpenAsync("/repo");
+
+        model.AuthorLabel = "Committing as Ada Lovelace <ada@example.com>";
+        model.Message.Text = "feat(ui): toolbars follow GitExtensions";
+
+        WorkingTreeWindow window = new() { DataContext = model, Width = 1200, Height = 760 };
+        window.Show();
+
+        using Bitmap frame = window.CaptureRenderedFrame()
+            ?? throw new InvalidOperationException("Render edilmiş kare alınamadı.");
+
+        Directory.CreateDirectory(AssetDirectory);
+        string path = Path.Combine(AssetDirectory, fileName);
+        frame.Save(path, new PngBitmapEncoderOptions());
+
+        new FileInfo(path).Length.ShouldBeGreaterThan(5_000, $"{fileName} boş görünüyor");
+
+        window.Close();
+
+        static FileStatus File(string path, bool staged) => new()
+        {
+            Path = RepositoryPath.Parse(path),
+            StagedChange = staged ? FileChangeKind.Modified : FileChangeKind.Unmodified,
+            UnstagedChange = staged ? FileChangeKind.Unmodified : FileChangeKind.Modified,
+        };
+    }
+
+    /// <summary>
+    /// The dashboard — the screen the application starts on (P12-T03).
+    /// </summary>
+    /// <remarks>
+    /// It gets its own screenshot because it is the <b>first</b> thing anyone sees, of the
+    /// application and of the README alike. The repository list, the branch names and the
+    /// categories are fixed data: with real repositories the image would change with whatever
+    /// happens to be on the machine.
+    /// </remarks>
+    [AvaloniaTheory]
+    [InlineData(ThemePreference.Light, "screenshot-dashboard-light.png")]
+    [InlineData(ThemePreference.Dark, "screenshot-dashboard-dark.png")]
+    public async Task Kontrol_paneli_ekran_goruntusu_uretiliyor(ThemePreference theme, string fileName)
+    {
+        InMemorySettingsStore settings = new();
+        AppearanceService appearance = new(Application.Current!, settings);
+        appearance.SetTheme(theme);
+
+        Translator translator = new(settings);
+        translator.Use("en");
+        TranslateExtension.Attach(translator);
+        Loc.Attach(translator);
+
+        Fakes.FakeRecentRepositoryStore store = new(
+            "/home/dev/projects/gitext-core",
+            "/home/dev/projects/avalonia",
+            "/home/dev/projects/roslyn",
+            "/home/dev/work/payments-api",
+            "/media/backup/archived-tools");
+
+        store.WithCategory("/home/dev/work/payments-api", "Work");
+
+        MainWindowViewModel model = BuildModel(store);
+
+        // The probe is replaced BEFORE loading: the list is built while it is being read, and a
+        // probe handed over afterwards would arrive too late.
+        model.Dashboard.Probe = HeadOf;
+        await model.StartAsync(explicitPath: null);
+
+        MainWindow window = new() { DataContext = model, Width = 1440, Height = 900 };
+        window.Show();
+
+        using Bitmap frame = window.CaptureRenderedFrame()
+            ?? throw new InvalidOperationException("Render edilmiş kare alınamadı.");
+
+        Directory.CreateDirectory(AssetDirectory);
+        string path = Path.Combine(AssetDirectory, fileName);
+        frame.Save(path, new PngBitmapEncoderOptions());
+
+        new FileInfo(path).Length.ShouldBeGreaterThan(
+            5_000,
+            $"{fileName} boş görünüyor — pencere çizilmemiş olabilir");
+
+        static RepositoryHeadInfo HeadOf(string path) => path switch
+        {
+            // One entry is deliberately unreachable: that is the state the dashboard draws with
+            // the struck-out folder, and a screenshot that never shows it hides half the design.
+            "/media/backup/archived-tools" => RepositoryHeadInfo.NotARepository,
+            "/home/dev/projects/gitext-core" => new RepositoryHeadInfo(true, "main"),
+            "/home/dev/projects/avalonia" => new RepositoryHeadInfo(true, "release/11.2"),
+            "/home/dev/projects/roslyn" => new RepositoryHeadInfo(true, null),
+            _ => new RepositoryHeadInfo(true, "feature/checkout-flow"),
+        };
     }
 }

@@ -119,6 +119,77 @@ public class DiffOptionsTests
     }
 
     [Fact]
+    public async Task Satir_sonu_boslugu_ve_satir_ici_bosluk_AYRI_seviyeler()
+    {
+        // 🔴 MEASURED (P12-T19): `--ignore-space-at-eol` is genuinely a different level from
+        // `-b`, not a milder wording of it. A line whose whitespace changed INSIDE it
+        // ("beta      gamma" → "beta gamma") is still shown under `--ignore-space-at-eol` and is
+        // dropped entirely by `-b`. That is why the interface offers all three: the first hides
+        // the "trailing whitespace was stripped" noise WITHOUT hiding a reformat.
+        using TestRepository repository = TestRepository.CreateEmpty();
+        repository.WriteFile("son.txt", "alpha\nbeta\n");
+        repository.WriteFile("ici.txt", "beta      gamma\n");
+        repository.Git("add", "-A");
+        repository.Git("commit", "-m", "ilk");
+
+        // son.txt: only trailing whitespace. ici.txt: the whitespace inside the line.
+        repository.WriteFile("son.txt", "alpha   \nbeta\n");
+        repository.WriteFile("ici.txt", "beta gamma\n");
+        repository.Git("add", "-A");
+        repository.Git("commit", "-m", "ikinci");
+
+        DiffReader reader = await CreateReaderAsync();
+        CommitId head = Head(repository);
+
+        IReadOnlyList<FileDiff> eol = await reader.ReadCommitAsync(
+            repository.Path, head, new DiffOptions { Whitespace = WhitespaceMode.IgnoreEol }, Ct);
+
+        IReadOnlyList<FileDiff> change = await reader.ReadCommitAsync(
+            repository.Path, head, new DiffOptions { Whitespace = WhitespaceMode.IgnoreChange }, Ct);
+
+        // At-end-of-line mode: the trailing-whitespace file is gone, the in-line one remains.
+        eol.Select(d => d.Path.Value).ShouldBe(["ici.txt"]);
+
+        // Amount mode: both are gone.
+        change.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Baglam_satiri_sayisi_gercekten_uygulaniyor()
+    {
+        // "Show entire file" is not a separate mode in git either: it is a very large -U, and
+        // MEASURED it really does bring the whole file (60-line file → 66 lines of diff).
+        using TestRepository repository = TestRepository.CreateEmpty();
+        repository.WriteFile("buyuk.txt", string.Join('\n', Enumerable.Range(1, 60)) + "\n");
+        repository.Git("add", "-A");
+        repository.Git("commit", "-m", "ilk");
+
+        repository.WriteFile(
+            "buyuk.txt",
+            string.Join('\n', Enumerable.Range(1, 60).Select(i => i == 30 ? "otuz-degisti" : i.ToString())) + "\n");
+        repository.Git("add", "-A");
+        repository.Git("commit", "-m", "ikinci");
+
+        DiffReader reader = await CreateReaderAsync();
+        CommitId head = Head(repository);
+
+        int Lines(int? context) => reader
+            .ReadCommitAsync(repository.Path, head, new DiffOptions { ContextLines = context }, Ct)
+            .GetAwaiter().GetResult()
+            .Single().Hunks.Sum(h => h.Lines.Count);
+
+        int three = Lines(3);
+        int ten = Lines(10);
+        int whole = Lines(1_000_000);
+
+        three.ShouldBeLessThan(ten);
+        ten.ShouldBeLessThan(whole);
+
+        // The whole file: 59 unchanged lines + one removed + one added.
+        whole.ShouldBe(61);
+    }
+
+    [Fact]
     public async Task Yeniden_adlandirma_esigi_uygulanir()
     {
         // MEASURED: on a file with 69% similarity -M50% finds the rename, -M90% does not.

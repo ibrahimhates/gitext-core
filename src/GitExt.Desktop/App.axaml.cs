@@ -67,6 +67,11 @@ public partial class App : Application
 
             _ = viewModel.StartAsync(path);
 
+            // The version check (P13-T01) runs AFTER the window is on screen and is not awaited:
+            // a network request must never sit between the user and their repository. It answers
+            // at most once a week, and it stays silent when there is nothing to say.
+            window.Opened += (_, _) => _ = viewModel.CheckForUpdatesAsync(userRequested: false);
+
             if (Environment.GetEnvironmentVariable(StartupTraceVariable) == "1")
             {
                 window.Opened += ReportStartupTime;

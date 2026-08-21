@@ -1,6 +1,7 @@
 using Avalonia.Collections;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
@@ -78,6 +79,30 @@ public sealed partial class CommitListViewModel : ViewModelBase
         // The diff component is INDEPENDENT: it doesn't know about this class, it only gets
         // told "show this". The same component is also used in the P04-T16 comparison window.
         Diff = new DiffViewModel(diffReader);
+
+        // The filter bar (P12-T07). Every one of these ends in a fresh `git log`: filtering is
+        // done by git, not by hiding rows we already read — a hidden row is still a row that had
+        // to be read, and in a large repository that is the whole cost.
+        ApplyFilterCommand = new AsyncRelayCommand(() => ApplyFilterAsync());
+        ResetFiltersCommand = new AsyncRelayCommand(() => ResetFiltersAsync());
+
+        SetFilterKindCommand = new AsyncRelayCommand<RevisionFilterKind>(async kind =>
+        {
+            FilterKind = kind;
+
+            // Re-reading with an empty box would only redo the same work.
+            if (!string.IsNullOrWhiteSpace(FilterText))
+            {
+                await ApplyFilterAsync().ConfigureAwait(true);
+            }
+        });
+
+        SetBranchModeCommand = new AsyncRelayCommand<BranchFilterMode>(async mode =>
+        {
+            BranchMode = mode;
+            await ApplyFilterAsync().ConfigureAwait(true);
+        });
+
     }
 
     /// <summary>Details panel of the selected commit (P03-T15).</summary>
@@ -274,6 +299,162 @@ public sealed partial class CommitListViewModel : ViewModelBase
         }
 
         SearchStatus = TryGoToCommit(SearchText) ? null : Loc.T("commit_list.not_found");
+    }
+
+    // ---------------------------------------------------------------- P12-T07: the filter bar
+
+    /// <summary>Which field the filter text is matched against.</summary>
+    /// <remarks>
+    /// The list and its order come from GitExtensions' <c>tsddbtnRevisionFilter</c>:
+    /// <i>Commit message · Committer · Author · Diff contains (SLOW)</i>.
+    /// </remarks>
+    [ObservableProperty]
+    public partial RevisionFilterKind FilterKind { get; set; } = RevisionFilterKind.Message;
+
+    /// <summary>The text typed into the filter box.</summary>
+    /// <remarks>
+    /// Applied on <c>Enter</c>, not while typing: every application starts a fresh
+    /// <c>git log</c>, and the diff-content filter has to diff every commit to answer.
+    /// </remarks>
+    [ObservableProperty]
+    public partial string? FilterText { get; set; }
+
+    /// <summary>Which branches the history is read from.</summary>
+    [ObservableProperty]
+    public partial BranchFilterMode BranchMode { get; set; } = BranchFilterMode.AllBranches;
+
+    /// <summary>The ref to read when <see cref="BranchFilterMode.FilteredBranches"/> is chosen.</summary>
+    [ObservableProperty]
+    public partial string? BranchFilter { get; set; }
+
+    /// <summary>Follow only the first parent through merges (<c>--first-parent</c>).</summary>
+    [ObservableProperty]
+    public partial bool FirstParentOnly { get; set; }
+
+    /// <summary>Is anything being filtered at all?</summary>
+    /// <remarks>
+    /// The toolbar marks the filter as active from this: a filter left on and forgotten is the
+    /// classic way to conclude that a commit "is gone".
+    /// </remarks>
+    public bool HasActiveFilter =>
+        !string.IsNullOrWhiteSpace(FilterText)
+        || BranchMode != BranchFilterMode.AllBranches
+        || FirstParentOnly;
+
+    partial void OnFilterTextChanged(string? value) => OnPropertyChanged(nameof(HasActiveFilter));
+
+    partial void OnBranchModeChanged(BranchFilterMode value)
+    {
+        OnPropertyChanged(nameof(HasActiveFilter));
+        OnPropertyChanged(nameof(BranchModeLabel));
+    }
+
+    /// <summary>
+    /// While this is set, a filter change does <b>not</b> re-read on its own.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Without it, "reset filters" starts a read per cleared field: five assignments, five
+    /// <c>git log</c> processes, four of them cancelled a moment later. Resetting is one action
+    /// and must cost one read.
+    /// </remarks>
+    private bool _suspendAutoReload;
+
+    partial void OnFirstParentOnlyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasActiveFilter));
+
+        // The checkbox has no command of its own: it binds to this property, and the re-read
+        // happens here. Doing both would toggle the value twice — the click would appear to do
+        // nothing at all.
+        if (!_suspendAutoReload && Repository is not null)
+        {
+            _ = ApplyFilterAsync();
+        }
+    }
+
+    /// <summary>What the filter-type button shows.</summary>
+    public string FilterKindLabel => FilterKind switch
+    {
+        RevisionFilterKind.Committer => Loc.T("toolbar.committer"),
+        RevisionFilterKind.Author => Loc.T("toolbar.author"),
+        RevisionFilterKind.DiffContains => Loc.T("toolbar.diff_contains_slow"),
+        _ => Loc.T("toolbar.commit_message"),
+    };
+
+    /// <summary>What the branch-scope button shows.</summary>
+    public string BranchModeLabel => BranchMode switch
+    {
+        BranchFilterMode.CurrentBranch => Loc.T("toolbar.current_branch_only"),
+        BranchFilterMode.FilteredBranches => Loc.T("toolbar.filtered_branches"),
+        _ => Loc.T("toolbar.all_branches"),
+    };
+
+    partial void OnFilterKindChanged(RevisionFilterKind value) => OnPropertyChanged(nameof(FilterKindLabel));
+
+    /// <summary>Applies the text in the filter box (the toolbar's Enter and its button).</summary>
+    public IAsyncRelayCommand ApplyFilterCommand { get; }
+
+    /// <summary>Clears every filter (GitExtensions: "Reset revision filters").</summary>
+    public IAsyncRelayCommand ResetFiltersCommand { get; }
+
+    /// <summary>Chooses which field the filter text matches.</summary>
+    public IAsyncRelayCommand<RevisionFilterKind> SetFilterKindCommand { get; }
+
+    /// <summary>Chooses which branches the history is read from.</summary>
+    public IAsyncRelayCommand<BranchFilterMode> SetBranchModeCommand { get; }
+
+    /// <summary>Re-reads the history with the current filters.</summary>
+    public Task ApplyFilterAsync(CancellationToken cancellationToken = default) =>
+        Repository is { } repository
+            ? OpenAsync(repository.WorkingDirectory, cancellationToken)
+            : Task.CompletedTask;
+
+    /// <summary>Clears every filter and re-reads (GitExtensions: "Reset revision filters").</summary>
+    public Task ResetFiltersAsync(CancellationToken cancellationToken = default)
+    {
+        _suspendAutoReload = true;
+
+        try
+        {
+            FilterText = null;
+            FilterKind = RevisionFilterKind.Message;
+            BranchMode = BranchFilterMode.AllBranches;
+            BranchFilter = null;
+            FirstParentOnly = false;
+        }
+        finally
+        {
+            _suspendAutoReload = false;
+        }
+
+        return ApplyFilterAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Turns the filter state into a query.
+    /// </summary>
+    /// <remarks>
+    /// <c>TopologicalOrder</c> is left at its default — the layout depends on it (ADR-0007), and
+    /// no filter may switch it off.
+    /// </remarks>
+    private CommitLogQuery BuildQuery()
+    {
+        string? text = string.IsNullOrWhiteSpace(FilterText) ? null : FilterText.Trim();
+
+        return new CommitLogQuery
+        {
+            // "Current branch only" is HEAD, which is what git reads when no revision is given.
+            IncludeAllRefs = BranchMode == BranchFilterMode.AllBranches,
+            Revision = BranchMode == BranchFilterMode.FilteredBranches
+                && !string.IsNullOrWhiteSpace(BranchFilter)
+                    ? BranchFilter
+                    : null,
+            FirstParentOnly = FirstParentOnly,
+            MessageContains = text is not null && FilterKind == RevisionFilterKind.Message ? text : null,
+            Committer = text is not null && FilterKind == RevisionFilterKind.Committer ? text : null,
+            Author = text is not null && FilterKind == RevisionFilterKind.Author ? text : null,
+            DiffContains = text is not null && FilterKind == RevisionFilterKind.DiffContains ? text : null,
+        };
     }
 
     /// <summary>Message shown to the user when loading fails.</summary>
@@ -590,7 +771,14 @@ public sealed partial class CommitListViewModel : ViewModelBase
         List<CommitRowViewModel> batch = new(BatchSize);
 
         // TopologicalOrder is on by default — layout depends on it (ADR-0007).
-        CommitLogQuery query = new() { IncludeAllRefs = true };
+        CommitLogQuery query = BuildQuery();
+
+        // What the graph needs beyond the layout (P12-T09…T11): the row above (its lines come
+        // down into this one), whether the commit is HEAD, and whether it is an ancestor of HEAD.
+        GraphRow? previousRow = null;
+        bool previousRelative = true;
+        CommitId headId = Refs?.Head is { IsUnborn: false } head ? head.Commit : default;
+        HashSet<CommitId> relatives = headId == default ? [] : [headId];
 
         try
         {
@@ -599,7 +787,32 @@ public sealed partial class CommitListViewModel : ViewModelBase
                                .ConfigureAwait(false))
             {
                 GraphRow row = engine.Add(ToDagCommit(commit));
-                batch.Add(new CommitRowViewModel(commit, row, badges.For(commit.Id)));
+
+                // 🔴 Reachability is computed IN ONE PASS, and it can be, because `--topo-order`
+                // guarantees every child arrives before its parents (ADR-0007): by the time a
+                // commit is read, every child that could have marked it has already been seen.
+                // Walking the graph again per row would be quadratic on a 500k-row history.
+                bool relative = relatives.Count == 0 || relatives.Contains(commit.Id);
+
+                if (relative && relatives.Count > 0)
+                {
+                    foreach (CommitId parent in commit.Parents)
+                    {
+                        relatives.Add(parent);
+                    }
+                }
+
+                batch.Add(new CommitRowViewModel(
+                    commit,
+                    row,
+                    badges.For(commit.Id),
+                    previousRow,
+                    isHead: headId != default && commit.Id == headId,
+                    isRelative: relative,
+                    previousIsRelative: previousRelative));
+
+                previousRow = row;
+                previousRelative = relative;
 
                 if (batch.Count >= BatchSize)
                 {
@@ -709,4 +922,33 @@ public sealed partial class CommitListViewModel : ViewModelBase
         _loading.Dispose();
         _loading = null;
     }
+}
+
+/// <summary>
+/// Which field the filter text is matched against (P12-T07).
+/// </summary>
+/// <remarks>
+/// The order is GitExtensions' own (<c>tsddbtnRevisionFilter</c>). "Diff contains" is last and
+/// carries the "(SLOW)" note there for a reason: git has to diff every commit to answer it.
+/// </remarks>
+public enum RevisionFilterKind
+{
+    Message,
+    Committer,
+    Author,
+    DiffContains,
+}
+
+/// <summary>
+/// Which branches the history is read from (P12-T07).
+/// </summary>
+/// <remarks>
+/// GitExtensions' <c>tssbtnShowBranches</c>: all branches · current branch only · filtered
+/// branches.
+/// </remarks>
+public enum BranchFilterMode
+{
+    AllBranches,
+    CurrentBranch,
+    FilteredBranches,
 }

@@ -59,6 +59,40 @@
                 </StackPanel>
 
                 <StackPanel Spacing="4">
+                    <TextBlock Text="{loc:Translate settings.startup}" FontWeight="SemiBold" />
+
+                    <!--
+                        GitExtensions' `chkStartWithRecentWorkingDir`, and off by default there
+                        too: the application starts on the dashboard and the repository is picked
+                        from the list (P12-T04).
+                    -->
+                    <CheckBox Name="StartWithRecentRepositoryBox"
+                              Content="{loc:Translate settings.reopen_the_last_repository_at_startup}"
+                              IsChecked="{Binding StartWithRecentRepository}" />
+                    <TextBlock Text="{loc:Translate settings.when_off_the_application_starts_on_the_dashb}"
+                               Opacity="0.65"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{loc:Translate update.updates}" FontWeight="SemiBold" />
+
+                    <!--
+                        GitExtensions' `chkCheckForUpdates`, on by default there too. What it does
+                        is one public GET a week; nothing is downloaded and nothing is installed
+                        (P13-T01).
+                    -->
+                    <CheckBox Name="CheckForUpdatesBox"
+                              Content="{loc:Translate update.check_for_new_versions}"
+                              IsChecked="{Binding CheckForUpdates}" />
+                    <TextBlock Text="{loc:Translate update.check_explains}"
+                               Opacity="0.65"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
                     <TextBlock Text="{loc:Translate settings.font}" FontWeight="SemiBold" />
 
                     <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" >

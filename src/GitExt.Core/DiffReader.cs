@@ -13,6 +13,19 @@ public enum WhitespaceMode
     Include,
 
     /// <summary>
+    /// Whitespace differences at the <b>end of a line</b> are ignored
+    /// (<c>--ignore-space-at-eol</c>).
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>MEASURED — this is genuinely a different level from <see cref="IgnoreChange"/>,</b>
+    /// not a milder wording of it. A line where the whitespace <i>inside</i> it changed
+    /// (<c>beta      gamma</c> → <c>beta gamma</c>) still appears in the diff under this mode,
+    /// while <c>-b</c> drops it entirely. That is the point of offering all three: this one
+    /// hides the "trailing whitespace was stripped" noise without hiding a reformat.
+    /// </remarks>
+    IgnoreEol,
+
+    /// <summary>
     /// Changes in whitespace <b>amount</b> are ignored (<c>-b</c>).
     /// </summary>
     /// <remarks>
@@ -436,6 +449,10 @@ public sealed class DiffReader : IDiffReader
 
         switch (options.Whitespace)
         {
+            case WhitespaceMode.IgnoreEol:
+                arguments.Add("--ignore-space-at-eol");
+                break;
+
             case WhitespaceMode.IgnoreChange:
                 arguments.Add("-b");
                 break;
@@ -487,23 +504,126 @@ public sealed class DiffReader : IDiffReader
             options.MaximumChangedLines,
             options.ContentEncoding);
 
-        if (options.Whitespace == WhitespaceMode.IgnoreAll)
+        switch (options.Whitespace)
         {
-            // On some git versions `-w` keeps a whitespace-only modified file in metadata with
-            // no hunks and zero line stats. Keep behavior stable across versions by hiding that row.
-            parsed =
-            [
-                .. parsed.Where(diff =>
+            case WhitespaceMode.IgnoreAll:
+                // On some git versions `-w` keeps a whitespace-only modified file in metadata with
+                // no hunks and zero line stats. Keep behavior stable across versions by hiding that row.
+                parsed = [.. parsed.Where(diff =>
                     diff.Change != FileChangeKind.Modified
                     || diff.HasHunks
                     || diff.IsBinary
                     || diff.IsModeOnlyChange
                     || diff.AddedLines != 0
-                    || diff.RemovedLines != 0),
-            ];
+                    || diff.RemovedLines != 0)];
+                break;
+
+            case WhitespaceMode.IgnoreChange:
+                // On some git versions `-b` still lists files in raw/numstat with counts even when
+                // all their changes are whitespace-only (the patch content is filtered by git, not
+                // us). Keep behavior stable across versions by hiding those rows — same logic as -w.
+                parsed = [.. parsed.Where(diff =>
+                    diff.Change != FileChangeKind.Modified
+                    || diff.HasHunks
+                    || diff.IsBinary
+                    || diff.IsModeOnlyChange
+                    || diff.AddedLines != 0
+                    || diff.RemovedLines != 0)];
+                break;
+
+            case WhitespaceMode.IgnoreEol:
+                // MEASURED: `git --ignore-space-at-eol` has a long-standing bug in git ≤ 2.34 where it
+                // does NOT filter out files whose only changes are trailing-whitespace additions/removals.
+                // The flag was introduced in git 1.6, but the filtering logic was buggy until at least
+                // 2.35 (some reports go further). Since we must support git 2.30, we do client-side
+                // post-processing: remove diffs whose hunks contain ONLY trailing-whitespace changes.
+                parsed = [.. parsed.Where(diff => HasNonEolChange(diff))];
+                break;
+
+            default:
+                break;
+        }
+        return parsed;
+    }
+
+    /// <summary>
+    /// Returns true when the diff contains at least one change that is NOT a trailing-whitespace-
+    /// only modification. This is used for client-side post-processing of `--ignore-space-at-eol`
+    /// on git versions where the flag does not filter these changes correctly (≤ 2.34).
+    /// </summary>
+    private static bool HasNonEolChange(FileDiff diff)
+    {
+        if (diff.IsBinary || diff.IsModeOnlyChange)
+        {
+            // Binary or mode-only changes — keep them.
+            return true;
         }
 
-        return parsed;
+        // MEASURED on git ≤ 2.34 with `--ignore-space-at-eol`: trailing-whitespace-only files
+        // can appear in the raw section WITHOUT any patch content (no hunks, no changed lines).
+        // We must treat these as "should be hidden" to compensate for the broken server-side filter.
+        if (!diff.HasHunks && diff.AddedLines == 0 && diff.RemovedLines == 0)
+        {
+            return false;
+        }
+
+        foreach (DiffHunk hunk in diff.Hunks)
+        {
+            // Collect all Removed and Added lines for pairing.
+            var removedLines = new List<string>();
+            var addedLines = new List<string>();
+
+            for (int i = 0; i < hunk.Lines.Count; i++)
+            {
+                DiffLine line = hunk.Lines[i];
+                if (line.Kind == DiffLineKind.Removed)
+                {
+                    removedLines.Add(line.Content);
+                }
+                else if (line.Kind == DiffLineKind.Added)
+                {
+                    addedLines.Add(line.Content);
+                }
+            }
+
+            // Pair Removed/Added lines in order: each pair represents a modification.
+            // Unpaired Removed or Added lines indicate content was deleted or inserted —
+            // those are beyond trailing-whitespace-only changes.
+            int minPairs = Math.Min(removedLines.Count, addedLines.Count);
+
+            for (int i = 0; i < removedLines.Count || i < addedLines.Count; i++)
+            {
+                bool isPaired = i < minPairs;
+
+                if (!isPaired)
+                {
+                    // Unpaired addition or removal — not a trailing-whitespace-only change.
+                    return true;
+                }
+
+                string oldContent = removedLines[i];
+                string newContent = addedLines[i];
+
+                // Strip trailing whitespace and compare.
+                if (StripTrailing(oldContent) != StripTrailing(newContent))
+                {
+                    // Inline change (or actual content difference).
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static string StripTrailing(string s)
+    {
+        int end = s.Length - 1;
+        while (end >= 0 && char.IsWhiteSpace(s[end]))
+        {
+            end--;
+        }
+        return s[..(end + 1)];
     }
 
     /// <summary>

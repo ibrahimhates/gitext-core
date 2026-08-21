@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Reactive;
 using GitExt.UI.Settings;
+using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
 
@@ -79,6 +80,24 @@ public partial class MainWindow
             SetBranchPanelVisible(layout.BranchPanelVisible);
             SetBottomPanelVisible(layout.BottomPanelVisible);
 
+            // The left panel's section toggles (P12-T13). The panel itself does not know where
+            // settings live (ADR-0004): it reports a change and the window stores it.
+            if (DataContext is MainWindowViewModel model)
+            {
+                model.RefTree.Sections = new RefTreeSections
+                {
+                    Branches = layout.LeftPanel.Branches,
+                    Remotes = layout.LeftPanel.Remotes,
+                    WorkTrees = layout.LeftPanel.WorkTrees,
+                    Tags = layout.LeftPanel.Tags,
+                    Submodules = layout.LeftPanel.Submodules,
+                    Stashes = layout.LeftPanel.Stashes,
+                };
+
+                model.RefTree.SectionsChanged -= OnLeftPanelSectionsChanged;
+                model.RefTree.SectionsChanged += OnLeftPanelSectionsChanged;
+            }
+
             SessionSettings session = settings.Current.Session;
 
             if (session.WindowWidth >= MinWidth && session.WindowHeight >= MinHeight)
@@ -97,6 +116,17 @@ public partial class MainWindow
             _applyingLayout = false;
         }
     }
+
+    private void OnLeftPanelSectionsChanged(object? sender, RefTreeSections sections) =>
+        Persist(settings =>
+        {
+            settings.Layout.LeftPanel.Branches = sections.Branches;
+            settings.Layout.LeftPanel.Remotes = sections.Remotes;
+            settings.Layout.LeftPanel.WorkTrees = sections.WorkTrees;
+            settings.Layout.LeftPanel.Tags = sections.Tags;
+            settings.Layout.LeftPanel.Submodules = sections.Submodules;
+            settings.Layout.LeftPanel.Stashes = sections.Stashes;
+        });
 
     private void SetBranchPanelVisible(bool visible)
     {

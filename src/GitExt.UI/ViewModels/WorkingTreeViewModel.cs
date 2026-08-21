@@ -98,6 +98,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     private readonly ICommitWriter _commitWriter;
     private readonly IRepositoryWatcher? _watcher;
     private readonly IWorkingTreeWriter? _workingTreeWriter;
+    private readonly IGitConfigReader? _configReader;
 
     /// <summary>
     /// Did the user say "don't ask again"?
@@ -136,7 +137,8 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         ICommitMessageReader? messageReader = null,
         ICommitMessageStore? messageStore = null,
         IRepositoryWatcher? watcher = null,
-        IWorkingTreeWriter? workingTreeWriter = null)
+        IWorkingTreeWriter? workingTreeWriter = null,
+        IGitConfigReader? configReader = null)
     {
         ArgumentNullException.ThrowIfNull(statusReader);
         ArgumentNullException.ThrowIfNull(staging);
@@ -148,6 +150,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         _commitWriter = commitWriter;
         _watcher = watcher;
         _workingTreeWriter = workingTreeWriter;
+        _configReader = configReader;
 
         if (_watcher is not null)
         {
@@ -328,6 +331,58 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     /// <summary>Is there anything to commit?</summary>
     public bool HasStagedChanges => Staged.Count > 0;
 
+    // ------------------------------------------------------- P12-T16: the status bar
+    //
+    // GitExtensions' `commitStatusStrip`, in its order: author · branch · remote ·
+    // "Staged" + count · Ln · Col.
+
+    /// <summary>The branch being committed onto.</summary>
+    [ObservableProperty]
+    public partial string BranchLabel { get; private set; } = string.Empty;
+
+    /// <summary>The upstream branch; empty when there is none.</summary>
+    [ObservableProperty]
+    public partial string UpstreamLabel { get; private set; } = string.Empty;
+
+    public bool HasUpstream => UpstreamLabel.Length > 0;
+
+    /// <summary>
+    /// Who the commit will be attributed to.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 GitExtensions writes this on the status strip and it earns its place: committing for
+    /// weeks with the wrong <c>user.email</c> is a mistake that only shows up on the server, and
+    /// the fix (rewriting history) costs far more than the glance this saves.
+    /// </remarks>
+    [ObservableProperty]
+    public partial string AuthorLabel { get; set; } = string.Empty;
+
+    public bool HasAuthor => AuthorLabel.Length > 0;
+
+    /// <summary>How many files are staged.</summary>
+    public int StagedCount => Staged.Count;
+
+    /// <summary>How many files are conflicted.</summary>
+    [ObservableProperty]
+    public partial int ConflictCount { get; private set; }
+
+    /// <summary>
+    /// Are there unresolved conflicts? (GitExtensions' <c>SolveMergeconflicts</c> strip.)
+    /// </summary>
+    /// <remarks>
+    /// A conflicted file looks like an ordinary modified one in the list, and committing it as it
+    /// stands writes the conflict markers into history. The strip says so before that happens.
+    /// </remarks>
+    public bool HasConflicts => ConflictCount > 0;
+
+    /// <summary>The caret's line in the message box (1-based).</summary>
+    [ObservableProperty]
+    public partial int CursorLine { get; set; } = 1;
+
+    /// <summary>The caret's column in the message box (1-based).</summary>
+    [ObservableProperty]
+    public partial int CursorColumn { get; set; } = 1;
+
     /// <summary>Are there no changes at all?</summary>
     [ObservableProperty]
     public partial bool IsClean { get; private set; }
@@ -489,6 +544,8 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     {
         WorkingDirectory = workingDirectory;
 
+        await LoadAuthorAsync(workingDirectory, cancellationToken).ConfigureAwait(true);
+
         // The draft, git-prepared message (merge/cherry-pick), and template status are loaded
         // here; none of them overwrite a non-empty box (P05-T13).
         await Message.OpenAsync(workingDirectory, cancellationToken).ConfigureAwait(true);
@@ -551,6 +608,48 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     /// file left the list, the selection stays <b>at the same position</b> (i.e. shifts to the
     /// next file).
     /// </remarks>
+    /// <summary>
+    /// Reads who the commit will be attributed to (P12-T16).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Read <b>once, on open</b> rather than on every refresh: the identity does not change while
+    /// the screen is up, and the refresh runs on every file save through the watcher.
+    /// </para>
+    /// <para>
+    /// An unset identity is not an empty label but a <b>warning</b>: git refuses to commit without
+    /// one, and finding that out at the moment the commit button is pressed is worse than knowing
+    /// beforehand.
+    /// </para>
+    /// </remarks>
+    private async Task LoadAuthorAsync(string? workingDirectory, CancellationToken cancellationToken)
+    {
+        if (_configReader is null || string.IsNullOrEmpty(workingDirectory))
+        {
+            AuthorLabel = string.Empty;
+            return;
+        }
+
+        try
+        {
+            string? name = await _configReader
+                .GetAsync(workingDirectory, "user.name", cancellationToken)
+                .ConfigureAwait(true);
+
+            string? email = await _configReader
+                .GetAsync(workingDirectory, "user.email", cancellationToken)
+                .ConfigureAwait(true);
+
+            AuthorLabel = string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(email)
+                ? Loc.T("working_tree.identity_not_set")
+                : Loc.F("working_tree.committing_as", name, email);
+        }
+        catch (Exception exception) when (exception is GitException or IOException)
+        {
+            AuthorLabel = string.Empty;
+        }
+    }
+
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
         if (WorkingDirectory is not { Length: > 0 } directory)
@@ -606,7 +705,24 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
 
             IsClean = Unstaged.Count == 0 && Staged.Count == 0;
 
+            // The status bar (P12-T16). Every one of these comes from the SAME status read: a
+            // second call to ask "which branch am I on" is how two parts of one screen end up
+            // disagreeing (P06-T05).
+            BranchLabel = status switch
+            {
+                { IsUnborn: true } => Loc.T("main.unborn_branch"),
+                { IsDetached: true } => Loc.T("dashboard.detached_head"),
+                { BranchName: { Length: > 0 } branch } => branch,
+                _ => Loc.T("dashboard.detached_head"),
+            };
+
+            UpstreamLabel = status.Upstream ?? string.Empty;
+            ConflictCount = status.Conflicted.Count();
+
             OnPropertyChanged(nameof(HasStagedChanges));
+            OnPropertyChanged(nameof(StagedCount));
+            OnPropertyChanged(nameof(HasUpstream));
+            OnPropertyChanged(nameof(HasConflicts));
             OnPropertyChanged(nameof(CanCommit));
 
             // Even if the selection stays at the same index, the file BEHIND it may have

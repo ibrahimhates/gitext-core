@@ -85,7 +85,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Margin="6">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="6,6,6,0">
 
         <!--
             The reset strip (P05-T15). A strip rather than a modal "OK" box: a dialog shown AFTER a
@@ -126,7 +126,39 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" ColumnDefinitions="43*,Auto,57*">
+        <!--
+            `SolveMergeconflicts`: unresolved conflicts. A conflicted file looks like an ordinary
+            modified one in the list, and committing it as it stands writes the conflict markers
+            into history - so this is said BEFORE the commit button is reached, not after.
+        -->
+        <Border Grid.Row="1"
+                Name="ConflictNoticeBar"
+                IsVisible="{Binding HasConflicts}"
+                Background="{DynamicResource GitExtErrorBackgroundBrush}"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource GitExtErrorBorderBrush}"
+                CornerRadius="3"
+                Padding="8,5"
+                Margin="0,0,0,6">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Name="ConflictNoticeText"
+                           Text="{Binding ConflictCount, StringFormat='There are {0} unresolved merge conflicts'}"
+                           Foreground="{DynamicResource GitExtErrorForegroundBrush}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"
+                           FontSize="12" />
+
+                <Button Grid.Column="1"
+                        Name="SolveConflictsButton"
+                        Content="{loc:Translate working_tree.solve_conflicts}"
+                        FontSize="12"
+                        Margin="8,0,0,0"
+                        Click="OnSolveConflictsClick" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" ColumnDefinitions="43*,Auto,57*">
 
         <!-- ================= LEFT COLUMN ================= -->
         <Grid Grid.Column="0" RowDefinitions="44*,Auto,56*">
@@ -155,51 +187,63 @@
                 </Border>
             </Grid>
 
-            <!-- ═══ Middle: stage/unstage toolbar ═══ -->
-            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,6">
+            <!--
+                ═══ Middle: `toolbarStaged` ═══
 
-                <!-- Sol grup: staged listesinden geri alma -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
-                    <Button Name="UnstageAllButton"
-                            Content="⏫"
-                            ToolTip.Tip="{loc:Translate working_tree.revert_all}"
-                            FontSize="11"
-                            Padding="8,3"
-                            Click="OnUnstageAllClick" />
+                GitExtensions docks this toolbar to the top of the staged panel - between the two
+                lists, where it is here - and the STAGE items carry
+                `Alignment = ToolStripItemAlignment.Right` while the unstage items keep the
+                default. So the toolbar reads
 
-                    <Border Width="1"
-                            Margin="2,2"
-                            Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+                    [Unstage all][Unstage] ......... [Stage][Stage all]
 
-                    <Button Name="UnstageButton"
-                            Content="{loc:Translate working_tree.unstage}"
-                            ToolTip.Tip="{loc:Translate working_tree.revert_the_selected_file}"
-                            FontSize="11"
-                            Padding="8,3"
-                            Click="OnUnstageClick" />
-                </StackPanel>
+                🔴 The `Items.AddRange` order in the Designer (stage all - stage - unstage all -
+                unstage) is NOT the visual order; right-aligned items are laid out from the other
+                end. Reordering by the declaration alone put "stage" where the user's hand knows
+                "unstage" to be — the layout test caught it. The direction matches the lists: the
+                unstaged list is above, the staged list below, and each button points at the list
+                its work ends up in.
+            -->
+            <Border Grid.Row="1" Name="StageToolbar" Classes="toolbar" Margin="0,6" Padding="2">
+                <Grid ColumnDefinitions="Auto,*,Auto">
 
-                <!-- Right group: staging from the unstaged list -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                    <Button Name="StageButton"
-                            Content="{loc:Translate working_tree.stage}"
-                            ToolTip.Tip="{loc:Translate working_tree.stage_the_selected_file}"
-                            FontSize="11"
-                            Padding="8,3"
-                            Click="OnStageClick" />
+                    <!-- Left: taking things back out of the index. -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
+                        <Button Name="UnstageAllButton"
+                                Classes="tool"
+                                ToolTip.Tip="{loc:Translate working_tree.revert_all}"
+                                Click="OnUnstageAllClick">
+                            <PathIcon Data="{StaticResource IconUnstageAll}" />
+                        </Button>
 
-                    <Border Width="1"
-                            Margin="2,2"
-                            Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+                        <Border Classes="toolSeparator" />
 
-                    <Button Name="StageAllButton"
-                            Content="⏬"
-                            ToolTip.Tip="{loc:Translate working_tree.stage_all}"
-                            FontSize="11"
-                            Padding="8,3"
-                            Click="OnStageAllClick" />
-                </StackPanel>
-            </Grid>
+                        <Button Name="UnstageButton"
+                                Classes="toolText"
+                                Content="{loc:Translate working_tree.unstage}"
+                                ToolTip.Tip="{loc:Translate working_tree.revert_the_selected_file}"
+                                Click="OnUnstageClick" />
+                    </StackPanel>
+
+                    <!-- Right: putting things into the index. -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+                        <Button Name="StageButton"
+                                Classes="toolText"
+                                Content="{loc:Translate working_tree.stage}"
+                                ToolTip.Tip="{loc:Translate working_tree.stage_the_selected_file}"
+                                Click="OnStageClick" />
+
+                        <Border Classes="toolSeparator" />
+
+                        <Button Name="StageAllButton"
+                                Classes="tool"
+                                ToolTip.Tip="{loc:Translate working_tree.stage_all}"
+                                Click="OnStageAllClick">
+                            <PathIcon Data="{StaticResource IconStageAll}" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
             <!-- ═══ Alt: Staged ═══ -->
             <Grid Grid.Row="2" RowDefinitions="Auto,*,Auto">
@@ -426,5 +470,66 @@
             </Grid>
         </Grid>
         </Grid>
+
+        <!--
+            `commitStatusStrip`, in GitExtensions' order:
+            author - branch - remote - "Staged" + count - Ln - Col.
+
+            🔴 The author is not decoration: committing for weeks with the wrong `user.email` is a
+            mistake that only surfaces on the server, and rewriting history to fix it costs far
+            more than the glance this saves.
+        -->
+        <Border Grid.Row="3"
+                Name="CommitStatusBar"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource GitExtSeparatorBrush}"
+                Padding="4,3"
+                Margin="0,6,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+
+                <TextBlock Name="StatusAuthor"
+                           Text="{Binding AuthorLabel}"
+                           IsVisible="{Binding HasAuthor}"
+                           FontSize="11"
+                           Opacity="0.75"
+                           VerticalAlignment="Center" />
+
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconBranch}"
+                              Width="11"
+                              Height="11"
+                              Foreground="{DynamicResource GitExtAccentBrush}" />
+                    <TextBlock Name="StatusBranch"
+                               Text="{Binding BranchLabel}"
+                               FontSize="11"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock Name="StatusUpstream"
+                           Text="{Binding UpstreamLabel}"
+                           IsVisible="{Binding HasUpstream}"
+                           FontSize="11"
+                           Opacity="0.75"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Name="StatusStaged"
+                           Text="{Binding StagedCount, StringFormat='Staged {0}'}"
+                           FontSize="11"
+                           Opacity="0.75"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Name="StatusCursor"
+                           Text="{Binding CursorLine, StringFormat='Ln {0}'}"
+                           FontSize="11"
+                           Opacity="0.75"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Name="StatusColumn"
+                           Text="{Binding CursorColumn, StringFormat='Col {0}'}"
+                           FontSize="11"
+                           Opacity="0.75"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

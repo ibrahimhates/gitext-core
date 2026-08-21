@@ -11,6 +11,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://GitExt.UI/Themes/Palette.axaml" />
                 <ResourceInclude Source="avares://GitExt.UI/Themes/Typography.axaml" />
+                <ResourceInclude Source="avares://GitExt.UI/Themes/Icons.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Styles.Resources>
@@ -34,5 +35,89 @@
 
     <Style Selector="Border.panel:focus-within">
         <Setter Property="BorderBrush" Value="{DynamicResource GitExtAccentBrush}" />
+    </Style>
+
+    <!--
+        Toolbars (P12-T06/T07). GitExtensions' `ToolStrip` is a thin strip of flat buttons that
+        only take on a background under the pointer; a row of framed buttons would turn the top of
+        the window into a wall. The 22×22 icon and the 25 px strip are its measurements.
+    -->
+    <Style Selector="Border.toolbar">
+        <Setter Property="Padding" Value="4,2" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GitExtSeparatorBrush}" />
+    </Style>
+
+    <Style Selector="Border.toolbar Button.tool, Border.toolbar SplitButton.tool, Border.toolbar DropDownButton.tool">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="5,3" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.toolbar Button.toolText, Border.toolbar SplitButton.toolText, Border.toolbar DropDownButton.toolText">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="7,3" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.toolbar PathIcon">
+        <Setter Property="Width" Value="15" />
+        <Setter Property="Height" Value="15" />
+    </Style>
+
+    <!-- The left panel's toolbar is narrower; its icons are a size smaller. -->
+    <Style Selector="Border#PanelToolbar PathIcon">
+        <Setter Property="Width" Value="13" />
+        <Setter Property="Height" Value="13" />
+    </Style>
+
+    <!--
+        A toggle in a toolbar (the left panel's section switches). The default Fluent look fills a
+        checked toggle with the accent colour, which turns a row of seven of them into a blue wall
+        and hides the icons; GitExtensions marks the pressed state with a quiet background instead.
+    -->
+    <Style Selector="Border.toolbar ToggleButton.tool">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="4,3" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.toolbar ToggleButton.tool:checked /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource GitExtSubtleBackgroundBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource GitExtAccentBrush}" />
+    </Style>
+
+    <Style Selector="Border.toolbar ToggleButton.tool:checked PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource GitExtAccentBrush}" />
+    </Style>
+
+    <!-- An unchecked section switch is dimmed: the section is off, and that has to be visible. -->
+    <Style Selector="Border.toolbar ToggleButton.tool PathIcon">
+        <Setter Property="Opacity" Value="0.45" />
+    </Style>
+
+    <Style Selector="Border.toolbar ToggleButton.tool:checked PathIcon">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- A disabled toolbar button stays IN PLACE; it is dimmed, not removed. -->
+    <Style Selector="Border.toolbar Button:disabled, Border.toolbar SplitButton:disabled, Border.toolbar DropDownButton:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <!-- `toolStripSeparator`: a hairline between the groups. -->
+    <Style Selector="Border.toolSeparator">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource GitExtSeparatorBrush}" />
     </Style>
 </Styles>
