@@ -260,9 +260,11 @@ public class GitExtensionsLayoutTests
     }
 
     [AvaloniaFact]
-    public async Task Commit_baglam_menusu_GitExtensions_sirasinda()
+    public async Task Commit_baglam_menusu_modelden_uretilir()
     {
-        // Kaynak: RevisionGridControl.Designer.cs → mainContextMenu.Items.AddRange.
+        // The order and the visibility rules are asserted against GitExtensions in
+        // RevisionGridContextMenuTests; what belongs here is that the view really builds its menu
+        // from that model instead of carrying a second, hand-written copy of it.
         CommitListViewModel list = new(
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(5)),
@@ -280,42 +282,28 @@ public class GitExtensionsLayoutTests
         ListBox commitList = view.GetVisualDescendants().OfType<ListBox>().First();
         ContextMenu menu = commitList.ContextMenu!;
 
-        Rows(menu).ShouldBe([
-            "Mark revision bad",
-            "Mark revision good",
-            "Skip revision",
-            "──",
-            "_Copy to clipboard",
-            "──",
-            "Apply stash",
-            "Pop stash",
-            "Drop stash…",
-            "──",
-            "Chec_k out branch…",
-            "Pus_h branch…",
-            "_Merge into current branch…",
-            "_Rebase current branch onto this",
-            "Reset current branch here…",
-            "──",
-            "Reset changes",
-            "_Commit",
-            "Create new branch here…",
-            "Reset another branch here…",
-            "Rename branch…",
-            "Delete branch…",
-            "──",
-            "Create new tag here…",
-            "Delete tag…",
-            "──",
-            "Check out this commit…",
-            "Revert this commit…",
-            "Cherry-pick this commit…",
-            "Archive this commit…",
-            "──",
-            "Compa_re",
-            "──",
-            "_Go",
-        ]);
+        view.OnContextMenuOpening(menu, new System.ComponentModel.CancelEventArgs());
+        Dispatcher.UIThread.RunJobs();
+
+        string[] shown = Rows(menu);
+
+        shown.ShouldNotBeEmpty();
+        shown.ShouldContain("Com_pare");
+        shown.ShouldContain("_Navigate");
+        shown.ShouldNotContain("");
+
+        // No ref on the row, so the submenus that list refs are not there — the rule comes from
+        // the model, and this is what proves the view is really asking it.
+        shown.ShouldNotContain("Chec_kout branch...");
+
+        // Nothing may start or end with a separator, and none may sit next to another.
+        shown[0].ShouldNotBe("──");
+        shown[^1].ShouldNotBe("──");
+
+        for (int index = 1; index < shown.Length; index++)
+        {
+            (shown[index - 1] == "──" && shown[index] == "──").ShouldBeFalse();
+        }
 
         window.Close();
     }
@@ -323,8 +311,8 @@ public class GitExtensionsLayoutTests
     [AvaloniaFact]
     public async Task Panoya_kopyala_alt_menusu_GitExtensions_alanlariyla_ayni()
     {
-        // GitExtensions `CopyContextMenuItem`: hash · message · author · date, plus the branch/tag
-        // names on the row.
+        // GitExtensions `CopyContextMenuItem`: commit hash · message · author · date, plus the
+        // branch/tag names on the row.
         CommitListViewModel list = new(
             new FakeRepositoryLocator(),
             new FakeCommitLogReader(FakeGitData.LinearHistory(5)),
@@ -339,10 +327,17 @@ public class GitExtensionsLayoutTests
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
-        ContextMenu menu = view.GetVisualDescendants().OfType<ListBox>().First().ContextMenu!;
-        MenuItem copy = menu.Items.OfType<MenuItem>().Single(i => i.Header!.ToString() == "_Copy to clipboard");
+        ListBox commitList = view.GetVisualDescendants().OfType<ListBox>().First();
+        ContextMenu menu = commitList.ContextMenu!;
 
-        Rows(copy).ShouldBe(["Commit hash", "Message", "Author", "Date", "──", "Branch name"]);
+        view.OnContextMenuOpening(menu, new System.ComponentModel.CancelEventArgs());
+        Dispatcher.UIThread.RunJobs();
+
+        MenuItem copy = menu.Items
+            .OfType<MenuItem>()
+            .Single(item => item.Header!.ToString() == "_Copy to clipboard");
+
+        Rows(copy).ShouldBe(["Commit hash", "Message", "Author", "Date"]);
 
         window.Close();
     }

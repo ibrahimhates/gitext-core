@@ -91,90 +91,14 @@
             </ListBox.Styles>
 
             <!--
-                COMMIT CONTEXT MENU — the item order was taken verbatim from GitExtensions'
-                `RevisionGridControl` `mainContextMenu` (P08-T27):
-
-                  bisect · separator · copy to clipboard · separator · stash ·
-                  separator · checkout branch / push / merge / rebase / reset current ·
-                  separator · reset changes / commit / create branch / reset other /
-                          rename / delete branch ·
-                  separator · create tag / delete tag ·
-                  separator · checkout this commit / revert / cherry pick / archive / advanced ·
-                  separator · compare · separator · navigate / view …
-
-                ⚠️ Unimplemented commands are NOT REMOVED, they stay disabled: the user reaches
-                for the position they know from GitExtensions by muscle memory, and slotting an
-                item in later would break the order. Bisect is Phase 07, stash/branch/tag are
-                Phases 05-06.
+                COMMIT CONTEXT MENU — built at open time from `RevisionGridContextMenu`, whose
+                order is GitExtensions' `mainContextMenu.Items.AddRange` and whose visibility rules
+                are its `ContextMenuOpening`. Not written out here: the submenus (checkout, merge,
+                delete branch, delete tag …) list the refs of the clicked commit, so the menu is
+                different on every row.
             -->
             <ListBox.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Header="{loc:Translate commit_list.mark_revision_bad}" IsEnabled="False" />
-                    <MenuItem Header="{loc:Translate commit_list.mark_revision_good}" IsEnabled="False" />
-                    <MenuItem Header="{loc:Translate commit_list.skip_revision}" IsEnabled="False" />
-                    <Separator />
-
-                    <!-- In GitExtensions this submenu is dynamic: branches/tags plus fixed entries -->
-                    <MenuItem Header="{loc:Translate commit_list.copy_to_clipboard}">
-                        <MenuItem Header="{loc:Translate commit_list.commit_hash}" Click="OnCopyHashClick" />
-                        <MenuItem Header="{loc:Translate commit_list.message}" Click="OnCopyMessageClick" />
-                        <MenuItem Header="{loc:Translate commit_list.author}" Click="OnCopyAuthorClick" />
-                        <MenuItem Header="{loc:Translate commit_list.date}" Click="OnCopyDateClick" />
-                        <Separator />
-                        <MenuItem Header="{loc:Translate commit_list.branch_name}" Click="OnCopyBranchClick" />
-                    </MenuItem>
-                    <Separator />
-
-                    <MenuItem Header="{loc:Translate commit_list.apply_stash}" IsEnabled="False" />
-                    <MenuItem Header="{loc:Translate commit_list.pop_stash}" IsEnabled="False" />
-                    <MenuItem Header="{loc:Translate commit_list.drop_stash}" IsEnabled="False" />
-                    <Separator />
-
-                    <MenuItem Header="{loc:Translate commit_list.chec_k_out_branch}" Click="OnCheckoutClick" />
-                    <MenuItem Name="MenuContextPush" Header="{loc:Translate commit_list.pus_h_branch}" Click="OnPushClick" />
-                    <MenuItem Name="MenuContextMerge" Header="{loc:Translate commit_list.merge_into_current_branch}" Click="OnMergeClick" />
-                    <MenuItem Name="MenuContextRebase" Header="{loc:Translate commit_list.rebase_current_branch_onto_this}"
-                              Click="OnRebaseClick" />
-                    <MenuItem Name="MenuContextReset" Header="{loc:Translate commit_list.reset_current_branch_here}"
-                              Click="OnResetClick" />
-                    <Separator />
-
-                    <MenuItem Header="{loc:Translate commit_list.reset_changes}" IsEnabled="False" />
-                    <MenuItem Header="{loc:Translate commit_list.commit}" IsEnabled="False" />
-                    <MenuItem Header="{loc:Translate commit_list.create_new_branch_here}" Click="OnCreateBranchClick" />
-                    <MenuItem Header="{loc:Translate commit_list.reset_another_branch_here}" IsEnabled="False" />
-                    <MenuItem Header="{loc:Translate commit_list.rename_branch}" Click="OnRenameBranchClick" />
-                    <MenuItem Header="{loc:Translate commit_list.delete_branch}" Click="OnDeleteBranchClick" />
-                    <Separator />
-
-                    <MenuItem Header="{loc:Translate commit_list.create_new_tag_here}" IsEnabled="False" />
-                    <MenuItem Header="{loc:Translate commit_list.delete_tag}" IsEnabled="False" />
-                    <Separator />
-
-                    <MenuItem Header="{loc:Translate commit_list.check_out_this_commit}" Click="OnCheckoutClick" />
-                    <MenuItem Name="MenuContextRevert" Header="{loc:Translate commit_list.revert_this_commit}" Click="OnRevertClick" />
-                    <MenuItem Name="MenuContextCherryPick" Header="{loc:Translate commit_list.cherry_pick_this_commit}" Click="OnCherryPickClick" />
-                    <MenuItem Header="{loc:Translate commit_list.archive_this_commit}" IsEnabled="False" />
-                    <Separator />
-
-                    <!-- Arrived in Phase 04: the only working group. -->
-                    <MenuItem Header="{loc:Translate commit_list.compa_re}">
-                        <MenuItem Header="{loc:Translate commit_list.compare_the_two_selected_commits}"
-                                  InputGesture="Ctrl+D"
-                                  Click="OnCompareSelectedClick" />
-                        <MenuItem Header="{loc:Translate commit_list.compare_with_working_tree}"
-                                  Click="OnCompareWorkingTreeClick" />
-                        <MenuItem Header="{loc:Translate commit_list.compare_with_head}"
-                                  InputGesture="Ctrl+Shift+D"
-                                  Click="OnCompareHeadClick" />
-                    </MenuItem>
-                    <Separator />
-
-                    <MenuItem Header="{loc:Translate commit_list.go}">
-                        <MenuItem Header="{loc:Translate commit_list.to_parent}" InputGesture="Alt+Down" Click="OnGoToParentClick" />
-                        <MenuItem Header="{loc:Translate commit_list.to_child}" InputGesture="Alt+Up" Click="OnGoToChildClick" />
-                    </MenuItem>
-                </ContextMenu>
+                <ContextMenu Name="CommitContextMenu" Opening="OnContextMenuOpening" />
             </ListBox.ContextMenu>
 
             <ListBox.ItemTemplate>

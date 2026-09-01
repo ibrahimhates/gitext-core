@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.ComponentModel;
 using Avalonia.Controls;
+using CommunityToolkit.Mvvm.Input;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -316,6 +317,194 @@ public partial class CommitListView : UserControl
         {
             await clipboard.SetTextAsync(text);
         }
+    }
+
+    /// <summary>
+    /// Builds the menu for the row that was right-clicked.
+    /// </summary>
+    /// <remarks>
+    /// It is built at open time, not once at start-up: which entries are there, and what the
+    /// checkout/merge/delete submenus contain, depends on the refs of <b>this</b> commit — which is
+    /// what GitExtensions does in <c>ContextMenuOpening</c>.
+    /// </remarks>
+    internal void OnContextMenuOpening(object? sender, CancelEventArgs e)
+    {
+        if (sender is not ContextMenu menu)
+        {
+            return;
+        }
+
+        menu.ItemsSource = Materialise(RevisionGridContextMenu.Build(DescribeSelection()));
+    }
+
+    private RevisionGridMenuContext DescribeSelection()
+    {
+        CommitListViewModel? viewModel = ViewModel;
+        CommitRowViewModel? row = viewModel?.SelectedRow;
+
+        if (row is null)
+        {
+            return new RevisionGridMenuContext { SelectedCount = 0 };
+        }
+
+        List<RevisionGridRef> refs = [];
+
+        foreach (RefBadge badge in row.Badges)
+        {
+            RevisionGridRefKind? kind = badge.Kind switch
+            {
+                RefBadgeKind.LocalBranch => RevisionGridRefKind.LocalBranch,
+                RefBadgeKind.RemoteBranch => RevisionGridRefKind.RemoteBranch,
+                RefBadgeKind.Tag => RevisionGridRefKind.Tag,
+                _ => null,
+            };
+
+            if (kind is not { } refKind)
+            {
+                continue;
+            }
+
+            refs.Add(new RevisionGridRef(badge.Text, refKind, badge.IsCurrent));
+        }
+
+        string? currentBranch = refs
+            .FirstOrDefault(item => item.IsCurrent && item.Kind == RevisionGridRefKind.LocalBranch)
+            ?.Name
+            ?? viewModel?.Refs?.CurrentBranch?.Name;
+
+        return new RevisionGridMenuContext
+        {
+            SelectedCount = 1,
+            CommitHash = row.Commit.Id.Value,
+            Refs = refs,
+            CurrentBranch = currentBranch,
+        };
+    }
+
+    private List<object> Materialise(IReadOnlyList<RevisionGridMenuEntry> entries)
+    {
+        List<object> items = [];
+
+        foreach (RevisionGridMenuEntry entry in entries)
+        {
+            if (!entry.IsVisible)
+            {
+                continue;
+            }
+
+            if (entry.IsSeparator)
+            {
+                items.Add(new Separator());
+                continue;
+            }
+
+            MenuItem item = new()
+            {
+                Header = entry.Header,
+                IsEnabled = entry.IsEnabled,
+                InputGesture = entry.Gesture is { Length: > 0 } gesture
+                    ? KeyGesture.Parse(gesture)
+                    : null,
+            };
+
+            if (entry.Children.Count > 0)
+            {
+                item.ItemsSource = Materialise(entry.Children);
+            }
+            else
+            {
+                RevisionGridMenuEntry captured = entry;
+                item.Click += (_, _) => Invoke(captured);
+            }
+
+            items.Add(item);
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// Runs what a menu entry stands for.
+    /// </summary>
+    /// <remarks>
+    /// Everything that reaches beyond the commit list goes through the <b>same command</b> the main
+    /// menu uses. A second path would be a second place to protect (the lesson from P06-T13).
+    /// </remarks>
+    private void Invoke(RevisionGridMenuEntry entry)
+    {
+        switch (entry.Id)
+        {
+            case RevisionGridMenuId.CopyCommitHash:
+                CopyAsync(row => row.Commit.Id.Value);
+                return;
+
+            case RevisionGridMenuId.CopyMessage:
+                CopyAsync(row => string.IsNullOrEmpty(row.Commit.Body)
+                    ? row.Commit.Subject
+                    : row.Commit.Subject + "\n\n" + row.Commit.Body);
+                return;
+
+            case RevisionGridMenuId.CopyAuthor:
+                CopyAsync(row => $"{row.Commit.Author.Name} <{row.Commit.Author.Email}>");
+                return;
+
+            case RevisionGridMenuId.CopyDate:
+            case RevisionGridMenuId.CopyAuthorDate:
+                CopyAsync(row => row.Commit.Author.When.ToString("O", CultureInfo.InvariantCulture));
+                return;
+
+            case RevisionGridMenuId.CopyCommitDate:
+                CopyAsync(row => row.Commit.Committer.When.ToString("O", CultureInfo.InvariantCulture));
+                return;
+
+            case RevisionGridMenuId.DynamicRef when entry.Argument is { Length: > 0 } name:
+                CopyAsync(_ => name);
+                return;
+
+            case RevisionGridMenuId.CompareSelectedCommits:
+                RequestComparison(againstHead: false);
+                return;
+
+            case RevisionGridMenuId.CompareWithCurrentBranch:
+                RequestComparison(againstHead: true);
+                return;
+
+            case RevisionGridMenuId.CompareToWorkingDirectory:
+                OnCompareWorkingTreeClick(this, new RoutedEventArgs());
+                return;
+
+            case RevisionGridMenuId.GoToParentCommit:
+                OnGoToParentClick(this, new RoutedEventArgs());
+                return;
+
+            case RevisionGridMenuId.GoToChildCommit:
+                OnGoToChildClick(this, new RoutedEventArgs());
+                return;
+        }
+
+        if (TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel model)
+        {
+            return;
+        }
+
+        IAsyncRelayCommand? command = entry.Id switch
+        {
+            RevisionGridMenuId.CheckoutBranch or RevisionGridMenuId.CheckoutRevision =>
+                model.CheckoutCommand,
+            RevisionGridMenuId.PushBranch => model.PushCommand,
+            RevisionGridMenuId.MergeBranch => model.MergeCommand,
+            RevisionGridMenuId.RebaseOn or RevisionGridMenuId.RebaseSelectedCommit =>
+                model.RebaseCommand,
+            RevisionGridMenuId.ResetCurrentBranchToHere => model.ResetCommand,
+            RevisionGridMenuId.CherryPickCommit => model.CherryPickCommand,
+            RevisionGridMenuId.RevertCommit => model.RevertCommand,
+            RevisionGridMenuId.CreateNewBranch => model.CreateBranchCommand,
+            RevisionGridMenuId.RenameBranch => model.RenameBranchCommand,
+            RevisionGridMenuId.DeleteBranch => model.DeleteBranchCommand,
+            _ => null,
+        };
+
+        _ = command?.ExecuteAsync(null);
     }
 
     private void OnCopyHashClick(object? sender, RoutedEventArgs e) =>
