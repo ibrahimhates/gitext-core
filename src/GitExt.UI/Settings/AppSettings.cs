@@ -102,6 +102,20 @@ public sealed class GeneralSettings
     [JsonPropertyName("lastUpdateCheck")]
     public string LastUpdateCheck { get; set; } = "";
 
+    /// <summary>
+    /// Should the process window close by itself once the command succeeds?
+    /// </summary>
+    /// <remarks>
+    /// <b>Off by default</b>, exactly as in GitExtensions
+    /// (<c>AppSettings.CloseProcessDialog</c>, <c>GetBool("closeprocessdialog", false)</c>): the
+    /// window stays until the user dismisses it. Stored inverted from what the checkbox says —
+    /// the checkbox reads "Keep dialog open" and this field is the setting behind it, so that the
+    /// General settings page can offer it as "Close Process dialog when process succeeds" the way
+    /// GitExtensions does.
+    /// </remarks>
+    [JsonPropertyName("closeProcessDialog")]
+    public bool CloseProcessDialog { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
 }

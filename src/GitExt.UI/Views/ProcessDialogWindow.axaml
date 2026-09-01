@@ -1,0 +1,89 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        mc:Ignorable="d"
+        d:DesignWidth="549" d:DesignHeight="327"
+        x:Class="GitExt.UI.Views.ProcessDialogWindow"
+        x:DataType="vm:ProcessDialogViewModel"
+        Title="{Binding Title}"
+        Width="549" Height="327"
+        MinWidth="500" MinHeight="200"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <!--
+        Layout from GitExtensions `FormStatus.Designer.cs`. Its "Show password input" checkbox is
+        deliberately absent: `GitEnvironment` sets GIT_TERMINAL_PROMPT=0 and clears GIT_ASKPASS, so
+        git cannot prompt on stdin here — credentials go through `AuthenticationWindow`.
+    -->
+
+    <Grid RowDefinitions="*,Auto,Auto">
+
+        <Border Grid.Row="0"
+                Name="OutputPanel"
+                Padding="12">
+
+            <Border BorderThickness="1"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+
+                <ScrollViewer Name="OutputScroller"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+
+                    <SelectableTextBlock Name="OutputText"
+                                         Text="{Binding Output}"
+                                         FontFamily="{DynamicResource GitExtMonospaceFont}"
+                                         FontSize="12"
+                                         Padding="8"
+                                         TextWrapping="NoWrap" />
+                </ScrollViewer>
+            </Border>
+        </Border>
+
+        <ProgressBar Grid.Row="1"
+                     Name="ProgressBar"
+                     Height="3"
+                     Minimum="0"
+                     Maximum="100"
+                     Value="{Binding ProgressPercent}"
+                     IsIndeterminate="{Binding IsProgressIndeterminate}"
+                     IsVisible="{Binding IsProgressVisible}" />
+
+        <Grid Grid.Row="2"
+              Name="ControlsPanel"
+              Height="39">
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Spacing="6"
+                        Margin="0,0,13,0">
+
+                <CheckBox Name="KeepDialogOpenBox"
+                          Content="{loc:Translate process.keep_dialog_open}"
+                          IsChecked="{Binding KeepDialogOpen, Mode=TwoWay}"
+                          IsVisible="{Binding UseDialogSettings}"
+                          VerticalAlignment="Center"
+                          Margin="0,0,6,0" />
+
+                <Button Name="OkButton"
+                        Content="{loc:Translate process.ok}"
+                        MinWidth="75"
+                        Height="23"
+                        IsDefault="True"
+                        Command="{Binding OkCommand}" />
+
+                <Button Name="AbortButton"
+                        Content="{loc:Translate process.abort}"
+                        MinWidth="75"
+                        Height="23"
+                        IsVisible="{Binding CanAbort}"
+                        Command="{Binding AbortCommand}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

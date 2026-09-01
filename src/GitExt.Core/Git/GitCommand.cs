@@ -99,6 +99,23 @@ public sealed record GitCommand
     public IProgress<GitProgress>? Progress { get; init; }
 
     /// <summary>
+    /// Live <b>raw</b> output — every piece of <c>stdout</c> and <c>stderr</c> as it is produced.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is what the process window is fed from (GitExtensions <c>FormProcess</c>). It is separate
+    /// from <see cref="Progress"/> on purpose: that one only carries the lines a
+    /// <see cref="GitProgressParser"/> could parse, so a hook's own output, a server's
+    /// <c>remote:</c> notice or an error message never reaches it.
+    /// </para>
+    /// <para>
+    /// ⚠️ The callback is invoked on a <b>pool thread</b>, once per read — not once per line. The
+    /// consumer has to marshal to its own thread and must not assume it receives whole lines.
+    /// </para>
+    /// </remarks>
+    public IProgress<GitOutputChunk>? OutputReceived { get; init; }
+
+    /// <summary>
     /// Shorthand: creates a command from a working directory and arguments.
     /// </summary>
     public static GitCommand Create(string workingDirectory, params string[] arguments) =>

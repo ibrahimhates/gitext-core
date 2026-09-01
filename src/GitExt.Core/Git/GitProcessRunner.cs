@@ -273,9 +273,10 @@ public sealed class GitProcessRunner : IGitProcessRunner
             // process cannot write and never finishes — the classic deadlock on large outputs.
             // That is why the three tasks run in parallel.
             Task<(byte[] Bytes, bool Truncated)> stdoutTask =
-                ReadAllBytesAsync(process, command.MaximumOutputBytes, cancellationToken);
+                ReadAllBytesAsync(process, command.MaximumOutputBytes, command.OutputReceived, cancellationToken);
 
-            Task<string> stderrTask = ReadStandardErrorAsync(process, command.Progress, cancellationToken);
+            Task<string> stderrTask =
+                ReadStandardErrorAsync(process, command.Progress, command.OutputReceived, cancellationToken);
             Task stdinTask = WriteStandardInputAsync(process, command, cancellationToken);
 
             // 🔴 MEASURED — stdout is awaited ON ITS OWN, before the other two. Waiting for all
@@ -330,9 +331,10 @@ public sealed class GitProcessRunner : IGitProcessRunner
     private static async Task<string> ReadStandardErrorAsync(
         Process process,
         IProgress<GitProgress>? progress,
+        IProgress<GitOutputChunk>? output,
         CancellationToken cancellationToken)
     {
-        if (progress is null)
+        if (progress is null && output is null)
         {
             return await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -351,6 +353,12 @@ public sealed class GitProcessRunner : IGitProcessRunner
             {
                 string text = new(chunk, 0, read);
                 all.Append(text);
+                output?.Report(new GitOutputChunk(text, IsError: true));
+
+                if (progress is null)
+                {
+                    continue;
+                }
 
                 (IReadOnlyList<string> lines, remainder) =
                     GitProgressParser.SplitLines(remainder + text);
@@ -364,7 +372,7 @@ public sealed class GitProcessRunner : IGitProcessRunner
                 }
             }
 
-            if (remainder.Length > 0 && GitProgressParser.Parse(remainder) is { } last)
+            if (progress is not null && remainder.Length > 0 && GitProgressParser.Parse(remainder) is { } last)
             {
                 progress.Report(last);
             }
@@ -388,19 +396,27 @@ public sealed class GitProcessRunner : IGitProcessRunner
     private static async Task<(byte[] Bytes, bool Truncated)> ReadAllBytesAsync(
         Process process,
         long? maximumBytes,
+        IProgress<GitOutputChunk>? output,
         CancellationToken cancellationToken)
     {
         Stream stream = process.StandardOutput.BaseStream;
 
-        if (maximumBytes is not { } limit)
+        if (maximumBytes is null && output is null)
         {
             using MemoryStream all = new();
             await stream.CopyToAsync(all, cancellationToken).ConfigureAwait(false);
             return (all.ToArray(), false);
         }
 
+        long limit = maximumBytes ?? long.MaxValue;
+
         using MemoryStream buffer = new();
         byte[] chunk = System.Buffers.ArrayPool<byte>.Shared.Rent(64 * 1024);
+
+        // A multi-byte character can straddle two reads, so the decoder — not a fresh
+        // `GetString` per chunk — is what keeps its state across them.
+        Decoder? decoder = output is null ? null : _utf8Lenient.GetDecoder();
+        char[]? characters = output is null ? null : new char[_utf8Lenient.GetMaxCharCount(64 * 1024)];
 
         try
         {
@@ -409,6 +425,16 @@ public sealed class GitProcessRunner : IGitProcessRunner
             while ((read = await stream.ReadAsync(chunk.AsMemory(), cancellationToken).ConfigureAwait(false)) > 0)
             {
                 buffer.Write(chunk, 0, read);
+
+                if (decoder is not null && characters is not null)
+                {
+                    int decoded = decoder.GetChars(chunk, 0, read, characters, 0);
+
+                    if (decoded > 0)
+                    {
+                        output!.Report(new GitOutputChunk(new string(characters, 0, decoded), IsError: false));
+                    }
+                }
 
                 if (buffer.Length <= limit)
                 {
