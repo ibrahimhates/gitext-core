@@ -61,6 +61,15 @@ public sealed record FetchOptions
 
     /// <summary>Live progress notification (P06-T10).</summary>
     public IProgress<GitProgress>? Progress { get; init; }
+
+    /// <summary>
+    /// Live raw output — what the process window shows while the command runs.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="Progress"/>: that one only carries what a progress parser could
+    /// read, so a hook's own output and the server's <c>remote:</c> notices never reach it.
+    /// </remarks>
+    public IProgress<GitOutputChunk>? Output { get; init; }
 }
 
 /// <summary>How a ref changed after a fetch (P06-T06).</summary>
@@ -218,7 +227,8 @@ public sealed class FetchWriter : IFetchWriter
                     BuildArguments(options),
                     askPass?.Environment,
                     options.Progress,
-                    cancellationToken)
+                    cancellationToken,
+                    options.Output)
                 .ConfigureAwait(false);
 
             standardError = result.StandardError;
@@ -319,6 +329,14 @@ public sealed class FetchWriter : IFetchWriter
     /// but leaving the flag until then would mean saving "why is there no progress?" for that
     /// day.
     /// </remarks>
+    /// <summary>Produces the command that will run ("show the command" principle).</summary>
+    public static string Describe(FetchOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        return "git " + string.Join(' ', BuildArguments(options).Where(part => part != "--progress"));
+    }
+
     private static IReadOnlyList<string> BuildArguments(FetchOptions options)
     {
         List<string> arguments = ["fetch", "--progress"];

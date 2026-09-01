@@ -113,6 +113,15 @@ public sealed record PushOptions
 
     /// <summary>Live progress notification (P06-T10).</summary>
     public IProgress<GitProgress>? Progress { get; init; }
+
+    /// <summary>
+    /// Live raw output — what the process window shows while the command runs.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="Progress"/>: that one only carries what a progress parser could
+    /// read, so a hook's own output and the server's <c>remote:</c> notices never reach it.
+    /// </remarks>
+    public IProgress<GitOutputChunk>? Output { get; init; }
 }
 
 /// <summary>Post-push status of a ref (P06-T08).</summary>
@@ -469,7 +478,8 @@ public sealed class PushWriter : IPushWriter
                     BuildArguments(options),
                     askPass?.Environment,
                     options.Progress,
-                    cancellationToken)
+                    cancellationToken,
+                    options.Output)
                 .ConfigureAwait(false);
 
             standardOutput = result.GetStandardOutputText();

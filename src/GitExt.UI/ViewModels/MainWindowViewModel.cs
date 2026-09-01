@@ -368,6 +368,15 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>The party that shows the authentication screen (P06-T09).</summary>
     public IAuthenticationPrompt? AuthenticationPrompt { get; set; }
 
+    /// <summary>
+    /// The party that shows the process window — git's own output, while the command runs.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions routes every write through <c>FormProcess</c>. Left unset the operations still
+    /// run; what is lost is the user seeing what git printed.
+    /// </remarks>
+    public IProcessDialogPrompt? ProcessPrompt { get; set; }
+
     /// <summary>Dal paneli (P06-T13).</summary>
     public RefTreeViewModel RefTree { get; } = new();
 
@@ -1483,7 +1492,12 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         PullViewModel model = new(
-            _remoteReader, _fetchWriter, _pullWriter, _authDiagnostics, AuthenticationPrompt);
+            _remoteReader,
+            _fetchWriter,
+            _pullWriter,
+            _authDiagnostics,
+            AuthenticationPrompt,
+            ProcessPrompt);
 
         try
         {
@@ -1526,7 +1540,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         PushViewModel model = new(
-            _remoteReader, _pushWriter, _authDiagnostics, AuthenticationPrompt);
+            _remoteReader, _pushWriter, _authDiagnostics, AuthenticationPrompt, ProcessPrompt);
 
         try
         {

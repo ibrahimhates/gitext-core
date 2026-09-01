@@ -41,6 +41,7 @@ public sealed class PullViewModel : ViewModelBase
     private readonly IPullWriter _pull;
     private readonly IAuthenticationDiagnostics? _diagnostics;
     private readonly IAuthenticationPrompt? _authentication;
+    private readonly IProcessDialogPrompt? _process;
 
     private string _workingDirectory = string.Empty;
     private string? _selectedRemote;
@@ -65,7 +66,8 @@ public sealed class PullViewModel : ViewModelBase
         IFetchWriter fetch,
         IPullWriter pull,
         IAuthenticationDiagnostics? diagnostics = null,
-        IAuthenticationPrompt? authentication = null)
+        IAuthenticationPrompt? authentication = null,
+        IProcessDialogPrompt? process = null)
     {
         ArgumentNullException.ThrowIfNull(remotes);
         ArgumentNullException.ThrowIfNull(fetch);
@@ -76,6 +78,7 @@ public sealed class PullViewModel : ViewModelBase
         _pull = pull;
         _diagnostics = diagnostics;
         _authentication = authentication;
+        _process = process;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
         CancelCommand = new RelayCommand(Cancel, () => CanCancel);
@@ -594,20 +597,86 @@ public sealed class PullViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Runs an operation in the process window, when there is one to run it in.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions runs pull and fetch through <c>FormRemoteProcess</c>. Without a prompt
+    /// registered the operation still runs — the window is how it is shown, not how it works.
+    /// </remarks>
+    private async Task<TResult> InProcessWindowAsync<TResult>(
+        string title,
+        string commandLine,
+        Func<IProgress<GitOutputChunk>, CancellationToken, Task<TResult>> operation,
+        Func<TResult, bool> succeeded)
+    {
+        CancellationToken outer = _cancellation?.Token ?? CancellationToken.None;
+
+        if (_process is null)
+        {
+            return await operation(new NullOutput(), outer).ConfigureAwait(true);
+        }
+
+        TResult? captured = default;
+        bool completed = false;
+        Exception? failure = null;
+
+        await _process.ShowAsync(new ProcessDialogViewModel(new ProcessDialogRequest
+        {
+            Title = title,
+            CommandLine = commandLine,
+            Operation = async (sink, token) =>
+            {
+                using CancellationTokenSource linked =
+                    CancellationTokenSource.CreateLinkedTokenSource(outer, token);
+
+                try
+                {
+                    captured = await operation(sink, linked.Token).ConfigureAwait(false);
+                    completed = true;
+
+                    return succeeded(captured);
+                }
+                catch (Exception error)
+                {
+                    failure = error;
+                    throw;
+                }
+            },
+        })).ConfigureAwait(true);
+
+        if (completed)
+        {
+            return captured!;
+        }
+
+        throw failure ?? new OperationCanceledException();
+    }
+
+    private sealed class NullOutput : IProgress<GitOutputChunk>
+    {
+        public void Report(GitOutputChunk value)
+        {
+        }
+    }
+
     private async Task RunFetchAsync(GitCredentials? credentials)
     {
-        FetchResult result = await _fetch.FetchAsync(
-            _workingDirectory,
-            new FetchOptions
-            {
-                Remote = SelectedRemote,
-                Prune = Prune,
-                PruneTags = PruneTags,
-                Tags = Tags,
-                Credentials = credentials,
-                Progress = CreateProgress(),
-            },
-            _cancellation?.Token ?? CancellationToken.None).ConfigureAwait(true);
+        FetchOptions options = new()
+        {
+            Remote = SelectedRemote,
+            Prune = Prune,
+            PruneTags = PruneTags,
+            Tags = Tags,
+            Credentials = credentials,
+            Progress = CreateProgress(),
+        };
+
+        FetchResult result = await InProcessWindowAsync(
+            Loc.T("process.fetch"),
+            FetchWriter.Describe(options),
+            (sink, token) => _fetch.FetchAsync(_workingDirectory, options with { Output = sink }, token),
+            result => result.Failures.Count == 0).ConfigureAwait(true);
 
         Notice = DescribeChanges(result.Changes);
 
@@ -621,20 +690,23 @@ public sealed class PullViewModel : ViewModelBase
 
     private async Task RunPullAsync(GitCredentials? credentials)
     {
-        PullResult result = await _pull.PullAsync(
-            _workingDirectory,
-            new PullOptions
-            {
-                Remote = SelectedRemote,
-                Branch = SelectedBranch,
-                Strategy = Action == PullAction.Rebase ? PullStrategy.Rebase : PullStrategy.Merge,
-                AutoStash = AutoStash,
-                Prune = Prune,
-                Tags = Tags,
-                Credentials = credentials,
-                Progress = CreateProgress(),
-            },
-            _cancellation?.Token ?? CancellationToken.None).ConfigureAwait(true);
+        PullOptions options = new()
+        {
+            Remote = SelectedRemote,
+            Branch = SelectedBranch,
+            Strategy = Action == PullAction.Rebase ? PullStrategy.Rebase : PullStrategy.Merge,
+            AutoStash = AutoStash,
+            Prune = Prune,
+            Tags = Tags,
+            Credentials = credentials,
+            Progress = CreateProgress(),
+        };
+
+        PullResult result = await InProcessWindowAsync(
+            Loc.T("process.pull"),
+            PullWriter.Describe(options),
+            (sink, token) => _pull.PullAsync(_workingDirectory, options with { Output = sink }, token),
+            result => !result.HasConflicts).ConfigureAwait(true);
 
         Notice = result.AlreadyUpToDate
             ? Loc.T("pull.already_up_to_date")

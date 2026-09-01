@@ -1508,6 +1508,9 @@ public sealed class FakeFetchWriter : IFetchWriter
 {
     public List<FetchOptions> Fetched { get; } = [];
 
+    /// <summary>Raw lines to write to the output channel during the call.</summary>
+    public IReadOnlyList<string> ReportOutput { get; set; } = [];
+
     public FetchResult Result { get; set; } = new();
 
     public PrunePreview Preview { get; set; } = new();
@@ -1518,6 +1521,12 @@ public sealed class FakeFetchWriter : IFetchWriter
         CancellationToken cancellationToken = default)
     {
         Fetched.Add(options);
+
+        foreach (string line in ReportOutput)
+        {
+            options.Output?.Report(new GitExt.Core.Git.GitOutputChunk(line, IsError: false));
+        }
+
         return Task.FromResult(Result);
     }
 
@@ -1532,6 +1541,9 @@ public sealed class FakeFetchWriter : IFetchWriter
 public sealed class FakePullWriter : IPullWriter
 {
     public List<PullOptions> Pulled { get; } = [];
+
+    /// <summary>Raw lines to write to the output channel during the call.</summary>
+    public IReadOnlyList<string> ReportOutput { get; set; } = [];
 
     /// <summary>The strategy resolved from the settings (decides which option the screen opens with).</summary>
     public ResolvedPullStrategy Configured { get; set; } =
@@ -1553,6 +1565,11 @@ public sealed class FakePullWriter : IPullWriter
         CancellationToken cancellationToken = default)
     {
         Pulled.Add(options);
+
+        foreach (string line in ReportOutput)
+        {
+            options.Output?.Report(new GitExt.Core.Git.GitOutputChunk(line, IsError: false));
+        }
 
         return Task.FromResult(Result ?? new PullResult
         {
@@ -1592,6 +1609,12 @@ public sealed class FakePushWriter : IPushWriter
     /// <summary>The progress channel passed to the writer — null if it was not passed.</summary>
     public IProgress<GitExt.Core.Git.GitProgress>? SeenProgress { get; private set; }
 
+    /// <summary>The raw output channel passed to the writer.</summary>
+    public IProgress<GitExt.Core.Git.GitOutputChunk>? SeenOutput { get; private set; }
+
+    /// <summary>Raw lines to write to the output channel during the call.</summary>
+    public IReadOnlyList<string> ReportOutput { get; set; } = [];
+
     /// <summary>The cancellation token passed to the writer.</summary>
     public CancellationToken SeenToken { get; private set; }
 
@@ -1612,7 +1635,13 @@ public sealed class FakePushWriter : IPushWriter
     {
         Pushed.Add(options);
         SeenProgress = options.Progress;
+        SeenOutput = options.Output;
         SeenToken = cancellationToken;
+
+        foreach (string line in ReportOutput)
+        {
+            options.Output?.Report(new GitExt.Core.Git.GitOutputChunk(line, IsError: false));
+        }
 
         if (CancelOnRun)
         {

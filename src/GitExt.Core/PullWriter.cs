@@ -94,6 +94,15 @@ public sealed record PullOptions
 
     /// <summary>Live progress notification (P06-T10).</summary>
     public IProgress<GitProgress>? Progress { get; init; }
+
+    /// <summary>
+    /// Live raw output — what the process window shows while the command runs.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="Progress"/>: that one only carries what a progress parser could
+    /// read, so a hook's own output and the server's <c>remote:</c> notices never reach it.
+    /// </remarks>
+    public IProgress<GitOutputChunk>? Output { get; init; }
 }
 
 /// <summary>The result of a pull (P06-T07).</summary>
@@ -295,7 +304,8 @@ public sealed class PullWriter : IPullWriter
                     BuildArguments(options, strategy.Strategy),
                     askPass?.Environment,
                     options.Progress,
-                    cancellationToken)
+                    cancellationToken,
+                    options.Output)
                 .ConfigureAwait(false);
         }
         catch (GitException)
@@ -341,6 +351,22 @@ public sealed class PullWriter : IPullWriter
                 && await AutoStashRemainsAsync(workingDirectory, stashBefore, cancellationToken)
                     .ConfigureAwait(false),
         };
+    }
+
+    /// <summary>Produces the command that will run ("show the command" principle).</summary>
+    /// <remarks>
+    /// The strategy shown is the one asked for. When <see cref="PullOptions.Strategy"/> is
+    /// <see cref="PullStrategy.Default"/> the real one comes from the repository's configuration and
+    /// is only resolved at run time, so what is shown here is what was requested.
+    /// </remarks>
+    public static string Describe(PullOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        return "git "
+            + string.Join(
+                ' ',
+                BuildArguments(options, options.Strategy).Where(part => part != "--progress"));
     }
 
     private static IReadOnlyList<string> BuildArguments(PullOptions options, PullStrategy strategy)

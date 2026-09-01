@@ -82,6 +82,7 @@ public partial class MainWindow : Window
                 model.PullPrompt = new DialogPullPrompt(this, model);
                 model.PushPrompt = new DialogPushPrompt(this, model);
                 model.AuthenticationPrompt = new DialogAuthenticationPrompt(this);
+                model.ProcessPrompt = new DialogProcessPrompt(this);
                 model.MergePrompt = new DialogMergePrompt(this);
 
                 // A double-click in the panel calls the SAME flow as checkout in the menu
@@ -460,6 +461,17 @@ public partial class MainWindow : Window
 
         public Task<GitCredentials?> ShowAsync(AuthenticationViewModel model) =>
             AuthenticationWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Shows the process window in a real window (P14-T01).</summary>
+    private sealed class DialogProcessPrompt : IProcessDialogPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogProcessPrompt(Window owner) => _owner = owner;
+
+        public Task<bool> ShowAsync(ProcessDialogViewModel model) =>
+            ProcessDialogWindow.ShowAsync(model, _owner);
     }
 
     /// <summary>Shows the push screen in a real window (P06-T08).</summary>

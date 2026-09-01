@@ -107,6 +107,7 @@ public sealed class PushViewModel : ViewModelBase
     private readonly IPushWriter _push;
     private readonly IAuthenticationDiagnostics? _diagnostics;
     private readonly IAuthenticationPrompt? _authentication;
+    private readonly IProcessDialogPrompt? _process;
 
     private string _workingDirectory = string.Empty;
     private string? _selectedRemote;
@@ -133,7 +134,8 @@ public sealed class PushViewModel : ViewModelBase
         IRemoteReader remotes,
         IPushWriter push,
         IAuthenticationDiagnostics? diagnostics = null,
-        IAuthenticationPrompt? authentication = null)
+        IAuthenticationPrompt? authentication = null,
+        IProcessDialogPrompt? process = null)
     {
         ArgumentNullException.ThrowIfNull(remotes);
         ArgumentNullException.ThrowIfNull(push);
@@ -142,6 +144,7 @@ public sealed class PushViewModel : ViewModelBase
         _push = push;
         _diagnostics = diagnostics;
         _authentication = authentication;
+        _process = process;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
         CancelCommand = new RelayCommand(Cancel, () => CanCancel);
@@ -688,9 +691,7 @@ public sealed class PushViewModel : ViewModelBase
 
         try
         {
-            PushResult result = await _push
-                .PushAsync(
-                    _workingDirectory,
+            PushResult result = await RunPushAsync(
                     BuildOptions() with { Progress = CreateProgress() },
                     _cancellation.Token)
                 .ConfigureAwait(true);
@@ -715,6 +716,58 @@ public sealed class PushViewModel : ViewModelBase
             ProgressText = null;
             ProgressPercent = null;
         }
+    }
+
+    /// <summary>
+    /// Runs the push, in a process window when there is one.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions runs every push through <c>FormRemoteProcess</c>: the user sees git's own
+    /// output while it happens. Without a prompt registered the push still runs — the window is
+    /// how it is shown, not how it works, and the tests construct this type without one.
+    /// </remarks>
+    private async Task<PushResult> RunPushAsync(PushOptions options, CancellationToken cancellationToken)
+    {
+        if (_process is null)
+        {
+            return await _push.PushAsync(_workingDirectory, options, cancellationToken)
+                .ConfigureAwait(true);
+        }
+
+        PushResult? captured = null;
+        Exception? failure = null;
+
+        await _process.ShowAsync(new ProcessDialogViewModel(new ProcessDialogRequest
+        {
+            Title = Loc.T("process.push"),
+            CommandLine = PushWriter.Describe(options),
+            Operation = async (sink, token) =>
+            {
+                using CancellationTokenSource linked =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, token);
+
+                try
+                {
+                    captured = await _push
+                        .PushAsync(_workingDirectory, options with { Output = sink }, linked.Token)
+                        .ConfigureAwait(false);
+
+                    return captured.Rejected.Count == 0;
+                }
+                catch (Exception error)
+                {
+                    failure = error;
+                    throw;
+                }
+            },
+        })).ConfigureAwait(true);
+
+        if (captured is not null)
+        {
+            return captured;
+        }
+
+        throw failure ?? new OperationCanceledException();
     }
 
     /// <summary>

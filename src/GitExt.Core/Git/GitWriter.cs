@@ -36,7 +36,8 @@ public interface IGitWriter
         IReadOnlyList<string> arguments,
         IReadOnlyDictionary<string, string>? environment,
         IProgress<GitProgress>? progress = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IProgress<GitOutputChunk>? output = null);
 
     /// <summary>
     /// Runs a write command feeding data to <b>stdin</b>.
@@ -123,8 +124,9 @@ public sealed class GitWriter : IGitWriter
         IReadOnlyList<string> arguments,
         IReadOnlyDictionary<string, string>? environment,
         IProgress<GitProgress>? progress = null,
-        CancellationToken cancellationToken = default) =>
-        RunCoreAsync(workingDirectory, arguments, null, environment, progress, cancellationToken);
+        CancellationToken cancellationToken = default,
+        IProgress<GitOutputChunk>? output = null) =>
+        RunCoreAsync(workingDirectory, arguments, null, environment, progress, cancellationToken, output);
 
     public Task<GitResult> RunAsync(
         string workingDirectory,
@@ -150,7 +152,8 @@ public sealed class GitWriter : IGitWriter
         ReadOnlyMemory<byte>? standardInput,
         IReadOnlyDictionary<string, string>? environment,
         IProgress<GitProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IProgress<GitOutputChunk>? output = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
         ArgumentNullException.ThrowIfNull(arguments);
@@ -167,7 +170,7 @@ public sealed class GitWriter : IGitWriter
                 // parse `rev-parse HEAD`).
                 // The lock retry depends on this too: with no exception thrown, the retry never fires.
                 inner => _runner.RunCheckedAsync(
-                    BuildCommand(workingDirectory, arguments, standardInput, environment, progress),
+                    BuildCommand(workingDirectory, arguments, standardInput, environment, progress, output),
                     inner),
                 _retryOptions,
                 token),
@@ -179,7 +182,8 @@ public sealed class GitWriter : IGitWriter
         IReadOnlyList<string> arguments,
         ReadOnlyMemory<byte>? standardInput,
         IReadOnlyDictionary<string, string>? environment,
-        IProgress<GitProgress>? progress) =>
+        IProgress<GitProgress>? progress,
+        IProgress<GitOutputChunk>? output = null) =>
         new()
         {
             WorkingDirectory = workingDirectory,
@@ -187,6 +191,7 @@ public sealed class GitWriter : IGitWriter
             StandardInput = standardInput,
             Environment = environment,
             Progress = progress,
+            OutputReceived = output,
 
             // ⚠️ A write command: `GIT_OPTIONAL_LOCKS=0` is not applied. That flag only turns off
             // "optional" locks; a write's real lock has to be taken anyway.
