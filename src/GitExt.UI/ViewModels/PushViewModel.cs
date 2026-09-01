@@ -4,6 +4,7 @@ using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.UI.Localization;
+using GitExt.UI.Settings;
 
 namespace GitExt.UI.ViewModels;
 
@@ -108,6 +109,8 @@ public sealed class PushViewModel : ViewModelBase
     private readonly IAuthenticationDiagnostics? _diagnostics;
     private readonly IAuthenticationPrompt? _authentication;
     private readonly IProcessDialogPrompt? _process;
+    private readonly IPushConfirmer? _confirmer;
+    private readonly ISettingsStore? _settings;
 
     private string _workingDirectory = string.Empty;
     private string? _selectedRemote;
@@ -135,7 +138,9 @@ public sealed class PushViewModel : ViewModelBase
         IPushWriter push,
         IAuthenticationDiagnostics? diagnostics = null,
         IAuthenticationPrompt? authentication = null,
-        IProcessDialogPrompt? process = null)
+        IProcessDialogPrompt? process = null,
+        IPushConfirmer? confirmer = null,
+        ISettingsStore? settings = null)
     {
         ArgumentNullException.ThrowIfNull(remotes);
         ArgumentNullException.ThrowIfNull(push);
@@ -145,6 +150,8 @@ public sealed class PushViewModel : ViewModelBase
         _diagnostics = diagnostics;
         _authentication = authentication;
         _process = process;
+        _confirmer = confirmer;
+        _settings = settings;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
         CancelCommand = new RelayCommand(Cancel, () => CanCancel);
@@ -679,10 +686,16 @@ public sealed class PushViewModel : ViewModelBase
             return;
         }
 
-        IsBusy = true;
         Notice = null;
         Warning = null;
         Advice = null;
+
+        if (!await PassesConfirmationGatesAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
+        IsBusy = true;
         ProgressText = null;
         ProgressPercent = null;
 
@@ -717,6 +730,101 @@ public sealed class PushViewModel : ViewModelBase
             ProgressPercent = null;
         }
     }
+
+    /// <summary>
+    /// The questions asked before the push, in GitExtensions' order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>FormPush.PushChanges</c>: <i>is a remote configured</i> → <i>is a branch or tag
+    /// selected</i> → <i>is this branch new for the remote</i> → <i>should a tracking reference be
+    /// added</i>. A gate that says no abandons the push.
+    /// </para>
+    /// <para>
+    /// ⚠️ The new-branch question is asked from what is <b>already known</b> — the remote-tracking
+    /// refs — and not by asking the server. GitExtensions says so itself: "This is not possible
+    /// when the remote is an URL, but this is ok since most users push to known remotes anyway."
+    /// Asking the network would put a round trip in front of every push, and would fail exactly
+    /// when the network is down, which is when the answer matters least.
+    /// </para>
+    /// </remarks>
+    private async Task<bool> PassesConfirmationGatesAsync()
+    {
+        if (_confirmer is null)
+        {
+            return true;
+        }
+
+        if (SelectedRemote is not { Length: > 0 })
+        {
+            await _confirmer.ConfirmConfigureRemoteAsync().ConfigureAwait(true);
+            return false;
+        }
+
+        if (Tab == PushTab.Tag)
+        {
+            if (!AllTags && SelectedTag is not { Length: > 0 })
+            {
+                await _confirmer
+                    .ReportErrorAsync(Loc.T("push.you_need_to_select_a_tag_to_push_or_select_p"))
+                    .ConfigureAwait(true);
+
+                return false;
+            }
+
+            return true;
+        }
+
+        if (Tab == PushTab.Branch
+            && (SourceBranch is not { Length: > 0 } || RemoteBranch is not { Length: > 0 }))
+        {
+            await _confirmer
+                .ReportErrorAsync(Loc.T("push.no_branch_is_selected_cannot_push"))
+                .ConfigureAwait(true);
+
+            return false;
+        }
+
+        if (Tab == PushTab.Branch && WouldCreateRemoteBranch && !SuppressedNewBranchQuestion)
+        {
+            PushConfirmation answer = await _confirmer
+                .ConfirmNewBranchAsync(RemoteBranch, SelectedRemote)
+                .ConfigureAwait(true);
+
+            if (answer.DoNotAskAgain)
+            {
+                _settings?.Update(settings =>
+                    settings.Confirmations.DontConfirmPushNewBranch = true);
+            }
+
+            if (!answer.Confirmed)
+            {
+                return false;
+            }
+        }
+
+        if (Tab == PushTab.Branch && _plan is { HasUpstream: false } && !SuppressedTrackingQuestion)
+        {
+            TrackingReferenceAnswer answer = await _confirmer
+                .ConfirmTrackingReferenceAsync(SourceBranch ?? CurrentBranch, RemoteBranch)
+                .ConfigureAwait(true);
+
+            if (answer == TrackingReferenceAnswer.Cancel)
+            {
+                return false;
+            }
+
+            SetUpstream = answer == TrackingReferenceAnswer.Yes;
+        }
+
+        return true;
+    }
+
+    private bool SuppressedNewBranchQuestion =>
+        _settings?.Current.Confirmations.DontConfirmPushNewBranch ?? false;
+
+    private bool SuppressedTrackingQuestion =>
+        _settings?.Current.Confirmations.DontConfirmAddTrackingRef ?? false;
 
     /// <summary>
     /// Runs the push, in a process window when there is one.
@@ -760,7 +868,7 @@ public sealed class PushViewModel : ViewModelBase
                     throw;
                 }
             },
-        })).ConfigureAwait(true);
+        }, _settings)).ConfigureAwait(true);
 
         if (captured is not null)
         {

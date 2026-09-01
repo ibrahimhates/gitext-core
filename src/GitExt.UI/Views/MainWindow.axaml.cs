@@ -83,6 +83,7 @@ public partial class MainWindow : Window
                 model.PushPrompt = new DialogPushPrompt(this, model);
                 model.AuthenticationPrompt = new DialogAuthenticationPrompt(this);
                 model.ProcessPrompt = new DialogProcessPrompt(this);
+                model.PushConfirmer = new DialogPushConfirmer(this);
                 model.MergePrompt = new DialogMergePrompt(this);
 
                 // A double-click in the panel calls the SAME flow as checkout in the menu
@@ -461,6 +462,63 @@ public partial class MainWindow : Window
 
         public Task<GitCredentials?> ShowAsync(AuthenticationViewModel model) =>
             AuthenticationWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Asks the push flow's questions in real windows (P14-T04).</summary>
+    private sealed class DialogPushConfirmer : IPushConfirmer
+    {
+        private readonly Window _owner;
+
+        public DialogPushConfirmer(Window owner) => _owner = owner;
+
+        public async Task<PushConfirmation> ConfirmNewBranchAsync(string remoteBranch, string remote)
+        {
+            ConfirmResult result = await ConfirmDialog.AskAsync(
+                Loc.T("process.push"),
+                Loc.T("push.the_branch_you_are_about_to_push_seems_to_be"),
+                _owner,
+                suppressible: true).ConfigureAwait(true);
+
+            return new PushConfirmation
+            {
+                Confirmed = result.Confirmed,
+                DoNotAskAgain = result.DoNotAskAgain,
+            };
+        }
+
+        public async Task<TrackingReferenceAnswer> ConfirmTrackingReferenceAsync(
+            string localBranch,
+            string remoteBranch)
+        {
+            ConfirmResult result = await ConfirmDialog.AskAsync(
+                Loc.T("process.push"),
+                string.Format(
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    Loc.T("push.the_branch_0_does_not_have_a_tracking_refere"),
+                    localBranch,
+                    remoteBranch),
+                _owner,
+                withCancel: true).ConfigureAwait(true);
+
+            return result.Answer switch
+            {
+                ConfirmAnswer.Yes => TrackingReferenceAnswer.Yes,
+                ConfirmAnswer.No => TrackingReferenceAnswer.No,
+                _ => TrackingReferenceAnswer.Cancel,
+            };
+        }
+
+        public Task<bool> ConfirmConfigureRemoteAsync() =>
+            ConfirmDialog.ShowAsync(
+                Loc.T("process.push"),
+                Loc.T("push.please_configure_a_remote_repository_first_w"),
+                _owner);
+
+        public async Task ReportErrorAsync(string message) =>
+            await ConfirmDialog.ShowAsync(Loc.T("push.error"), message, _owner).ConfigureAwait(true);
+
+        public Task<PushRejectedDecision> AskRejectedActionAsync(PushRejectedRequest request) =>
+            Task.FromResult(PushRejectedDecision.Cancelled);
     }
 
     /// <summary>Shows the process window in a real window (P14-T01).</summary>

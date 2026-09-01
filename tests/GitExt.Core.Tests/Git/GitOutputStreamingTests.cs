@@ -168,9 +168,11 @@ public class GitOutputStreamingTests
     {
         using TestRepository repository = TestRepository.CreateWithSingleCommit();
 
-        for (int index = 0; index < 40; index++)
+        // Enough for the output to arrive in more than one piece; every extra commit here is two
+        // more git processes, and this suite runs alongside the UI one.
+        for (int index = 0; index < 12; index++)
         {
-            repository.WriteFile($"dosya{index}.txt", new string('x', 900) + "\n");
+            repository.WriteFile($"dosya{index}.txt", new string('x', 4000) + "\n");
             repository.Git("add", $"dosya{index}.txt");
             repository.Commit($"commit {index}");
         }

@@ -4,6 +4,7 @@ using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.UI.Localization;
+using GitExt.UI.Settings;
 
 namespace GitExt.UI.ViewModels;
 
@@ -42,6 +43,7 @@ public sealed class PullViewModel : ViewModelBase
     private readonly IAuthenticationDiagnostics? _diagnostics;
     private readonly IAuthenticationPrompt? _authentication;
     private readonly IProcessDialogPrompt? _process;
+    private readonly ISettingsStore? _settings;
 
     private string _workingDirectory = string.Empty;
     private string? _selectedRemote;
@@ -67,7 +69,8 @@ public sealed class PullViewModel : ViewModelBase
         IPullWriter pull,
         IAuthenticationDiagnostics? diagnostics = null,
         IAuthenticationPrompt? authentication = null,
-        IProcessDialogPrompt? process = null)
+        IProcessDialogPrompt? process = null,
+        ISettingsStore? settings = null)
     {
         ArgumentNullException.ThrowIfNull(remotes);
         ArgumentNullException.ThrowIfNull(fetch);
@@ -79,6 +82,7 @@ public sealed class PullViewModel : ViewModelBase
         _diagnostics = diagnostics;
         _authentication = authentication;
         _process = process;
+        _settings = settings;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
         CancelCommand = new RelayCommand(Cancel, () => CanCancel);
@@ -643,7 +647,7 @@ public sealed class PullViewModel : ViewModelBase
                     throw;
                 }
             },
-        })).ConfigureAwait(true);
+        }, _settings)).ConfigureAwait(true);
 
         if (completed)
         {

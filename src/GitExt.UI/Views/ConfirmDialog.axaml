@@ -17,7 +17,17 @@
     <StackPanel Margin="16" Spacing="14">
         <TextBlock Name="QuestionText" TextWrapping="Wrap" />
 
+        <CheckBox Name="SuppressBox"
+                  Content="{loc:Translate push.don_t_show_me_this_message_again}"
+                  IsVisible="False" />
+
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="CancelButton"
+                    Content="{loc:Translate push.cancel}"
+                    MinWidth="90"
+                    IsVisible="False"
+                    IsCancel="True"
+                    Click="OnCancelClick" />
             <Button Name="NoButton"
                     Content="{loc:Translate dashboard.no}"
                     MinWidth="90"

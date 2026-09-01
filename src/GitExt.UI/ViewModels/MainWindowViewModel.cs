@@ -377,6 +377,18 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </remarks>
     public IProcessDialogPrompt? ProcessPrompt { get; set; }
 
+    /// <summary>The party that asks the push flow's questions (P14-T04).</summary>
+    public IPushConfirmer? PushConfirmer { get; set; }
+
+    /// <summary>
+    /// The settings store, for the screens that remember an answer.
+    /// </summary>
+    /// <remarks>
+    /// This is what carries "don't show me this message again" and the process window's "keep
+    /// dialog open" from one run to the next. Unset, both simply keep asking.
+    /// </remarks>
+    public Settings.ISettingsStore? Settings { get; set; }
+
     /// <summary>Dal paneli (P06-T13).</summary>
     public RefTreeViewModel RefTree { get; } = new();
 
@@ -1540,7 +1552,13 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         PushViewModel model = new(
-            _remoteReader, _pushWriter, _authDiagnostics, AuthenticationPrompt, ProcessPrompt);
+            _remoteReader,
+            _pushWriter,
+            _authDiagnostics,
+            AuthenticationPrompt,
+            ProcessPrompt,
+            PushConfirmer,
+            Settings);
 
         try
         {

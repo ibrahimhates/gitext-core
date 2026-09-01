@@ -45,6 +45,9 @@ public sealed class AppSettings
     [JsonPropertyName("session")]
     public SessionSettings Session { get; set; } = new();
 
+    [JsonPropertyName("confirmations")]
+    public ConfirmationSettings Confirmations { get; set; } = new();
+
     /// <summary>
     /// Top-level fields this version does not recognise.
     /// </summary>
@@ -115,6 +118,44 @@ public sealed class GeneralSettings
     /// </remarks>
     [JsonPropertyName("closeProcessDialog")]
     public bool CloseProcessDialog { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Unknown { get; set; }
+}
+
+/// <summary>
+/// The confirmations the user has switched off (P06-T08).
+/// </summary>
+/// <remarks>
+/// The counterpart of GitExtensions' <c>DontConfirm*</c> settings — its Confirmations settings
+/// page carries the same switches. Kept as <b>negatives</b> on purpose, so that the default value
+/// of a <see langword="bool"/> (<see langword="false"/>) means "ask": a settings file written by
+/// an older version, or a field that fails to parse, then falls back to asking rather than to
+/// silence.
+/// </remarks>
+public sealed class ConfirmationSettings
+{
+    /// <summary>Do not ask when a branch is new for the remote.</summary>
+    [JsonPropertyName("dontConfirmPushNewBranch")]
+    public bool DontConfirmPushNewBranch { get; set; }
+
+    /// <summary>Do not ask before adding a tracking reference.</summary>
+    [JsonPropertyName("dontConfirmAddTrackingRef")]
+    public bool DontConfirmAddTrackingRef { get; set; }
+
+    /// <summary>Do not ask before a fetch that prunes.</summary>
+    [JsonPropertyName("dontConfirmFetchAndPrune")]
+    public bool DontConfirmFetchAndPrune { get; set; }
+
+    /// <summary>
+    /// The remembered answer to "the push was rejected, now what".
+    /// </summary>
+    /// <remarks>
+    /// Empty means "keep asking". Stored as text and resolved leniently — the same reason as
+    /// every other enumerable setting here.
+    /// </remarks>
+    [JsonPropertyName("autoPullOnPushRejected")]
+    public string AutoPullOnPushRejected { get; set; } = "";
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
