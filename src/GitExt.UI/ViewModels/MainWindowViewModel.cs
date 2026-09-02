@@ -424,6 +424,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>The party that asks the push flow's questions (P14-T04).</summary>
     public IPushConfirmer? PushConfirmer { get; set; }
 
+    /// <summary>The party that asks the pull flow's questions (P14-T07).</summary>
+    public IPullConfirmer? PullConfirmer { get; set; }
+
     /// <summary>
     /// The settings store, for the screens that remember an answer.
     /// </summary>
@@ -1567,7 +1570,11 @@ public partial class MainWindowViewModel : ViewModelBase
             _authDiagnostics,
             AuthenticationPrompt,
             ProcessPrompt,
-            Settings);
+            Settings,
+            PullConfirmer)
+        {
+            IsDetachedHead = Commits.Refs?.CurrentBranch is null,
+        };
 
         try
         {

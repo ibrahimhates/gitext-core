@@ -44,6 +44,7 @@ public sealed class PullViewModel : ViewModelBase
     private readonly IAuthenticationPrompt? _authentication;
     private readonly IProcessDialogPrompt? _process;
     private readonly ISettingsStore? _settings;
+    private readonly IPullConfirmer? _confirmer;
 
     private string _workingDirectory = string.Empty;
     private string? _selectedRemote;
@@ -70,7 +71,8 @@ public sealed class PullViewModel : ViewModelBase
         IAuthenticationDiagnostics? diagnostics = null,
         IAuthenticationPrompt? authentication = null,
         IProcessDialogPrompt? process = null,
-        ISettingsStore? settings = null)
+        ISettingsStore? settings = null,
+        IPullConfirmer? confirmer = null)
     {
         ArgumentNullException.ThrowIfNull(remotes);
         ArgumentNullException.ThrowIfNull(fetch);
@@ -83,6 +85,7 @@ public sealed class PullViewModel : ViewModelBase
         _authentication = authentication;
         _process = process;
         _settings = settings;
+        _confirmer = confirmer;
 
         RunCommand = new AsyncRelayCommand(RunAsync, () => CanRun);
         CancelCommand = new RelayCommand(Cancel, () => CanCancel);
@@ -525,9 +528,15 @@ public sealed class PullViewModel : ViewModelBase
             return;
         }
 
-        IsBusy = true;
         Notice = null;
         Warning = null;
+
+        if (!await PassesConfirmationGatesAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
+        IsBusy = true;
         RecoveryCommand = null;
         ProgressText = null;
         ProgressPercent = null;
@@ -559,6 +568,58 @@ public sealed class PullViewModel : ViewModelBase
             ProgressPercent = null;
         }
     }
+
+    /// <summary>
+    /// The questions asked before the pull, in <c>FormPull</c>'s order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two gates, and both can lose something: pruning deletes every remote-tracking ref that is
+    /// gone from the remote, and pulling on a detached HEAD moves a HEAD that belongs to no branch.
+    /// </para>
+    /// <para>
+    /// ⚠️ Not here, because the machinery for them does not exist yet: re-applying the stash,
+    /// initialising submodules and offering the mergetool after a conflict. They are in PROGRESS.
+    /// </para>
+    /// </remarks>
+    private async Task<bool> PassesConfirmationGatesAsync()
+    {
+        if (_confirmer is null)
+        {
+            return true;
+        }
+
+        if (IsDetachedHead && !await _confirmer.ConfirmDetachedHeadAsync().ConfigureAwait(true))
+        {
+            return false;
+        }
+
+        if ((Prune || PruneTags) && !SuppressedPruneQuestion)
+        {
+            PushConfirmation answer = await _confirmer
+                .ConfirmPruneAsync(SelectedRemote ?? string.Empty)
+                .ConfigureAwait(true);
+
+            if (answer.DoNotAskAgain)
+            {
+                _settings?.Update(settings =>
+                    settings.Confirmations.DontConfirmFetchAndPrune = true);
+            }
+
+            if (!answer.Confirmed)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool SuppressedPruneQuestion =>
+        _settings?.Current.Confirmations.DontConfirmFetchAndPrune ?? false;
+
+    /// <summary>Is HEAD detached — is there no branch to pull into?</summary>
+    public bool IsDetachedHead { get; set; }
 
     private Task RunOnceAsync(GitCredentials? credentials) =>
         Action == PullAction.FetchOnly

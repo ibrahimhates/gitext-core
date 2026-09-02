@@ -84,6 +84,7 @@ public partial class MainWindow : Window
                 model.AuthenticationPrompt = new DialogAuthenticationPrompt(this);
                 model.ProcessPrompt = new DialogProcessPrompt(this);
                 model.PushConfirmer = new DialogPushConfirmer(this);
+                model.PullConfirmer = new DialogPullConfirmer(this);
                 model.MergePrompt = new DialogMergePrompt(this);
 
                 // A double-click in the panel calls the SAME flow as checkout in the menu
@@ -462,6 +463,38 @@ public partial class MainWindow : Window
 
         public Task<GitCredentials?> ShowAsync(AuthenticationViewModel model) =>
             AuthenticationWindow.ShowAsync(model, _owner);
+    }
+
+    /// <summary>Asks the pull flow's questions in real windows (P14-T07).</summary>
+    private sealed class DialogPullConfirmer : IPullConfirmer
+    {
+        private readonly Window _owner;
+
+        public DialogPullConfirmer(Window owner) => _owner = owner;
+
+        public async Task<PushConfirmation> ConfirmPruneAsync(string remote)
+        {
+            ConfirmResult result = await ConfirmDialog.AskAsync(
+                string.Format(
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    Loc.T("pull.prune_remote_branches_from_0"),
+                    remote),
+                Loc.T("pull.warning_the_fetch_with_prune_will_remove_all"),
+                _owner,
+                suppressible: true).ConfigureAwait(true);
+
+            return new PushConfirmation
+            {
+                Confirmed = result.Confirmed,
+                DoNotAskAgain = result.DoNotAskAgain,
+            };
+        }
+
+        public Task<bool> ConfirmDetachedHeadAsync() =>
+            ConfirmDialog.ShowAsync(
+                Loc.T("pull.not_on_a_branch"),
+                Loc.T("pull.you_cannot_pull_when_git_head_detached_do_yo"),
+                _owner);
     }
 
     /// <summary>Asks the push flow's questions in real windows (P14-T04).</summary>
