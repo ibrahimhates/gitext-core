@@ -522,6 +522,85 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     }
 
     /// <summary>
+    /// Is HEAD detached — would this commit belong to no branch?
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions asks before committing here (<c>DontConfirmCommitIfNoBranch</c>): a commit made
+    /// on a detached HEAD is reachable from nothing once the user checks out a branch again.
+    /// </remarks>
+    public bool IsDetachedHead { get; set; }
+
+    /// <summary>
+    /// The commit-message checks, in <c>FormCommit</c>'s order.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// All three are <b>off by default</b>, exactly as in GitExtensions
+    /// (<c>CommitValidationMaxCntCharsFirstLine</c> and <c>…PerLine</c> default to 0,
+    /// <c>CommitValidationSecondLineMustBeEmpty</c> to <see langword="false"/>). A limit that
+    /// blocked out of the box would reject messages GitExtensions accepts.
+    /// </para>
+    /// <para>
+    /// Each is a <b>question</b>, not a refusal — the answer "yes" commits the message as it is.
+    /// </para>
+    /// </remarks>
+    private async Task<bool> PassesMessageValidationAsync()
+    {
+        string[] lines = Message.Text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+
+        if (lines.Length == 0)
+        {
+            return true;
+        }
+
+        int firstLineLimit = CommitSettings.ValidationMaxCharsFirstLine;
+
+        if (firstLineLimit > 0
+            && lines[0].Length > firstLineLimit
+            && !await Prompt!
+                .ConfirmCommitValidationAsync(Loc.T("commit.first_line_of_commit_message_contains_too_m"))
+                .ConfigureAwait(true))
+        {
+            return false;
+        }
+
+        int lineLimit = CommitSettings.ValidationMaxCharsPerLine;
+
+        if (lineLimit > 0)
+        {
+            foreach (string line in lines)
+            {
+                if (line.Length <= lineLimit)
+                {
+                    continue;
+                }
+
+                string question = string.Format(
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    Loc.T("commit.the_following_line_of_commit_message_contain"),
+                    line);
+
+                if (!await Prompt!.ConfirmCommitValidationAsync(question).ConfigureAwait(true))
+                {
+                    return false;
+                }
+            }
+        }
+
+        if (CommitSettings.ValidationSecondLineMustBeEmpty
+            && lines.Length > 1
+            && lines[1].Length > 0
+            && !await Prompt!
+                .ConfirmCommitValidationAsync(Loc.T("commit.second_line_of_commit_message_is_not_empty_d"))
+                .ConfigureAwait(true))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// The questions asked before <c>git commit</c> runs.
     /// </summary>
     /// <remarks>
@@ -558,6 +637,21 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             {
                 await StageAllAsync().ConfigureAwait(true);
             }
+        }
+
+        if (IsDetachedHead && !CommitSettings.DontConfirmCommitIfNoBranch)
+        {
+            NotOnBranchChoice choice = await Prompt.AskNotOnBranchAsync().ConfigureAwait(true);
+
+            if (choice == NotOnBranchChoice.Cancel)
+            {
+                return false;
+            }
+        }
+
+        if (!await PassesMessageValidationAsync().ConfigureAwait(true))
+        {
+            return false;
         }
 
         if (Amend && !CommitSettings.DontConfirmAmend)

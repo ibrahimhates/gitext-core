@@ -58,16 +58,24 @@ public class CommitDialogBehaviourTests
             return Task.CompletedTask;
         }
 
+        public List<string> ValidationQuestions { get; } = [];
+
+        public bool ValidationAnswer { get; set; } = true;
+
+        public NotOnBranchChoice NotOnBranchAnswer { get; set; } = NotOnBranchChoice.Continue;
+
         public Task<bool> ConfirmCommitValidationAsync(string question)
         {
             Asked.Add("validation");
-            return Task.FromResult(true);
+            ValidationQuestions.Add(question);
+
+            return Task.FromResult(ValidationAnswer);
         }
 
         public Task<NotOnBranchChoice> AskNotOnBranchAsync()
         {
             Asked.Add("not-on-branch");
-            return Task.FromResult(NotOnBranchChoice.Continue);
+            return Task.FromResult(NotOnBranchAnswer);
         }
     }
 
@@ -289,5 +297,144 @@ public class CommitDialogBehaviourTests
 
         // No settings store either, so the defaults apply — and GitExtensions' default closes.
         closes.ShouldBe(1);
+    }
+
+    [AvaloniaFact]
+    public async Task Dogrulama_sinirlari_kapaliyken_soru_sorulmaz()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Settings.Current.Commit.ValidationMaxCharsFirstLine.ShouldBe(0);
+        harness.Settings.Current.Commit.ValidationMaxCharsPerLine.ShouldBe(0);
+        harness.Settings.Current.Commit.ValidationSecondLineMustBeEmpty.ShouldBeFalse();
+
+        harness.Model.Message.Text = new string('u', 300);
+
+        await harness.Model.CommitAsync();
+
+        harness.Prompt.Asked.ShouldNotContain("validation");
+        harness.Commits.Messages.Count.ShouldBe(1);
+    }
+
+    [AvaloniaFact]
+    public async Task Ilk_satir_siniri_asilinca_sorulur()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Settings.Current.Commit.ValidationMaxCharsFirstLine = 20;
+        harness.Model.Message.Text = new string('u', 50);
+
+        await harness.Model.CommitAsync();
+
+        harness.Prompt.Asked.ShouldContain("validation");
+        harness.Commits.Messages.Count.ShouldBe(1);
+    }
+
+    [AvaloniaFact]
+    public async Task Ilk_satir_sorusuna_hayir_denince_commit_yapilmaz()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Settings.Current.Commit.ValidationMaxCharsFirstLine = 20;
+        harness.Prompt.ValidationAnswer = false;
+        harness.Model.Message.Text = new string('u', 50);
+
+        await harness.Model.CommitAsync();
+
+        harness.Commits.Messages.ShouldBeEmpty();
+    }
+
+    [AvaloniaFact]
+    public async Task Sinir_altindaki_ilk_satir_sorulmaz()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Settings.Current.Commit.ValidationMaxCharsFirstLine = 50;
+        harness.Model.Message.Text = "kisa konu";
+
+        await harness.Model.CommitAsync();
+
+        harness.Prompt.Asked.ShouldNotContain("validation");
+    }
+
+    [AvaloniaFact]
+    public async Task Uzun_satir_sorusu_o_satiri_gosterir()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Settings.Current.Commit.ValidationMaxCharsPerLine = 10;
+        harness.Model.Message.Text = "konu\n\ncok uzun bir govde satiri";
+
+        await harness.Model.CommitAsync();
+
+        harness.Prompt.ValidationQuestions.ShouldNotBeEmpty();
+        harness.Prompt.ValidationQuestions[0].ShouldContain("cok uzun bir govde satiri");
+    }
+
+    [AvaloniaFact]
+    public async Task Ikinci_satir_bos_degilse_sorulur()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Settings.Current.Commit.ValidationSecondLineMustBeEmpty = true;
+        harness.Model.Message.Text = "konu\ngovde hemen ikinci satirda";
+
+        await harness.Model.CommitAsync();
+
+        harness.Prompt.Asked.ShouldContain("validation");
+    }
+
+    [AvaloniaFact]
+    public async Task Ikinci_satir_bosken_sorulmaz()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Settings.Current.Commit.ValidationSecondLineMustBeEmpty = true;
+        harness.Model.Message.Text = "konu\n\ngovde";
+
+        await harness.Model.CommitAsync();
+
+        harness.Prompt.Asked.ShouldNotContain("validation");
+        harness.Commits.Messages.Count.ShouldBe(1);
+    }
+
+    [AvaloniaFact]
+    public async Task Ayrik_HEADde_commit_oncesi_uyari_verilir()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Model.IsDetachedHead = true;
+
+        await harness.Model.CommitAsync();
+
+        harness.Prompt.Asked.ShouldContain("not-on-branch");
+        harness.Commits.Messages.Count.ShouldBe(1);
+    }
+
+    [AvaloniaFact]
+    public async Task Ayrik_HEAD_uyarisina_hayir_denince_commit_yapilmaz()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Model.IsDetachedHead = true;
+        harness.Prompt.NotOnBranchAnswer = NotOnBranchChoice.Cancel;
+
+        await harness.Model.CommitAsync();
+
+        harness.Commits.Messages.ShouldBeEmpty();
+    }
+
+    [AvaloniaFact]
+    public async Task Ayrik_HEAD_uyarisi_susturulabilir()
+    {
+        Harness harness = await CreateAsync();
+
+        harness.Model.IsDetachedHead = true;
+        harness.Settings.Current.Commit.DontConfirmCommitIfNoBranch = true;
+
+        await harness.Model.CommitAsync();
+
+        harness.Prompt.Asked.ShouldNotContain("not-on-branch");
+        harness.Commits.Messages.Count.ShouldBe(1);
     }
 }

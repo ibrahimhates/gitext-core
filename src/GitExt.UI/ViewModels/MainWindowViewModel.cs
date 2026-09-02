@@ -116,6 +116,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _configReader)
         {
             Settings = Settings,
+            IsDetachedHead = Commits.Refs?.CurrentBranch is null,
         };
     }
 

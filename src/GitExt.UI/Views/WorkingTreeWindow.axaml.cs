@@ -140,10 +140,17 @@ public partial class WorkingTreeWindow : Window
                 .ConfigureAwait(true);
 
         public Task<bool> ConfirmCommitValidationAsync(string question) =>
-            ConfirmDialog.ShowAsync(Loc.T("commit.commit"), question, _owner);
+            ConfirmDialog.ShowAsync(Loc.T("commit.commit_validation"), question, _owner);
 
-        public Task<NotOnBranchChoice> AskNotOnBranchAsync() =>
-            Task.FromResult(NotOnBranchChoice.Continue);
+        public async Task<NotOnBranchChoice> AskNotOnBranchAsync()
+        {
+            bool go = await ConfirmDialog.ShowAsync(
+                Loc.T("commit.not_on_a_branch"),
+                Loc.T("commit.you_are_not_on_a_branch_this_commit_will_not"),
+                _owner).ConfigureAwait(true);
+
+            return go ? NotOnBranchChoice.Continue : NotOnBranchChoice.Cancel;
+        }
     }
 
     /// <summary>
