@@ -36,6 +36,9 @@ public sealed class AppSettings
     [JsonPropertyName("appearance")]
     public AppearanceSettings Appearance { get; set; } = new();
 
+    [JsonPropertyName("commit")]
+    public CommitSettings Commit { get; set; } = new();
+
     [JsonPropertyName("shortcuts")]
     public Dictionary<string, string> Shortcuts { get; set; } = [];
 
@@ -156,6 +159,53 @@ public sealed class ConfirmationSettings
     /// </remarks>
     [JsonPropertyName("autoPullOnPushRejected")]
     public string AutoPullOnPushRejected { get; set; } = "";
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Unknown { get; set; }
+}
+
+/// <summary>How the commit screen behaves (P05-T16).</summary>
+/// <remarks>
+/// <para>
+/// One field per GitExtensions <c>AppSettings</c> entry that <c>FormCommit</c> reads, <b>with its
+/// default</b>. The defaults are not chosen here — they are copied, because a user coming from
+/// GitExtensions expects the same window to close at the same moment.
+/// </para>
+/// <para>
+/// 🔴 The two validation limits default to <b>0</b> — meaning "off" — exactly as
+/// <c>CommitValidationMaxCntCharsFirstLine</c> / <c>…PerLine</c> do. A limit that blocks by default
+/// would reject messages GitExtensions accepts.
+/// </para>
+/// </remarks>
+public sealed class CommitSettings
+{
+    /// <summary>GitExtensions <c>CloseCommitDialogAfterCommit</c> — <c>closecommitdialogaftercommit</c>, default <b>true</b>.</summary>
+    [JsonPropertyName("closeDialogAfterEachCommit")]
+    public bool CloseDialogAfterEachCommit { get; set; } = true;
+
+    /// <summary>GitExtensions <c>CloseCommitDialogAfterLastCommit</c> — <c>closecommitdialogafterlastcommit</c>, default <b>true</b>.</summary>
+    [JsonPropertyName("closeDialogAfterAllChangesCommitted")]
+    public bool CloseDialogAfterAllChangesCommitted { get; set; } = true;
+
+    /// <summary>GitExtensions <c>DontConfirmAmend</c>; set by the warning's "do not ask again" box.</summary>
+    [JsonPropertyName("dontConfirmAmend")]
+    public bool DontConfirmAmend { get; set; }
+
+    /// <summary>GitExtensions <c>DontConfirmCommitIfNoBranch</c>.</summary>
+    [JsonPropertyName("dontConfirmCommitIfNoBranch")]
+    public bool DontConfirmCommitIfNoBranch { get; set; }
+
+    /// <summary>GitExtensions <c>CommitValidationMaxCntCharsFirstLine</c>; 0 disables the check.</summary>
+    [JsonPropertyName("validationMaxCharsFirstLine")]
+    public int ValidationMaxCharsFirstLine { get; set; }
+
+    /// <summary>GitExtensions <c>CommitValidationMaxCntCharsPerLine</c>; 0 disables the check.</summary>
+    [JsonPropertyName("validationMaxCharsPerLine")]
+    public int ValidationMaxCharsPerLine { get; set; }
+
+    /// <summary>GitExtensions <c>CommitValidationSecondLineMustBeEmpty</c>.</summary>
+    [JsonPropertyName("validationSecondLineMustBeEmpty")]
+    public bool ValidationSecondLineMustBeEmpty { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }

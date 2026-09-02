@@ -113,7 +113,10 @@ public partial class MainWindowViewModel : ViewModelBase
             _messageStore,
             _watcher,
             _workingTreeWriter,
-            _configReader);
+            _configReader)
+        {
+            Settings = Settings,
+        };
     }
 
     public MainWindowViewModel(

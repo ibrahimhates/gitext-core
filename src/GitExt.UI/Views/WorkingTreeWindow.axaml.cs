@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GitExt.UI.Commands;
+using GitExt.UI.Localization;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -62,8 +63,87 @@ public partial class WorkingTreeWindow : Window
         // The confirmation dialog will open above this window; the owner window is only known here
         // (P05-T15).
         viewModel.Confirmer = new DialogConfirmer(window);
+        viewModel.Prompt = new DialogCommitPrompt(window);
+
+        void OnCloseRequested(object? sender, EventArgs e) => window.Close();
+
+        viewModel.CloseRequested += OnCloseRequested;
+        window.Closed += (_, _) => viewModel.CloseRequested -= OnCloseRequested;
 
         return window.ShowDialog(owner);
+    }
+
+    /// <summary>Asks the commit screen's questions in real dialogs (P14-T03).</summary>
+    private sealed class DialogCommitPrompt : ICommitPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogCommitPrompt(Window owner) => _owner = owner;
+
+        public async Task<AmendConfirmation> ConfirmAmendAsync()
+        {
+            ConfirmResult result = await ConfirmDialog.AskAsync(
+                Loc.T("commit.commit"),
+                Loc.T("commit.are_you_sure_you_want_to_amend_the_last_com"),
+                _owner,
+                suppressible: true).ConfigureAwait(true);
+
+            return new AmendConfirmation
+            {
+                Confirmed = result.Confirmed,
+                DoNotAskAgain = result.DoNotAskAgain,
+            };
+        }
+
+        public Task<bool> ConfirmEmptyMergeCommitAsync() =>
+            ConfirmDialog.ShowAsync(
+                Loc.T("commit.commit"),
+                Loc.T("commit.it_is_a_bad_practice_to_commit_an_empty_merg"),
+                _owner);
+
+        public async Task<NoStagedChangesChoice> AskNoStagedChangesAsync(bool canStageAll)
+        {
+            if (!canStageAll)
+            {
+                await ConfirmDialog
+                    .ShowAsync(
+                        Loc.T("commit.commit"),
+                        Loc.T("commit.there_are_no_files_staged_for_this_commit"),
+                        _owner)
+                    .ConfigureAwait(true);
+
+                return NoStagedChangesChoice.Cancel;
+            }
+
+            bool stage = await ConfirmDialog.ShowAsync(
+                Loc.T("commit.commit"),
+                Loc.T("commit.there_are_no_files_staged_for_this_commit_st"),
+                _owner).ConfigureAwait(true);
+
+            return stage ? NoStagedChangesChoice.StageAllAndCommit : NoStagedChangesChoice.Cancel;
+        }
+
+        public async Task ReportMergeConflictsAsync() =>
+            await ConfirmDialog
+                .ShowAsync(
+                    Loc.T("commit.commit"),
+                    Loc.T("commit.there_are_unresolved_merge_conflicts_resolve"),
+                    _owner)
+                .ConfigureAwait(true);
+
+        public async Task ReportMissingCommitMessageAsync() =>
+            await ConfirmDialog
+                .ShowAsync(
+                    Loc.T("commit.commit"),
+                    Loc.T("commit.you_need_to_enter_a_commit_message"),
+                    _owner)
+                .ConfigureAwait(true);
+
+        public Task<bool> ConfirmCommitValidationAsync(string question) =>
+            ConfirmDialog.ShowAsync(Loc.T("commit.commit"), question, _owner);
+
+        public Task<NotOnBranchChoice> AskNotOnBranchAsync() =>
+            Task.FromResult(NotOnBranchChoice.Continue);
     }
 
     /// <summary>

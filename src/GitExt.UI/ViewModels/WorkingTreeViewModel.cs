@@ -440,6 +440,11 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             return;
         }
 
+        if (!await PassesCommitGatesAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
         try
         {
             IsBusy = true;
@@ -469,6 +474,108 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         }
 
         await RefreshAsync(cancellationToken).ConfigureAwait(true);
+
+        ApplyCloseRule();
+    }
+
+    /// <summary>Raised when the commit screen should close itself.</summary>
+    public event EventHandler? CloseRequested;
+
+    /// <summary>The party that asks the commit screen's questions.</summary>
+    public ICommitPrompt? Prompt { get; set; }
+
+    /// <summary>The settings store, for the answers that are remembered.</summary>
+    public Settings.ISettingsStore? Settings { get; set; }
+
+    private Settings.CommitSettings CommitSettings =>
+        Settings?.Current.Commit ?? _defaultCommitSettings;
+
+    private static readonly Settings.CommitSettings _defaultCommitSettings = new();
+
+    /// <summary>
+    /// Decides whether the screen closes after a commit.
+    /// </summary>
+    /// <remarks>
+    /// <c>FormCommit.DoCommit</c>, in its order: <c>CloseCommitDialogAfterCommit</c> closes it at
+    /// once; otherwise anything still unstaged keeps it open to carry on with, and only when
+    /// nothing is left does <c>CloseCommitDialogAfterLastCommit</c> decide. <b>Both default to
+    /// <see langword="true"/></b> in GitExtensions, so out of the box the window closes — copied
+    /// rather than chosen, because that is the moment a user coming from it expects.
+    /// </remarks>
+    private void ApplyCloseRule()
+    {
+        if (CommitSettings.CloseDialogAfterEachCommit)
+        {
+            CloseRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        if (Unstaged.Count > 0)
+        {
+            return;
+        }
+
+        if (CommitSettings.CloseDialogAfterAllChangesCommitted)
+        {
+            CloseRequested?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// The questions asked before <c>git commit</c> runs.
+    /// </summary>
+    /// <remarks>
+    /// <c>FormCommit.CheckForStagedAndCommit</c>: unresolved conflicts stop it outright, nothing
+    /// staged offers to stage everything, and an amend is confirmed unless the user has switched
+    /// that off. Without a prompt the screen commits as before — the gates are the questions, not
+    /// the operation.
+    /// </remarks>
+    private async Task<bool> PassesCommitGatesAsync()
+    {
+        if (Prompt is null)
+        {
+            return true;
+        }
+
+        if (HasConflicts)
+        {
+            await Prompt.ReportMergeConflictsAsync().ConfigureAwait(true);
+            return false;
+        }
+
+        if (!HasStagedChanges && !Amend)
+        {
+            NoStagedChangesChoice choice = await Prompt
+                .AskNoStagedChangesAsync(Unstaged.Count > 0)
+                .ConfigureAwait(true);
+
+            if (choice == NoStagedChangesChoice.Cancel)
+            {
+                return false;
+            }
+
+            if (choice == NoStagedChangesChoice.StageAllAndCommit)
+            {
+                await StageAllAsync().ConfigureAwait(true);
+            }
+        }
+
+        if (Amend && !CommitSettings.DontConfirmAmend)
+        {
+            AmendConfirmation answer = await Prompt.ConfirmAmendAsync().ConfigureAwait(true);
+
+            if (answer.DoNotAskAgain)
+            {
+                Settings?.Update(settings => settings.Commit.DontConfirmAmend = true);
+            }
+
+            if (!answer.Confirmed)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>The selected row in the active list.</summary>
