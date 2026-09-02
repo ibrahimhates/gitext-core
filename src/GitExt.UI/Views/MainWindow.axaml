@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="using:GitExt.UI.Localization"
+        xmlns:core="using:GitExt.Core"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:GitExt.UI.ViewModels"
@@ -104,7 +105,7 @@
                 <MenuItem Name="MenuCheckoutRevision" Header="{loc:Translate main.check_out_revision}" IsEnabled="False" />
                 <MenuItem Name="MenuRevert" Header="{loc:Translate main.re_vert_commit}" />
                 <MenuItem Name="MenuResetToCommit" Header="{loc:Translate main.re_set_to_this_commit}" />
-                <MenuItem Name="MenuBisect" Header="{loc:Translate main.b_isect}" IsEnabled="False" />
+                <MenuItem Name="MenuBisect" Header="{loc:Translate main.b_isect}" Command="{Binding BisectStartCommand}" />
                 <MenuItem Name="MenuReflog" Header="{loc:Translate main.show_reflo_g}" />
             </MenuItem>
 
@@ -636,15 +637,49 @@
                 In P06-T12 only merge was offered, because aborting the others takes different
                 commands. In Phase 07 IConflictResolver picks the right verb FROM THE STATE FILES,
                 so rebase/cherry-pick/revert can be aborted from here as well.
-                Bisect is left out: it has no abort, and its "reset" is a different thing entirely.
+                Bisect has no abort; its buttons answer the search instead, and "Stop bisect" is
+                git's `bisect reset` — a different verb from aborting, which is why it sits apart.
             -->
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <TextBlock Name="OperationText"
-                           Grid.Column="0"
-                           Text="{Binding OperationText}"
-                           TextWrapping="Wrap"
-                           VerticalAlignment="Center"
-                           FontSize="12" />
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto,Auto">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Name="OperationText"
+                               Text="{Binding OperationText}"
+                               TextWrapping="Wrap"
+                               FontSize="12" />
+                    <TextBlock Name="BisectNoticeText"
+                               Text="{Binding BisectNotice}"
+                               TextWrapping="Wrap"
+                               FontSize="{DynamicResource GitExtSmallFontSize}"
+                               Opacity="0.8"
+                               IsVisible="{Binding BisectNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+                <Button Name="BisectGoodButton"
+                        Grid.Column="3"
+                        Content="{loc:Translate main.mark_good}"
+                        Margin="8,0,0,0"
+                        IsVisible="{Binding IsBisecting}"
+                        Command="{Binding BisectMarkCommand}"
+                        CommandParameter="{x:Static core:BisectVerdict.Good}" />
+                <Button Name="BisectBadButton"
+                        Grid.Column="4"
+                        Content="{loc:Translate main.mark_bad}"
+                        Margin="6,0,0,0"
+                        IsVisible="{Binding IsBisecting}"
+                        Command="{Binding BisectMarkCommand}"
+                        CommandParameter="{x:Static core:BisectVerdict.Bad}" />
+                <Button Name="BisectSkipButton"
+                        Grid.Column="5"
+                        Content="{loc:Translate main.mark_skip}"
+                        Margin="6,0,0,0"
+                        IsVisible="{Binding IsBisecting}"
+                        Command="{Binding BisectMarkCommand}"
+                        CommandParameter="{x:Static core:BisectVerdict.Skip}" />
+                <Button Name="BisectStopButton"
+                        Grid.Column="6"
+                        Content="{loc:Translate main.stop_bisect}"
+                        Margin="6,0,0,0"
+                        IsVisible="{Binding IsBisecting}"
+                        Command="{Binding BisectResetCommand}" />
                 <Button Name="ResolveConflictsButton"
                         Grid.Column="1"
                         Content="{loc:Translate main.resolve_conflicts}"

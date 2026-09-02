@@ -119,6 +119,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISequencerWriter, SequencerWriter>();
         services.AddSingleton<IRebaseWriter, RebaseWriter>();
         services.AddSingleton<IStashWriter, StashWriter>();
+        services.AddSingleton<IBisectWriter, BisectWriter>();
         services.AddSingleton<IBlameReader, BlameReader>();
         services.AddSingleton<IFileHistoryReader, FileHistoryReader>();
         services.AddSingleton<ITagWriter, TagWriter>();
@@ -136,6 +137,7 @@ public static class ServiceCollectionExtensions
             Sequencer = provider.GetRequiredService<ISequencerWriter>(),
             Rebase = provider.GetRequiredService<IRebaseWriter>(),
             Stash = provider.GetRequiredService<IStashWriter>(),
+            Bisect = provider.GetRequiredService<IBisectWriter>(),
             Reflog = provider.GetRequiredService<IReflogReader>(),
             Blame = provider.GetRequiredService<IBlameReader>(),
             FileHistory = provider.GetRequiredService<IFileHistoryReader>(),

@@ -209,6 +209,18 @@ public partial class MainWindowViewModel : ViewModelBase
         AbortOperationCommand = new AsyncRelayCommand(AbortOperationAsync, () => CanAbortOperation);
         ResolveConflictsCommand = new AsyncRelayCommand(ResolveConflictsAsync, () => CanResolveConflicts);
         ShowStashCommand = new AsyncRelayCommand(ShowStashAsync, () => CanShowStash);
+
+        BisectStartCommand = new AsyncRelayCommand(
+            () => RunBisectAsync((bisect, path) => bisect.StartAsync(path)),
+            () => CanBisect);
+
+        BisectMarkCommand = new AsyncRelayCommand<BisectVerdict>(
+            verdict => RunBisectAsync((bisect, path) => bisect.MarkAsync(path, verdict)),
+            _ => CanBisect);
+
+        BisectResetCommand = new AsyncRelayCommand(
+            () => RunBisectAsync((bisect, path) => bisect.ResetAsync(path)),
+            () => CanBisect);
         ShowReflogCommand = new AsyncRelayCommand(ShowReflogAsync, () => CanShowReflog);
         ResetCommand = new AsyncRelayCommand(ResetAsync, () => CanReset);
         CherryPickCommand = new AsyncRelayCommand(CherryPickAsync, () => CanCherryPick);
@@ -424,6 +436,74 @@ public partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>The party that asks the push flow's questions (P14-T04).</summary>
     public IPushConfirmer? PushConfirmer { get; set; }
+
+    /// <summary>Starts a bisect (P14-T20).</summary>
+    public IAsyncRelayCommand BisectStartCommand { get; }
+
+    /// <summary>Marks the commit under test good, bad or unusable.</summary>
+    public IAsyncRelayCommand<BisectVerdict> BisectMarkCommand { get; }
+
+    /// <summary>Ends the bisect and returns to the branch it started from.</summary>
+    public IAsyncRelayCommand BisectResetCommand { get; }
+
+    /// <summary>Is a bisect running right now?</summary>
+    public bool IsBisecting => CurrentOperation == InProgressOperation.Bisect;
+
+    /// <summary>What git last said about the bisect; shown in the banner.</summary>
+    [ObservableProperty]
+    public partial string? BisectNotice { get; set; }
+
+    private bool CanBisect => _advanced.Bisect is not null && HasRepository;
+
+    /// <summary>
+    /// Runs one bisect step and reports what git said.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 The result is read from the <b>output</b>, not the exit code: measured, every step —
+    /// including the one that names the culprit — exits 0. And naming the culprit does not end the
+    /// bisect; the <c>BISECT_*</c> files stay until <c>reset</c>, which is why the banner is still
+    /// up afterwards and the user is the one who stops it.
+    /// </remarks>
+    private async Task RunBisectAsync(Func<IBisectWriter, string, Task<BisectStatus>> step)
+    {
+        if (_advanced.Bisect is not { } bisect
+            || Commits.Repository?.WorkingDirectory is not { Length: > 0 } path)
+        {
+            return;
+        }
+
+        try
+        {
+            BisectStatus status;
+
+            using (_watcher?.Suspend())
+            {
+                status = await step(bisect, path).ConfigureAwait(true);
+            }
+
+            BisectNotice = status.IsFinished
+                ? string.Format(
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    Loc.T("main.0_is_the_first_bad_commit"),
+                    status.FirstBadCommit![..Math.Min(10, status.FirstBadCommit!.Length)])
+                : DescribeProgress(status);
+        }
+        catch (GitException error)
+        {
+            BisectNotice = Loc.GitError(error);
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    private static string? DescribeProgress(BisectStatus status) =>
+        status.RemainingRevisions is { } revisions
+            ? string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                Loc.T("main.bisecting_0_revisions_left_roughly_1_steps"),
+                revisions,
+                status.RemainingSteps ?? 0)
+            : null;
 
     /// <summary>The party that asks the pull flow's questions (P14-T07).</summary>
     public IPullConfirmer? PullConfirmer { get; set; }
@@ -2097,6 +2177,10 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowDetachedBanner));
         OnPropertyChanged(nameof(ShowOperationBanner));
         OnPropertyChanged(nameof(OperationText));
+        OnPropertyChanged(nameof(IsBisecting));
+        BisectStartCommand.NotifyCanExecuteChanged();
+        BisectMarkCommand.NotifyCanExecuteChanged();
+        BisectResetCommand.NotifyCanExecuteChanged();
 
         // The title and the toolbar's branch button both name the current branch; they are
         // notified here, where the branch is actually known.

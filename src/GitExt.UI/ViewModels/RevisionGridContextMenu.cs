@@ -244,10 +244,6 @@ public static class RevisionGridContextMenu
 
     private static readonly RevisionGridMenuId[] _unimplemented =
     [
-        RevisionGridMenuId.MarkRevisionAsBad,
-        RevisionGridMenuId.MarkRevisionAsGood,
-        RevisionGridMenuId.BisectSkipRevision,
-        RevisionGridMenuId.StopBisect,
         RevisionGridMenuId.SelectInLeftPanel,
         RevisionGridMenuId.ResetAnotherBranchToHere,
         RevisionGridMenuId.ArchiveRevision,

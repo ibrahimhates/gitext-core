@@ -32,6 +32,9 @@ public sealed record AdvancedOperationServices
 
     public IStashWriter? Stash { get; init; }
 
+    /// <summary>Runs <c>git bisect</c> (P14-T20).</summary>
+    public IBisectWriter? Bisect { get; init; }
+
     public IReflogReader? Reflog { get; init; }
 
     public IBlameReader? Blame { get; init; }

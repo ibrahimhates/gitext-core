@@ -484,13 +484,14 @@ public class RevisionGridContextMenuTests
     }
 
     [Fact]
-    public void Bisect_ogeleri_hala_devre_disi()
+    public void Bisect_ogeleri_artik_etkin()
     {
-        // Bisect is Phase 07; the items keep their place in the order but cannot be pressed.
         IReadOnlyList<RevisionGridMenuEntry> menu =
             RevisionGridContextMenu.Build(Context() with { InTheMiddleOfBisect = true });
 
-        Find(menu, RevisionGridMenuId.MarkRevisionAsBad).IsEnabled.ShouldBeFalse();
-        Find(menu, RevisionGridMenuId.StopBisect).IsEnabled.ShouldBeFalse();
+        Find(menu, RevisionGridMenuId.MarkRevisionAsBad).IsEnabled.ShouldBeTrue();
+        Find(menu, RevisionGridMenuId.MarkRevisionAsGood).IsEnabled.ShouldBeTrue();
+        Find(menu, RevisionGridMenuId.BisectSkipRevision).IsEnabled.ShouldBeTrue();
+        Find(menu, RevisionGridMenuId.StopBisect).IsEnabled.ShouldBeTrue();
     }
 }

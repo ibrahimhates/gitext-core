@@ -7,6 +7,7 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GitExt.Core;
 using GitExt.Core.Model;
 using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
@@ -571,6 +572,25 @@ public partial class CommitListView : UserControl
             }
 
             return;
+        }
+
+        switch (entry.Id)
+        {
+            case RevisionGridMenuId.MarkRevisionAsGood:
+                _ = model.BisectMarkCommand.ExecuteAsync(BisectVerdict.Good);
+                return;
+
+            case RevisionGridMenuId.MarkRevisionAsBad:
+                _ = model.BisectMarkCommand.ExecuteAsync(BisectVerdict.Bad);
+                return;
+
+            case RevisionGridMenuId.BisectSkipRevision:
+                _ = model.BisectMarkCommand.ExecuteAsync(BisectVerdict.Skip);
+                return;
+
+            case RevisionGridMenuId.StopBisect:
+                _ = model.BisectResetCommand.ExecuteAsync(null);
+                return;
         }
 
         IAsyncRelayCommand? command = entry.Id switch
