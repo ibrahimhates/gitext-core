@@ -1,9 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitExt.Core;
 using GitExt.UI.Commands;
+using GitExt.UI.Settings;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -199,6 +201,90 @@ public partial class WorkingTreeView : UserControl
 
     /// <summary>Shows the conflict resolver; supplied by the window that hosts this view.</summary>
     public Action? SolveConflicts { get; set; }
+
+    // ---- P14: the folder tree ----
+
+    /// <summary>
+    /// Reads the stored list mode (tree / flat) and starts saving changes to it.
+    /// </summary>
+    /// <remarks>
+    /// The settings come from the window that hosts this view, the same way the destructive-action
+    /// confirmer does (P05-T15): the ViewModel is created per commit window and resolves no services
+    /// of its own.
+    /// </remarks>
+    public void AttachSettings(ISettingsStore settings) => ViewModel?.AttachSettings(settings);
+
+    /// <summary>
+    /// Opens or closes a folder when its chevron is clicked.
+    /// </summary>
+    /// <remarks>
+    /// ⚠️ It must be <c>Handled</c>: without it the press goes on to the <c>ListBoxItem</c>, which
+    /// changes the selection — clicking a chevron would also throw away the selection the user was
+    /// about to stage.
+    /// </remarks>
+    private void OnFolderChevronPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (Toggle(sender))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private void OnFolderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (Toggle(sender))
+        {
+            e.Handled = true;
+        }
+    }
+
+    private bool Toggle(object? sender)
+    {
+        if (ViewModel is not { } model
+            || (sender as Control)?.DataContext is not WorkingTreeFolderRow folder)
+        {
+            return false;
+        }
+
+        model.ToggleFolder(folder);
+
+        return true;
+    }
+
+    private void OnExpandAllClick(object? sender, RoutedEventArgs e) =>
+        SetAllFoldersExpanded(sender, expanded: true);
+
+    private void OnCollapseAllClick(object? sender, RoutedEventArgs e) =>
+        SetAllFoldersExpanded(sender, expanded: false);
+
+    /// <summary>
+    /// Applies expand/collapse to the list the menu was opened on — not to the "active" one.
+    /// </summary>
+    /// <remarks>
+    /// Right-clicking does not necessarily move the focus, so <c>IsStagedListActive</c> may still be
+    /// pointing at the other list; acting on it would collapse the list the user is not looking at.
+    /// </remarks>
+    private void SetAllFoldersExpanded(object? sender, bool expanded) =>
+        ViewModel?.SetAllFoldersExpanded(IsStagedMenu(sender), expanded);
+
+    private bool IsStagedMenu(object? sender) =>
+        sender is Control control
+        && control.FindLogicalAncestorOfType<ContextMenu>() is { } menu
+        && ReferenceEquals(menu, StagedList.ContextMenu);
+
+    private void OnTreeModeClick(object? sender, RoutedEventArgs e) =>
+        SetListMode(WorkingTreeListMode.Tree);
+
+    private void OnFlatModeClick(object? sender, RoutedEventArgs e) =>
+        SetListMode(WorkingTreeListMode.Flat);
+
+    private void SetListMode(WorkingTreeListMode mode)
+    {
+        if (ViewModel is { } model)
+        {
+            model.ListMode = mode;
+        }
+    }
 
     private void OnStageClick(object? sender, RoutedEventArgs e) =>
         Run(ViewModel?.StageSelectedAsync());

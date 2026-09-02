@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using GitExt.UI.Commands;
 using GitExt.UI.Localization;
+using GitExt.UI.Settings;
 using GitExt.UI.ViewModels;
 
 namespace GitExt.UI.Views;
@@ -42,7 +43,8 @@ public partial class WorkingTreeWindow : Window
         WorkingTreeViewModel viewModel,
         Window owner,
         ICommandRegistry? registry = null,
-        Action? solveConflicts = null)
+        Action? solveConflicts = null,
+        ISettingsStore? settings = null)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(owner);
@@ -54,6 +56,12 @@ public partial class WorkingTreeWindow : Window
         if (registry is not null)
         {
             view.AttachShortcuts(registry);
+        }
+
+        // Tree or flat list, and the fact that the choice survives the window closing (P14).
+        if (settings is not null)
+        {
+            view.AttachSettings(settings);
         }
 
         // The conflict strip opens the SAME screen the main window's banner opens (P12-T16); the

@@ -35,14 +35,66 @@
         (details: WorkingTreeViewModel).
     -->
 
-    <UserControl.Resources>
+    <!--
+        The row templates are picked BY TYPE (`DataTemplates`, not a keyed `ItemTemplate`): the two
+        lists hold folder rows and file rows in one collection, and compiled bindings cannot bind
+        `IsAdded` on a folder.
+    -->
+    <UserControl.DataTemplates>
+
+        <!--
+            A folder row. The icon is the same whether the folder is open or closed — GitExtensions
+            gives every folder node `Images.FolderClosed` too; the chevron is what carries the state.
+        -->
+        <DataTemplate DataType="vm:WorkingTreeFolderRow">
+            <Grid ColumnDefinitions="Auto,Auto,*"
+                  Height="20"
+                  Background="Transparent"
+                  Margin="{Binding Depth, Converter={x:Static vm:DepthIndent.Instance}}"
+                  DoubleTapped="OnFolderDoubleTapped">
+
+                <Border Grid.Column="0"
+                        Name="FolderChevron"
+                        Width="16"
+                        Background="Transparent"
+                        PointerPressed="OnFolderChevronPressed">
+                    <Panel>
+                        <PathIcon Data="{StaticResource IconTreeExpanded}"
+                                  Width="8" Height="8"
+                                  IsVisible="{Binding IsExpanded}" />
+                        <PathIcon Data="{StaticResource IconTreeCollapsed}"
+                                  Width="8" Height="8"
+                                  IsVisible="{Binding !IsExpanded}" />
+                    </Panel>
+                </Border>
+
+                <PathIcon Grid.Column="1"
+                          Data="{StaticResource IconFolderClosed}"
+                          Width="12" Height="12"
+                          Margin="2,0"
+                          VerticalAlignment="Center" />
+
+                <TextBlock Grid.Column="2"
+                           Text="{Binding DisplayName}"
+                           FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           Margin="4,0,0,0" />
+            </Grid>
+        </DataTemplate>
+
         <!--
             The row format is the SAME as the changed files list in P04-T08: git's own status
             letter plus the path. The user already knows the letters; setting up two different
             presentations across two lists would be a needless second alphabet.
+
+            `DisplayName` is the whole path in flat mode and just the file name under a folder row —
+            the same trimming GitExtensions does in `StatusSorter.RemoveParentPath`.
         -->
-        <DataTemplate x:Key="WorkingTreeFileTemplate" DataType="vm:WorkingTreeFileRow">
-            <Grid ColumnDefinitions="Auto,*" Height="20">
+        <DataTemplate DataType="vm:WorkingTreeFileRow">
+            <Grid ColumnDefinitions="Auto,*"
+                  Height="20"
+                  Margin="{Binding Depth, Converter={x:Static vm:DepthIndent.Instance}}">
                 <TextBlock Grid.Column="0"
                            Text="{Binding StatusLetter}"
                            Classes="status"
@@ -55,14 +107,14 @@
                            VerticalAlignment="Center" />
 
                 <TextBlock Grid.Column="1"
-                           Text="{Binding Path}"
+                           Text="{Binding DisplayName}"
                            FontSize="12"
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
                            Margin="4,0,0,0" />
             </Grid>
         </DataTemplate>
-    </UserControl.Resources>
+    </UserControl.DataTemplates>
 
     <UserControl.Styles>
         <Style Selector="TextBlock.status">
@@ -178,12 +230,39 @@
                         BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
 
                     <ListBox Name="UnstagedList"
-                             ItemsSource="{Binding Unstaged}"
+                             ItemsSource="{Binding UnstagedRows}"
                              SelectedIndex="{Binding SelectedUnstagedIndex}"
-                             ItemTemplate="{StaticResource WorkingTreeFileTemplate}"
                              Background="Transparent"
                              BorderThickness="0"
-                             GotFocus="OnUnstagedFocused" />
+                             GotFocus="OnUnstagedFocused">
+                        <ListBox.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Name="StageMenuItem"
+                                          Header="{loc:Translate working_tree.stage_item}"
+                                          Click="OnStageClick" />
+                                <Separator />
+                                <MenuItem Name="UnstagedExpandAllItem"
+                                          Header="{loc:Translate working_tree.expand_all}"
+                                          Click="OnExpandAllClick" />
+                                <MenuItem Name="UnstagedCollapseAllItem"
+                                          Header="{loc:Translate working_tree.collapse_all}"
+                                          Click="OnCollapseAllClick" />
+                                <Separator />
+                                <MenuItem Header="{loc:Translate working_tree.sort_and_group_by}">
+                                    <MenuItem Name="UnstagedTreeModeItem"
+                                              Header="{loc:Translate working_tree.file_path_tree}"
+                                              ToggleType="Radio"
+                                              IsChecked="{Binding IsTreeMode}"
+                                              Click="OnTreeModeClick" />
+                                    <MenuItem Name="UnstagedFlatModeItem"
+                                              Header="{loc:Translate working_tree.file_path_flat}"
+                                              ToggleType="Radio"
+                                              IsChecked="{Binding !IsTreeMode}"
+                                              Click="OnFlatModeClick" />
+                                </MenuItem>
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
+                    </ListBox>
                 </Border>
             </Grid>
 
@@ -260,12 +339,39 @@
                         BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
 
                     <ListBox Name="StagedList"
-                             ItemsSource="{Binding Staged}"
+                             ItemsSource="{Binding StagedRows}"
                              SelectedIndex="{Binding SelectedStagedIndex}"
-                             ItemTemplate="{StaticResource WorkingTreeFileTemplate}"
                              Background="Transparent"
                              BorderThickness="0"
-                             GotFocus="OnStagedFocused" />
+                             GotFocus="OnStagedFocused">
+                        <ListBox.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Name="UnstageMenuItem"
+                                          Header="{loc:Translate working_tree.unstage_item}"
+                                          Click="OnUnstageClick" />
+                                <Separator />
+                                <MenuItem Name="StagedExpandAllItem"
+                                          Header="{loc:Translate working_tree.expand_all}"
+                                          Click="OnExpandAllClick" />
+                                <MenuItem Name="StagedCollapseAllItem"
+                                          Header="{loc:Translate working_tree.collapse_all}"
+                                          Click="OnCollapseAllClick" />
+                                <Separator />
+                                <MenuItem Header="{loc:Translate working_tree.sort_and_group_by}">
+                                    <MenuItem Name="StagedTreeModeItem"
+                                              Header="{loc:Translate working_tree.file_path_tree}"
+                                              ToggleType="Radio"
+                                              IsChecked="{Binding IsTreeMode}"
+                                              Click="OnTreeModeClick" />
+                                    <MenuItem Name="StagedFlatModeItem"
+                                              Header="{loc:Translate working_tree.file_path_flat}"
+                                              ToggleType="Radio"
+                                              IsChecked="{Binding !IsTreeMode}"
+                                              Click="OnFlatModeClick" />
+                                </MenuItem>
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
+                    </ListBox>
                 </Border>
 
                 <!-- Error strip plus git's full output (P05-T07) -->

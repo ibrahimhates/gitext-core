@@ -797,7 +797,8 @@ public partial class MainWindow : Window
             workingTree,
             this,
             _registry,
-            solveConflicts: () => model.ResolveConflictsCommand.Execute(null));
+            solveConflicts: () => model.ResolveConflictsCommand.Execute(null),
+            settings: _settings);
 
         await model.RefreshAsync();
     }

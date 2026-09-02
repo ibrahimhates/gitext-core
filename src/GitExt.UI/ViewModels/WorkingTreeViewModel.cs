@@ -5,30 +5,29 @@ using GitExt.Core;
 using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.UI.Localization;
+using GitExt.UI.Settings;
 
 namespace GitExt.UI.ViewModels;
 
 /// <summary>
 /// A single row in the working directory lists (P05-T09).
 /// </summary>
-public sealed class WorkingTreeFileRow
+/// <remarks>
+/// The same file can be in both lists at once: part of it staged, the rest not.
+/// <see cref="WorkingTreeRow.IsStagedSide"/> decides which side is shown when the diff is read.
+/// </remarks>
+public sealed class WorkingTreeFileRow : WorkingTreeRow
 {
     public WorkingTreeFileRow(FileStatus status, bool staged)
+        : base(staged)
     {
         ArgumentNullException.ThrowIfNull(status);
 
         Status = status;
-        IsStagedSide = staged;
+        DisplayName = status.Path.Value;
     }
 
     public FileStatus Status { get; }
-
-    /// <summary>Does the row belong to the <b>staged</b> list?</summary>
-    /// <remarks>
-    /// The same file can be in both lists at once: part of it staged, the rest not.
-    /// This determines which side is shown when reading the diff.
-    /// </remarks>
-    public bool IsStagedSide { get; }
 
     public RepositoryPath Path => Status.Path;
 
@@ -69,6 +68,11 @@ public sealed class WorkingTreeFileRow
     public bool IsDeleted => Kind == FileChangeKind.Deleted;
 
     public bool IsAdded => Kind == FileChangeKind.Added || Status.IsUntracked;
+
+    public override IEnumerable<WorkingTreeFileRow> EnumerateFiles()
+    {
+        yield return this;
+    }
 
     public override string ToString() => $"{StatusLetter} {Path}";
 }
@@ -129,6 +133,22 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     /// </remarks>
     private bool _refreshingSelection;
 
+    /// <summary>Paths of the folders the user closed, per side.</summary>
+    /// <remarks>
+    /// Kept <b>outside</b> the rows: the lists are rebuilt on every <c>git status</c>, and the
+    /// watcher triggers one on every file save. Holding the state on the row objects would reopen
+    /// every folder the user closed each time they hit save in their editor.
+    /// </remarks>
+    private readonly HashSet<string> _collapsedUnstaged = new(StringComparer.Ordinal);
+
+    private readonly HashSet<string> _collapsedStaged = new(StringComparer.Ordinal);
+
+    private IReadOnlyList<WorkingTreeRow> _unstagedTree = [];
+
+    private IReadOnlyList<WorkingTreeRow> _stagedTree = [];
+
+    private ISettingsStore? _settings;
+
     public WorkingTreeViewModel(
         IStatusReader statusReader,
         IStagingWriter staging,
@@ -178,10 +198,10 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     /// The two commands are mutually exclusive — same as in GitExtensions: <c>stageSelectedLines</c>
     /// only appears on the working tree side, <c>unstageSelectedLines</c> only on the index side.
     /// </remarks>
-    bool IPartialStagingHost.CanStage => SelectedRow is { IsStagedSide: false };
+    bool IPartialStagingHost.CanStage => SelectedFile is { IsStagedSide: false };
 
     /// <inheritdoc />
-    bool IPartialStagingHost.CanUnstage => SelectedRow is { IsStagedSide: true };
+    bool IPartialStagingHost.CanUnstage => SelectedFile is { IsStagedSide: true };
 
     /// <inheritdoc />
     async Task IPartialStagingHost.ApplyAsync(FileDiff diff, PatchSelection selection, bool stage)
@@ -295,6 +315,53 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
 
     /// <summary>Staged changes.</summary>
     public AvaloniaList<WorkingTreeFileRow> Staged { get; } = [];
+
+    /// <summary>The rows the unstaged list shows: the folder tree, flattened.</summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why flattened and not a nested control.</b> Measured on a repository with 10 000 changed
+    /// files (P14): building the tree takes 2.9 ms and flattening it 0.4 ms, but filling an Avalonia
+    /// <c>TreeView</c> with the same fully expanded tree takes <b>3 320 ms</b> — its nested items are
+    /// not virtualised, so every node is realised. The same rows in the virtualised <c>ListBox</c>
+    /// take 1.3 ms. GitExtensions gets away with a real tree control because the WinForms
+    /// <c>TreeView</c> is virtualised natively.
+    /// </para>
+    /// <para>
+    /// <see cref="Unstaged"/> stays the list of <b>files</b>: the counts, "stage all" and the reset
+    /// paths must not start counting folder rows.
+    /// </para>
+    /// </remarks>
+    public AvaloniaList<WorkingTreeRow> UnstagedRows { get; } = [];
+
+    /// <summary>The rows the staged list shows.</summary>
+    public AvaloniaList<WorkingTreeRow> StagedRows { get; } = [];
+
+    /// <summary>
+    /// Folder tree or flat list? <b>Tree by default</b>, as in GitExtensions.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions' default is <c>DiffListSortType.FilePath</c> — the tree —
+    /// (<c>AppSettings.DiffListSorting</c>), with the flat list as the alternative; the same
+    /// default is kept here.
+    /// </remarks>
+    [ObservableProperty]
+    public partial WorkingTreeListMode ListMode { get; set; } = WorkingTreeListMode.Tree;
+
+    public bool IsTreeMode => ListMode == WorkingTreeListMode.Tree;
+
+    partial void OnListModeChanged(WorkingTreeListMode value)
+    {
+        OnPropertyChanged(nameof(IsTreeMode));
+
+        // Which folders are closed is meaningless in the other mode, and keeping it would surprise
+        // the user coming back: the folders they closed a mode ago are not on their mind.
+        _collapsedUnstaged.Clear();
+        _collapsedStaged.Clear();
+
+        RebuildRows();
+
+        _settings?.Update(settings => settings.Layout.CommitFileTree = value == WorkingTreeListMode.Tree);
+    }
 
     /// <summary>The open repository's working directory; <see langword="null"/> if none is open.</summary>
     [ObservableProperty]
@@ -672,13 +739,20 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         return true;
     }
 
-    /// <summary>The selected row in the active list.</summary>
-    public WorkingTreeFileRow? SelectedRow =>
+    /// <summary>The selected row in the active list; may be a folder.</summary>
+    public WorkingTreeRow? SelectedRow =>
         IsStagedListActive
-            ? Get(Staged, SelectedStagedIndex)
-            : Get(Unstaged, SelectedUnstagedIndex);
+            ? Get(StagedRows, SelectedStagedIndex)
+            : Get(UnstagedRows, SelectedUnstagedIndex);
 
-    private static WorkingTreeFileRow? Get(AvaloniaList<WorkingTreeFileRow> rows, int index) =>
+    /// <summary>The selected <b>file</b>; <see langword="null"/> when a folder row is selected.</summary>
+    /// <remarks>
+    /// The diff panel and partial staging need a file. A folder row is a perfectly valid selection
+    /// — it is what stages a whole subtree — but there is no single diff to show for it.
+    /// </remarks>
+    public WorkingTreeFileRow? SelectedFile => SelectedRow as WorkingTreeFileRow;
+
+    private static WorkingTreeRow? Get(AvaloniaList<WorkingTreeRow> rows, int index) =>
         index >= 0 && index < rows.Count ? rows[index] : null;
 
     partial void OnSelectedUnstagedIndexChanged(int value)
@@ -706,6 +780,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     private void OnSelectionChanged()
     {
         OnPropertyChanged(nameof(SelectedRow));
+        OnPropertyChanged(nameof(SelectedFile));
 
         // If the selection changed sides, which partial staging command is available also changed.
         Diff.NotifyStagingAvailabilityChanged();
@@ -724,7 +799,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
     /// </remarks>
     private async Task ShowSelectedDiffAsync()
     {
-        WorkingTreeFileRow? row = SelectedRow;
+        WorkingTreeFileRow? row = SelectedFile;
 
         if (WorkingDirectory is not { Length: > 0 } directory || row is null)
         {
@@ -755,6 +830,7 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         {
             Unstaged.Clear();
             Staged.Clear();
+            RebuildRows(preserveSelection: false);
             Diff.Clear();
             IsClean = true;
             return;
@@ -887,17 +963,12 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
                 .OrderBy(entry => entry.Path)
                 .Select(entry => new WorkingTreeFileRow(entry, staged: true))]);
 
-            _refreshingSelection = true;
+            // Folders whose last file left the list are forgotten, otherwise a folder closed once
+            // would come back closed months later, after a completely unrelated change put a file
+            // back into it.
+            PruneCollapsed();
 
-            try
-            {
-                SelectedUnstagedIndex = Clamp(SelectedUnstagedIndex, Unstaged.Count);
-                SelectedStagedIndex = Clamp(SelectedStagedIndex, Staged.Count);
-            }
-            finally
-            {
-                _refreshingSelection = false;
-            }
+            RebuildRows(preserveSelection: false);
 
             // ⚠️ Even if the active list becomes empty, it does NOT jump to the OTHER list.
             // Jumping seems tempting ("leave something to show") but is dangerous: after the
@@ -947,12 +1018,168 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         }
     }
 
-    private static void Replace(
-        AvaloniaList<WorkingTreeFileRow> target,
-        IReadOnlyList<WorkingTreeFileRow> rows)
+    private static void Replace<T>(AvaloniaList<T> target, IReadOnlyList<T> rows)
     {
         target.Clear();
         target.AddRange(rows);
+    }
+
+    /// <summary>
+    /// Rebuilds the rows the two lists show from <see cref="Unstaged"/> and <see cref="Staged"/>.
+    /// </summary>
+    /// <param name="preserveSelection">
+    /// <see langword="true"/> when the underlying files did not change and only the shape did
+    /// (a folder was opened, the mode was switched): the selection then follows the <b>row</b>.
+    /// <see langword="false"/> after a <c>git status</c>, where the rows are new objects and the
+    /// selection stays at its <b>index</b> — that is what moves it to the next file after a stage.
+    /// </param>
+    private void RebuildRows(bool preserveSelection = true)
+    {
+        WorkingTreeRow? unstaged = preserveSelection ? Get(UnstagedRows, SelectedUnstagedIndex) : null;
+        WorkingTreeRow? staged = preserveSelection ? Get(StagedRows, SelectedStagedIndex) : null;
+
+        _unstagedTree = ListMode == WorkingTreeListMode.Tree
+            ? WorkingTreeFileTree.Build(Unstaged, staged: false, _collapsedUnstaged)
+            : Flat(Unstaged);
+
+        _stagedTree = ListMode == WorkingTreeListMode.Tree
+            ? WorkingTreeFileTree.Build(Staged, staged: true, _collapsedStaged)
+            : Flat(Staged);
+
+        Replace(UnstagedRows, WorkingTreeFileTree.Flatten(_unstagedTree));
+        Replace(StagedRows, WorkingTreeFileTree.Flatten(_stagedTree));
+
+        _refreshingSelection = true;
+
+        try
+        {
+            SelectedUnstagedIndex = Reselect(UnstagedRows, unstaged, SelectedUnstagedIndex);
+            SelectedStagedIndex = Reselect(StagedRows, staged, SelectedStagedIndex);
+        }
+        finally
+        {
+            _refreshingSelection = false;
+        }
+
+        return;
+
+        static IReadOnlyList<WorkingTreeRow> Flat(AvaloniaList<WorkingTreeFileRow> files)
+        {
+            foreach (WorkingTreeFileRow file in files)
+            {
+                file.Depth = 0;
+                file.DisplayName = file.Path.Value;
+            }
+
+            return [.. files];
+        }
+
+        static int Reselect(AvaloniaList<WorkingTreeRow> rows, WorkingTreeRow? previous, int index)
+        {
+            if (previous is not null)
+            {
+                int found = rows.IndexOf(previous);
+
+                if (found >= 0)
+                {
+                    return found;
+                }
+            }
+
+            return Clamp(index, rows.Count);
+        }
+    }
+
+    /// <summary>Drops closed-folder entries no file lives under any more.</summary>
+    private void PruneCollapsed()
+    {
+        Prune(_collapsedUnstaged, Unstaged);
+        Prune(_collapsedStaged, Staged);
+
+        static void Prune(HashSet<string> collapsed, AvaloniaList<WorkingTreeFileRow> files)
+        {
+            if (collapsed.Count == 0)
+            {
+                return;
+            }
+
+            HashSet<string> alive = new(StringComparer.Ordinal);
+
+            foreach (WorkingTreeFileRow file in files)
+            {
+                string path = file.Path.Value;
+
+                for (int index = path.IndexOf('/'); index >= 0; index = path.IndexOf('/', index + 1))
+                {
+                    alive.Add(path[..index]);
+                }
+            }
+
+            collapsed.IntersectWith(alive);
+        }
+    }
+
+    /// <summary>Opens or closes a folder row.</summary>
+    public void ToggleFolder(WorkingTreeFolderRow folder)
+    {
+        ArgumentNullException.ThrowIfNull(folder);
+
+        HashSet<string> collapsed = folder.IsStagedSide ? _collapsedStaged : _collapsedUnstaged;
+
+        if (folder.IsExpanded)
+        {
+            collapsed.Add(folder.Path);
+        }
+        else
+        {
+            collapsed.Remove(folder.Path);
+        }
+
+        folder.IsExpanded = !folder.IsExpanded;
+
+        RebuildRows();
+    }
+
+    /// <summary>
+    /// Opens or closes every folder of one side (GitExtensions' <i>Expand all</i> / <i>Collapse
+    /// all</i>).
+    /// </summary>
+    public void SetAllFoldersExpanded(bool staged, bool expanded)
+    {
+        HashSet<string> collapsed = staged ? _collapsedStaged : _collapsedUnstaged;
+
+        collapsed.Clear();
+
+        foreach (WorkingTreeFolderRow folder in WorkingTreeFileTree.Folders(staged ? _stagedTree : _unstagedTree))
+        {
+            folder.IsExpanded = expanded;
+
+            if (!expanded)
+            {
+                collapsed.Add(folder.Path);
+            }
+        }
+
+        RebuildRows();
+    }
+
+    /// <summary>
+    /// Reads the stored list mode and starts saving changes to it.
+    /// </summary>
+    /// <remarks>
+    /// The settings arrive from the <b>view</b>, the same way the confirmation dialog's owner window
+    /// does (P05-T15): this ViewModel is created per commit window and does not resolve services of
+    /// its own.
+    /// </remarks>
+    public void AttachSettings(ISettingsStore settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        _settings = settings;
+
+        ListMode = settings.Current.Layout.CommitFileTree
+            ? WorkingTreeListMode.Tree
+            : WorkingTreeListMode.Flat;
     }
 
     /// <summary>
@@ -1185,11 +1412,19 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
         OnPropertyChanged(nameof(CanUndoReset));
     }
 
-    /// <summary>Stages the selected unstaged file.</summary>
+    /// <summary>
+    /// Stages the selected unstaged row — <b>a folder row stages its whole subtree</b>.
+    /// </summary>
+    /// <remarks>
+    /// The same rule GitExtensions works by: <c>FormCommit.StageClick</c> hands
+    /// <c>Unstaged.SelectedItems</c> to the stage command, and that property collects the tags of
+    /// the selected node <b>and every descendant</b> — so there is no separate "stage folder"
+    /// command there either, the ordinary one simply applies to everything under the selection.
+    /// </remarks>
     public Task StageSelectedAsync(CancellationToken cancellationToken = default) =>
         RunAsync(
             paths => _staging.StageAsync(WorkingDirectory!, paths, cancellationToken),
-            Get(Unstaged, SelectedUnstagedIndex),
+            Get(UnstagedRows, SelectedUnstagedIndex),
             cancellationToken);
 
     /// <summary>Stages all unstaged files.</summary>
@@ -1199,11 +1434,11 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
             [.. Unstaged],
             cancellationToken);
 
-    /// <summary>Unstages the selected staged file.</summary>
+    /// <summary>Unstages the selected staged row; a folder row unstages its whole subtree.</summary>
     public Task UnstageSelectedAsync(CancellationToken cancellationToken = default) =>
         RunAsync(
             paths => _staging.UnstageAsync(WorkingDirectory!, paths, cancellationToken),
-            Get(Staged, SelectedStagedIndex),
+            Get(StagedRows, SelectedStagedIndex),
             cancellationToken);
 
     /// <summary>Unstages all staged files.</summary>
@@ -1215,9 +1450,9 @@ public sealed partial class WorkingTreeViewModel : ViewModelBase, IPartialStagin
 
     private Task RunAsync(
         Func<IReadOnlyList<RepositoryPath>, Task> operation,
-        WorkingTreeFileRow? row,
+        WorkingTreeRow? row,
         CancellationToken cancellationToken) =>
-        RunAsync(operation, row is null ? [] : [row], cancellationToken);
+        RunAsync(operation, row is null ? [] : [.. row.EnumerateFiles()], cancellationToken);
 
     private async Task RunAsync(
         Func<IReadOnlyList<RepositoryPath>, Task> operation,

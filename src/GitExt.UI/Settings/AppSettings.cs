@@ -302,6 +302,17 @@ public sealed class LayoutSettings
     [JsonPropertyName("leftPanelSections")]
     public LeftPanelSections LeftPanel { get; set; } = new();
 
+    /// <summary>
+    /// Does the commit screen show its file lists as a folder tree?
+    /// </summary>
+    /// <remarks>
+    /// <b>On by default</b>, the way GitExtensions defaults to <c>DiffListSortType.FilePath</c> —
+    /// the tree — and offers the flat list as the alternative
+    /// (<c>AppSettings.DiffListSorting</c>).
+    /// </remarks>
+    [JsonPropertyName("commitFileTree")]
+    public bool CommitFileTree { get; set; } = true;
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
 }
