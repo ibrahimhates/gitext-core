@@ -471,16 +471,29 @@ public class RevisionGridContextMenuTests
     }
 
     [Fact]
-    public void Gezinme_menusunun_geri_kalani_hala_devre_disi()
+    public void Gezinme_ogeleri_artik_etkin()
     {
-        // Phase 14 only wired up "Go to commit"; the rest have no infrastructure yet.
         IReadOnlyList<RevisionGridMenuEntry> navigate =
             Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.Navigate).Children;
 
-        Find(navigate, RevisionGridMenuId.GoToCurrentRevision).IsEnabled.ShouldBeFalse();
-        Find(navigate, RevisionGridMenuId.GoToMergeBaseCommit).IsEnabled.ShouldBeFalse();
-        Find(navigate, RevisionGridMenuId.NavigateBackward).IsEnabled.ShouldBeFalse();
+        Find(navigate, RevisionGridMenuId.GoToCurrentRevision).IsEnabled.ShouldBeTrue();
+        Find(navigate, RevisionGridMenuId.GoToMergeBaseCommit).IsEnabled.ShouldBeTrue();
+        Find(navigate, RevisionGridMenuId.GoToFirstParentCommit).IsEnabled.ShouldBeTrue();
+        Find(navigate, RevisionGridMenuId.GoToLastParentCommit).IsEnabled.ShouldBeTrue();
+        Find(navigate, RevisionGridMenuId.NavigateBackward).IsEnabled.ShouldBeTrue();
+        Find(navigate, RevisionGridMenuId.NavigateForward).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Hizli_arama_ogeleri_hala_devre_disi()
+    {
+        // The search box moves to the next match; "previous/next match" as menu commands need a
+        // match cursor the list does not keep yet.
+        IReadOnlyList<RevisionGridMenuEntry> navigate =
+            Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.Navigate).Children;
+
         Find(navigate, RevisionGridMenuId.QuickSearchNext).IsEnabled.ShouldBeFalse();
+        Find(navigate, RevisionGridMenuId.QuickSearchPrevious).IsEnabled.ShouldBeFalse();
     }
 
     [Fact]

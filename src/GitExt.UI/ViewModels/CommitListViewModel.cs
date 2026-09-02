@@ -61,7 +61,8 @@ public sealed partial class CommitListViewModel : ViewModelBase
         IRefReader refReader,
         ICommitSignatureReader signatureReader,
         IDiffReader diffReader,
-        ITagWriter? tagWriter = null)
+        ITagWriter? tagWriter = null,
+        IMergeBaseReader? mergeBase = null)
     {
         ArgumentNullException.ThrowIfNull(locator);
         ArgumentNullException.ThrowIfNull(logReader);
@@ -70,6 +71,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
         ArgumentNullException.ThrowIfNull(diffReader);
 
         _locator = locator;
+        _mergeBase = mergeBase;
         _logReader = logReader;
         _refReader = refReader;
         _diffReader = diffReader;
@@ -280,6 +282,14 @@ public sealed partial class CommitListViewModel : ViewModelBase
     partial void OnSelectedIndexChanged(int value)
     {
         OnPropertyChanged(nameof(SelectedRow));
+
+        if (SelectedRow is { } visited)
+        {
+            RecordVisit(visited.Commit.Id);
+        }
+
+        OnPropertyChanged(nameof(CanNavigateBackward));
+        OnPropertyChanged(nameof(CanNavigateForward));
         EnsureLaneVisible(SelectedRow?.GraphRow.Lane);
         Details.Show(SelectedRow, Repository?.WorkingDirectory);
 
@@ -752,6 +762,15 @@ public sealed partial class CommitListViewModel : ViewModelBase
     /// Other parents are reached by clicking from the details panel (P03-T15).
     /// </remarks>
     /// <returns><see langword="true"/> if a parent was found and selected.</returns>
+    private readonly IMergeBaseReader? _mergeBase;
+
+    private const int MaximumVisited = 200;
+
+    private readonly List<CommitId> _visited = [];
+
+    private int _visitedAt = -1;
+    private bool _navigating;
+
     public bool GoToParent()
     {
         CommitInfo? commit = SelectedRow?.Commit;
@@ -795,6 +814,147 @@ public sealed partial class CommitListViewModel : ViewModelBase
         }
 
         return false;
+    }
+
+    /// <summary>Jumps to the <b>last</b> parent — the merged-in side of a merge commit.</summary>
+    /// <remarks>
+    /// <see cref="GoToParent"/> follows the first parent, the main line. On a merge commit the last
+    /// parent is the branch that was merged <b>in</b>, and that is the side the user is usually
+    /// looking for after reading the merge. On an ordinary commit the two are the same.
+    /// </remarks>
+    public bool GoToLastParent()
+    {
+        CommitInfo? commit = SelectedRow?.Commit;
+
+        return commit is { Parents.Count: > 0 } && TryGoToCommit(commit.Parents[^1]);
+    }
+
+    /// <summary>
+    /// Jumps to the common ancestor of the selected commit and <c>HEAD</c>.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Unrelated histories are an <b>answer</b>, not a failure: git exits 1 with empty output
+    /// there, and the user is told so rather than shown an error. The ancestor also has to be among
+    /// the rows that are loaded — it may be older than the window of history on screen.
+    /// </remarks>
+    public async Task<bool> GoToMergeBaseAsync(CancellationToken cancellationToken = default)
+    {
+        SearchStatus = null;
+
+        if (_mergeBase is null
+            || Repository?.WorkingDirectory is not { Length: > 0 } path
+            || SelectedRow?.Commit.Id is not { } selected)
+        {
+            return false;
+        }
+
+        try
+        {
+            CommitId? found = await _mergeBase
+                .FindAsync(path, [selected.Value, "HEAD"], cancellationToken)
+                .ConfigureAwait(true);
+
+            if (found is not { } ancestor)
+            {
+                SearchStatus = Loc.T("commit_list.no_common_ancestor");
+                return false;
+            }
+
+            if (TryGoToCommit(ancestor))
+            {
+                return true;
+            }
+
+            SearchStatus = Loc.T("commit_list.the_common_ancestor_is_outside_the_loaded_hi");
+
+            return false;
+        }
+        catch (GitException error)
+        {
+            SearchStatus = Loc.GitError(error);
+            return false;
+        }
+    }
+
+    /// <summary>Jumps to the commit <c>HEAD</c> points at.</summary>
+    public bool GoToCurrentRevision() =>
+        Refs?.CurrentBranch?.Ref.ObjectId is { } head && TryGoToCommit(head);
+
+    /// <summary>Is there anywhere to go back to?</summary>
+    public bool CanNavigateBackward => _visited.Count > 1 && _visitedAt > 0;
+
+    /// <summary>Is there anywhere to go forward to?</summary>
+    public bool CanNavigateForward => _visitedAt >= 0 && _visitedAt < _visited.Count - 1;
+
+    /// <summary>
+    /// Steps back through the commits the user has visited.
+    /// </summary>
+    /// <remarks>
+    /// The history records <b>where the user went</b>, not every selection change: stepping back
+    /// must not itself become a step to come back from, or Back and Forward would fight each other.
+    /// That is what <see cref="_navigating"/> guards.
+    /// </remarks>
+    public bool NavigateBackward() => Step(-1);
+
+    /// <summary>Steps forward again after <see cref="NavigateBackward"/>.</summary>
+    public bool NavigateForward() => Step(1);
+
+    private bool Step(int direction)
+    {
+        int target = _visitedAt + direction;
+
+        if (target < 0 || target >= _visited.Count)
+        {
+            return false;
+        }
+
+        _navigating = true;
+
+        try
+        {
+            if (!TryGoToCommit(_visited[target]))
+            {
+                return false;
+            }
+
+            _visitedAt = target;
+
+            return true;
+        }
+        finally
+        {
+            _navigating = false;
+        }
+    }
+
+    /// <summary>Records a visit, dropping whatever was ahead of the cursor.</summary>
+    private void RecordVisit(CommitId id)
+    {
+        if (_navigating || id.IsEmpty)
+        {
+            return;
+        }
+
+        if (_visitedAt >= 0 && _visitedAt < _visited.Count && _visited[_visitedAt] == id)
+        {
+            return;
+        }
+
+        if (_visitedAt < _visited.Count - 1)
+        {
+            _visited.RemoveRange(_visitedAt + 1, _visited.Count - _visitedAt - 1);
+        }
+
+        _visited.Add(id);
+
+        // A session can wander a long way; the oldest steps are the least likely to be wanted and
+        // an unbounded list is a leak that only shows up after hours of use.
+        if (_visited.Count > MaximumVisited)
+        {
+            _visited.RemoveRange(0, _visited.Count - MaximumVisited);
+        }
+
+        _visitedAt = _visited.Count - 1;
     }
 
     /// <summary>

@@ -120,6 +120,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRebaseWriter, RebaseWriter>();
         services.AddSingleton<IStashWriter, StashWriter>();
         services.AddSingleton<IBisectWriter, BisectWriter>();
+        services.AddSingleton<IMergeBaseReader, MergeBaseReader>();
         services.AddSingleton<IBlameReader, BlameReader>();
         services.AddSingleton<IFileHistoryReader, FileHistoryReader>();
         services.AddSingleton<ITagWriter, TagWriter>();

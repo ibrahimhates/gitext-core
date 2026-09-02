@@ -555,6 +555,34 @@ public partial class CommitListView : UserControl
             case RevisionGridMenuId.GoToChildCommit:
                 OnGoToChildClick(this, new RoutedEventArgs());
                 return;
+
+            case RevisionGridMenuId.GoToFirstParentCommit:
+                Navigate(model => model.GoToParent());
+                return;
+
+            case RevisionGridMenuId.GoToLastParentCommit:
+                Navigate(model => model.GoToLastParent());
+                return;
+
+            case RevisionGridMenuId.GoToCurrentRevision:
+                Navigate(model => model.GoToCurrentRevision());
+                return;
+
+            case RevisionGridMenuId.NavigateBackward:
+                Navigate(model => model.NavigateBackward());
+                return;
+
+            case RevisionGridMenuId.NavigateForward:
+                Navigate(model => model.NavigateForward());
+                return;
+
+            case RevisionGridMenuId.GoToMergeBaseCommit:
+                if (ViewModel is { } target)
+                {
+                    _ = target.GoToMergeBaseAsync();
+                }
+
+                return;
         }
 
         if (TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel model)
