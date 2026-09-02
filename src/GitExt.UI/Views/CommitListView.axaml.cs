@@ -365,6 +365,14 @@ public partial class CommitListView : UserControl
         }
     }
 
+    private void Scope(BranchFilterMode mode)
+    {
+        if (ViewModel is { } viewModel)
+        {
+            _ = viewModel.SetBranchModeCommand.ExecuteAsync(mode);
+        }
+    }
+
     private RevisionGridMenuContext DescribeSelection()
     {
         CommitListViewModel? viewModel = ViewModel;
@@ -411,6 +419,12 @@ public partial class CommitListView : UserControl
         return new RevisionGridMenuContext
         {
             SelectedCount = selectedCount,
+            BranchScope = viewModel?.BranchMode switch
+            {
+                BranchFilterMode.CurrentBranch => RevisionGridBranchScope.CurrentOnly,
+                BranchFilterMode.FilteredBranches => RevisionGridBranchScope.Filtered,
+                _ => RevisionGridBranchScope.All,
+            },
             CommitHash = row.Commit.Id.Value,
             Refs = refs,
             HasBaseCommitToCompare = viewModel?.BaseCommitToCompare is not null,
@@ -447,6 +461,8 @@ public partial class CommitListView : UserControl
             {
                 Header = entry.Header,
                 IsEnabled = entry.IsEnabled,
+                ToggleType = entry.IsChecked ? MenuItemToggleType.Radio : MenuItemToggleType.None,
+                IsChecked = entry.IsChecked,
 
                 // The menu is built at open time and its items have no names, so this is the only
                 // handle a test has on a particular entry.
@@ -574,6 +590,18 @@ public partial class CommitListView : UserControl
 
             case RevisionGridMenuId.NavigateForward:
                 Navigate(model => model.NavigateForward());
+                return;
+
+            case RevisionGridMenuId.ShowAllBranches:
+                Scope(BranchFilterMode.AllBranches);
+                return;
+
+            case RevisionGridMenuId.ShowCurrentBranchOnly:
+                Scope(BranchFilterMode.CurrentBranch);
+                return;
+
+            case RevisionGridMenuId.ShowFilteredBranches:
+                Scope(BranchFilterMode.FilteredBranches);
                 return;
 
             case RevisionGridMenuId.GoToMergeBaseCommit:

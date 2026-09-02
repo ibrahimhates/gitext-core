@@ -507,4 +507,51 @@ public class RevisionGridContextMenuTests
         Find(menu, RevisionGridMenuId.BisectSkipRevision).IsEnabled.ShouldBeTrue();
         Find(menu, RevisionGridMenuId.StopBisect).IsEnabled.ShouldBeTrue();
     }
+
+    [Fact]
+    public void Dal_kapsami_ogeleri_artik_etkin()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> view =
+            Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.View).Children;
+
+        Find(view, RevisionGridMenuId.ShowAllBranches).IsEnabled.ShouldBeTrue();
+        Find(view, RevisionGridMenuId.ShowCurrentBranchOnly).IsEnabled.ShouldBeTrue();
+        Find(view, RevisionGridMenuId.ShowFilteredBranches).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Bulunulan_kapsam_isaretli_gorunur()
+    {
+        // Three entries, exactly one ticked — without the tick the user cannot tell which scope
+        // the list is showing.
+        IReadOnlyList<RevisionGridMenuEntry> view = Find(
+            RevisionGridContextMenu.Build(
+                Context() with { BranchScope = RevisionGridBranchScope.CurrentOnly }),
+            RevisionGridMenuId.View).Children;
+
+        Find(view, RevisionGridMenuId.ShowAllBranches).IsChecked.ShouldBeFalse();
+        Find(view, RevisionGridMenuId.ShowCurrentBranchOnly).IsChecked.ShouldBeTrue();
+        Find(view, RevisionGridMenuId.ShowFilteredBranches).IsChecked.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Varsayilan_kapsam_tum_dallar()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> view =
+            Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.View).Children;
+
+        Find(view, RevisionGridMenuId.ShowAllBranches).IsChecked.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Gorunum_menusunun_geri_kalani_hala_devre_disi()
+    {
+        // No setting behind them yet: reflog refs, the grey-out and the column switches.
+        IReadOnlyList<RevisionGridMenuEntry> view =
+            Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.View).Children;
+
+        Find(view, RevisionGridMenuId.ShowReflogReferences).IsEnabled.ShouldBeFalse();
+        Find(view, RevisionGridMenuId.DrawNonRelativesGray).IsEnabled.ShouldBeFalse();
+        Find(view, RevisionGridMenuId.ShowIdColumn).IsEnabled.ShouldBeFalse();
+    }
 }

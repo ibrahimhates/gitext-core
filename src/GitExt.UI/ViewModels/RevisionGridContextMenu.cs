@@ -137,6 +137,14 @@ public enum RevisionGridMenuId
     Separator,
 }
 
+/// <summary>Which branches the commit list is showing.</summary>
+public enum RevisionGridBranchScope
+{
+    All,
+    CurrentOnly,
+    Filtered,
+}
+
 public enum RevisionGridRefKind
 {
     LocalBranch,
@@ -166,6 +174,15 @@ public sealed record RevisionGridMenuEntry
     public bool IsSeparator { get; init; }
 
     public bool IsHeading { get; init; }
+
+    /// <summary>
+    /// Is the entry ticked?
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions' <c>IsCheckedFunc</c>. The branch-scope entries are a set of three where
+    /// exactly one is on; without the tick the user cannot tell which scope the list is showing.
+    /// </remarks>
+    public bool IsChecked { get; init; }
 
     public bool IsVisible { get; init; } = true;
 
@@ -221,6 +238,9 @@ public sealed record RevisionGridMenuContext
     public string? ClickedRef { get; init; }
 
     public bool ForceFullMenu { get; init; }
+
+    /// <summary>Which branch scope the list is showing — the ticked entry of the three.</summary>
+    public RevisionGridBranchScope BranchScope { get; init; } = RevisionGridBranchScope.All;
 }
 
 public static class RevisionGridContextMenu
@@ -262,9 +282,6 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.ToggleBetweenArtificialAndHeadCommits,
         RevisionGridMenuId.QuickSearchPrevious,
         RevisionGridMenuId.QuickSearchNext,
-        RevisionGridMenuId.ShowAllBranches,
-        RevisionGridMenuId.ShowCurrentBranchOnly,
-        RevisionGridMenuId.ShowFilteredBranches,
         RevisionGridMenuId.ShowReflogReferences,
         RevisionGridMenuId.AdvancedFilter,
         RevisionGridMenuId.DrawNonRelativesGray,
@@ -546,7 +563,7 @@ public static class RevisionGridContextMenu
             RevisionGridMenuId.ManipulateCommit => AdvancedChildren(),
             RevisionGridMenuId.Compare => CompareChildren(context, twoSelected),
             RevisionGridMenuId.Navigate => NavigateChildren(),
-            RevisionGridMenuId.View => ViewChildren(),
+            RevisionGridMenuId.View => ViewChildren(context),
             _ => [],
         };
     }
@@ -560,6 +577,15 @@ public static class RevisionGridContextMenu
 
         return [.. context.Refs.Where(r => r.Name == clicked)];
     }
+
+    private static RevisionGridMenuEntry Ticked(RevisionGridMenuId id, bool isChecked) => new()
+    {
+        Id = id,
+        Header = Text(id),
+        Gesture = Gesture(id),
+        IsEnabled = !_unimplemented.Contains(id),
+        IsChecked = isChecked,
+    };
 
     private static RevisionGridMenuEntry RefItem(RevisionGridRef gitRef) => new()
     {
@@ -722,12 +748,18 @@ public static class RevisionGridContextMenu
         Item(RevisionGridMenuId.QuickSearchNext),
     ];
 
-    private static IReadOnlyList<RevisionGridMenuEntry> ViewChildren() =>
+    private static IReadOnlyList<RevisionGridMenuEntry> ViewChildren(RevisionGridMenuContext context) =>
     [
         Heading(RevisionGridMenuId.ViewGroupBranches),
-        Item(RevisionGridMenuId.ShowAllBranches),
-        Item(RevisionGridMenuId.ShowCurrentBranchOnly),
-        Item(RevisionGridMenuId.ShowFilteredBranches),
+        Ticked(
+            RevisionGridMenuId.ShowAllBranches,
+            context.BranchScope == RevisionGridBranchScope.All),
+        Ticked(
+            RevisionGridMenuId.ShowCurrentBranchOnly,
+            context.BranchScope == RevisionGridBranchScope.CurrentOnly),
+        Ticked(
+            RevisionGridMenuId.ShowFilteredBranches,
+            context.BranchScope == RevisionGridBranchScope.Filtered),
         Item(RevisionGridMenuId.ShowReflogReferences),
         SeparatorEntry(),
         Item(RevisionGridMenuId.AdvancedFilter),
