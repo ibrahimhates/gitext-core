@@ -487,6 +487,18 @@ public partial class CommitListView : UserControl
             return;
         }
 
+        // The commit screen is opened by the window, not by a command — the context menu takes the
+        // same path the main menu does rather than opening a second one.
+        if (entry.Id is RevisionGridMenuId.Commit or RevisionGridMenuId.ResetChanges)
+        {
+            if (model.CommitRequested is { } open)
+            {
+                _ = open();
+            }
+
+            return;
+        }
+
         IAsyncRelayCommand? command = entry.Id switch
         {
             RevisionGridMenuId.CheckoutBranch or RevisionGridMenuId.CheckoutRevision =>
@@ -501,6 +513,9 @@ public partial class CommitListView : UserControl
             RevisionGridMenuId.CreateNewBranch => model.CreateBranchCommand,
             RevisionGridMenuId.RenameBranch => model.RenameBranchCommand,
             RevisionGridMenuId.DeleteBranch => model.DeleteBranchCommand,
+            RevisionGridMenuId.ApplyStash
+                or RevisionGridMenuId.PopStash
+                or RevisionGridMenuId.DropStash => model.ShowStashCommand,
             _ => null,
         };
 

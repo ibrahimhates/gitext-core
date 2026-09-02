@@ -429,6 +429,15 @@ public partial class MainWindowViewModel : ViewModelBase
     public IPullConfirmer? PullConfirmer { get; set; }
 
     /// <summary>
+    /// Opens the commit screen.
+    /// </summary>
+    /// <remarks>
+    /// A hook rather than a command: the screen is opened by the window (it needs an owner and the
+    /// shortcut registry), and the context menu must reach <b>the same</b> path the main menu uses.
+    /// </remarks>
+    public Func<Task>? CommitRequested { get; set; }
+
+    /// <summary>
     /// The settings store, for the screens that remember an answer.
     /// </summary>
     /// <remarks>

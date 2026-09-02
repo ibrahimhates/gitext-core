@@ -352,4 +352,36 @@ public class RevisionGridContextMenuTests
             .Select(c => c.Argument)
             .ShouldNotContain("origin/feature");
     }
+
+    [Fact]
+    public void Zula_ogeleri_artik_etkin()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> menu =
+            RevisionGridContextMenu.Build(Context() with { IsStash = true });
+
+        Find(menu, RevisionGridMenuId.ApplyStash).IsEnabled.ShouldBeTrue();
+        Find(menu, RevisionGridMenuId.PopStash).IsEnabled.ShouldBeTrue();
+        Find(menu, RevisionGridMenuId.DropStash).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Yapay_satirda_sifirla_ve_commit_etkin()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> menu =
+            RevisionGridContextMenu.Build(Context() with { IsArtificial = true });
+
+        Find(menu, RevisionGridMenuId.ResetChanges).IsEnabled.ShouldBeTrue();
+        Find(menu, RevisionGridMenuId.Commit).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Bisect_ogeleri_hala_devre_disi()
+    {
+        // Bisect is Phase 07; the items keep their place in the order but cannot be pressed.
+        IReadOnlyList<RevisionGridMenuEntry> menu =
+            RevisionGridContextMenu.Build(Context() with { InTheMiddleOfBisect = true });
+
+        Find(menu, RevisionGridMenuId.MarkRevisionAsBad).IsEnabled.ShouldBeFalse();
+        Find(menu, RevisionGridMenuId.StopBisect).IsEnabled.ShouldBeFalse();
+    }
 }

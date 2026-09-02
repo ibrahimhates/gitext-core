@@ -234,15 +234,10 @@ public static class RevisionGridContextMenu
 
     private static readonly RevisionGridMenuId[] _unimplemented =
     [
-        RevisionGridMenuId.ResetChanges,
-        RevisionGridMenuId.Commit,
         RevisionGridMenuId.MarkRevisionAsBad,
         RevisionGridMenuId.MarkRevisionAsGood,
         RevisionGridMenuId.BisectSkipRevision,
         RevisionGridMenuId.StopBisect,
-        RevisionGridMenuId.ApplyStash,
-        RevisionGridMenuId.PopStash,
-        RevisionGridMenuId.DropStash,
         RevisionGridMenuId.SelectInLeftPanel,
         RevisionGridMenuId.ResetAnotherBranchToHere,
         RevisionGridMenuId.CreateTag,

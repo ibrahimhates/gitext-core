@@ -85,6 +85,7 @@ public partial class MainWindow : Window
                 model.ProcessPrompt = new DialogProcessPrompt(this);
                 model.PushConfirmer = new DialogPushConfirmer(this);
                 model.PullConfirmer = new DialogPullConfirmer(this);
+                model.CommitRequested = ShowCommitAsync;
                 model.MergePrompt = new DialogMergePrompt(this);
 
                 // A double-click in the panel calls the SAME flow as checkout in the menu
