@@ -174,6 +174,7 @@ public sealed class AppearanceService : IAppearanceService
 
         _application.Resources["GitExtUiFontSize"] = ui;
         _application.Resources["GitExtMonospaceFontSize"] = mono;
+        _application.Resources["GitExtDiffFontSize"] = mono + TypographyDefaults.DiffFontSizeOffset;
 
         // The derived sizes shift together with the base size; were they fixed, tooltips and badges
         // would stay disproportionately small in an enlarged UI.

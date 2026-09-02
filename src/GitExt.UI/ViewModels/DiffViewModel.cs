@@ -544,11 +544,20 @@ public sealed partial class DiffViewModel : ViewModelBase
 
     /// <summary>Font size of the diff text.</summary>
     /// <remarks>
+    /// <para>
     /// Because font size is <b>inherited</b> in Avalonia it is set once on the root element;
     /// it is not bound one by one in the row templates.
+    /// </para>
+    /// <para>
+    /// The default is the monospace size plus <see cref="Settings.TypographyDefaults.DiffFontSizeOffset"/>,
+    /// because GitExtensions gives the diff its own, larger font. It is <b>set</b> from the user's
+    /// setting — until that was wired up this value was fixed and the monospace size in Settings had
+    /// no effect on the diff at all.
+    /// </para>
     /// </remarks>
     [ObservableProperty]
-    public partial double FontSize { get; set; } = 12;
+    public partial double FontSize { get; set; } =
+        Settings.TypographyDefaults.MonospaceFontSize + Settings.TypographyDefaults.DiffFontSizeOffset;
 
     partial void OnShowWhitespaceChanged(bool value) => ShowSelectedFileLines();
 

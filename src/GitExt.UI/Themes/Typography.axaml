@@ -20,6 +20,9 @@
     <sys:Double x:Key="GitExtUiFontSize">12</sys:Double>
     <sys:Double x:Key="GitExtMonospaceFontSize">12</sys:Double>
 
+    <!-- GitExtensions keeps the diff on its own, larger font (DiffFont 10pt vs MonospaceFont 9pt). -->
+    <sys:Double x:Key="GitExtDiffFontSize">13</sys:Double>
+
     <!-- Derived sizes: when the user changes the base size, these shift with it. -->
     <sys:Double x:Key="GitExtSmallFontSize">11</sys:Double>
     <sys:Double x:Key="GitExtLargeFontSize">14</sys:Double>

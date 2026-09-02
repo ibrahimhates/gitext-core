@@ -358,6 +358,16 @@ public static class TypographyDefaults
 {
     public const double UiFontSize = 12;
     public const double MonospaceFontSize = 12;
+
+    /// <summary>
+    /// The diff text, one step larger than the rest of the monospace.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions keeps two separate fonts: <c>MonospaceFont</c> is Consolas <b>9pt</b> and
+    /// <c>DiffFont</c> Consolas <b>10pt</b> — at 96 DPI, 12 px against 13 px. Copied rather than
+    /// levelled: the diff is the surface the user reads for minutes at a time.
+    /// </remarks>
+    public const double DiffFontSizeOffset = 1;
     public const double MinimumFontSize = 8;
     public const double MaximumFontSize = 32;
 }
