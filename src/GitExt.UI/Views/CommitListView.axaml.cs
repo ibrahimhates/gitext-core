@@ -374,6 +374,14 @@ public partial class CommitListView : UserControl
             return new RevisionGridMenuContext { SelectedCount = 0 };
         }
 
+        // 🔴 Read from the list, not assumed to be 1. The entries GitExtensions shows only for a
+        // pair — "Compare selected commits" and "Open with difftool" — are hidden while this says
+        // one, and `SelectionMode` has been `Multiple` all along: the comparison itself already
+        // worked off `SelectedItems`, only the menu never heard about it.
+        int selectedCount = Math.Max(
+            CommitList.SelectedItems?.OfType<CommitRowViewModel>().Count() ?? 1,
+            1);
+
         List<RevisionGridRef> refs = [];
 
         foreach (RefBadge badge in row.Badges)
@@ -401,7 +409,7 @@ public partial class CommitListView : UserControl
 
         return new RevisionGridMenuContext
         {
-            SelectedCount = 1,
+            SelectedCount = selectedCount,
             CommitHash = row.Commit.Id.Value,
             Refs = refs,
             HasBaseCommitToCompare = viewModel?.BaseCommitToCompare is not null,

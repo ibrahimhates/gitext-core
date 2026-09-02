@@ -86,6 +86,18 @@ public class RevisionGridMenuActionTests
         }
     }
 
+    /// <summary>Selects two rows the way the user would with Ctrl-click.</summary>
+    private static void SelectTwo(CommitListView view, CommitListViewModel model)
+    {
+        ListBox list = view.GetControl<ListBox>("CommitList");
+
+        model.SelectedIndex = 1;
+        Dispatcher.UIThread.RunJobs();
+
+        list.SelectedItems!.Add(model.Rows[2]);
+        Dispatcher.UIThread.RunJobs();
+    }
+
     private static MenuItem Find(CommitListView view, RevisionGridMenuId id) =>
         OpenMenu(view).First(item => (RevisionGridMenuId?)item.Tag == id);
 
@@ -207,15 +219,11 @@ public class RevisionGridMenuActionTests
         CommitListViewModel model = await LoadedAsync();
         (CommitListView view, Window window) = Show(model);
 
-        model.SelectedIndex = 1;
-        Dispatcher.UIThread.RunJobs();
+        SelectTwo(view, model);
 
-        // 🔴 The entry needs TWO selected commits, and the commit list has no multi-selection yet
-        // (`DescribeSelection` reports 1). So it is not merely disabled — it is absent, and so is
-        // "Compare selected commits". Recorded in PROGRESS; the shortcut path still works.
-        OpenMenu(view)
-            .Select(item => (RevisionGridMenuId?)item.Tag)
-            .ShouldNotContain(RevisionGridMenuId.OpenCommitsWithDiffTool);
+        // The entry appears for a pair, as in GitExtensions — but stays disabled: there is no
+        // difftool runner in Core.
+        Find(view, RevisionGridMenuId.OpenCommitsWithDiffTool).IsEnabled.ShouldBeFalse();
 
         window.Close();
     }
@@ -332,5 +340,55 @@ public class RevisionGridMenuActionTests
             DeleteRequested = request.Name;
             return Task.FromResult(DeleteTagDecision.Cancelled);
         }
+    }
+
+    [AvaloniaFact]
+    public async Task Tek_secimde_ikili_ogeler_menude_YOK()
+    {
+        CommitListViewModel model = await LoadedAsync();
+        (CommitListView view, Window window) = Show(model);
+
+        model.SelectedIndex = 1;
+        Dispatcher.UIThread.RunJobs();
+
+        RevisionGridMenuId?[] shown = [.. OpenMenu(view).Select(item => (RevisionGridMenuId?)item.Tag)];
+
+        shown.ShouldNotContain(RevisionGridMenuId.CompareSelectedCommits);
+        shown.ShouldNotContain(RevisionGridMenuId.OpenCommitsWithDiffTool);
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Iki_secimde_secili_commitleri_karsilastir_beliriyor()
+    {
+        CommitListViewModel model = await LoadedAsync();
+        (CommitListView view, Window window) = Show(model);
+
+        SelectTwo(view, model);
+
+        MenuItem compare = Find(view, RevisionGridMenuId.CompareSelectedCommits);
+
+        compare.IsEnabled.ShouldBeTrue();
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Iki_secimde_karsilastirma_ESKIDEN_YENIYE_aciliyor()
+    {
+        CommitListViewModel model = await LoadedAsync();
+        (CommitListView view, Window window) = Show(model);
+
+        CompareViewModel? opened = null;
+        view.ComparisonRequested += (_, compare) => opened = compare;
+
+        SelectTwo(view, model);
+
+        Click(Find(view, RevisionGridMenuId.CompareSelectedCommits));
+
+        opened.ShouldNotBeNull();
+
+        window.Close();
     }
 }
