@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        x:Class="GitExt.UI.Views.PushRejectedDialog"
+        Width="470"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        GitExtensions' TaskDialog from `FormPush.AskForAutoPullOnPushRejectedAction`: a heading, the
+        explanation, then command-link buttons in its order — the three pull options (only for the
+        current branch), then force-with-lease, then Cancel.
+    -->
+
+    <StackPanel Margin="16" Spacing="12">
+        <TextBlock Name="HeadingText"
+                   FontSize="{DynamicResource GitExtLargeFontSize}"
+                   FontWeight="SemiBold"
+                   TextWrapping="Wrap" />
+
+        <TextBlock Name="BodyText" TextWrapping="Wrap" Opacity="0.9" />
+
+        <StackPanel Name="PullOptions" Spacing="6">
+            <Button Name="PullDefaultButton"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Click="OnPullDefaultClick" />
+            <Button Name="PullRebaseButton"
+                    Content="{loc:Translate push.pull_with_rebase}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Click="OnPullRebaseClick" />
+            <Button Name="PullMergeButton"
+                    Content="{loc:Translate push.pull_with_merge}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Click="OnPullMergeClick" />
+        </StackPanel>
+
+        <Button Name="ForceButton"
+                Content="{loc:Translate push.force_push_with_lease}"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left"
+                Click="OnForceClick" />
+
+        <TextBlock Text="{loc:Translate push.force_with_lease_is_a_safer_way_to_force_pus}"
+                   FontSize="{DynamicResource GitExtSmallFontSize}"
+                   Opacity="0.7"
+                   TextWrapping="Wrap" />
+
+        <CheckBox Name="SuppressBox"
+                  Content="{loc:Translate push.don_t_show_me_this_message_again}" />
+
+        <Button Name="CancelButton"
+                Content="{loc:Translate push.cancel}"
+                MinWidth="90"
+                HorizontalAlignment="Right"
+                IsCancel="True"
+                IsDefault="True"
+                Click="OnCancelClick" />
+    </StackPanel>
+</Window>

@@ -132,6 +132,7 @@ public sealed class PushViewModel : ViewModelBase
     private string? _progressText;
     private double? _progressPercent;
     private CancellationTokenSource? _cancellation;
+    private bool _retryingAfterRejection;
 
     public PushViewModel(
         IRemoteReader remotes,
@@ -702,6 +703,8 @@ public sealed class PushViewModel : ViewModelBase
         _cancellation?.Dispose();
         _cancellation = new CancellationTokenSource();
 
+        bool rejected = false;
+
         try
         {
             PushResult result = await RunPushAsync(
@@ -710,6 +713,8 @@ public sealed class PushViewModel : ViewModelBase
                 .ConfigureAwait(true);
 
             Report(result);
+
+            rejected = result.Rejected.Count > 0;
         }
         catch (OperationCanceledException)
         {
@@ -728,6 +733,14 @@ public sealed class PushViewModel : ViewModelBase
             IsBusy = false;
             ProgressText = null;
             ProgressPercent = null;
+        }
+
+        // 🔴 OUTSIDE the `finally`, deliberately: what is offered here can push again, and inside
+        // it `IsBusy` is still set, so `CanRun` would be false and the retry would do nothing at
+        // all — silently.
+        if (rejected)
+        {
+            await HandleRejectionAsync().ConfigureAwait(true);
         }
     }
 
@@ -926,6 +939,117 @@ public sealed class PushViewModel : ViewModelBase
             Warning = Loc.GitError(retry);
         }
     }
+
+    /// <summary>
+    /// What is offered after a rejected push, and what is done with the answer.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>FormPush.AskForAutoPullOnPushRejectedAction</c>. The pull options are offered
+    /// <b>only for the current branch</b> (its <c>allOptions</c>): there is no way to pull into a
+    /// branch that is not checked out, so for any other ref the only offer is force-with-lease.
+    /// </para>
+    /// <para>
+    /// A remembered answer (<c>AutoPullOnPushRejectedAction</c>) skips the question entirely —
+    /// including a remembered "do nothing", which is why the stored value distinguishes
+    /// <c>none</c> from "never asked".
+    /// </para>
+    /// </remarks>
+    private async Task HandleRejectionAsync()
+    {
+        if (_confirmer is null || _retryingAfterRejection)
+        {
+            return;
+        }
+
+        bool forCurrentBranch = Tab == PushTab.Branch
+            && string.Equals(SourceBranch, CurrentBranch, StringComparison.Ordinal);
+
+        PushRejectedAction action = RememberedRejectedAction
+            ?? await AskRejectedActionAsync(forCurrentBranch).ConfigureAwait(true);
+
+        if (action == PushRejectedAction.Cancel)
+        {
+            return;
+        }
+
+        if (action == PushRejectedAction.ForceWithLease)
+        {
+            ForceWithLease = true;
+
+            // 🔴 ONCE. A force push can be rejected too, and with a remembered "force" answer no
+            // one would be asked again — the screen would push in a loop with nothing to stop it.
+            _retryingAfterRejection = true;
+
+            try
+            {
+                await RunAsync().ConfigureAwait(true);
+            }
+            finally
+            {
+                _retryingAfterRejection = false;
+            }
+
+            return;
+        }
+
+        if (RecoveryRequested is null)
+        {
+            Advice = Loc.T("push.the_pull_is_finished_check_the_result_and_pu");
+            return;
+        }
+
+        await RecoveryRequested(action).ConfigureAwait(true);
+    }
+
+    private async Task<PushRejectedAction> AskRejectedActionAsync(bool forCurrentBranch)
+    {
+        PushRejectedDecision decision = await _confirmer!
+            .AskRejectedActionAsync(new PushRejectedRequest
+            {
+                Remote = SelectedRemote ?? string.Empty,
+                AllOptions = forCurrentBranch,
+                DefaultPullActionName = Loc.T("push.merge"),
+            })
+            .ConfigureAwait(true);
+
+        if (decision.DoNotAskAgain)
+        {
+            _settings?.Update(settings =>
+                settings.Confirmations.AutoPullOnPushRejected = Store(decision.Action));
+        }
+
+        return decision.Action;
+    }
+
+    private static string Store(PushRejectedAction action) => action switch
+    {
+        PushRejectedAction.PullDefault => "default",
+        PushRejectedAction.PullRebase => "rebase",
+        PushRejectedAction.PullMerge => "merge",
+        PushRejectedAction.ForceWithLease => "force",
+        _ => "none",
+    };
+
+    private PushRejectedAction? RememberedRejectedAction =>
+        _settings?.Current.Confirmations.AutoPullOnPushRejected switch
+        {
+            "default" => PushRejectedAction.PullDefault,
+            "rebase" => PushRejectedAction.PullRebase,
+            "merge" => PushRejectedAction.PullMerge,
+            "force" => PushRejectedAction.ForceWithLease,
+            "none" => PushRejectedAction.Cancel,
+            _ => null,
+        };
+
+    /// <summary>
+    /// The party that runs the pull the user chose after a rejection.
+    /// </summary>
+    /// <remarks>
+    /// Pulling is the main window's business — this screen only knows that a pull was asked for.
+    /// Unset, the user is told to pull themselves rather than left with a dead button.
+    /// </remarks>
+    public Func<PushRejectedAction, Task>? RecoveryRequested { get; set; }
 
     private void Report(PushResult result)
     {

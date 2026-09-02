@@ -518,7 +518,7 @@ public partial class MainWindow : Window
             await ConfirmDialog.ShowAsync(Loc.T("push.error"), message, _owner).ConfigureAwait(true);
 
         public Task<PushRejectedDecision> AskRejectedActionAsync(PushRejectedRequest request) =>
-            Task.FromResult(PushRejectedDecision.Cancelled);
+            PushRejectedDialog.ShowAsync(request, _owner);
     }
 
     /// <summary>Shows the process window in a real window (P14-T01).</summary>

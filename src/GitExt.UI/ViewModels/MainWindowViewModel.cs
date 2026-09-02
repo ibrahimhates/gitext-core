@@ -1539,7 +1539,17 @@ public partial class MainWindowViewModel : ViewModelBase
     /// A refresh on close is essential: remote tracking branches may have changed, HEAD moved.
     /// </para>
     /// </remarks>
-    private async Task PullAsync()
+    private Task PullAsync() => PullAsync(null);
+
+    /// <summary>
+    /// Opens the Pull screen, optionally with an action already selected.
+    /// </summary>
+    /// <param name="preselected">
+    /// The action chosen on the "push rejected" question. GitExtensions runs that pull straight
+    /// away; here the screen opens with it selected, so the destination and the options stay
+    /// visible before anything is written.
+    /// </param>
+    private async Task PullAsync(PullAction? preselected)
     {
         if (_fetchWriter is null
             || _pullWriter is null
@@ -1556,7 +1566,8 @@ public partial class MainWindowViewModel : ViewModelBase
             _pullWriter,
             _authDiagnostics,
             AuthenticationPrompt,
-            ProcessPrompt);
+            ProcessPrompt,
+            Settings);
 
         try
         {
@@ -1571,6 +1582,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             BranchNotice = Loc.GitError(error);
             return;
+        }
+
+        if (preselected is { } action)
+        {
+            model.Action = action;
         }
 
         using (_watcher?.Suspend())
@@ -1605,7 +1621,15 @@ public partial class MainWindowViewModel : ViewModelBase
             AuthenticationPrompt,
             ProcessPrompt,
             PushConfirmer,
-            Settings);
+            Settings)
+        {
+            RecoveryRequested = action => PullAsync(action switch
+            {
+                PushRejectedAction.PullRebase => PullAction.Rebase,
+                PushRejectedAction.PullMerge => PullAction.Merge,
+                _ => null,
+            }),
+        };
 
         try
         {
