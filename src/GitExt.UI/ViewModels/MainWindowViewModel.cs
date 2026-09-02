@@ -335,6 +335,47 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>The party that shows the checkout dialog (P06-T02).</summary>
     public ICheckoutPrompt? CheckoutPrompt { get; set; }
 
+    /// <summary>
+    /// The remembered answer to "what should happen to the local changes".
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions' <c>AppSettings.CheckoutBranchAction</c>. An unrecognised stored value falls
+    /// back to <see cref="LocalChangesAction.Keep"/> — the one option that changes nothing.
+    /// </remarks>
+    private LocalChangesAction RememberedCheckoutAction =>
+        Settings?.Current.Confirmations.CheckoutBranchAction switch
+        {
+            "merge" => LocalChangesAction.Merge,
+            "stash" => LocalChangesAction.Stash,
+            _ => LocalChangesAction.Keep,
+        };
+
+    /// <summary>
+    /// Stores the chosen action when the user asked for it.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <see cref="LocalChangesAction.Discard"/> is <b>never</b> stored, exactly as
+    /// <c>FormCheckoutBranch</c> refuses to (<c>rbReset_CheckedChanged</c>): the dialog disables the
+    /// box, and this refuses it a second time, because a stored "discard" would throw away
+    /// uncommitted work on every later branch switch without asking.
+    /// </remarks>
+    private void RememberCheckoutAction(CheckoutDecision decision)
+    {
+        if (!decision.RememberAction || decision.LocalChanges == LocalChangesAction.Discard)
+        {
+            return;
+        }
+
+        string stored = decision.LocalChanges switch
+        {
+            LocalChangesAction.Merge => "merge",
+            LocalChangesAction.Stash => "stash",
+            _ => "keep",
+        };
+
+        Settings?.Update(settings => settings.Confirmations.CheckoutBranchAction = stored);
+    }
+
     /// <summary>Can a checkout be performed?</summary>
     public bool CanCheckout =>
         _branchWriter is not null
@@ -1250,6 +1291,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 TargetLabel = target.Label,
                 IsDetached = target.IsDetached,
                 HasLocalChanges = await HasLocalChangesAsync(path).ConfigureAwait(true),
+                DefaultAction = RememberedCheckoutAction,
             })
             .ConfigureAwait(true);
 
@@ -1257,6 +1299,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             return;
         }
+
+        RememberCheckoutAction(decision);
 
         try
         {

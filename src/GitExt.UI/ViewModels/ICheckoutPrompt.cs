@@ -23,6 +23,16 @@ public sealed record CheckoutRequest
     /// Without them the whole "local changes" group is meaningless; it is not shown.
     /// </remarks>
     public bool HasLocalChanges { get; init; }
+
+    /// <summary>
+    /// The option to open with — the user's remembered choice.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions' <c>AppSettings.CheckoutBranchAction</c>. It can never be
+    /// <see cref="LocalChangesAction.Discard"/>: that one is refused at the point of being saved,
+    /// not here.
+    /// </remarks>
+    public LocalChangesAction DefaultAction { get; init; } = LocalChangesAction.Keep;
 }
 
 /// <summary>
@@ -34,6 +44,9 @@ public sealed record CheckoutDecision
 
     /// <summary>What is to be done with the local changes?</summary>
     public LocalChangesAction LocalChanges { get; init; } = LocalChangesAction.Keep;
+
+    /// <summary>Did the user ask for this action to become the default?</summary>
+    public bool RememberAction { get; init; }
 
     /// <summary>A cancelled decision.</summary>
     public static CheckoutDecision Cancelled { get; } = new();

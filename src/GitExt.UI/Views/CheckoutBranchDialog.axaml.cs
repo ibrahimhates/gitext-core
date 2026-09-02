@@ -22,10 +22,15 @@ public partial class CheckoutBranchDialog : Window
 
         foreach (RadioButton option in Options)
         {
-            option.IsCheckedChanged += (_, _) => UpdateHint();
+            option.IsCheckedChanged += (_, _) =>
+            {
+                UpdateHint();
+                UpdateDefaultBox();
+            };
         }
 
         UpdateHint();
+        UpdateDefaultBox();
     }
 
     private RadioButton[] Options => [KeepOption, MergeOption, StashOption, DiscardOption];
@@ -56,7 +61,10 @@ public partial class CheckoutBranchDialog : Window
         // On a clean tree all four options give the same result; asking would be nothing but noise.
         LocalChangesGroup.IsVisible = request.HasLocalChanges;
 
+        Select(request.DefaultAction);
+
         UpdateHint();
+        UpdateDefaultBox();
     }
 
     /// <summary>
@@ -84,7 +92,7 @@ public partial class CheckoutBranchDialog : Window
             LocalChangesAction.Discard =>
                 Loc.T("checkout_branch_dialog.axaml.changes_in_tracked_files_are_discarded_untra")
                 + Loc.T("checkout_branch_dialog.axaml.files_are_left_alone_the_discarded_content_i")
-                + "alabilirsiniz.",
+                + Loc.T("checkout_branch.recover_it_from_the_safety_point"),
             _ => string.Empty,
         };
     }
@@ -109,6 +117,58 @@ public partial class CheckoutBranchDialog : Window
         }
     }
 
+    private void Select(LocalChangesAction action)
+    {
+        KeepOption.IsChecked = action == LocalChangesAction.Keep;
+        MergeOption.IsChecked = action == LocalChangesAction.Merge;
+        StashOption.IsChecked = action == LocalChangesAction.Stash;
+        DiscardOption.IsChecked = action == LocalChangesAction.Discard;
+    }
+
+    /// <summary>
+    /// Keeps "discard" from ever becoming the default.
+    /// </summary>
+    /// <remarks>
+    /// <c>FormCheckoutBranch.rbReset_CheckedChanged</c> does the same, and the reason is worth
+    /// keeping: every other option is recoverable, so making one of them the default costs the user
+    /// a step. Making <b>discard</b> the default would silently throw away uncommitted work on every
+    /// later branch switch.
+    /// </remarks>
+    private void UpdateDefaultBox()
+    {
+        bool discarding = DiscardOption.IsChecked == true;
+
+        DefaultActionBox.IsEnabled = !discarding;
+
+        if (discarding)
+        {
+            DefaultActionBox.IsChecked = false;
+        }
+    }
+
+    internal LocalChangesAction SelectedActionForTest => SelectedAction;
+
+    internal bool DefaultBoxEnabledForTest => DefaultActionBox.IsEnabled;
+
+    internal bool DefaultBoxCheckedForTest
+    {
+        get => DefaultActionBox.IsChecked == true;
+        set
+        {
+            DefaultActionBox.IsChecked = value;
+            UpdateDefaultBox();
+        }
+    }
+
+    internal bool LocalChangesVisibleForTest => LocalChangesGroup.IsVisible;
+
+    internal void SetOptionForTest(LocalChangesAction action)
+    {
+        Select(action);
+        UpdateHint();
+        UpdateDefaultBox();
+    }
+
     private void OnCancelClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
 
     private void OnCheckoutClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -119,6 +179,7 @@ public partial class CheckoutBranchDialog : Window
 
             // When the group is hidden the tree is clean; there is no point asking about an action.
             LocalChanges = LocalChangesGroup.IsVisible ? SelectedAction : LocalChangesAction.Keep,
+            RememberAction = LocalChangesGroup.IsVisible && DefaultActionBox.IsChecked == true,
         };
 
         Close();

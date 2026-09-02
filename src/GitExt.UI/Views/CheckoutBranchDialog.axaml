@@ -48,6 +48,10 @@
                        TextWrapping="Wrap"
                        Opacity="0.85"
                        Margin="0,2,0,0" />
+
+            <CheckBox Name="DefaultActionBox"
+                      Content="{loc:Translate checkout_branch.set_as_default_action}"
+                      Margin="0,6,0,0" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal"

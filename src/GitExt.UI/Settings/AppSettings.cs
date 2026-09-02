@@ -146,6 +146,18 @@ public sealed class ConfirmationSettings
     [JsonPropertyName("dontConfirmAddTrackingRef")]
     public bool DontConfirmAddTrackingRef { get; set; }
 
+    /// <summary>
+    /// What to do with local changes when switching branch — GitExtensions'
+    /// <c>CheckoutBranchAction</c>.
+    /// </summary>
+    /// <remarks>
+    /// Text rather than an enum for the reason the whole file is (see <see cref="AppSettings"/>): an
+    /// unrecognised value drops this one field to its default instead of failing the file. "discard"
+    /// is never written here.
+    /// </remarks>
+    [JsonPropertyName("checkoutBranchAction")]
+    public string CheckoutBranchAction { get; set; } = "keep";
+
     /// <summary>Do not ask before a fetch that prunes.</summary>
     [JsonPropertyName("dontConfirmFetchAndPrune")]
     public bool DontConfirmFetchAndPrune { get; set; }
