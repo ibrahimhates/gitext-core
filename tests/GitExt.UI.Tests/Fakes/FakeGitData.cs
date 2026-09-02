@@ -1690,3 +1690,36 @@ public sealed class FakePullPrompt : IPullPrompt
         return Task.CompletedTask;
     }
 }
+
+/// <summary>Tag writer that records instead of running <c>git tag</c>.</summary>
+public sealed class FakeTagWriter : ITagWriter
+{
+    public List<TagOptions> Created { get; } = [];
+
+    public List<string> Deleted { get; } = [];
+
+    public List<GitTag> Tags { get; } = [];
+
+    public Task<IReadOnlyList<GitTag>> ListAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<GitTag>>(Tags);
+
+    public Task CreateAsync(
+        string workingDirectory,
+        TagOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        Created.Add(options);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(
+        string workingDirectory,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        Deleted.Add(name);
+        return Task.CompletedTask;
+    }
+}

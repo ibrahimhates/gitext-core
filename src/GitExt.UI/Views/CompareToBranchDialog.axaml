@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        x:Class="GitExt.UI.Views.CompareToBranchDialog"
+        Title="{loc:Translate compare_to_branch.compare_to_branch}"
+        Width="420"
+        SizeToContent="Height"
+        MinHeight="150"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        GitExtensions `FormCompareToBranch.Designer.cs`: a branch selector plus a single
+        "Compare" button. Local branches come first, then the remote ones — the same list
+        `FormCompareToBranch` builds with `branchSelector.Initialize(remote: true, …)`.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{loc:Translate compare_to_branch.branch}" />
+            <ComboBox Name="BranchBox" HorizontalAlignment="Stretch" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Name="CancelButton" Content="{loc:Translate compare_to_branch.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="CompareButton" Content="{loc:Translate compare_to_branch.compare}" MinWidth="90" IsDefault="True" Click="OnCompareClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

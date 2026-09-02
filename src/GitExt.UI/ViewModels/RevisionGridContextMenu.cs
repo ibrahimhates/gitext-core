@@ -206,6 +206,16 @@ public sealed record RevisionGridMenuContext
 
     public bool HasLeftPanel { get; init; } = true;
 
+    /// <summary>
+    /// Has a commit been remembered with "Select as BASE to compare"?
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions enables <i>Compare to BASE</i> from
+    /// <c>RevisionGridControl._baseCommitToCompare</c> — the entry keeps its place, it is only
+    /// dead until a base is picked.
+    /// </remarks>
+    public bool HasBaseCommitToCompare { get; init; }
+
     public bool RefClicked { get; init; }
 
     public string? ClickedRef { get; init; }
@@ -240,8 +250,6 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.StopBisect,
         RevisionGridMenuId.SelectInLeftPanel,
         RevisionGridMenuId.ResetAnotherBranchToHere,
-        RevisionGridMenuId.CreateTag,
-        RevisionGridMenuId.DeleteTag,
         RevisionGridMenuId.ArchiveRevision,
         RevisionGridMenuId.RunScript,
         RevisionGridMenuId.OpenBuildReport,
@@ -255,9 +263,6 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.AmendCommit,
         RevisionGridMenuId.GetHelpOnHowToUseTheseFeatures,
         RevisionGridMenuId.OpenCommitsWithDiffTool,
-        RevisionGridMenuId.CompareToBranch,
-        RevisionGridMenuId.SelectAsBase,
-        RevisionGridMenuId.CompareToBase,
         RevisionGridMenuId.ToggleBetweenArtificialAndHeadCommits,
         RevisionGridMenuId.GoToCurrentRevision,
         RevisionGridMenuId.GoToFirstParentCommit,
@@ -702,7 +707,7 @@ public static class RevisionGridContextMenu
         Item(RevisionGridMenuId.CompareToBranch),
         Item(RevisionGridMenuId.CompareWithCurrentBranch, context.CurrentBranch is { Length: > 0 }),
         Item(RevisionGridMenuId.SelectAsBase),
-        Item(RevisionGridMenuId.CompareToBase),
+        Item(RevisionGridMenuId.CompareToBase, enabled: context.HasBaseCommitToCompare),
         Item(RevisionGridMenuId.CompareToWorkingDirectory, !context.IsArtificial),
         Item(RevisionGridMenuId.CompareSelectedCommits, twoSelected),
     ];
@@ -776,13 +781,22 @@ public static class RevisionGridContextMenu
         Item(RevisionGridMenuId.SaveAsDefault),
     ];
 
-    private static RevisionGridMenuEntry Item(RevisionGridMenuId id, bool visible = true) => new()
+    /// <summary>A leaf entry.</summary>
+    /// <remarks>
+    /// <c>enabled</c> greys the entry out while leaving it in place. GitExtensions <b>disables</b>
+    /// rather than removes <i>Compare to BASE</i>, so the compare submenu keeps the same shape
+    /// whether or not a base has been picked.
+    /// </remarks>
+    private static RevisionGridMenuEntry Item(
+        RevisionGridMenuId id,
+        bool visible = true,
+        bool? enabled = null) => new()
     {
         Id = id,
         Header = Text(id),
         Gesture = Gesture(id),
         IsVisible = visible,
-        IsEnabled = visible && !_unimplemented.Contains(id),
+        IsEnabled = visible && (enabled ?? true) && !_unimplemented.Contains(id),
     };
 
     private static RevisionGridMenuEntry Heading(RevisionGridMenuId id) => new()

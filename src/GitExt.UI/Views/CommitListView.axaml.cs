@@ -337,6 +337,33 @@ public partial class CommitListView : UserControl
         menu.ItemsSource = Materialise(RevisionGridContextMenu.Build(DescribeSelection()));
     }
 
+    /// <summary>
+    /// Shows the tag dialogs; the view owns them because a dialog needs an owner window.
+    /// </summary>
+    private sealed class DialogTagPrompt : ITagPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogTagPrompt(Window owner) => _owner = owner;
+
+        public Task<CreateTagDecision> RequestCreateAsync(CreateTagRequest request) =>
+            CreateTagDialog.ShowAsync(request, _owner);
+
+        public Task<DeleteTagDecision> RequestDeleteAsync(DeleteTagRequest request) =>
+            DeleteTagDialog.ShowAsync(request, _owner);
+    }
+
+    /// <summary>
+    /// Gives the ViewModel a way to open dialogs, without overwriting one a test has supplied.
+    /// </summary>
+    private void EnsureTagPrompt(CommitListViewModel viewModel)
+    {
+        if (viewModel.TagPrompt is null && TopLevel.GetTopLevel(this) is Window owner)
+        {
+            viewModel.TagPrompt = new DialogTagPrompt(owner);
+        }
+    }
+
     private RevisionGridMenuContext DescribeSelection()
     {
         CommitListViewModel? viewModel = ViewModel;
@@ -377,11 +404,20 @@ public partial class CommitListView : UserControl
             SelectedCount = 1,
             CommitHash = row.Commit.Id.Value,
             Refs = refs,
+            HasBaseCommitToCompare = viewModel?.BaseCommitToCompare is not null,
             CurrentBranch = currentBranch,
         };
     }
 
-    private List<object> Materialise(IReadOnlyList<RevisionGridMenuEntry> entries)
+    /// <summary>Turns the model into real menu items.</summary>
+    /// <remarks>
+    /// <c>parent</c> is the submenu the list hangs under. It is what tells a dynamic ref entry
+    /// apart: the same <see cref="RevisionGridMenuId.DynamicRef"/> row is a branch under
+    /// <i>Checkout branch</i> and a tag under <i>Delete tag</i>, and only the parent says which.
+    /// </remarks>
+    private List<object> Materialise(
+        IReadOnlyList<RevisionGridMenuEntry> entries,
+        RevisionGridMenuId parent = RevisionGridMenuId.None)
     {
         List<object> items = [];
 
@@ -402,6 +438,10 @@ public partial class CommitListView : UserControl
             {
                 Header = entry.Header,
                 IsEnabled = entry.IsEnabled,
+
+                // The menu is built at open time and its items have no names, so this is the only
+                // handle a test has on a particular entry.
+                Tag = entry.Id,
                 InputGesture = entry.Gesture is { Length: > 0 } gesture
                     ? KeyGesture.Parse(gesture)
                     : null,
@@ -409,12 +449,13 @@ public partial class CommitListView : UserControl
 
             if (entry.Children.Count > 0)
             {
-                item.ItemsSource = Materialise(entry.Children);
+                item.ItemsSource = Materialise(entry.Children, entry.Id);
             }
             else
             {
                 RevisionGridMenuEntry captured = entry;
-                item.Click += (_, _) => Invoke(captured);
+                RevisionGridMenuId capturedParent = parent;
+                item.Click += (_, _) => Invoke(captured, capturedParent);
             }
 
             items.Add(item);
@@ -430,10 +471,35 @@ public partial class CommitListView : UserControl
     /// Everything that reaches beyond the commit list goes through the <b>same command</b> the main
     /// menu uses. A second path would be a second place to protect (the lesson from P06-T13).
     /// </remarks>
-    private void Invoke(RevisionGridMenuEntry entry)
+    private void Invoke(RevisionGridMenuEntry entry, RevisionGridMenuId parent = RevisionGridMenuId.None)
     {
         switch (entry.Id)
         {
+            case RevisionGridMenuId.CreateTag:
+                CreateTagAsync();
+                return;
+
+            case RevisionGridMenuId.DynamicRef
+                when parent == RevisionGridMenuId.DeleteTag && entry.Argument is { Length: > 0 } tag:
+                DeleteTagAsync(tag);
+                return;
+
+            case RevisionGridMenuId.CompareToBranch:
+                CompareToBranchAsync();
+                return;
+
+            case RevisionGridMenuId.SelectAsBase:
+                ViewModel?.SelectAsBase();
+                return;
+
+            case RevisionGridMenuId.CompareToBase:
+                CompareToBase();
+                return;
+
+            case RevisionGridMenuId.GoToCommit:
+                GoToCommitAsync();
+                return;
+
             case RevisionGridMenuId.CopyCommitHash:
                 CopyAsync(row => row.Commit.Id.Value);
                 return;
@@ -520,6 +586,109 @@ public partial class CommitListView : UserControl
         };
 
         _ = command?.ExecuteAsync(null);
+    }
+
+    // ---------------------------------------------------------------- P14-T03: tags
+
+    private async void CreateTagAsync()
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        EnsureTagPrompt(viewModel);
+
+        await viewModel.CreateTagCommand.ExecuteAsync(null);
+    }
+
+    private async void DeleteTagAsync(string tag)
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        EnsureTagPrompt(viewModel);
+
+        await viewModel.DeleteTagCommand.ExecuteAsync(tag);
+    }
+
+    // ---------------------------------------------------------------- P14-T04: compare
+
+    /// <summary>
+    /// Picks the branch for "Compare to branch…"; a test replaces it to avoid the dialog.
+    /// </summary>
+    internal Func<IReadOnlyList<string>, Task<string?>>? BranchToComparePrompt { get; set; }
+
+    /// <summary>
+    /// Asks for the commit expression for "Go to commit…"; a test replaces it.
+    /// </summary>
+    internal Func<Func<string?, bool>, Task<string?>>? GoToCommitPrompt { get; set; }
+
+    private async void CompareToBranchAsync()
+    {
+        if (ViewModel is not { } viewModel || viewModel.SelectedRow is not { } row)
+        {
+            return;
+        }
+
+        List<string> branches =
+        [
+            .. (viewModel.Refs?.LocalBranches ?? []).Select(branch => branch.Name),
+            .. (viewModel.Refs?.RemoteBranches ?? [])
+                .Where(branch => !branch.Ref.IsSymbolic)
+                .Select(branch => branch.Name),
+        ];
+
+        string? branch = BranchToComparePrompt is { } prompt
+            ? await prompt(branches)
+            : TopLevel.GetTopLevel(this) is Window owner
+                ? await CompareToBranchDialog.ShowAsync(branches, owner)
+                : null;
+
+        if (branch is not { Length: > 0 })
+        {
+            return;
+        }
+
+        // GitExtensions puts the branch on the left and the clicked commit on the right
+        // (`ShowFormDiff(baseCommit, headCommit, …)`); reversing it would show every change
+        // inverted.
+        OpenComparison(viewModel, branch, row.Commit.Id.Value);
+    }
+
+    private void CompareToBase()
+    {
+        if (ViewModel is not { } viewModel
+            || viewModel.BaseCommitToCompare is not { } baseCommit
+            || viewModel.SelectedRow is not { } row)
+        {
+            return;
+        }
+
+        OpenComparison(viewModel, baseCommit.Value, row.Commit.Id.Value);
+    }
+
+    // ---------------------------------------------------------------- P14-T05: go to commit
+
+    private async void GoToCommitAsync()
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        string? expression = GoToCommitPrompt is { } prompt
+            ? await prompt(viewModel.CanResolveRevision)
+            : TopLevel.GetTopLevel(this) is Window owner
+                ? await GoToCommitDialog.ShowAsync(viewModel.CanResolveRevision, owner)
+                : null;
+
+        if (expression is { Length: > 0 } && viewModel.TryGoToRevision(expression))
+        {
+            FocusSelectedRow();
+        }
     }
 
     private void OnCopyHashClick(object? sender, RoutedEventArgs e) =>
@@ -707,6 +876,28 @@ public partial class CommitListView : UserControl
     /// can be verified from here.
     /// </remarks>
     internal event EventHandler<CompareViewModel>? ComparisonRequested;
+
+    /// <summary>
+    /// Opens a comparison between two named revisions (P14-T04).
+    /// </summary>
+    /// <remarks>
+    /// The same window and the same ViewModel as the selection-driven comparison — the entries
+    /// added in Phase 14 are new <b>ways in</b>, not a second comparison screen.
+    /// </remarks>
+    private void OpenComparison(CommitListViewModel viewModel, string from, string to)
+    {
+        if (viewModel.CreateComparison() is not { } compare)
+        {
+            return;
+        }
+
+        _ = compare.CompareAsync(from, to);
+
+        ComparisonRequested?.Invoke(this, compare);
+
+        new CompareWindow { DataContext = compare }
+            .ShowOwnedBy(TopLevel.GetTopLevel(this) as Window);
+    }
 
     private void OpenComparison(CommitListViewModel viewModel, bool againstHead)
     {

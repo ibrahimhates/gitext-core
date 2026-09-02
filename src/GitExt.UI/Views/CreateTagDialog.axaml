@@ -1,0 +1,68 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        x:Class="GitExt.UI.Views.CreateTagDialog"
+        Title="{loc:Translate create_tag.create_tag}"
+        Width="520"
+        SizeToContent="Height"
+        MinHeight="300"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        The layout comes from GitExtensions `FormCreateTag.Designer.cs`. TabIndex order:
+          label1 "Tag name"                     + textBoxTagName
+          label3 "Create tag at this revision"   + commitPickerSmallControl1
+          annotate (Lightweight / Annotated / Sign with default GPG / Sign with specific GPG)
+          label2 "Message"                       + tagMessage
+          ForceTag "Force"
+          pushTag "Push tag to '{0}'"            — no remote push here (§ 7 of the report)
+          Ok "Create tag"
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{loc:Translate create_tag.tag_name}" />
+            <TextBox Name="TagNameTextBox" />
+            <TextBlock Name="ValidationText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="False"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{loc:Translate create_tag.create_tag_at_this_revision}" />
+            <TextBox Name="TargetText" IsReadOnly="True" IsTabStop="False" />
+        </StackPanel>
+
+        <ComboBox Name="KindBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+            <ComboBoxItem Content="{loc:Translate create_tag.lightweight_tag}" />
+            <ComboBoxItem Content="{loc:Translate create_tag.annotated_tag}" />
+            <ComboBoxItem Content="{loc:Translate create_tag.sign_with_default_gpg}" />
+        </ComboBox>
+
+        <StackPanel Spacing="4">
+            <TextBlock Name="MessageLabel" Text="{loc:Translate create_tag.message}" />
+            <TextBox Name="MessageTextBox"
+                     AcceptsReturn="True"
+                     Height="80"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+
+        <CheckBox Name="ForceBox" Content="{loc:Translate create_tag.force}" />
+
+        <TextBlock Name="ForceWarning"
+                   FontSize="11"
+                   TextWrapping="Wrap"
+                   IsVisible="False"
+                   Opacity="0.85" />
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Name="CancelButton" Content="{loc:Translate create_tag.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="CreateButton" Content="{loc:Translate create_tag.create_tag}" MinWidth="90" IsDefault="True" Click="OnCreateClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

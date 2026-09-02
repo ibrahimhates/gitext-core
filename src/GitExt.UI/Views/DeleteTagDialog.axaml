@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        x:Class="GitExt.UI.Views.DeleteTagDialog"
+        Title="{loc:Translate delete_tag.delete_tag}"
+        Width="470"
+        SizeToContent="Height"
+        MinHeight="180"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        GitExtensions `FormDeleteTag.Designer.cs`: label1 "Select tag" + Tags combo,
+        label2 "This will delete the selected tag from the (local) repository.", then Ok "Delete".
+        The tag is fixed here — it is the one clicked in the context menu submenu — so the combo
+        shows it read-only. GitExtensions' "Delete tag also from the following remote(s)" needs a
+        remote tag push, which Core does not expose; it is left out rather than shown dead.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{loc:Translate delete_tag.select_tag}" />
+            <TextBox Name="TagNameText" IsReadOnly="True" IsTabStop="False" />
+        </StackPanel>
+
+        <TextBlock Text="{loc:Translate delete_tag.this_will_delete_the_selected_tag_from_the_l}"
+                   TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Name="CancelButton" Content="{loc:Translate delete_tag.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="DeleteButton" Content="{loc:Translate delete_tag.delete}" MinWidth="90" IsDefault="True" Click="OnDeleteClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

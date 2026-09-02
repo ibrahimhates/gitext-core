@@ -375,6 +375,115 @@ public class RevisionGridContextMenuTests
     }
 
     [Fact]
+    public void Etiket_ogeleri_artik_etkin()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> menu =
+            RevisionGridContextMenu.Build(Context([Tag("v1.0")]));
+
+        Find(menu, RevisionGridMenuId.CreateTag).IsEnabled.ShouldBeTrue();
+        Find(menu, RevisionGridMenuId.DeleteTag).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Etiketsiz_satirda_etiket_sil_gizli_etiket_olustur_etkin()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> menu = RevisionGridContextMenu.Build(Context());
+
+        Find(menu, RevisionGridMenuId.DeleteTag).IsVisible.ShouldBeFalse();
+        Find(menu, RevisionGridMenuId.CreateTag).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Etiket_sil_alt_menusu_satirdaki_etiketlerden_dolar()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> menu =
+            RevisionGridContextMenu.Build(Context([Tag("v1.0"), Tag("v1.1")]));
+
+        Find(menu, RevisionGridMenuId.DeleteTag).Children
+            .Select(child => child.Argument)
+            .ShouldBe(["v1.0", "v1.1"]);
+    }
+
+    [Fact]
+    public void Yapay_satirda_etiket_olusturulamaz()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> menu =
+            RevisionGridContextMenu.Build(Context() with { IsArtificial = true });
+
+        // There is no commit to tag on the working tree / index rows.
+        Find(menu, RevisionGridMenuId.CreateTag).IsVisible.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Karsilastirma_ogeleri_artik_etkin()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> compare =
+            Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.Compare).Children;
+
+        Find(compare, RevisionGridMenuId.CompareToBranch).IsEnabled.ShouldBeTrue();
+        Find(compare, RevisionGridMenuId.SelectAsBase).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Taban_secilmeden_tabanla_karsilastir_devre_disi_ama_gorunur()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> compare =
+            Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.Compare).Children;
+
+        RevisionGridMenuEntry entry = Find(compare, RevisionGridMenuId.CompareToBase);
+
+        // GitExtensions disables it (`compareToBaseToolStripMenuItem.Enabled = …`); it does not
+        // remove it, so the submenu keeps the same shape either way.
+        entry.IsVisible.ShouldBeTrue();
+        entry.IsEnabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Taban_secildikten_sonra_tabanla_karsilastir_etkin()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> compare = Find(
+                RevisionGridContextMenu.Build(Context() with { HasBaseCommitToCompare = true }),
+                RevisionGridMenuId.Compare)
+            .Children;
+
+        Find(compare, RevisionGridMenuId.CompareToBase).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Difftool_hala_devre_disi()
+    {
+        // There is no difftool runner in Core; the entry keeps its place but cannot be pressed.
+        IReadOnlyList<RevisionGridMenuEntry> compare = Find(
+                RevisionGridContextMenu.Build(Context() with { SelectedCount = 2 }),
+                RevisionGridMenuId.Compare)
+            .Children;
+
+        Find(compare, RevisionGridMenuId.OpenCommitsWithDiffTool).IsEnabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Commite_git_etkin()
+    {
+        IReadOnlyList<RevisionGridMenuEntry> navigate =
+            Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.Navigate).Children;
+
+        Find(navigate, RevisionGridMenuId.GoToCommit).IsEnabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Gezinme_menusunun_geri_kalani_hala_devre_disi()
+    {
+        // Phase 14 only wired up "Go to commit"; the rest have no infrastructure yet.
+        IReadOnlyList<RevisionGridMenuEntry> navigate =
+            Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.Navigate).Children;
+
+        Find(navigate, RevisionGridMenuId.GoToCurrentRevision).IsEnabled.ShouldBeFalse();
+        Find(navigate, RevisionGridMenuId.GoToMergeBaseCommit).IsEnabled.ShouldBeFalse();
+        Find(navigate, RevisionGridMenuId.NavigateBackward).IsEnabled.ShouldBeFalse();
+        Find(navigate, RevisionGridMenuId.QuickSearchNext).IsEnabled.ShouldBeFalse();
+    }
+
+    [Fact]
     public void Bisect_ogeleri_hala_devre_disi()
     {
         // Bisect is Phase 07; the items keep their place in the order but cannot be pressed.

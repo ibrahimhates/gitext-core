@@ -41,6 +41,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
     private readonly ICommitLogReader _logReader;
     private readonly IRefReader _refReader;
     private readonly IDiffReader _diffReader;
+    private readonly ITagWriter? _tagWriter;
 
     /// <summary>
     /// Mapping from commit id to row index — for jumping to a parent and for lookup by SHA.
@@ -59,7 +60,8 @@ public sealed partial class CommitListViewModel : ViewModelBase
         ICommitLogReader logReader,
         IRefReader refReader,
         ICommitSignatureReader signatureReader,
-        IDiffReader diffReader)
+        IDiffReader diffReader,
+        ITagWriter? tagWriter = null)
     {
         ArgumentNullException.ThrowIfNull(locator);
         ArgumentNullException.ThrowIfNull(logReader);
@@ -71,6 +73,10 @@ public sealed partial class CommitListViewModel : ViewModelBase
         _logReader = logReader;
         _refReader = refReader;
         _diffReader = diffReader;
+        _tagWriter = tagWriter;
+
+        CreateTagCommand = new AsyncRelayCommand(CreateTagAsync, () => CanWriteTags);
+        DeleteTagCommand = new AsyncRelayCommand<string?>(DeleteTagAsync, _ => CanWriteTags);
 
         // Parent links in the details panel navigate back to the list; only this callback is
         // handed to the panel — not the whole ViewModel — so the dependency stays one-way.
@@ -125,6 +131,125 @@ public sealed partial class CommitListViewModel : ViewModelBase
         return string.IsNullOrEmpty(workingDirectory)
             ? null
             : new CompareViewModel(_diffReader, workingDirectory);
+    }
+
+    // ---------------------------------------------------------------- P14-T03: tags
+
+    /// <summary>The side that shows the tag dialogs; set by the view.</summary>
+    public ITagPrompt? TagPrompt { get; set; }
+
+    /// <summary>"Create new tag here…" — GitExtensions' <c>FormCreateTag</c>.</summary>
+    public IAsyncRelayCommand CreateTagCommand { get; }
+
+    /// <summary>"Delete tag…" — the argument is the tag name clicked in the submenu.</summary>
+    public IAsyncRelayCommand<string?> DeleteTagCommand { get; }
+
+    private bool CanWriteTags => _tagWriter is not null;
+
+    private async Task CreateTagAsync()
+    {
+        if (_tagWriter is not { } writer
+            || TagPrompt is not { } prompt
+            || Repository?.WorkingDirectory is not { Length: > 0 } path
+            || SelectedRow is not { } row)
+        {
+            return;
+        }
+
+        string target = row.Commit.Id.Value;
+
+        CreateTagDecision decision = await prompt
+            .RequestCreateAsync(new CreateTagRequest
+            {
+                Target = target,
+                TargetLabel = $"{row.Commit.Id.ToShortString()} {row.Commit.Subject}",
+                ExistingTags = [.. (Refs?.Tags ?? []).Select(tag => tag.Name)],
+            })
+            .ConfigureAwait(true);
+
+        if (!decision.Confirmed)
+        {
+            return;
+        }
+
+        await RunTagWriteAsync(
+            () => writer.CreateAsync(
+                path,
+                new TagOptions
+                {
+                    Name = decision.Name,
+                    Target = target,
+                    Message = decision.Kind == TagKind.Lightweight ? null : decision.Message,
+                    Sign = decision.Kind == TagKind.SignWithDefaultKey,
+                    Force = decision.Force,
+                }),
+            path)
+            .ConfigureAwait(true);
+    }
+
+    private async Task DeleteTagAsync(string? name)
+    {
+        if (_tagWriter is not { } writer
+            || TagPrompt is not { } prompt
+            || Repository?.WorkingDirectory is not { Length: > 0 } path
+            || name is not { Length: > 0 })
+        {
+            return;
+        }
+
+        DeleteTagDecision decision = await prompt
+            .RequestDeleteAsync(new DeleteTagRequest { Name = name })
+            .ConfigureAwait(true);
+
+        if (!decision.Confirmed || decision.Name is not { Length: > 0 } chosen)
+        {
+            return;
+        }
+
+        await RunTagWriteAsync(() => writer.DeleteAsync(path, chosen), path).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Runs a tag write and reloads the history, or reports the failure where the load errors show.
+    /// </summary>
+    private async Task RunTagWriteAsync(Func<Task> write, string path)
+    {
+        try
+        {
+            await write().ConfigureAwait(true);
+        }
+        catch (GitException error)
+        {
+            ErrorMessage = Loc.GitError(error);
+            ErrorDetails = GitOutputViewModel.ForFailure(error);
+            return;
+        }
+
+        await OpenAsync(path).ConfigureAwait(true);
+    }
+
+    // ---------------------------------------------------------------- P14-T03: compare
+
+    /// <summary>
+    /// The commit remembered by "Select as BASE to compare"; <see langword="null"/> until one is.
+    /// </summary>
+    /// <remarks>
+    /// GitExtensions keeps the same state in <c>RevisionGridControl._baseCommitToCompare</c> and
+    /// enables <i>Compare to BASE</i> only once it is set.
+    /// </remarks>
+    public CommitId? BaseCommitToCompare { get; private set; }
+
+    /// <summary>Remembers the selected commit as the comparison base.</summary>
+    /// <returns><see langword="true"/> if there was a selection to remember.</returns>
+    public bool SelectAsBase()
+    {
+        if (SelectedRow is not { } row)
+        {
+            return false;
+        }
+
+        BaseCommitToCompare = row.Commit.Id;
+        return true;
     }
 
     /// <summary>Changed files of the selected commit (P04-T08).</summary>
@@ -732,6 +857,97 @@ public sealed partial class CommitListViewModel : ViewModelBase
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Resolves a commit expression the way GitExtensions' "Go to commit" accepts it (P14-T05).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>FormGoToCommit</c> lists exactly four kinds of input: a complete commit hash, a unique
+    /// partial hash, a tag name, and a branch name. All four are answerable from what is already
+    /// loaded, so no <c>git rev-parse</c> process is started per keystroke.
+    /// </para>
+    /// <para>
+    /// 🔴 MEASURED — an <b>annotated</b> tag's own object id is not the commit
+    /// (<c>rev-parse v1.0</c> and <c>rev-parse v1.0^{commit}</c> differ). <see cref="GitRef.TargetCommit"/>
+    /// is the peeled one, and it is what a jump has to land on; the tag object is in no row.
+    /// </para>
+    /// </remarks>
+    /// <returns>The commit, or <see langword="null"/> if the expression resolves to nothing.</returns>
+    public CommitId? ResolveRevision(string? expression)
+    {
+        if (expression is not { Length: > 0 } || string.IsNullOrWhiteSpace(expression))
+        {
+            return null;
+        }
+
+        string text = expression.Trim();
+
+        foreach (GitRef reference in NamedRefs())
+        {
+            if (reference.ShortName == text || reference.FullName == text)
+            {
+                return reference.TargetCommit;
+            }
+        }
+
+        string prefix = text.ToLowerInvariant();
+
+        if (CommitId.TryParse(prefix, out CommitId exact)
+            && exact.IsFull
+            && _rowIndex.ContainsKey(exact))
+        {
+            return exact;
+        }
+
+        if (prefix.Length < CommitId.MinimumLength || !prefix.All(Uri.IsHexDigit))
+        {
+            return null;
+        }
+
+        foreach (CommitRowViewModel row in Rows)
+        {
+            if (row.Commit.Id.Value.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                return row.Commit.Id;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Can the expression be jumped to? For the dialog's inline validation.</summary>
+    public bool CanResolveRevision(string? expression) => ResolveRevision(expression) is not null;
+
+    /// <summary>
+    /// Jumps to the commit the expression names (P14-T05).
+    /// </summary>
+    /// <returns><see langword="false"/> when nothing resolves, or when it is not among the loaded rows.</returns>
+    public bool TryGoToRevision(string? expression) =>
+        ResolveRevision(expression) is { } id && TryGoToCommit(id);
+
+    private IEnumerable<GitRef> NamedRefs()
+    {
+        if (Refs is not { } refs)
+        {
+            yield break;
+        }
+
+        foreach (BranchInfo branch in refs.LocalBranches)
+        {
+            yield return branch.Ref;
+        }
+
+        foreach (TagInfo tag in refs.Tags)
+        {
+            yield return tag.Ref;
+        }
+
+        foreach (BranchInfo branch in refs.RemoteBranches)
+        {
+            yield return branch.Ref;
+        }
     }
 
     /// <summary>

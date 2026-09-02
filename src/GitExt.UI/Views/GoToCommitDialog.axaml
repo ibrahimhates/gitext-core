@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        x:Class="GitExt.UI.Views.GoToCommitDialog"
+        Title="{loc:Translate go_to_commit.go_to_commit}"
+        Width="470"
+        SizeToContent="Height"
+        MinHeight="200"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!--
+        GitExtensions `FormGoToCommit.Designer.cs`: label1 "Commit expression:" + the text box,
+        the "Go" button, and a Help group listing what the box accepts. The tag and branch
+        combos of that form are left out — the same names are accepted in the expression box,
+        which is where its own help text points the user.
+    -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{loc:Translate go_to_commit.commit_expression}" />
+            <TextBox Name="ExpressionTextBox" />
+            <TextBlock Name="ValidationText"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="False"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" />
+        </StackPanel>
+
+        <TextBlock Text="{loc:Translate go_to_commit.commit_expression_examples_complete_commit_ha}"
+                   FontSize="11"
+                   TextWrapping="Wrap"
+                   Opacity="0.85" />
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Name="CancelButton" Content="{loc:Translate go_to_commit.cancel}" MinWidth="90" IsCancel="True" Click="OnCancelClick" />
+            <Button Name="GoButton" Content="{loc:Translate go_to_commit.go}" MinWidth="90" IsDefault="True" Click="OnGoClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>
