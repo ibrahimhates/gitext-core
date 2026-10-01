@@ -15,7 +15,7 @@
   <PropertyGroup>
     <AvaloniaVersion>12.1.1</AvaloniaVersion>
     <MicrosoftExtensionsVersion>10.0.11</MicrosoftExtensionsVersion>
-    <XunitVersion>3.2.2</XunitVersion>
+    <XunitVersion>4.0.1</XunitVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Avalonia (ADR-0001)">
@@ -44,7 +44,7 @@
     <!-- xunit v3: Avalonia.Headless.XUnit 12.1.0 xunit.v3'e bağımlı, bu yüzden baştan v3. -->
     <PackageVersion Include="xunit.v3" Version="$(XunitVersion)" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <!-- Shouldly: MIT. FluentAssertions v8 lisans değişikliği nedeniyle kullanılmıyor (ADR-0003). -->
     <PackageVersion Include="Shouldly" Version="4.3.0" />
   </ItemGroup>
