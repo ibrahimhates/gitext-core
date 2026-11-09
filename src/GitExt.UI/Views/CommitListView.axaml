@@ -114,7 +114,7 @@
                         sit between message and author in GitExtensions.
                     -->
                     <Grid Height="22"
-                          ColumnDefinitions="Auto,Auto,*,140,120,70">
+                          ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
 
                         <!-- Graph column - the one piece that draws itself -->
                         <!--
@@ -135,6 +135,8 @@
                             IsRelative="{Binding IsRelative}"
                             PreviousIsRelative="{Binding PreviousIsRelative}"
                             ClipToBounds="True"
+                            IsVisible="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).Display.ShowGraphColumn}"
+                            GrayNonRelatives="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).Display.DrawNonRelativesGray}"
                             Margin="4,0,8,0"
                             FirstLane="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).FirstVisibleLane}"
                             VisibleLanes="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).VisibleLanes}" />
@@ -167,21 +169,40 @@
                                             Classes.remote="{Binding IsRemoteBranch}"
                                             Classes.tag="{Binding IsTag}"
                                             Classes.current="{Binding IsCurrent}">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{x:Static vm:RevisionGridBadgeVisible.Instance}">
+                                                <Binding />
+                                                <Binding Path="$parent[ListBox].((vm:CommitListViewModel)DataContext).Display" />
+                                            </MultiBinding>
+                                        </Border.IsVisible>
                                         <TextBlock Text="{Binding Text}" FontSize="10" />
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <TextBlock Grid.Column="2"
-                                   Text="{Binding Subject}"
-                                   FontSize="12"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,8,0" />
+                        <DockPanel Grid.Column="2"
+                                   Name="MessageCell"
+                                   Margin="0,0,8,0">
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="{Binding Subject}"
+                                       FontSize="12"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center" />
+
+                            <TextBlock Text="{Binding BodyLine}"
+                                       IsVisible="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).Display.ShowCommitBody}"
+                                       FontSize="12"
+                                       Opacity="0.5"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0" />
+                        </DockPanel>
 
                         <TextBlock Grid.Column="3"
                                    Text="{Binding AuthorName}"
+                                   IsVisible="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).Display.ShowAuthorNameColumn}"
+                                   Width="132"
                                    FontSize="12"
                                    Opacity="0.75"
                                    TextTrimming="CharacterEllipsis"
@@ -189,13 +210,24 @@
                                    Margin="0,0,8,0" />
 
                         <TextBlock Grid.Column="4"
-                                   Text="{Binding DateText}"
+                                   IsVisible="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).Display.ShowDateColumn}"
+                                   Width="112"
                                    FontSize="12"
                                    Opacity="0.65"
+                                   TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"
-                                   Margin="0,0,8,0" />
+                                   Margin="0,0,8,0">
+                            <TextBlock.Text>
+                                <MultiBinding Converter="{x:Static vm:RevisionGridDateText.Instance}">
+                                    <Binding />
+                                    <Binding Path="$parent[ListBox].((vm:CommitListViewModel)DataContext).Display" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
 
                         <TextBlock Grid.Column="5"
+                                   IsVisible="{Binding $parent[ListBox].((vm:CommitListViewModel)DataContext).Display.ShowIdColumn}"
+                                   Width="70"
                                    Text="{Binding ShortId}"
                                    FontFamily="{DynamicResource GitExtMonospaceFont}"
                                    FontSize="12"

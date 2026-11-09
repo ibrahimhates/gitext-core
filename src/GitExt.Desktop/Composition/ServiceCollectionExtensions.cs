@@ -226,6 +226,7 @@ public static class ServiceCollectionExtensions
             MainWindowViewModel model = ActivatorUtilities.CreateInstance<MainWindowViewModel>(provider);
             model.Session = provider.GetRequiredService<SessionTracker>();
             model.Settings = provider.GetRequiredService<ISettingsStore>();
+            model.Commits.AttachSettings(provider.GetRequiredService<ISettingsStore>());
 
             // The version notice (P13-T01). The version itself is known HERE — `VersionInfo` reads
             // the value MinVer embedded at build time, and the UI layer has no business knowing

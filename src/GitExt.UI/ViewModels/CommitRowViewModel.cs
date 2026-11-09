@@ -24,6 +24,7 @@ public sealed class CommitRowViewModel
 {
     private string? _shortId;
     private string? _dateText;
+    private string? _bodyLine;
 
     public CommitRowViewModel(
         CommitInfo commit,
@@ -55,6 +56,10 @@ public sealed class CommitRowViewModel
     public string ShortId => _shortId ??= Commit.Id.ToShortString();
 
     public string Subject => Commit.Subject;
+
+    public string BodyLine => _bodyLine ??= string.Join(
+        ' ',
+        Commit.Body.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
     public string AuthorName => Commit.Author.Name;
 

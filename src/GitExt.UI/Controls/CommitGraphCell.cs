@@ -74,6 +74,9 @@ public sealed class CommitGraphCell : Control
     public static readonly StyledProperty<bool> PreviousIsRelativeProperty =
         AvaloniaProperty.Register<CommitGraphCell, bool>(nameof(PreviousIsRelative), true);
 
+    public static readonly StyledProperty<bool> GrayNonRelativesProperty =
+        AvaloniaProperty.Register<CommitGraphCell, bool>(nameof(GrayNonRelatives), true);
+
     /// <summary>
     /// The lane colours.
     /// </summary>
@@ -110,7 +113,8 @@ public sealed class CommitGraphCell : Control
         AffectsRender<CommitGraphCell>(
             RowProperty, PreviousRowProperty, LaneWidthProperty, NodeRadiusProperty,
             LineThicknessProperty, PaletteProperty, FirstLaneProperty, VisibleLanesProperty,
-            HasRefsProperty, IsHeadProperty, IsRelativeProperty, PreviousIsRelativeProperty);
+            HasRefsProperty, IsHeadProperty, IsRelativeProperty, PreviousIsRelativeProperty,
+            GrayNonRelativesProperty);
 
         AffectsMeasure<CommitGraphCell>(LaneWidthProperty, VisibleLanesProperty);
     }
@@ -179,6 +183,12 @@ public sealed class CommitGraphCell : Control
     {
         get => GetValue(PreviousIsRelativeProperty);
         set => SetValue(PreviousIsRelativeProperty, value);
+    }
+
+    public bool GrayNonRelatives
+    {
+        get => GetValue(GrayNonRelativesProperty);
+        set => SetValue(GrayNonRelativesProperty, value);
     }
 
     public IReadOnlyList<Color>? Palette
@@ -270,7 +280,7 @@ public sealed class CommitGraphCell : Control
                     context,
                     palette,
                     edge,
-                    PreviousIsRelative,
+                    PreviousIsRelative || !GrayNonRelatives,
                     thickness,
                     laneWidth,
                     first,
@@ -288,7 +298,7 @@ public sealed class CommitGraphCell : Control
                 context,
                 palette,
                 edge,
-                IsRelative,
+                IsRelative || !GrayNonRelatives,
                 thickness,
                 laneWidth,
                 first,
@@ -384,7 +394,7 @@ public sealed class CommitGraphCell : Control
     {
         double x = LaneCenter(row.Lane, firstLane, laneWidth);
         double radius = NodeRadius;
-        IBrush brush = GetBrush(NodeColor(palette, row, IsRelative));
+        IBrush brush = GetBrush(NodeColor(palette, row, IsRelative || !GrayNonRelatives));
 
         if (HasRefs)
         {

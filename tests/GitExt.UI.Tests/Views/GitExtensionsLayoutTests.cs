@@ -228,6 +228,8 @@ public class GitExtensionsLayoutTests
             {
                 CommitGraphCell => "graph",
                 ItemsControl => "badges",
+                DockPanel message when message.Children.OfType<TextBlock>().First().Text is { } value =>
+                    Describe(value, list),
                 TextBlock text when text.GetValue(TextBlock.TextProperty) is { } value => Describe(value, list),
                 _ => "?",
             })];
@@ -250,7 +252,7 @@ public class GitExtensionsLayoutTests
                 return "author";
             }
 
-            if (text == first.DateText)
+            if (text == list.Display.FormatDate(first.Commit, DateTimeOffset.Now))
             {
                 return "date";
             }

@@ -51,6 +51,9 @@ public sealed class AppSettings
     [JsonPropertyName("confirmations")]
     public ConfirmationSettings Confirmations { get; set; } = new();
 
+    [JsonPropertyName("revisionGrid")]
+    public RevisionGridSettings RevisionGrid { get; set; } = new();
+
     /// <summary>
     /// Top-level fields this version does not recognise.
     /// </summary>
@@ -171,6 +174,48 @@ public sealed class ConfirmationSettings
     /// </remarks>
     [JsonPropertyName("autoPullOnPushRejected")]
     public string AutoPullOnPushRejected { get; set; } = "";
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Unknown { get; set; }
+}
+
+/// <summary>What the commit list shows — the switches of its <i>View</i> menu.</summary>
+/// <remarks>
+/// Names and defaults are GitExtensions' <c>AppSettings</c>: these are plain settings there, written
+/// the moment they are toggled, unlike the filter and sort choices that wait for
+/// <i>Save as default</i>.
+/// </remarks>
+public sealed class RevisionGridSettings
+{
+    [JsonPropertyName("showRemoteBranches")]
+    public bool ShowRemoteBranches { get; set; } = true;
+
+    [JsonPropertyName("showTags")]
+    public bool ShowTags { get; set; } = true;
+
+    [JsonPropertyName("drawNonRelativesGray")]
+    public bool DrawNonRelativesGray { get; set; } = true;
+
+    [JsonPropertyName("showAuthorDate")]
+    public bool ShowAuthorDate { get; set; } = true;
+
+    [JsonPropertyName("relativeDate")]
+    public bool RelativeDate { get; set; } = true;
+
+    [JsonPropertyName("showCommitBody")]
+    public bool ShowCommitBody { get; set; } = true;
+
+    [JsonPropertyName("showGraphColumn")]
+    public bool ShowGraphColumn { get; set; } = true;
+
+    [JsonPropertyName("showAuthorNameColumn")]
+    public bool ShowAuthorNameColumn { get; set; } = true;
+
+    [JsonPropertyName("showDateColumn")]
+    public bool ShowDateColumn { get; set; } = true;
+
+    [JsonPropertyName("showIdColumn")]
+    public bool ShowIdColumn { get; set; } = true;
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }

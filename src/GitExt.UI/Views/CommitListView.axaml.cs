@@ -429,6 +429,7 @@ public partial class CommitListView : UserControl
             Refs = refs,
             HasBaseCommitToCompare = viewModel?.BaseCommitToCompare is not null,
             CurrentBranch = currentBranch,
+            Display = viewModel?.Display ?? new RevisionGridDisplay(),
         };
     }
 
@@ -461,7 +462,12 @@ public partial class CommitListView : UserControl
             {
                 Header = entry.Header,
                 IsEnabled = entry.IsEnabled,
-                ToggleType = entry.IsChecked ? MenuItemToggleType.Radio : MenuItemToggleType.None,
+                ToggleType = entry.Toggle switch
+                {
+                    RevisionGridMenuToggle.Radio => MenuItemToggleType.Radio,
+                    RevisionGridMenuToggle.Check => MenuItemToggleType.CheckBox,
+                    _ => MenuItemToggleType.None,
+                },
                 IsChecked = entry.IsChecked,
 
                 // The menu is built at open time and its items have no names, so this is the only
@@ -498,6 +504,11 @@ public partial class CommitListView : UserControl
     /// </remarks>
     private void Invoke(RevisionGridMenuEntry entry, RevisionGridMenuId parent = RevisionGridMenuId.None)
     {
+        if (ViewModel?.ToggleDisplay(entry.Id) == true)
+        {
+            return;
+        }
+
         switch (entry.Id)
         {
             case RevisionGridMenuId.CreateTag:

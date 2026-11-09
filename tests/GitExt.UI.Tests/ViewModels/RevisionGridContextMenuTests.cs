@@ -546,12 +546,46 @@ public class RevisionGridContextMenuTests
     [Fact]
     public void Gorunum_menusunun_geri_kalani_hala_devre_disi()
     {
-        // No setting behind them yet: reflog refs, the grey-out and the column switches.
         IReadOnlyList<RevisionGridMenuEntry> view =
             Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.View).Children;
 
         Find(view, RevisionGridMenuId.ShowReflogReferences).IsEnabled.ShouldBeFalse();
-        Find(view, RevisionGridMenuId.DrawNonRelativesGray).IsEnabled.ShouldBeFalse();
-        Find(view, RevisionGridMenuId.ShowIdColumn).IsEnabled.ShouldBeFalse();
+        Find(view, RevisionGridMenuId.ShowGitNotesColumn).IsEnabled.ShouldBeFalse();
+        Find(view, RevisionGridMenuId.ShowAuthorAvatarColumn).IsEnabled.ShouldBeFalse();
+        Find(view, RevisionGridMenuId.ShowBuildStatusIcon).IsEnabled.ShouldBeFalse();
+    }
+
+    public static TheoryData<RevisionGridMenuId> DisplaySwitches =>
+    [
+        RevisionGridMenuId.ShowRemoteBranches,
+        RevisionGridMenuId.ShowTags,
+        RevisionGridMenuId.DrawNonRelativesGray,
+        RevisionGridMenuId.ShowAuthorDate,
+        RevisionGridMenuId.ShowRelativeDate,
+        RevisionGridMenuId.ShowCommitMessageBody,
+        RevisionGridMenuId.ShowRevisionGraphColumn,
+        RevisionGridMenuId.ShowAuthorNameColumn,
+        RevisionGridMenuId.ShowDateColumn,
+        RevisionGridMenuId.ShowIdColumn,
+    ];
+
+    [Theory]
+    [MemberData(nameof(DisplaySwitches))]
+    public void Gorunum_anahtari_etkin_ve_isareti_ayari_izliyor(RevisionGridMenuId id)
+    {
+        RevisionGridDisplay on = new();
+        RevisionGridDisplay off = on.Toggle(id)!;
+
+        RevisionGridMenuEntry ticked = Find(
+            Find(RevisionGridContextMenu.Build(Context() with { Display = on }), RevisionGridMenuId.View).Children,
+            id);
+        RevisionGridMenuEntry unticked = Find(
+            Find(RevisionGridContextMenu.Build(Context() with { Display = off }), RevisionGridMenuId.View).Children,
+            id);
+
+        ticked.IsEnabled.ShouldBeTrue();
+        ticked.Toggle.ShouldBe(RevisionGridMenuToggle.Check);
+        ticked.IsChecked.ShouldBeTrue();
+        unticked.IsChecked.ShouldBeFalse();
     }
 }

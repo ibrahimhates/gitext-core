@@ -254,6 +254,31 @@ public sealed partial class CommitListViewModel : ViewModelBase
         return true;
     }
 
+    private Settings.ISettingsStore? _settings;
+
+    [ObservableProperty]
+    public partial RevisionGridDisplay Display { get; private set; } = new();
+
+    public void AttachSettings(Settings.ISettingsStore settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        _settings = settings;
+        Display = RevisionGridDisplay.From(settings.Current.RevisionGrid);
+    }
+
+    public bool ToggleDisplay(RevisionGridMenuId id)
+    {
+        if (Display.Toggle(id) is not { } toggled)
+        {
+            return false;
+        }
+
+        Display = toggled;
+        _settings?.Update(settings => toggled.CopyTo(settings.RevisionGrid));
+        return true;
+    }
+
     /// <summary>Changed files of the selected commit (P04-T08).</summary>
     public DiffViewModel Diff { get; }
 

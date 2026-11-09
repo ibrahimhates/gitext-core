@@ -163,6 +163,13 @@ public sealed record RevisionGridRef(
     public bool IsTag => Kind == RevisionGridRefKind.Tag;
 }
 
+public enum RevisionGridMenuToggle
+{
+    None,
+    Radio,
+    Check,
+}
+
 public sealed record RevisionGridMenuEntry
 {
     public required RevisionGridMenuId Id { get; init; }
@@ -183,6 +190,8 @@ public sealed record RevisionGridMenuEntry
     /// exactly one is on; without the tick the user cannot tell which scope the list is showing.
     /// </remarks>
     public bool IsChecked { get; init; }
+
+    public RevisionGridMenuToggle Toggle { get; init; }
 
     public bool IsVisible { get; init; } = true;
 
@@ -241,6 +250,8 @@ public sealed record RevisionGridMenuContext
 
     /// <summary>Which branch scope the list is showing — the ticked entry of the three.</summary>
     public RevisionGridBranchScope BranchScope { get; init; } = RevisionGridBranchScope.All;
+
+    public RevisionGridDisplay Display { get; init; } = new();
 }
 
 public static class RevisionGridContextMenu
@@ -284,28 +295,18 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.QuickSearchNext,
         RevisionGridMenuId.ShowReflogReferences,
         RevisionGridMenuId.AdvancedFilter,
-        RevisionGridMenuId.DrawNonRelativesGray,
         RevisionGridMenuId.HighlightSelectedBranch,
         RevisionGridMenuId.ShowArtificialCommits,
         RevisionGridMenuId.ShowStashes,
         RevisionGridMenuId.ShowGitNotes,
         RevisionGridMenuId.ShowSessionCheckpoints,
-        RevisionGridMenuId.ShowRemoteBranches,
-        RevisionGridMenuId.ShowTags,
         RevisionGridMenuId.ShowSuperprojectTags,
         RevisionGridMenuId.ShowSuperprojectRemoteBranches,
         RevisionGridMenuId.ShowSuperprojectBranches,
         RevisionGridMenuId.ShowBuildStatusIcon,
         RevisionGridMenuId.ShowBuildStatusText,
-        RevisionGridMenuId.ShowCommitMessageBody,
-        RevisionGridMenuId.ShowAuthorDate,
-        RevisionGridMenuId.ShowRelativeDate,
-        RevisionGridMenuId.ShowRevisionGraphColumn,
         RevisionGridMenuId.ShowGitNotesColumn,
         RevisionGridMenuId.ShowAuthorAvatarColumn,
-        RevisionGridMenuId.ShowAuthorNameColumn,
-        RevisionGridMenuId.ShowDateColumn,
-        RevisionGridMenuId.ShowIdColumn,
         RevisionGridMenuId.AuthorDateSort,
         RevisionGridMenuId.TopoOrder,
         RevisionGridMenuId.SaveAsDefault,
@@ -585,6 +586,17 @@ public static class RevisionGridContextMenu
         Gesture = Gesture(id),
         IsEnabled = !_unimplemented.Contains(id),
         IsChecked = isChecked,
+        Toggle = RevisionGridMenuToggle.Radio,
+    };
+
+    private static RevisionGridMenuEntry Checked(RevisionGridMenuId id, RevisionGridDisplay display) => new()
+    {
+        Id = id,
+        Header = Text(id),
+        Gesture = Gesture(id),
+        IsEnabled = !_unimplemented.Contains(id),
+        IsChecked = display.IsChecked(id) ?? false,
+        Toggle = RevisionGridMenuToggle.Check,
     };
 
     private static RevisionGridMenuEntry RefItem(RevisionGridRef gitRef) => new()
@@ -764,7 +776,7 @@ public static class RevisionGridContextMenu
         SeparatorEntry(),
         Item(RevisionGridMenuId.AdvancedFilter),
         SeparatorEntry(),
-        Item(RevisionGridMenuId.DrawNonRelativesGray),
+        Checked(RevisionGridMenuId.DrawNonRelativesGray, context.Display),
         Item(RevisionGridMenuId.HighlightSelectedBranch),
         SeparatorEntry(),
         Heading(RevisionGridMenuId.ViewGroupCommits),
@@ -774,8 +786,8 @@ public static class RevisionGridContextMenu
         Item(RevisionGridMenuId.ShowSessionCheckpoints),
         SeparatorEntry(),
         Heading(RevisionGridMenuId.ViewGroupGridLabels),
-        Item(RevisionGridMenuId.ShowRemoteBranches),
-        Item(RevisionGridMenuId.ShowTags),
+        Checked(RevisionGridMenuId.ShowRemoteBranches, context.Display),
+        Checked(RevisionGridMenuId.ShowTags, context.Display),
         Item(RevisionGridMenuId.ShowSuperprojectTags),
         Item(RevisionGridMenuId.ShowSuperprojectRemoteBranches),
         Item(RevisionGridMenuId.ShowSuperprojectBranches),
@@ -783,17 +795,17 @@ public static class RevisionGridContextMenu
         Heading(RevisionGridMenuId.ViewGroupGridInfo),
         Item(RevisionGridMenuId.ShowBuildStatusIcon),
         Item(RevisionGridMenuId.ShowBuildStatusText),
-        Item(RevisionGridMenuId.ShowCommitMessageBody),
-        Item(RevisionGridMenuId.ShowAuthorDate),
-        Item(RevisionGridMenuId.ShowRelativeDate),
+        Checked(RevisionGridMenuId.ShowCommitMessageBody, context.Display),
+        Checked(RevisionGridMenuId.ShowAuthorDate, context.Display),
+        Checked(RevisionGridMenuId.ShowRelativeDate, context.Display),
         SeparatorEntry(),
         Heading(RevisionGridMenuId.ViewGroupColumns),
-        Item(RevisionGridMenuId.ShowRevisionGraphColumn),
+        Checked(RevisionGridMenuId.ShowRevisionGraphColumn, context.Display),
         Item(RevisionGridMenuId.ShowGitNotesColumn),
         Item(RevisionGridMenuId.ShowAuthorAvatarColumn),
-        Item(RevisionGridMenuId.ShowAuthorNameColumn),
-        Item(RevisionGridMenuId.ShowDateColumn),
-        Item(RevisionGridMenuId.ShowIdColumn),
+        Checked(RevisionGridMenuId.ShowAuthorNameColumn, context.Display),
+        Checked(RevisionGridMenuId.ShowDateColumn, context.Display),
+        Checked(RevisionGridMenuId.ShowIdColumn, context.Display),
         SeparatorEntry(),
         Heading(RevisionGridMenuId.ViewGroupSorting),
         Item(RevisionGridMenuId.AuthorDateSort),
