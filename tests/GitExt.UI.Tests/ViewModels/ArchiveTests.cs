@@ -179,6 +179,64 @@ public sealed class ArchiveTests
         stays.Close();
     }
 
+    private sealed class FakeDiffTool : IDiffToolRunner
+    {
+        public string? Tool { get; set; } = "fake";
+
+        public List<(string First, string Second)> Opened { get; } = [];
+
+        public Task<string?> GetConfiguredToolAsync(string workingDirectory, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Tool);
+
+        public Task RunDirDiffAsync(string workingDirectory, string firstRevision, string secondRevision, CancellationToken cancellationToken = default)
+        {
+            if (Tool is null)
+            {
+                return Task.FromException(new NoDiffToolConfiguredException());
+            }
+
+            Opened.Add((firstRevision, secondRevision));
+            return Task.CompletedTask;
+        }
+    }
+
+    private static async Task<MainWindowViewModel> MainAsync(FakeDiffTool tool)
+    {
+        MainWindowViewModel model = new(
+            new CommitListViewModel(
+                new FakeRepositoryLocator(),
+                new FakeCommitLogReader(FakeGitData.LinearHistory(3)),
+                new FakeRefReader(FakeGitData.Refs()),
+                new FakeCommitSignatureReader(),
+                new FakeDiffReader()),
+            new FakeRecentRepositoryStore(),
+            advanced: new AdvancedOperationServices { DiffTool = tool });
+
+        await model.OpenRepositoryAsync("/depo");
+        return model;
+    }
+
+    [AvaloniaFact]
+    public async Task Difftool_eskiden_yeniye_aciliyor()
+    {
+        FakeDiffTool tool = new();
+        MainWindowViewModel model = await MainAsync(tool);
+
+        await model.OpenWithDiffToolAsync(CommitId.Parse(FakeGitData.Sha(1)), CommitId.Parse(FakeGitData.Sha(3)));
+
+        tool.Opened.ShouldBe([(FakeGitData.Sha(1), FakeGitData.Sha(3))]);
+    }
+
+    [AvaloniaFact]
+    public async Task Difftool_ayarli_degilse_seritte_soyleniyor()
+    {
+        MainWindowViewModel model = await MainAsync(new FakeDiffTool { Tool = null });
+
+        await model.OpenWithDiffToolAsync(CommitId.Parse(FakeGitData.Sha(1)), CommitId.Parse(FakeGitData.Sha(3)));
+
+        model.BranchNotice.ShouldBe("No diff tool is configured. Set diff.tool (or diff.guitool) in git config.");
+    }
+
     [Fact]
     public void Menu_ogesi_etkin()
     {

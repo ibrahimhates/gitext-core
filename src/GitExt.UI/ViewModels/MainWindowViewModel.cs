@@ -524,6 +524,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public IArchivePrompt? ArchivePrompt { get; set; }
 
+    /// <summary>GitExtensions' "Open selected commits with difftool" (directory diff, old to new).</summary>
+    public async Task OpenWithDiffToolAsync(CommitId older, CommitId newer)
+    {
+        if (_advanced.DiffTool is not { } tool || RepositoryPathOrNull is not { } path)
+        {
+            return;
+        }
+
+        try
+        {
+            await tool.RunDirDiffAsync(path, older.ToString(), newer.ToString()).ConfigureAwait(true);
+        }
+        catch (NoDiffToolConfiguredException)
+        {
+            BranchNotice = Loc.T("revision_grid.no_diff_tool_configured");
+        }
+        catch (GitException error)
+        {
+            BranchNotice = Loc.GitError(error);
+        }
+    }
+
     /// <summary>GitExtensions' "Archive this commit…"; a second selected commit enables the change filter.</summary>
     public async Task ArchiveAsync(CommitInfo? diffRevision = null)
     {

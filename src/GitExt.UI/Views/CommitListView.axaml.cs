@@ -683,6 +683,17 @@ public partial class CommitListView : UserControl
 
         switch (entry.Id)
         {
+            case RevisionGridMenuId.OpenCommitsWithDiffTool:
+                if (ViewModel is { } list
+                    && CommitList.SelectedItems?.OfType<CommitRowViewModel>()
+                        .OrderBy(row => list.Rows.IndexOf(row))
+                        .ToList() is { Count: 2 } pair)
+                {
+                    _ = model.OpenWithDiffToolAsync(pair[1].Commit.Id, pair[0].Commit.Id);
+                }
+
+                return;
+
             case RevisionGridMenuId.ArchiveRevision:
                 _ = model.ArchiveAsync(CommitList.SelectedItems?
                     .OfType<CommitRowViewModel>()

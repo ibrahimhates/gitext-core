@@ -450,15 +450,14 @@ public class RevisionGridContextMenuTests
     }
 
     [Fact]
-    public void Difftool_hala_devre_disi()
+    public void Difftool_ikili_secimde_etkin()
     {
-        // There is no difftool runner in Core; the entry keeps its place but cannot be pressed.
         IReadOnlyList<RevisionGridMenuEntry> compare = Find(
                 RevisionGridContextMenu.Build(Context() with { SelectedCount = 2 }),
                 RevisionGridMenuId.Compare)
             .Children;
 
-        Find(compare, RevisionGridMenuId.OpenCommitsWithDiffTool).IsEnabled.ShouldBeFalse();
+        Find(compare, RevisionGridMenuId.OpenCommitsWithDiffTool).IsEnabled.ShouldBeTrue();
     }
 
     [Fact]

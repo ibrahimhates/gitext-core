@@ -214,16 +214,14 @@ public class RevisionGridMenuActionTests
     }
 
     [AvaloniaFact]
-    public async Task Difftool_ogesi_hala_basilamaz()
+    public async Task Difftool_ogesi_ikili_secimde_basilabilir()
     {
         CommitListViewModel model = await LoadedAsync();
         (CommitListView view, Window window) = Show(model);
 
         SelectTwo(view, model);
 
-        // The entry appears for a pair, as in GitExtensions — but stays disabled: there is no
-        // difftool runner in Core.
-        Find(view, RevisionGridMenuId.OpenCommitsWithDiffTool).IsEnabled.ShouldBeFalse();
+        Find(view, RevisionGridMenuId.OpenCommitsWithDiffTool).IsEnabled.ShouldBeTrue();
 
         window.Close();
     }

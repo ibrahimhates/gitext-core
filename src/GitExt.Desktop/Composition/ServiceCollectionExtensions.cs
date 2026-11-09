@@ -122,6 +122,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IBisectWriter, BisectWriter>();
         services.AddSingleton<IMergeBaseReader, MergeBaseReader>();
         services.AddSingleton<IArchiveWriter, ArchiveWriter>();
+        services.AddSingleton<IDiffToolRunner, DiffToolRunner>();
         services.AddSingleton<IBlameReader, BlameReader>();
         services.AddSingleton<IFileHistoryReader, FileHistoryReader>();
         services.AddSingleton<ITagWriter, TagWriter>();
@@ -145,6 +146,7 @@ public static class ServiceCollectionExtensions
             FileHistory = provider.GetRequiredService<IFileHistoryReader>(),
             Tags = provider.GetRequiredService<ITagWriter>(),
             Archive = provider.GetRequiredService<IArchiveWriter>(),
+            DiffTool = provider.GetRequiredService<IDiffToolRunner>(),
             WorkTrees = provider.GetRequiredService<IWorkTreeReader>(),
             Submodules = provider.GetRequiredService<ISubmoduleReader>(),
             Search = provider.GetRequiredService<ISearchReader>(),

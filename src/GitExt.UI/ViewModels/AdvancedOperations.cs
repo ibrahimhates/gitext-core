@@ -45,6 +45,8 @@ public sealed record AdvancedOperationServices
 
     public IArchiveWriter? Archive { get; init; }
 
+    public IDiffToolRunner? DiffTool { get; init; }
+
     public IWorkTreeReader? WorkTrees { get; init; }
 
     public ISubmoduleReader? Submodules { get; init; }

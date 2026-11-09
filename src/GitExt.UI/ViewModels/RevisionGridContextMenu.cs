@@ -282,7 +282,6 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.RunScript,
         RevisionGridMenuId.OpenBuildReport,
         RevisionGridMenuId.OpenPullRequestPage,
-        RevisionGridMenuId.OpenCommitsWithDiffTool,
         RevisionGridMenuId.ToggleBetweenArtificialAndHeadCommits,
         RevisionGridMenuId.QuickSearchPrevious,
         RevisionGridMenuId.QuickSearchNext,

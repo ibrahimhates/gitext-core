@@ -798,6 +798,7 @@ internal static class BuiltInEnglish
             ["revision_grid.navigate"] = "_Navigate",
             ["revision_grid.navigate_backward"] = "Navigate _backward",
             ["revision_grid.navigate_forward"] = "Navigate _forward",
+            ["revision_grid.no_diff_tool_configured"] = "No diff tool is configured. Set diff.tool (or diff.guitool) in git config.",
             ["revision_grid.open_build_report"] = "View _build report in a browser",
             ["revision_grid.open_pull_request_page"] = "Vie_w pull request in a browser",
             ["revision_grid.open_selected_commits_with_difftool"] = "Open selected commits with _difftool",

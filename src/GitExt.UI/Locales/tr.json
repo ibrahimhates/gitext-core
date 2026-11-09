@@ -767,6 +767,7 @@
   "revision_grid.navigate": "_Gezin",
   "revision_grid.navigate_backward": "_Geri git",
   "revision_grid.navigate_forward": "İ_leri git",
+  "revision_grid.no_diff_tool_configured": "Ayarlı bir diff aracı yok. git config'de diff.tool (veya diff.guitool) ayarlayın.",
   "revision_grid.open_build_report": "Derleme raporunu tarayıcıda _aç",
   "revision_grid.open_pull_request_page": "Pull request'i tarayıcıda a_ç",
   "revision_grid.open_selected_commits_with_difftool": "Seçili commit'leri _difftool ile aç",
