@@ -102,6 +102,16 @@
     listing a 0.x version as though it were stable.
   -->
   <releases>
+    <release version="0.1.4" date="2026-11-09" type="development">
+      <description>
+        <p>
+          The commit list context menu now follows GitExtensions: view switches, sorting,
+          reflog, interactive rebase, fixup/squash/amend commits, archive, difftool, quick
+          search, stashes in the history and resetting another branch. The macOS bundle is now
+          signed.
+        </p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-08-15" type="development">
       <description>
         <p>
