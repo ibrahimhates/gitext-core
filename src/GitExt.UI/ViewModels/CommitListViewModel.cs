@@ -43,6 +43,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
     private readonly IRefReader _refReader;
     private readonly IDiffReader _diffReader;
     private readonly ITagWriter? _tagWriter;
+    private readonly IStashCommitReader? _stashReader;
 
     /// <summary>
     /// Mapping from commit id to row index — for jumping to a parent and for lookup by SHA.
@@ -63,7 +64,8 @@ public sealed partial class CommitListViewModel : ViewModelBase
         ICommitSignatureReader signatureReader,
         IDiffReader diffReader,
         ITagWriter? tagWriter = null,
-        IMergeBaseReader? mergeBase = null)
+        IMergeBaseReader? mergeBase = null,
+        IStashCommitReader? stashes = null)
     {
         ArgumentNullException.ThrowIfNull(locator);
         ArgumentNullException.ThrowIfNull(logReader);
@@ -77,6 +79,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
         _refReader = refReader;
         _diffReader = diffReader;
         _tagWriter = tagWriter;
+        _stashReader = stashes;
 
         CreateTagCommand = new AsyncRelayCommand(CreateTagAsync, () => CanWriteTags);
         DeleteTagCommand = new AsyncRelayCommand<string?>(DeleteTagAsync, _ => CanWriteTags);
@@ -268,6 +271,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
 
         RevisionGridSettings grid = settings.Current.RevisionGrid;
         Display = RevisionGridDisplay.From(grid);
+        ShowStashes = grid.ShowStashes;
         SortOrder = SettingsEnum.Parse(grid.SortOrder, RevisionSortOrder.GitDefault);
         ShowReflogReferences = grid.ShowReflogReferences;
         // The filter text is not saved, and "filtered" with no filter would read HEAD alone.
@@ -287,6 +291,17 @@ public sealed partial class CommitListViewModel : ViewModelBase
     public Task ToggleSortOrderAsync(RevisionSortOrder order)
     {
         SortOrder = SortOrder == order ? RevisionSortOrder.GitDefault : order;
+        return ApplyFilterAsync();
+    }
+
+    [ObservableProperty]
+    public partial bool ShowStashes { get; private set; } = true;
+
+    public Task ToggleShowStashesAsync()
+    {
+        ShowStashes = !ShowStashes;
+        bool value = ShowStashes;
+        _settings?.Update(settings => settings.RevisionGrid.ShowStashes = value);
         return ApplyFilterAsync();
     }
 
@@ -724,6 +739,7 @@ public sealed partial class CommitListViewModel : ViewModelBase
                     : null,
             FirstParentOnly = FirstParentOnly,
             IncludeReflog = ShowReflogReferences,
+            ExcludeStash = true,
             Order = SortOrder switch
             {
                 RevisionSortOrder.AuthorDate => CommitLogOrder.AuthorDate,
@@ -1303,44 +1319,55 @@ public sealed partial class CommitListViewModel : ViewModelBase
         CommitId headId = Refs?.Head is { IsUnborn: false } head ? head.Commit : default;
         HashSet<CommitId> relatives = headId == default ? [] : [headId];
 
+        IReadOnlyList<CommitInfo> stashes = await ReadStashesAsync(workingDirectory, token).ConfigureAwait(false);
+        Dictionary<CommitId, int> stashIndex = [];
+        Dictionary<CommitId, List<CommitInfo>> stashesByBase = [];
+
+        for (int i = 0; i < stashes.Count; i++)
+        {
+            CommitInfo stash = stashes[i];
+            stashIndex.TryAdd(stash.Id, i);
+
+            if (stash.Parents.Count == 0)
+            {
+                continue;
+            }
+
+            if (!stashesByBase.TryGetValue(stash.Parents[0], out List<CommitInfo>? group))
+            {
+                stashesByBase[stash.Parents[0]] = group = [];
+            }
+
+            group.Add(stash);
+        }
+
+        HashSet<CommitId> stashShown = [];
+
         try
         {
             await foreach (CommitInfo commit in _logReader
                                .StreamAsync(workingDirectory, query, token)
                                .ConfigureAwait(false))
             {
-                GraphRow row = engine.Add(ToDagCommit(commit));
-
-                // 🔴 Reachability is computed IN ONE PASS, and it can be, because `--topo-order`
-                // guarantees every child arrives before its parents (ADR-0007): by the time a
-                // commit is read, every child that could have marked it has already been seen.
-                // Walking the graph again per row would be quadratic on a 500k-row history.
-                bool relative = relatives.Count == 0 || relatives.Contains(commit.Id);
-
-                if (relative && relatives.Count > 0)
+                if (stashesByBase.Remove(commit.Id, out List<CommitInfo>? waiting))
                 {
-                    foreach (CommitId parent in commit.Parents)
+                    foreach (CommitInfo stash in waiting)
                     {
-                        relatives.Add(parent);
+                        if (stashShown.Add(stash.Id))
+                        {
+                            // Only the base: the stash's own index/untracked parents are git's
+                            // bookkeeping and never arrive, so a lane to them would hang open.
+                            await AddAsync(stash, new DagCommit(stash.Id.Value, [stash.Parents[0].Value])).ConfigureAwait(false);
+                        }
                     }
                 }
 
-                batch.Add(new CommitRowViewModel(
-                    commit,
-                    row,
-                    badges.For(commit.Id),
-                    previousRow,
-                    isHead: headId != default && commit.Id == headId,
-                    isRelative: relative,
-                    previousIsRelative: previousRelative));
-
-                previousRow = row;
-                previousRelative = relative;
-
-                if (batch.Count >= BatchSize)
+                if (stashIndex.ContainsKey(commit.Id) && !stashShown.Add(commit.Id))
                 {
-                    await FlushAsync(batch, token).ConfigureAwait(false);
+                    continue;
                 }
+
+                await AddAsync(commit, ToDagCommit(commit)).ConfigureAwait(false);
             }
 
             if (batch.Count > 0)
@@ -1355,6 +1382,63 @@ public sealed partial class CommitListViewModel : ViewModelBase
             {
                 throw;
             }
+        }
+
+        async Task AddAsync(CommitInfo commit, DagCommit dag)
+        {
+            GraphRow row = engine.Add(dag);
+
+            // 🔴 Reachability is computed IN ONE PASS, and it can be, because `--topo-order`
+            // guarantees every child arrives before its parents (ADR-0007): by the time a
+            // commit is read, every child that could have marked it has already been seen.
+            // Walking the graph again per row would be quadratic on a 500k-row history.
+            bool relative = relatives.Count == 0 || relatives.Contains(commit.Id);
+
+            if (relative && relatives.Count > 0)
+            {
+                foreach (CommitId parent in commit.Parents)
+                {
+                    relatives.Add(parent);
+                }
+            }
+
+            IReadOnlyList<RefBadge> rowBadges = stashIndex.TryGetValue(commit.Id, out int selector)
+                ? [.. badges.For(commit.Id), new RefBadge($"stash@{{{selector}}}", RefBadgeKind.Stash, false)]
+                : badges.For(commit.Id);
+
+            batch.Add(new CommitRowViewModel(
+                commit,
+                row,
+                rowBadges,
+                previousRow,
+                isHead: headId != default && commit.Id == headId,
+                isRelative: relative,
+                previousIsRelative: previousRelative));
+
+            previousRow = row;
+            previousRelative = relative;
+
+            if (batch.Count >= BatchSize)
+            {
+                await FlushAsync(batch, token).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task<IReadOnlyList<CommitInfo>> ReadStashesAsync(string workingDirectory, CancellationToken token)
+    {
+        if (!ShowStashes || _stashReader is null)
+        {
+            return [];
+        }
+
+        try
+        {
+            return await _stashReader.ReadStashesAsync(workingDirectory, token).ConfigureAwait(false);
+        }
+        catch (GitException)
+        {
+            return [];
         }
     }
 

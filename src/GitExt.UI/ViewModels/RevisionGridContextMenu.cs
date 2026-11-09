@@ -256,6 +256,8 @@ public sealed record RevisionGridMenuContext
     public RevisionSortOrder SortOrder { get; init; } = RevisionSortOrder.GitDefault;
 
     public bool ShowReflogReferences { get; init; }
+
+    public bool ShowStashes { get; init; } = true;
 }
 
 public static class RevisionGridContextMenu
@@ -286,7 +288,6 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.AdvancedFilter,
         RevisionGridMenuId.HighlightSelectedBranch,
         RevisionGridMenuId.ShowArtificialCommits,
-        RevisionGridMenuId.ShowStashes,
         RevisionGridMenuId.ShowGitNotes,
         RevisionGridMenuId.ShowSessionCheckpoints,
         RevisionGridMenuId.ShowSuperprojectTags,
@@ -770,7 +771,7 @@ public static class RevisionGridContextMenu
         SeparatorEntry(),
         Heading(RevisionGridMenuId.ViewGroupCommits),
         Item(RevisionGridMenuId.ShowArtificialCommits),
-        Item(RevisionGridMenuId.ShowStashes),
+        Checked(RevisionGridMenuId.ShowStashes, context.ShowStashes),
         Item(RevisionGridMenuId.ShowGitNotes),
         Item(RevisionGridMenuId.ShowSessionCheckpoints),
         SeparatorEntry(),

@@ -481,6 +481,8 @@ public partial class CommitListView : UserControl
             Display = viewModel?.Display ?? new RevisionGridDisplay(),
             SortOrder = viewModel?.SortOrder ?? RevisionSortOrder.GitDefault,
             ShowReflogReferences = viewModel?.ShowReflogReferences ?? false,
+            ShowStashes = viewModel?.ShowStashes ?? true,
+            IsStash = row.Badges.Any(badge => badge.IsStash),
         };
     }
 
@@ -669,6 +671,10 @@ public partial class CommitListView : UserControl
 
             case RevisionGridMenuId.ShowAllBranches:
                 Scope(BranchFilterMode.AllBranches);
+                return;
+
+            case RevisionGridMenuId.ShowStashes:
+                _ = ViewModel?.ToggleShowStashesAsync();
                 return;
 
             case RevisionGridMenuId.ShowReflogReferences:

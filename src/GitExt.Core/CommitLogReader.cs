@@ -53,6 +53,12 @@ public sealed record CommitLogQuery
     /// <summary>Also walk the commits the reflogs point at (<c>--reflog</c>).</summary>
     public bool IncludeReflog { get; init; }
 
+    /// <summary>
+    /// Keep <c>refs/stash</c> out of <c>--all</c>: it brings in the latest stash only, together with
+    /// git's internal "index on" / "untracked files on" commits (measured).
+    /// </summary>
+    public bool ExcludeStash { get; init; }
+
     /// <summary>Maximum number of commits to read. <see langword="null"/> means unlimited.</summary>
     public int? MaxCount { get; init; }
 
@@ -136,6 +142,12 @@ public enum CommitLogOrder
     AuthorDate,
 }
 
+public interface IStashCommitReader
+{
+    /// <summary>Every stash, newest first: <c>stash@{0}</c> is the first item.</summary>
+    Task<IReadOnlyList<CommitInfo>> ReadStashesAsync(string workingDirectory, CancellationToken cancellationToken = default);
+}
+
 public interface ICommitLogReader
 {
     /// <summary>
@@ -159,7 +171,7 @@ public interface ICommitLogReader
 }
 
 /// <inheritdoc cref="ICommitLogReader"/>
-public sealed class CommitLogReader : ICommitLogReader
+public sealed class CommitLogReader : ICommitLogReader, IStashCommitReader
 {
     private readonly IGitProcessRunner _runner;
 
@@ -214,6 +226,46 @@ public sealed class CommitLogReader : ICommitLogReader
         }
 
         return commits;
+    }
+
+    public async Task<IReadOnlyList<CommitInfo>> ReadStashesAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
+
+        // Without a stash `log -g refs/stash` fails with 128 like any real error (measured).
+        GitResult exists = await _runner.RunAsync(
+            new GitCommand
+            {
+                WorkingDirectory = workingDirectory,
+                Arguments = ["rev-parse", "--verify", "--quiet", "refs/stash"],
+                SuccessExitCodes = [0, 1],
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (exists.ExitCode != 0)
+        {
+            return [];
+        }
+
+        // No ordering flag: `--walk-reflogs` refuses --topo-order (measured).
+        GitResult result = await _runner
+            .RunCheckedAsync(
+                GitCommand.Create(workingDirectory, "log", "-g", "-z", $"--format={Format}", "refs/stash"),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        string[] fields = result.SplitStandardOutputAtNulPreservingEmpty();
+        List<CommitInfo> stashes = new(fields.Length / FieldCount);
+        StringPool pool = new();
+
+        for (int offset = 0; offset + FieldCount <= fields.Length; offset += FieldCount)
+        {
+            stashes.Add(ParseRecord(fields.AsSpan(offset, FieldCount), pool));
+        }
+
+        return stashes;
     }
 
     public async IAsyncEnumerable<CommitInfo> StreamAsync(
@@ -284,6 +336,11 @@ public sealed class CommitLogReader : ICommitLogReader
 
         if (query.IncludeAllRefs)
         {
+            if (query.ExcludeStash)
+            {
+                arguments.Add("--exclude=refs/stash");
+            }
+
             arguments.Add("--all");
         }
 

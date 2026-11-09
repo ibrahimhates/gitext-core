@@ -457,6 +457,56 @@ public class CommitLogReaderTests
         byAuthor[0].Subject.ShouldBe("yazari-yeni");
     }
 
+    private static TestRepository WithTwoStashes()
+    {
+        TestRepository repository = TestRepository.CreateWithSingleCommit();
+        repository.WriteFile("a.txt", "bir\n");
+        repository.Git("add", "a.txt");
+        repository.Git("stash", "push", "-q", "-m", "ilk zula");
+        repository.WriteFile("a.txt", "iki\n");
+        repository.WriteFile("izsiz.txt", "u\n");
+        repository.Git("add", "a.txt");
+        repository.Git("stash", "push", "-q", "-u", "-m", "ikinci zula");
+        return repository;
+    }
+
+    [Fact]
+    public async Task Zula_haric_tutulunca_gitin_ic_commitleri_gelmiyor()
+    {
+        using TestRepository repository = WithTwoStashes();
+        CommitLogReader reader = await CreateReaderAsync();
+
+        IReadOnlyList<CommitInfo> with = await reader.ReadAsync(
+            repository.Path, new CommitLogQuery { IncludeAllRefs = true }, Ct);
+        IReadOnlyList<CommitInfo> without = await reader.ReadAsync(
+            repository.Path, new CommitLogQuery { IncludeAllRefs = true, ExcludeStash = true }, Ct);
+
+        with.ShouldContain(c => c.Subject.StartsWith("index on", StringComparison.Ordinal));
+        without.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Butun_zulalar_yeniden_eskiye_okunuyor()
+    {
+        using TestRepository repository = WithTwoStashes();
+        CommitLogReader reader = await CreateReaderAsync();
+        string head = repository.Git("rev-parse", "HEAD").Trim();
+
+        IReadOnlyList<CommitInfo> stashes = await reader.ReadStashesAsync(repository.Path, Ct);
+
+        stashes.Select(s => s.Subject).ShouldBe(["On main: ikinci zula", "On main: ilk zula"]);
+        stashes.ShouldAllBe(s => s.Parents[0].Value == head);
+        stashes[0].Parents.Count.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task Zula_yoksa_bos_liste()
+    {
+        using TestRepository repository = TestRepository.CreateWithSingleCommit();
+
+        (await (await CreateReaderAsync()).ReadStashesAsync(repository.Path, Ct)).ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task Topolojik_sira_kapatilabilir()
     {

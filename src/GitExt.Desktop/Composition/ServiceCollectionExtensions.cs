@@ -153,7 +153,9 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<IRepositoryLocator, RepositoryLocator>();
-        services.AddSingleton<ICommitLogReader, CommitLogReader>();
+        services.AddSingleton<CommitLogReader>();
+        services.AddSingleton<ICommitLogReader>(provider => provider.GetRequiredService<CommitLogReader>());
+        services.AddSingleton<IStashCommitReader>(provider => provider.GetRequiredService<CommitLogReader>());
         services.AddSingleton<IRefReader, RefReader>();
         services.AddSingleton<ICommitSignatureReader, CommitSignatureReader>();
         services.AddSingleton<IDiffReader, DiffReader>();

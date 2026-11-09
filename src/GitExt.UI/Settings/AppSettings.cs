@@ -217,6 +217,9 @@ public sealed class RevisionGridSettings
     [JsonPropertyName("showIdColumn")]
     public bool ShowIdColumn { get; set; } = true;
 
+    [JsonPropertyName("showStashes")]
+    public bool ShowStashes { get; set; } = true;
+
     [JsonPropertyName("sortOrder")]
     public string SortOrder { get; set; } = "";
 

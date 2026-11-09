@@ -18,6 +18,8 @@ public enum RefBadgeKind
 
     /// <summary><c>HEAD</c> — shown on its own in a detached state.</summary>
     Head,
+
+    Stash,
 }
 
 /// <summary>
@@ -35,6 +37,8 @@ public sealed record RefBadge(string Text, RefBadgeKind Kind, bool IsCurrent)
     public bool IsTag => Kind == RefBadgeKind.Tag;
 
     public bool IsHead => Kind == RefBadgeKind.Head;
+
+    public bool IsStash => Kind == RefBadgeKind.Stash;
 
     public override string ToString() => Text;
 }
