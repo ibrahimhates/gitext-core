@@ -549,7 +549,7 @@ public class RevisionGridContextMenuTests
         IReadOnlyList<RevisionGridMenuEntry> view =
             Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.View).Children;
 
-        Find(view, RevisionGridMenuId.ShowReflogReferences).IsEnabled.ShouldBeFalse();
+        Find(view, RevisionGridMenuId.ShowStashes).IsEnabled.ShouldBeFalse();
         Find(view, RevisionGridMenuId.ShowGitNotesColumn).IsEnabled.ShouldBeFalse();
         Find(view, RevisionGridMenuId.ShowAuthorAvatarColumn).IsEnabled.ShouldBeFalse();
         Find(view, RevisionGridMenuId.ShowBuildStatusIcon).IsEnabled.ShouldBeFalse();

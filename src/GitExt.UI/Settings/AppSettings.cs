@@ -181,9 +181,9 @@ public sealed class ConfirmationSettings
 
 /// <summary>What the commit list shows — the switches of its <i>View</i> menu.</summary>
 /// <remarks>
-/// Names and defaults are GitExtensions' <c>AppSettings</c>: these are plain settings there, written
-/// the moment they are toggled, unlike the filter and sort choices that wait for
-/// <i>Save as default</i>.
+/// Names and defaults are GitExtensions' <c>AppSettings</c>. The display switches are written the
+/// moment they are toggled; sort order, reflog and branch scope are its runtime settings and are
+/// written only by <i>Save as default</i>.
 /// </remarks>
 public sealed class RevisionGridSettings
 {
@@ -216,6 +216,15 @@ public sealed class RevisionGridSettings
 
     [JsonPropertyName("showIdColumn")]
     public bool ShowIdColumn { get; set; } = true;
+
+    [JsonPropertyName("sortOrder")]
+    public string SortOrder { get; set; } = "";
+
+    [JsonPropertyName("showReflogReferences")]
+    public bool ShowReflogReferences { get; set; }
+
+    [JsonPropertyName("branchScope")]
+    public string BranchScope { get; set; } = "";
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }

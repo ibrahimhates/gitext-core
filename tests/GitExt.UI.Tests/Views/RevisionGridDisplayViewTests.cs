@@ -167,6 +167,26 @@ public class RevisionGridDisplayViewTests
     }
 
     [AvaloniaFact]
+    public async Task Siralama_reflog_ve_kaydet_menuden_calisiyor()
+    {
+        (CommitListViewModel model, CommitListView view, Window window) = await ShowAsync();
+
+        Press(view, RevisionGridMenuId.TopoOrder);
+        Dispatcher.UIThread.RunJobs();
+        model.SortOrder.ShouldBe(RevisionSortOrder.Topology);
+
+        Press(view, RevisionGridMenuId.AuthorDateSort);
+        Dispatcher.UIThread.RunJobs();
+        model.SortOrder.ShouldBe(RevisionSortOrder.AuthorDate);
+
+        Press(view, RevisionGridMenuId.ShowReflogReferences);
+        Dispatcher.UIThread.RunJobs();
+        model.ShowReflogReferences.ShouldBeTrue();
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public async Task Menudeki_isaret_son_durumu_gosteriyor()
     {
         (CommitListViewModel _, CommitListView view, Window window) = await ShowAsync();

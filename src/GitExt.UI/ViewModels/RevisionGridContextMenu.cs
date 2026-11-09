@@ -252,6 +252,10 @@ public sealed record RevisionGridMenuContext
     public RevisionGridBranchScope BranchScope { get; init; } = RevisionGridBranchScope.All;
 
     public RevisionGridDisplay Display { get; init; } = new();
+
+    public RevisionSortOrder SortOrder { get; init; } = RevisionSortOrder.GitDefault;
+
+    public bool ShowReflogReferences { get; init; }
 }
 
 public static class RevisionGridContextMenu
@@ -293,7 +297,6 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.ToggleBetweenArtificialAndHeadCommits,
         RevisionGridMenuId.QuickSearchPrevious,
         RevisionGridMenuId.QuickSearchNext,
-        RevisionGridMenuId.ShowReflogReferences,
         RevisionGridMenuId.AdvancedFilter,
         RevisionGridMenuId.HighlightSelectedBranch,
         RevisionGridMenuId.ShowArtificialCommits,
@@ -307,9 +310,6 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.ShowBuildStatusText,
         RevisionGridMenuId.ShowGitNotesColumn,
         RevisionGridMenuId.ShowAuthorAvatarColumn,
-        RevisionGridMenuId.AuthorDateSort,
-        RevisionGridMenuId.TopoOrder,
-        RevisionGridMenuId.SaveAsDefault,
     ];
 
     /// <summary>
@@ -589,13 +589,16 @@ public static class RevisionGridContextMenu
         Toggle = RevisionGridMenuToggle.Radio,
     };
 
-    private static RevisionGridMenuEntry Checked(RevisionGridMenuId id, RevisionGridDisplay display) => new()
+    private static RevisionGridMenuEntry Checked(RevisionGridMenuId id, RevisionGridDisplay display) =>
+        Checked(id, display.IsChecked(id) ?? false);
+
+    private static RevisionGridMenuEntry Checked(RevisionGridMenuId id, bool isChecked) => new()
     {
         Id = id,
         Header = Text(id),
         Gesture = Gesture(id),
         IsEnabled = !_unimplemented.Contains(id),
-        IsChecked = display.IsChecked(id) ?? false,
+        IsChecked = isChecked,
         Toggle = RevisionGridMenuToggle.Check,
     };
 
@@ -772,7 +775,7 @@ public static class RevisionGridContextMenu
         Ticked(
             RevisionGridMenuId.ShowFilteredBranches,
             context.BranchScope == RevisionGridBranchScope.Filtered),
-        Item(RevisionGridMenuId.ShowReflogReferences),
+        Checked(RevisionGridMenuId.ShowReflogReferences, context.ShowReflogReferences),
         SeparatorEntry(),
         Item(RevisionGridMenuId.AdvancedFilter),
         SeparatorEntry(),
@@ -808,8 +811,8 @@ public static class RevisionGridContextMenu
         Checked(RevisionGridMenuId.ShowIdColumn, context.Display),
         SeparatorEntry(),
         Heading(RevisionGridMenuId.ViewGroupSorting),
-        Item(RevisionGridMenuId.AuthorDateSort),
-        Item(RevisionGridMenuId.TopoOrder),
+        Checked(RevisionGridMenuId.AuthorDateSort, context.SortOrder == RevisionSortOrder.AuthorDate),
+        Checked(RevisionGridMenuId.TopoOrder, context.SortOrder == RevisionSortOrder.Topology),
         SeparatorEntry(),
         Heading(RevisionGridMenuId.ViewGroupSettingsPersistence),
         Item(RevisionGridMenuId.SaveAsDefault),

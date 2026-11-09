@@ -43,6 +43,16 @@ public sealed record CommitLogQuery
     /// </remarks>
     public bool TopologicalOrder { get; init; } = true;
 
+    /// <summary>Which child-before-parent order <see cref="TopologicalOrder"/> asks for.</summary>
+    /// <remarks>
+    /// All three keep the guarantee the layout needs. git's own order (no flag) does not: with a
+    /// clock-skewed parent it put 2 of 6 parents before their children (measured).
+    /// </remarks>
+    public CommitLogOrder Order { get; init; } = CommitLogOrder.Topological;
+
+    /// <summary>Also walk the commits the reflogs point at (<c>--reflog</c>).</summary>
+    public bool IncludeReflog { get; init; }
+
     /// <summary>Maximum number of commits to read. <see langword="null"/> means unlimited.</summary>
     public int? MaxCount { get; init; }
 
@@ -119,6 +129,13 @@ public sealed record CommitLogQuery
 /// <summary>
 /// Reads commit history.
 /// </summary>
+public enum CommitLogOrder
+{
+    Topological,
+    Date,
+    AuthorDate,
+}
+
 public interface ICommitLogReader
 {
     /// <summary>
@@ -257,12 +274,22 @@ public sealed class CommitLogReader : ICommitLogReader
 
         if (query.TopologicalOrder)
         {
-            arguments.Add("--topo-order");
+            arguments.Add(query.Order switch
+            {
+                CommitLogOrder.Date => "--date-order",
+                CommitLogOrder.AuthorDate => "--author-date-order",
+                _ => "--topo-order",
+            });
         }
 
         if (query.IncludeAllRefs)
         {
             arguments.Add("--all");
+        }
+
+        if (query.IncludeReflog)
+        {
+            arguments.Add("--reflog");
         }
 
         if (query.FirstParentOnly)

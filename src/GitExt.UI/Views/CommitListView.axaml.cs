@@ -430,6 +430,8 @@ public partial class CommitListView : UserControl
             HasBaseCommitToCompare = viewModel?.BaseCommitToCompare is not null,
             CurrentBranch = currentBranch,
             Display = viewModel?.Display ?? new RevisionGridDisplay(),
+            SortOrder = viewModel?.SortOrder ?? RevisionSortOrder.GitDefault,
+            ShowReflogReferences = viewModel?.ShowReflogReferences ?? false,
         };
     }
 
@@ -605,6 +607,22 @@ public partial class CommitListView : UserControl
 
             case RevisionGridMenuId.ShowAllBranches:
                 Scope(BranchFilterMode.AllBranches);
+                return;
+
+            case RevisionGridMenuId.ShowReflogReferences:
+                _ = ViewModel?.ToggleShowReflogReferencesAsync();
+                return;
+
+            case RevisionGridMenuId.AuthorDateSort:
+                _ = ViewModel?.ToggleSortOrderAsync(RevisionSortOrder.AuthorDate);
+                return;
+
+            case RevisionGridMenuId.TopoOrder:
+                _ = ViewModel?.ToggleSortOrderAsync(RevisionSortOrder.Topology);
+                return;
+
+            case RevisionGridMenuId.SaveAsDefault:
+                ViewModel?.SaveViewAsDefault();
                 return;
 
             case RevisionGridMenuId.ShowCurrentBranchOnly:

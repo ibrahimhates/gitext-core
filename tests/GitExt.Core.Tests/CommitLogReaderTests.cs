@@ -352,8 +352,11 @@ public class CommitLogReaderTests
         commits.Single(c => c.Subject == "imzasız sonraki").Body.ShouldBeEmpty();
     }
 
-    [Fact]
-    public async Task Carpik_tarihli_depoda_cocuk_her_zaman_ebeveynden_once_gelir()
+    [Theory]
+    [InlineData(CommitLogOrder.Topological)]
+    [InlineData(CommitLogOrder.Date)]
+    [InlineData(CommitLogOrder.AuthorDate)]
+    public async Task Carpik_tarihli_depoda_cocuk_her_zaman_ebeveynden_once_gelir(CommitLogOrder order)
     {
         // The invariant of ADR-0007. The graph layout does a single-pass forward scan;
         // if a parent comes before its child the edge points UPWARDS and the graph breaks.
@@ -374,7 +377,7 @@ public class CommitLogReaderTests
         CommitLogReader reader = await CreateReaderAsync();
 
         IReadOnlyList<CommitInfo> commits = await reader.ReadAsync(
-            repository.Path, new CommitLogQuery { IncludeAllRefs = true }, Ct);
+            repository.Path, new CommitLogQuery { IncludeAllRefs = true, Order = order }, Ct);
 
         Dictionary<CommitId, int> position = [];
         for (int i = 0; i < commits.Count; i++)
@@ -395,6 +398,63 @@ public class CommitLogReaderTests
                 }
             }
         }
+    }
+
+    [Fact]
+    public async Task Reflog_yalniz_reflogdan_ulasilan_commiti_de_getirir()
+    {
+        using TestRepository repository = TestRepository.CreateWithSingleCommit();
+        repository.Git("commit", "--allow-empty", "-m", "atilan");
+        repository.Git("reset", "-q", "--hard", "HEAD~1");
+
+        CommitLogReader reader = await CreateReaderAsync();
+
+        IReadOnlyList<CommitInfo> without = await reader.ReadAsync(
+            repository.Path, new CommitLogQuery { IncludeAllRefs = true }, Ct);
+        IReadOnlyList<CommitInfo> with = await reader.ReadAsync(
+            repository.Path, new CommitLogQuery { IncludeAllRefs = true, IncludeReflog = true }, Ct);
+
+        without.ShouldNotContain(c => c.Subject == "atilan");
+        with.ShouldContain(c => c.Subject == "atilan");
+    }
+
+    [Fact]
+    public async Task Yazar_tarihi_sirasi_commit_tarihine_bakmiyor()
+    {
+        using TestRepository repository = TestRepository.CreateEmpty();
+        repository.GitWithEnvironment(
+            new Dictionary<string, string>
+            {
+                ["GIT_AUTHOR_DATE"] = "2020-01-01T00:00:00",
+                ["GIT_COMMITTER_DATE"] = "2020-01-01T00:00:00",
+            },
+            "commit", "--allow-empty", "-m", "base");
+        repository.Git("checkout", "-q", "-b", "a");
+        repository.GitWithEnvironment(
+            new Dictionary<string, string>
+            {
+                ["GIT_AUTHOR_DATE"] = "2021-01-01T00:00:00",
+                ["GIT_COMMITTER_DATE"] = "2025-01-01T00:00:00",
+            },
+            "commit", "--allow-empty", "-m", "yazari-eski");
+        repository.Git("checkout", "-q", "main");
+        repository.GitWithEnvironment(
+            new Dictionary<string, string>
+            {
+                ["GIT_AUTHOR_DATE"] = "2023-01-01T00:00:00",
+                ["GIT_COMMITTER_DATE"] = "2023-01-01T00:00:00",
+            },
+            "commit", "--allow-empty", "-m", "yazari-yeni");
+
+        CommitLogReader reader = await CreateReaderAsync();
+
+        IReadOnlyList<CommitInfo> byCommitter = await reader.ReadAsync(
+            repository.Path, new CommitLogQuery { IncludeAllRefs = true, Order = CommitLogOrder.Date }, Ct);
+        IReadOnlyList<CommitInfo> byAuthor = await reader.ReadAsync(
+            repository.Path, new CommitLogQuery { IncludeAllRefs = true, Order = CommitLogOrder.AuthorDate }, Ct);
+
+        byCommitter[0].Subject.ShouldBe("yazari-eski");
+        byAuthor[0].Subject.ShouldBe("yazari-yeni");
     }
 
     [Fact]

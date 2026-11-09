@@ -7,6 +7,7 @@ using GitExt.Core.Git;
 using GitExt.Core.Model;
 using GitExt.Graph;
 using GitExt.UI.Localization;
+using GitExt.UI.Settings;
 
 namespace GitExt.UI.ViewModels;
 
@@ -254,18 +255,53 @@ public sealed partial class CommitListViewModel : ViewModelBase
         return true;
     }
 
-    private Settings.ISettingsStore? _settings;
+    private ISettingsStore? _settings;
 
     [ObservableProperty]
     public partial RevisionGridDisplay Display { get; private set; } = new();
 
-    public void AttachSettings(Settings.ISettingsStore settings)
+    public void AttachSettings(ISettingsStore settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
         _settings = settings;
-        Display = RevisionGridDisplay.From(settings.Current.RevisionGrid);
+
+        RevisionGridSettings grid = settings.Current.RevisionGrid;
+        Display = RevisionGridDisplay.From(grid);
+        SortOrder = SettingsEnum.Parse(grid.SortOrder, RevisionSortOrder.GitDefault);
+        ShowReflogReferences = grid.ShowReflogReferences;
+        // The filter text is not saved, and "filtered" with no filter would read HEAD alone.
+        BranchMode = SettingsEnum.Parse(grid.BranchScope, BranchFilterMode.AllBranches) switch
+        {
+            BranchFilterMode.FilteredBranches => BranchFilterMode.AllBranches,
+            BranchFilterMode mode => mode,
+        };
     }
+
+    [ObservableProperty]
+    public partial RevisionSortOrder SortOrder { get; private set; } = RevisionSortOrder.GitDefault;
+
+    [ObservableProperty]
+    public partial bool ShowReflogReferences { get; private set; }
+
+    public Task ToggleSortOrderAsync(RevisionSortOrder order)
+    {
+        SortOrder = SortOrder == order ? RevisionSortOrder.GitDefault : order;
+        return ApplyFilterAsync();
+    }
+
+    public Task ToggleShowReflogReferencesAsync()
+    {
+        ShowReflogReferences = !ShowReflogReferences;
+        return ApplyFilterAsync();
+    }
+
+    public void SaveViewAsDefault() => _settings?.Update(settings =>
+    {
+        settings.RevisionGrid.SortOrder = SortOrder.ToString();
+        settings.RevisionGrid.ShowReflogReferences = ShowReflogReferences;
+        settings.RevisionGrid.BranchScope = BranchMode.ToString();
+    });
 
     public bool ToggleDisplay(RevisionGridMenuId id)
     {
@@ -610,6 +646,13 @@ public sealed partial class CommitListViewModel : ViewModelBase
                     ? BranchFilter
                     : null,
             FirstParentOnly = FirstParentOnly,
+            IncludeReflog = ShowReflogReferences,
+            Order = SortOrder switch
+            {
+                RevisionSortOrder.AuthorDate => CommitLogOrder.AuthorDate,
+                RevisionSortOrder.Topology => CommitLogOrder.Topological,
+                _ => CommitLogOrder.Date,
+            },
             MessageContains = text is not null && FilterKind == RevisionFilterKind.Message ? text : null,
             Committer = text is not null && FilterKind == RevisionFilterKind.Committer ? text : null,
             Author = text is not null && FilterKind == RevisionFilterKind.Author ? text : null,
@@ -1347,6 +1390,13 @@ public enum RevisionFilterKind
 /// GitExtensions' <c>tssbtnShowBranches</c>: all branches · current branch only · filtered
 /// branches.
 /// </remarks>
+public enum RevisionSortOrder
+{
+    GitDefault,
+    AuthorDate,
+    Topology,
+}
+
 public enum BranchFilterMode
 {
     AllBranches,
