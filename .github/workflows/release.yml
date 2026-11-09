@@ -365,17 +365,36 @@ jobs:
           RID: ${{ matrix.rid }}
         run: build/macos/package.sh
 
-      # The macOS output is ACTUALLY run — only possible here.
-      # The x64 binary may not run without Rosetta on the arm64 runner, so it's
-      # only exercised on its own architecture.
+      # The runner is arm64; the Intel build runs under Rosetta. Before this, x64 was never run.
+      - name: Rosetta
+        if: matrix.rid == 'osx-x64'
+        run: sudo softwareupdate --install-rosetta --agree-to-license
+
+      # `--version` returns before Avalonia starts, so on its own it proved nothing about the UI.
+      # `--bench-startup` opens the real window and exits after its first frame.
       - name: Smoke test
-        if: matrix.rid == 'osx-arm64'
         env:
           V: ${{ needs.version.outputs.value }}
+          ARCH: ${{ matrix.rid == 'osx-x64' && 'x86_64' || 'arm64' }}
         run: |
-          output="$(./dist/${{ matrix.rid }}/gitext-core.app/Contents/MacOS/gitext-core --version)"
+          app="dist/${{ matrix.rid }}/gitext-core.app"
+          codesign --verify --strict --verbose=2 "$app"
+          bin="$app/Contents/MacOS/gitext-core"
+          file "$bin"
+
+          output="$(arch -"$ARCH" "$bin" --version)"
           echo "$output"
           echo "$output" | grep -qF "$V"
+
+          arch -"$ARCH" "$bin" --bench-startup > startup.log 2>&1 &
+          pid=$!
+          for _ in $(seq 1 90); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+          if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid"; cat startup.log; echo "::error::the window never drew a frame"; exit 1
+          fi
+          wait "$pid"
+          cat startup.log
+          grep -q "cold start" startup.log
 
       # hdiutil is ONLY available on macOS (P10-T21); the .dmg is built here.
       - name: .dmg

@@ -305,12 +305,12 @@ brew install --cask gitext-core
 Or download `gitext-core-<version>-osx-arm64.dmg` (Apple Silicon) or
 `gitext-core-<version>-osx-x64.dmg` (Intel) from Releases.
 
-> ⚠️ **The macOS build is not notarized.** Gatekeeper will refuse to open it and will claim
-> the app *"is damaged"*. It is not damaged — it is unsigned, and that is the message macOS
-> shows. Notarization requires a paid Apple Developer account, which this project does not have.
+> ⚠️ **The macOS build is ad-hoc signed but not notarized.** Notarization requires a paid Apple
+> Developer account, which this project does not have. A `.dmg` downloaded with a browser opens
+> only after *System Settings › Privacy & Security › Open Anyway* (once).
 >
-> The Homebrew cask clears the quarantine attribute for you during installation. If you
-> install the `.dmg` by hand, do it yourself:
+> The Homebrew cask clears the quarantine attribute during installation, so it opens without
+> asking. If you install the `.dmg` by hand and want the same, do it yourself:
 >
 > ```bash
 > xattr -dr com.apple.quarantine /Applications/gitext-core.app

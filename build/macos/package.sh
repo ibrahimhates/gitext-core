@@ -152,6 +152,18 @@ print('   Info.plist is valid')
 
 cp LICENSE "$APP/Contents/Resources/"
 
+# ---------------------------------------------------------------- signature
+
+# Ad-hoc, after everything is in place: Apple Silicon kills unsigned code, and a bundle whose
+# signature does not cover Info.plist is reported as "damaged". It does not replace notarization.
+if command -v codesign >/dev/null 2>&1; then
+    echo "== ad-hoc signature"
+    codesign --force --sign - "$APP"
+    codesign --verify --strict --verbose=2 "$APP"
+else
+    echo "-- codesign not found: the bundle is NOT signed; release builds come from the macOS runner"
+fi
+
 # ---------------------------------------------------------------- archive
 
 # The DMG will be produced on macOS (CI's macos runner). Here, a tar.gz preserving

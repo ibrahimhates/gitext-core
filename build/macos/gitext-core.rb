@@ -37,9 +37,8 @@ cask "gitext-core" do
 
   app "gitext-core.app"
 
-  # 🔴 THE QUARANTINE ATTRIBUTE IS REMOVED (P10-T22). Because the application is not
-  # notarized, Gatekeeper blocks it as "damaged" — the message is misleading, the file is not
-  # damaged, only unsigned. Without this line the user has to run
+  # 🔴 THE QUARANTINE ATTRIBUTE IS REMOVED (P10-T22). The application is ad-hoc signed but not
+  # notarized, so Gatekeeper blocks it until "Open Anyway". Without this line the user has to run
   # `xattr -dr com.apple.quarantine` by hand, and most users will not; they conclude the
   # application is broken. Homebrew does this with the user's explicit consent to install.
   postflight do

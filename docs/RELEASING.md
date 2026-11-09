@@ -99,5 +99,5 @@ Each of these is a decision with a reason, not an oversight — and each is reve
 |---|---|
 | apt repository / PPA | It has to stay alive forever; a dead repository permanently pollutes `apt update` for everyone who added it. |
 | Windows code signing | Recurring annual cost; EV certificates additionally break unattended CI signing. Users see a SmartScreen warning, and the README says so. |
-| macOS notarization | Requires a paid Apple Developer account. Gatekeeper calls the app "damaged" — it is not, it is unsigned, and the README says that too. |
+| macOS notarization | Requires a paid Apple Developer account. The bundle is ad-hoc signed, so a downloaded `.dmg` needs "Open Anyway" once; the Homebrew cask clears the quarantine and opens without asking. |
 | GPG signing | Infrastructure is written and tested; it activates as soon as `GPG_KEY_ID` and `GPG_PRIVATE_KEY` exist as repository secrets. |
