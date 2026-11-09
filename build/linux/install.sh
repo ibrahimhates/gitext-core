@@ -143,8 +143,17 @@ mkdir -p "$BIN_DIR" "$APP_DIR" "$METAINFO_DIR" "$LICENSE_DIR"
 install -m 755 "$SELF_DIR/$BINARY" "$BIN_DIR/$BINARY"
 echo "   $BIN_DIR/$BINARY"
 
+# The menu must not depend on PATH: Plasma checks TryExec with the session's PATH, which does not
+# include ~/.local/bin when only the shell rc adds it, and then silently hides the entry.
 if [ -f "$SELF_DIR/share/applications/$APP_ID.desktop" ]; then
-    install -m 644 "$SELF_DIR/share/applications/$APP_ID.desktop" "$APP_DIR/"
+    case "$BIN_DIR" in
+        *" "*) EXEC_PATH="\"$BIN_DIR/$BINARY\"" ;;
+        *)     EXEC_PATH="$BIN_DIR/$BINARY" ;;
+    esac
+    sed -e "s|^Exec=$BINARY |Exec=$EXEC_PATH |" \
+        -e "s|^TryExec=$BINARY\$|TryExec=$BIN_DIR/$BINARY|" \
+        "$SELF_DIR/share/applications/$APP_ID.desktop" > "$APP_DIR/$APP_ID.desktop"
+    chmod 644 "$APP_DIR/$APP_ID.desktop"
     echo "   $APP_DIR/$APP_ID.desktop"
 fi
 
