@@ -28,14 +28,14 @@ public sealed class ArchiveWriterTests : IDisposable
         repository.WriteFile("a dir/x y.txt", "1\n");
         repository.WriteFile("gone.txt", "1\n");
         repository.WriteFile("keep.txt", "1\n");
-        repository.WriteFile("st*r.txt", "1\n");
-        repository.WriteFile("stXr.txt", "1\n");
+        repository.WriteFile("st[a]r.txt", "1\n");
+        repository.WriteFile("star.txt", "1\n");
         repository.Git("add", "-A");
         repository.Git("commit", "-q", "-m", "first");
         string first = repository.Git("rev-parse", "HEAD").Trim();
 
         repository.WriteFile("a dir/x y.txt", "2\n");
-        repository.WriteFile("st*r.txt", "2\n");
+        repository.WriteFile("st[a]r.txt", "2\n");
         repository.WriteFile("new.txt", "n\n");
         repository.Git("rm", "-q", "gone.txt");
         repository.Git("add", "-A");
@@ -59,7 +59,7 @@ public sealed class ArchiveWriterTests : IDisposable
 
         await (await CreateAsync()).ArchiveAsync(repository.Path, new ArchiveOptions { Revision = second, OutputPath = file }, Ct);
 
-        ZipEntries(file).ShouldBe(["a dir/x y.txt", "keep.txt", "new.txt", "st*r.txt", "stXr.txt"]);
+        ZipEntries(file).ShouldBe(["a dir/x y.txt", "keep.txt", "new.txt", "st[a]r.txt", "star.txt"]);
     }
 
     [Fact]
@@ -98,8 +98,8 @@ public sealed class ArchiveWriterTests : IDisposable
             new ArchiveOptions { Revision = second, OutputPath = file, ChangedSince = first },
             Ct);
 
-        // `st*r.txt` changed, `stXr.txt` did not: a plain pathspec would glob-match both (measured).
-        ZipEntries(file).ShouldBe(["a dir/x y.txt", "new.txt", "st*r.txt"]);
+        // `st[a]r.txt` changed, `star.txt` did not: a plain pathspec would glob-match both (measured).
+        ZipEntries(file).ShouldBe(["a dir/x y.txt", "new.txt", "st[a]r.txt"]);
     }
 
     [Fact]
