@@ -57,7 +57,15 @@ dotnet publish src/GitExt.Desktop \
     -p:MinVerVersionOverride="$VERSION" \
     -o "$APP/Contents/MacOS"
 
-rm -f "$APP/Contents/MacOS"/*.pdb
+rm -f "$APP/Contents/MacOS"/*.pdb "$APP/Contents/MacOS"/*.xml
+
+# codesign treats every file in Contents/MacOS as code; a stray XML doc file failed the v0.1.4 signature.
+EXTRA="$(find "$APP/Contents/MacOS" -mindepth 1 ! -name gitext-core)"
+if [ -n "$EXTRA" ]; then
+    echo "!! unexpected files next to the binary:" >&2
+    echo "$EXTRA" >&2
+    exit 1
+fi
 
 # Version verification: the binary can't be run here (Mach-O), so the embedded
 # version string is searched for instead. This catches the package name and the
