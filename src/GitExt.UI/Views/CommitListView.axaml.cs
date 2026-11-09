@@ -683,6 +683,13 @@ public partial class CommitListView : UserControl
 
         switch (entry.Id)
         {
+            case RevisionGridMenuId.ArchiveRevision:
+                _ = model.ArchiveAsync(CommitList.SelectedItems?
+                    .OfType<CommitRowViewModel>()
+                    .FirstOrDefault(row => row != ViewModel?.SelectedRow)?
+                    .Commit);
+                return;
+
             case RevisionGridMenuId.ResetAnotherBranchToHere:
                 _ = model.ResetAnotherBranchAsync();
                 return;

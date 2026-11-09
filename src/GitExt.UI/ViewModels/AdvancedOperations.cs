@@ -43,6 +43,8 @@ public sealed record AdvancedOperationServices
 
     public ITagWriter? Tags { get; init; }
 
+    public IArchiveWriter? Archive { get; init; }
+
     public IWorkTreeReader? WorkTrees { get; init; }
 
     public ISubmoduleReader? Submodules { get; init; }

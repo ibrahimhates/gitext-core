@@ -89,6 +89,7 @@ public partial class MainWindow : Window
                 model.CommitRequested = () => ShowCommitAsync(CommitKind.Normal, null);
                 model.SpecialCommitRequested = ShowCommitAsync;
                 model.ResetAnotherBranchPrompt = new DialogResetAnotherBranchPrompt(this);
+                model.ArchivePrompt = new DialogArchivePrompt(this);
                 model.MergePrompt = new DialogMergePrompt(this);
 
                 // A double-click in the panel calls the SAME flow as checkout in the menu
@@ -618,6 +619,15 @@ public partial class MainWindow : Window
 
         public Task<DeleteBranchDecision> RequestDeleteAsync(DeleteBranchRequest request) =>
             DeleteBranchDialog.ShowAsync(request, _owner);
+    }
+
+    private sealed class DialogArchivePrompt : IArchivePrompt
+    {
+        private readonly Window _owner;
+
+        public DialogArchivePrompt(Window owner) => _owner = owner;
+
+        public Task ShowAsync(ArchiveViewModel model) => ArchiveDialog.ShowAsync(model, _owner);
     }
 
     private sealed class DialogResetAnotherBranchPrompt : IResetAnotherBranchPrompt

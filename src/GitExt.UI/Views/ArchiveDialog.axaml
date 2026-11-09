@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.ArchiveDialog"
+        x:DataType="vm:ArchiveViewModel"
+        Title="{loc:Translate archive.archive}"
+        Width="560"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!-- GitExtensions FormArchive.Designer.cs, top to bottom. "Choose another revision" is not offered. -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{loc:Translate archive.this_revision_will_be_archived}" />
+            <TextBlock Name="RevisionText"
+                       Text="{Binding RevisionText}"
+                       FontFamily="{DynamicResource GitExtMonospaceFont}"
+                       TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+
+        <HeaderedContentControl Header="{loc:Translate archive.filter_files}">
+            <StackPanel Spacing="6" Margin="0,4,0,0">
+                <CheckBox Name="PathFilterBox"
+                          Content="{loc:Translate archive.archive_specific_paths_only}"
+                          IsChecked="{Binding FilterPaths}" />
+                <TextBox Name="PathsBox"
+                         Text="{Binding PathsText}"
+                         IsEnabled="{Binding FilterPaths}"
+                         AcceptsReturn="True"
+                         Height="72"
+                         FontFamily="{DynamicResource GitExtMonospaceFont}" />
+                <TextBlock Text="{loc:Translate archive.separate_each_new_path_by_new_line}" Opacity="0.7" />
+
+                <CheckBox Name="ChangedOnlyBox"
+                          Content="{loc:Translate archive.take_the_files_that_have_changed}"
+                          IsEnabled="{Binding HasDiffRevision}"
+                          IsChecked="{Binding ChangedOnly}" />
+                <TextBlock Name="DiffRevisionText"
+                           Text="{Binding DiffRevisionText}"
+                           FontFamily="{DynamicResource GitExtMonospaceFont}"
+                           TextTrimming="CharacterEllipsis"
+                           Opacity="0.75" />
+            </StackPanel>
+        </HeaderedContentControl>
+
+        <HeaderedContentControl Header="{loc:Translate archive.archive_format}">
+            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                <RadioButton Name="ZipButton" Content="zip" GroupName="ArchiveFormat" IsChecked="{Binding IsZip}" />
+                <RadioButton Name="TarButton" Content="tar" GroupName="ArchiveFormat" IsChecked="{Binding IsTar}" />
+            </StackPanel>
+        </HeaderedContentControl>
+
+        <TextBlock Name="ErrorText"
+                   Text="{Binding Error}"
+                   IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                   TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Name="SaveButton"
+                    Content="{loc:Translate archive.save_as}"
+                    MinWidth="110"
+                    IsDefault="True"
+                    IsEnabled="{Binding !IsBusy}"
+                    Click="OnSaveClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -522,6 +522,22 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public IResetAnotherBranchPrompt? ResetAnotherBranchPrompt { get; set; }
 
+    public IArchivePrompt? ArchivePrompt { get; set; }
+
+    /// <summary>GitExtensions' "Archive this commit…"; a second selected commit enables the change filter.</summary>
+    public async Task ArchiveAsync(CommitInfo? diffRevision = null)
+    {
+        if (_advanced.Archive is not { } archive
+            || ArchivePrompt is not { } prompt
+            || RepositoryPathOrNull is not { } path
+            || Commits.SelectedRow?.Commit is not { } revision)
+        {
+            return;
+        }
+
+        await prompt.ShowAsync(new ArchiveViewModel(path, archive, revision, diffRevision)).ConfigureAwait(true);
+    }
+
     /// <summary>GitExtensions' "Reset another branch to here…".</summary>
     public async Task ResetAnotherBranchAsync()
     {

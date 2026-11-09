@@ -279,7 +279,6 @@ public static class RevisionGridContextMenu
 
     private static readonly RevisionGridMenuId[] _unimplemented =
     [
-        RevisionGridMenuId.ArchiveRevision,
         RevisionGridMenuId.RunScript,
         RevisionGridMenuId.OpenBuildReport,
         RevisionGridMenuId.OpenPullRequestPage,
