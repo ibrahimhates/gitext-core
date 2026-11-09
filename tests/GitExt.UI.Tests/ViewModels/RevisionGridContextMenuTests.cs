@@ -484,15 +484,13 @@ public class RevisionGridContextMenuTests
     }
 
     [Fact]
-    public void Hizli_arama_ogeleri_hala_devre_disi()
+    public void Hizli_arama_ogeleri_etkin()
     {
-        // The search box moves to the next match; "previous/next match" as menu commands need a
-        // match cursor the list does not keep yet.
         IReadOnlyList<RevisionGridMenuEntry> navigate =
             Find(RevisionGridContextMenu.Build(Context()), RevisionGridMenuId.Navigate).Children;
 
-        Find(navigate, RevisionGridMenuId.QuickSearchNext).IsEnabled.ShouldBeFalse();
-        Find(navigate, RevisionGridMenuId.QuickSearchPrevious).IsEnabled.ShouldBeFalse();
+        Find(navigate, RevisionGridMenuId.QuickSearchNext).IsEnabled.ShouldBeTrue();
+        Find(navigate, RevisionGridMenuId.QuickSearchPrevious).IsEnabled.ShouldBeTrue();
     }
 
     [Fact]

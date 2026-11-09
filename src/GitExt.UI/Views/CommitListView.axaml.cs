@@ -67,6 +67,49 @@ public partial class CommitListView : UserControl
 
         // Tunneling is required: in the bubble phase ScrollViewer swallows page keys (measured).
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+        CommitList.AddHandler(TextInputEvent, OnListTextInput, RoutingStrategies.Bubble);
+    }
+
+    private void OnListTextInput(object? sender, TextInputEventArgs e)
+    {
+        if (ViewModel is not { } viewModel || e.Text is not { Length: > 0 } text || text.Any(char.IsControl))
+        {
+            return;
+        }
+
+        if (viewModel.QuickSearchType(viewModel.QuickSearchText + text.ToLowerInvariant()))
+        {
+            FocusSelectedRow();
+        }
+
+        e.Handled = true;
+    }
+
+    private bool HandleQuickSearchKey(CommitListViewModel viewModel, KeyEventArgs e)
+    {
+        if (ShaSearchBox.IsFocused || viewModel.QuickSearchText.Length == 0)
+        {
+            return false;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Back:
+                viewModel.QuickSearchType(viewModel.QuickSearchText[..^1]);
+                FocusSelectedRow();
+                return true;
+
+            case Key.Escape:
+                viewModel.ClearQuickSearch();
+                return true;
+
+            case Key.LeftShift or Key.RightShift or Key.CapsLock:
+                return false;
+
+            default:
+                viewModel.ClearQuickSearch();
+                return false;
+        }
     }
 
     private CommitListViewModel? ViewModel => DataContext as CommitListViewModel;
@@ -179,6 +222,12 @@ public partial class CommitListView : UserControl
         if (ShaSearchBox.IsFocused && e.Key is Key.Enter or Key.Escape)
         {
             HandleSearchKey(viewModel, e);
+            return;
+        }
+
+        if (HandleQuickSearchKey(viewModel, e))
+        {
+            e.Handled = true;
             return;
         }
 
@@ -648,6 +697,15 @@ public partial class CommitListView : UserControl
 
             case RevisionGridMenuId.GetHelpOnHowToUseTheseFeatures:
                 OpenUrl(HistoryRewriteHelpUrl);
+                return;
+
+            case RevisionGridMenuId.QuickSearchNext:
+            case RevisionGridMenuId.QuickSearchPrevious:
+                if (ViewModel?.QuickSearchNext(down: entry.Id == RevisionGridMenuId.QuickSearchNext) == true)
+                {
+                    FocusSelectedRow();
+                }
+
                 return;
 
             case RevisionGridMenuId.QuickSearch:

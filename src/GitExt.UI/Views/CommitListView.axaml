@@ -32,7 +32,7 @@
                 Jump by SHA (P03-T14). Only the SHA prefix is searched; searching message/author
                 is a separate task (P07-T21) and is not mixed in here.
             -->
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBox Grid.Column="0"
                          Name="ShaSearchBox"
                          Text="{Binding SearchText}"
@@ -43,6 +43,15 @@
                            Text="{Binding SearchStatus}"
                            IsVisible="{Binding SearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                            Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           Margin="8,0,0,0" />
+
+                <TextBlock Grid.Column="2"
+                           Name="QuickSearchLabel"
+                           Text="{Binding QuickSearchText}"
+                           IsVisible="{Binding QuickSearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           FontFamily="{DynamicResource GitExtMonospaceFont}"
                            FontSize="11"
                            VerticalAlignment="Center"
                            Margin="8,0,0,0" />

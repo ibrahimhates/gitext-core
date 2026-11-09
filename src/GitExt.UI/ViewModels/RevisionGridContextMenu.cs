@@ -283,8 +283,6 @@ public static class RevisionGridContextMenu
         RevisionGridMenuId.OpenBuildReport,
         RevisionGridMenuId.OpenPullRequestPage,
         RevisionGridMenuId.ToggleBetweenArtificialAndHeadCommits,
-        RevisionGridMenuId.QuickSearchPrevious,
-        RevisionGridMenuId.QuickSearchNext,
         RevisionGridMenuId.AdvancedFilter,
         RevisionGridMenuId.HighlightSelectedBranch,
         RevisionGridMenuId.ShowArtificialCommits,

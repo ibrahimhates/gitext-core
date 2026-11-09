@@ -497,6 +497,83 @@ public sealed partial class CommitListViewModel : ViewModelBase
         SearchStatus = TryGoToCommit(SearchText) ? null : Loc.T("commit_list.not_found");
     }
 
+    private string _lastQuickSearch = string.Empty;
+
+    /// <summary>GitExtensions' quick search: the letters typed while the list has focus.</summary>
+    [ObservableProperty]
+    public partial string QuickSearchText { get; private set; } = string.Empty;
+
+    /// <summary>GitExtensions' <c>GitRevisionTester.Matches</c>.</summary>
+    public static bool QuickSearchMatches(CommitRowViewModel row, string criteria)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        if (string.IsNullOrWhiteSpace(criteria))
+        {
+            return false;
+        }
+
+        return row.Badges.Any(badge => badge.Text.Contains(criteria, StringComparison.OrdinalIgnoreCase))
+            || (criteria.Length > 2 && row.Commit.Id.Value.StartsWith(criteria, StringComparison.OrdinalIgnoreCase))
+            || row.Commit.Author.Name.Contains(criteria, StringComparison.CurrentCultureIgnoreCase)
+            || row.Commit.FullMessage.Contains(criteria, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool QuickSearchType(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        QuickSearchText = text;
+
+        if (text.Length == 0)
+        {
+            return false;
+        }
+
+        _lastQuickSearch = text;
+        return QuickSearchFrom(Math.Max(SelectedIndex, 0), text, reverse: false);
+    }
+
+    public void ClearQuickSearch() => QuickSearchText = string.Empty;
+
+    /// <summary>GitExtensions' <c>NextResult</c>: the last search, one row past the selection.</summary>
+    public bool QuickSearchNext(bool down)
+    {
+        if (_lastQuickSearch.Length == 0)
+        {
+            return false;
+        }
+
+        return QuickSearchFrom(SelectedIndex + (down ? 1 : -1), _lastQuickSearch, reverse: !down);
+    }
+
+    private bool QuickSearchFrom(int start, string criteria, bool reverse)
+    {
+        int count = Rows.Count;
+
+        if (count == 0)
+        {
+            return false;
+        }
+
+        start = ((start % count) + count) % count;
+
+        for (int step = 0; step < count; step++)
+        {
+            int index = reverse
+                ? (start - step + count) % count
+                : (start + step) % count;
+
+            if (QuickSearchMatches(Rows[index], criteria))
+            {
+                SelectedIndex = index;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // ---------------------------------------------------------------- P12-T07: the filter bar
 
     /// <summary>Which field the filter text is matched against.</summary>
