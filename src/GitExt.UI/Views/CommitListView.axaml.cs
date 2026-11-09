@@ -633,6 +633,15 @@ public partial class CommitListView : UserControl
                 Scope(BranchFilterMode.FilteredBranches);
                 return;
 
+            case RevisionGridMenuId.GetHelpOnHowToUseTheseFeatures:
+                OpenUrl(HistoryRewriteHelpUrl);
+                return;
+
+            case RevisionGridMenuId.QuickSearch:
+                ShaSearchBox.Focus();
+                ShaSearchBox.SelectAll();
+                return;
+
             case RevisionGridMenuId.GoToMergeBaseCommit:
                 if (ViewModel is { } target)
                 {
@@ -661,6 +670,35 @@ public partial class CommitListView : UserControl
 
         switch (entry.Id)
         {
+            case RevisionGridMenuId.RebaseSelectedCommitInteractively:
+                _ = model.RebaseInteractivelyAsync();
+                return;
+
+            case RevisionGridMenuId.EditCommit:
+                _ = model.ChangeCommitAsync(RebaseAction.Edit);
+                return;
+
+            case RevisionGridMenuId.RewordCommit:
+                _ = model.ChangeCommitAsync(RebaseAction.Reword);
+                return;
+
+            case RevisionGridMenuId.FixupCommit:
+            case RevisionGridMenuId.SquashCommit:
+            case RevisionGridMenuId.AmendCommit:
+                if (model.SpecialCommitRequested is { } special && ViewModel?.SelectedRow is { } target)
+                {
+                    _ = special(
+                        entry.Id switch
+                        {
+                            RevisionGridMenuId.FixupCommit => CommitKind.Fixup,
+                            RevisionGridMenuId.SquashCommit => CommitKind.Squash,
+                            _ => CommitKind.Amend,
+                        },
+                        target.Commit);
+                }
+
+                return;
+
             case RevisionGridMenuId.MarkRevisionAsGood:
                 _ = model.BisectMarkCommand.ExecuteAsync(BisectVerdict.Good);
                 return;
@@ -684,8 +722,9 @@ public partial class CommitListView : UserControl
                 model.CheckoutCommand,
             RevisionGridMenuId.PushBranch => model.PushCommand,
             RevisionGridMenuId.MergeBranch => model.MergeCommand,
-            RevisionGridMenuId.RebaseOn or RevisionGridMenuId.RebaseSelectedCommit =>
-                model.RebaseCommand,
+            RevisionGridMenuId.RebaseOn
+                or RevisionGridMenuId.RebaseSelectedCommit
+                or RevisionGridMenuId.RebaseSelectedCommitWithAdvancedOptions => model.RebaseCommand,
             RevisionGridMenuId.ResetCurrentBranchToHere => model.ResetCommand,
             RevisionGridMenuId.CherryPickCommit => model.CherryPickCommand,
             RevisionGridMenuId.RevertCommit => model.RevertCommand,
@@ -699,6 +738,25 @@ public partial class CommitListView : UserControl
         };
 
         _ = command?.ExecuteAsync(null);
+    }
+
+    internal const string HistoryRewriteHelpUrl = "https://git-scm.com/docs/git-rebase#_interactive_mode";
+
+    internal Action<string> OpenUrl { get; set; } = OpenInShell;
+
+    private static void OpenInShell(string url)
+    {
+        try
+        {
+            using System.Diagnostics.Process? _ = System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception exception) when (
+            exception is System.ComponentModel.Win32Exception
+                or PlatformNotSupportedException
+                or InvalidOperationException)
+        {
+        }
     }
 
     // ---------------------------------------------------------------- P14-T03: tags

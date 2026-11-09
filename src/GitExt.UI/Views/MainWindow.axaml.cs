@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using GitExt.Core;
 using GitExt.Core.Diagnostics;
 using GitExt.Core.Git;
+using GitExt.Core.Model;
 using GitExt.UI.Themes;
 using GitExt.UI.Commands;
 using GitExt.UI.ViewModels;
@@ -85,7 +86,8 @@ public partial class MainWindow : Window
                 model.ProcessPrompt = new DialogProcessPrompt(this);
                 model.PushConfirmer = new DialogPushConfirmer(this);
                 model.PullConfirmer = new DialogPullConfirmer(this);
-                model.CommitRequested = ShowCommitAsync;
+                model.CommitRequested = () => ShowCommitAsync(CommitKind.Normal, null);
+                model.SpecialCommitRequested = ShowCommitAsync;
                 model.MergePrompt = new DialogMergePrompt(this);
 
                 // A double-click in the panel calls the SAME flow as checkout in the menu
@@ -150,7 +152,7 @@ public partial class MainWindow : Window
             .Bind(CommandIds.RepositoryClose, model.CloseRepositoryCommand)
             .Bind(CommandIds.RepositoryRefresh, model.RefreshCommand)
             .Bind(CommandIds.RepositoryRemotes, model.ManageRemotesCommand)
-            .Bind(CommandIds.CommitShow, new AsyncRelayCommand(ShowCommitAsync))
+            .Bind(CommandIds.CommitShow, new AsyncRelayCommand(() => ShowCommitAsync(CommitKind.Normal, null)))
             .Bind(CommandIds.RemotePull, model.PullCommand)
             .Bind(CommandIds.RemotePush, model.PushCommand)
             .Bind(CommandIds.BranchCreate, model.CreateBranchCommand)
@@ -783,7 +785,7 @@ public partial class MainWindow : Window
     /// (<c>commandsToolStripMenuItem.DropDownItems</c>). It opens modally; on closing, the commit
     /// list is refreshed because a new commit may have been created on that screen.
     /// </remarks>
-    private async Task ShowCommitAsync()
+    private async Task ShowCommitAsync(CommitKind kind, CommitInfo? target)
     {
         if (DataContext is not MainWindowViewModel model
             || model.CreateWorkingTree() is not { } workingTree)
@@ -792,6 +794,13 @@ public partial class MainWindow : Window
         }
 
         await workingTree.OpenAsync(model.Commits.Repository?.WorkingDirectory);
+
+        if (kind != CommitKind.Normal && target is not null)
+        {
+            workingTree.Message.Prefill(
+                CommitKindMessage.For(kind, target),
+                CommitKindMessage.LocksMessage(kind));
+        }
 
         await WorkingTreeWindow.Open(
             workingTree,

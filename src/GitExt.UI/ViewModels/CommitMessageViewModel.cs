@@ -94,6 +94,8 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     /// <summary>Text changes during loading must not trigger a draft save.</summary>
     private bool _loading;
 
+    private bool _draftDisabled;
+
     private CancellationTokenSource? _draftSave;
 
     public CommitMessageViewModel(
@@ -136,6 +138,22 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasHint));
 
         ScheduleDraftSave();
+    }
+
+    [ObservableProperty]
+    public partial bool IsReadOnly { get; private set; }
+
+    public void Prefill(string text, bool readOnly)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        CancelPendingSave();
+
+        // A fixup/squash/amend message is not the user's draft: saving it would replace theirs.
+        _draftDisabled = true;
+        SetLoadedText(text);
+        Source = CommitMessageSource.None;
+        IsReadOnly = readOnly;
     }
 
     /// <summary>Is the message empty? (whitespace-only also counts as empty)</summary>
@@ -414,7 +432,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     {
         CancelPendingSave();
 
-        if (_store is null || _workingDirectory is not { Length: > 0 } directory)
+        if (_draftDisabled || _store is null || _workingDirectory is not { Length: > 0 } directory)
         {
             return;
         }
@@ -433,7 +451,11 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     {
         Clear();
 
-        if (_store is null || _workingDirectory is not { Length: > 0 } directory)
+        bool keepDraft = _draftDisabled;
+        _draftDisabled = false;
+        IsReadOnly = false;
+
+        if (keepDraft || _store is null || _workingDirectory is not { Length: > 0 } directory)
         {
             return;
         }
@@ -484,7 +506,7 @@ public sealed partial class CommitMessageViewModel : ViewModelBase
     /// </remarks>
     private void ScheduleDraftSave()
     {
-        if (_loading || _store is null || _workingDirectory is not { Length: > 0 })
+        if (_loading || _draftDisabled || _store is null || _workingDirectory is not { Length: > 0 })
         {
             return;
         }

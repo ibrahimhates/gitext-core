@@ -517,6 +517,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </remarks>
     public Func<Task>? CommitRequested { get; set; }
 
+    /// <summary>Opens the commit screen for a fixup!/squash!/amend! commit of the given one.</summary>
+    public Func<CommitKind, CommitInfo, Task>? SpecialCommitRequested { get; set; }
+
     /// <summary>
     /// The settings store, for the screens that remember an answer.
     /// </summary>
@@ -913,7 +916,61 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>Opens the rebase screen (P07-T09, P07-T10).</summary>
-    private async Task RebaseAsync()
+    private Task RebaseAsync() =>
+        // Default target: the selected commit if there is one, otherwise the current branch's upstream is empty.
+        OpenRebaseAsync(SelectedCommitId ?? string.Empty, configure: null);
+
+    /// <summary>GitExtensions' "Selected commit interactively…": the rebase screen, interactive.</summary>
+    public Task RebaseInteractivelyAsync() => SelectedCommitId is { } commit
+        ? OpenRebaseAsync(commit, model =>
+        {
+            model.IsInteractive = true;
+            return true;
+        })
+        : Task.CompletedTask;
+
+    /// <summary>
+    /// GitExtensions' "Edit commit" / "Reword commit": an interactive rebase from the parent with
+    /// this one commit already marked.
+    /// </summary>
+    public Task ChangeCommitAsync(RebaseAction action)
+    {
+        if (Commits.SelectedRow?.Commit is not { } commit)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (commit.Parents.Count == 0)
+        {
+            BranchNotice = Loc.T("revision_grid.root_commit_cannot_be_rebased");
+            return Task.CompletedTask;
+        }
+
+        return OpenRebaseAsync(commit.Parents[0].ToString(), model =>
+        {
+            RebaseStepViewModel? step = model.Steps.FirstOrDefault(
+                candidate => candidate.Step.ObjectId == commit.Id.ToString());
+
+            if (step is null)
+            {
+                BranchNotice = Loc.T("revision_grid.commit_is_not_on_the_current_branch");
+                return false;
+            }
+
+            model.IsInteractive = true;
+            step.Action = action;
+            model.Selected = step;
+
+            if (action == RebaseAction.Reword)
+            {
+                step.NewMessage = commit.FullMessage;
+            }
+
+            return true;
+        });
+    }
+
+    private async Task OpenRebaseAsync(string upstream, Func<RebaseViewModel, bool>? configure)
     {
         if (_advanced.Rebase is not { } rebase
             || RebasePrompt is not { } prompt
@@ -922,9 +979,13 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Default target: the selected commit if there is one, otherwise the current branch's upstream is empty.
-        RebaseViewModel model = new(path, rebase, SelectedCommitId ?? string.Empty);
+        RebaseViewModel model = new(path, rebase, upstream);
         await model.LoadAsync().ConfigureAwait(true);
+
+        if (configure is not null && !configure(model))
+        {
+            return;
+        }
 
         using (_watcher?.Suspend())
         {

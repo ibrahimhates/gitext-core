@@ -551,6 +551,7 @@
 
                             <TextBox Name="MessageBox"
                                      Text="{Binding Message.Text}"
+                                     IsReadOnly="{Binding Message.IsReadOnly}"
                                      AcceptsReturn="True"
                                      AcceptsTab="False"
                                      TextWrapping="NoWrap"
