@@ -102,6 +102,15 @@
     listing a 0.x version as though it were stable.
   -->
   <releases>
+    <release version="0.1.5" date="2026-11-09" type="development">
+      <description>
+        <p>
+          The tar.gz installer writes the full program path into the menu entry, so the
+          application shows up in the Plasma menu even when ~/.local/bin is only added to PATH
+          by the shell.
+        </p>
+      </description>
+    </release>
     <release version="0.1.4" date="2026-11-09" type="development">
       <description>
         <p>
