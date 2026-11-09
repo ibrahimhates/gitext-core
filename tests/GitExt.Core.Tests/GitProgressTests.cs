@@ -176,14 +176,17 @@ public class GitProgressTests
     {
         using Harness harness = await CreateAsync();
 
-        List<GitProgress> steps = [];
+        System.Collections.Concurrent.ConcurrentQueue<GitProgress> steps = [];
 
         await harness.Fetch.FetchAsync(
             harness.Local.Path,
             new FetchOptions
             {
                 Remote = "origin",
-                Progress = new Progress<GitProgress>(steps.Add),
+
+                // Without a synchronization context `Progress<T>` runs each callback on the thread
+                // pool, several at once; a plain List lost items and once held a null.
+                Progress = new Progress<GitProgress>(steps.Enqueue),
             },
             Ct);
 
