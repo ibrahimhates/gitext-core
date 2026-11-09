@@ -47,8 +47,10 @@ public class BisectWriterTests
 
         BisectStatus status = await bisect.StartAsync(repository.Path, cancellationToken: Ct);
 
+        // git 2.30 prints nothing here; the "waiting for both good and bad commits" line is newer.
         status.IsFinished.ShouldBeFalse();
-        status.Output.ShouldContain("waiting");
+        status.RemainingRevisions.ShouldBeNull();
+        File.Exists(Path.Combine(repository.Path, ".git", "BISECT_START")).ShouldBeTrue();
     }
 
     [Fact]
