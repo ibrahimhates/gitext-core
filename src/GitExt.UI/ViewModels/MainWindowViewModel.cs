@@ -520,6 +520,62 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Opens the commit screen for a fixup!/squash!/amend! commit of the given one.</summary>
     public Func<CommitKind, CommitInfo, Task>? SpecialCommitRequested { get; set; }
 
+    public IResetAnotherBranchPrompt? ResetAnotherBranchPrompt { get; set; }
+
+    /// <summary>GitExtensions' "Reset another branch to here…".</summary>
+    public async Task ResetAnotherBranchAsync()
+    {
+        if (_branchWriter is null
+            || ResetAnotherBranchPrompt is not { } prompt
+            || RepositoryPathOrNull is not { } path
+            || Commits.SelectedRow?.Commit is not { } target
+            || Commits.Refs is not { } refs)
+        {
+            return;
+        }
+
+        ResetAnotherBranchViewModel model = new(
+            path,
+            target,
+            ResetAnotherBranchViewModel.Candidates(refs, target.Id),
+            Commits.MergeBase);
+
+        bool confirmed;
+
+        using (_watcher?.Suspend())
+        {
+            confirmed = await prompt.ShowAsync(model).ConfigureAwait(true);
+        }
+
+        if (!confirmed || model.SelectedBranch is not { } branch || !model.CanReset)
+        {
+            return;
+        }
+
+        try
+        {
+            await _branchWriter.ResetAsync(path, branch.Name, target.Id.ToString()).ConfigureAwait(true);
+        }
+        catch (BranchCheckedOutException error)
+        {
+            BranchNotice = Loc.F("reset_another_branch.branch_is_checked_out_at", error.Name, error.Path);
+            return;
+        }
+        catch (GitException error)
+        {
+            BranchNotice = Loc.GitError(error);
+            await RefreshAsync().ConfigureAwait(true);
+            return;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+
+        if (model.CheckoutAfterReset)
+        {
+            await CheckoutCoreAsync(branch.Name).ConfigureAwait(true);
+        }
+    }
+
     /// <summary>
     /// The settings store, for the screens that remember an answer.
     /// </summary>

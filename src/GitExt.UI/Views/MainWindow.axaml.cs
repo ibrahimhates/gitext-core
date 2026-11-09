@@ -88,6 +88,7 @@ public partial class MainWindow : Window
                 model.PullConfirmer = new DialogPullConfirmer(this);
                 model.CommitRequested = () => ShowCommitAsync(CommitKind.Normal, null);
                 model.SpecialCommitRequested = ShowCommitAsync;
+                model.ResetAnotherBranchPrompt = new DialogResetAnotherBranchPrompt(this);
                 model.MergePrompt = new DialogMergePrompt(this);
 
                 // A double-click in the panel calls the SAME flow as checkout in the menu
@@ -617,6 +618,16 @@ public partial class MainWindow : Window
 
         public Task<DeleteBranchDecision> RequestDeleteAsync(DeleteBranchRequest request) =>
             DeleteBranchDialog.ShowAsync(request, _owner);
+    }
+
+    private sealed class DialogResetAnotherBranchPrompt : IResetAnotherBranchPrompt
+    {
+        private readonly Window _owner;
+
+        public DialogResetAnotherBranchPrompt(Window owner) => _owner = owner;
+
+        public Task<bool> ShowAsync(ResetAnotherBranchViewModel model) =>
+            ResetAnotherBranchDialog.ShowAsync(model, _owner);
     }
 
     /// <summary>Shows the checkout branch dialog in a real window (P06-T02).</summary>

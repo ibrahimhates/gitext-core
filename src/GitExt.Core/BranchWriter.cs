@@ -148,6 +148,20 @@ public sealed record BranchDeleteResult
 /// <summary>
 /// Used to distinguish the reason when branch deletion is refused (P06-T03).
 /// </summary>
+public sealed class BranchCheckedOutException : Exception
+{
+    public BranchCheckedOutException(string name, string path)
+        : base($"Branch '{name}' is checked out at '{path}'.")
+    {
+        Name = name;
+        Path = path;
+    }
+
+    public string Name { get; }
+
+    public string Path { get; }
+}
+
 public sealed class BranchNotMergedException : Exception
 {
     public BranchNotMergedException(string name, string lastCommitId)
@@ -207,6 +221,23 @@ public interface IBranchWriter
         string workingDirectory,
         string oldName,
         string newName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves an existing local branch to <paramref name="commit"/> — GitExtensions' "Reset another
+    /// branch to here".
+    /// </summary>
+    /// <remarks>
+    /// <c>branch --force</c>, not GitExtensions' <c>update-ref</c>: measured, <c>update-ref</c>
+    /// silently moved a branch checked out in another worktree, leaving that worktree's files
+    /// behind. git 2.56 refuses that with <c>branch --force</c> too, but older git only guards the
+    /// current branch, so the worktrees are checked here first.
+    /// </remarks>
+    /// <exception cref="BranchCheckedOutException">The branch is checked out in a working tree.</exception>
+    Task ResetAsync(
+        string workingDirectory,
+        string name,
+        string commit,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -345,6 +376,44 @@ public sealed class BranchWriter : IBranchWriter
         // The upstream and the branch's own reflog are preserved with `-m` (measured).
         await _writer
             .RunAsync(workingDirectory, ["branch", "-m", "--", oldName, newName], cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task ResetAsync(
+        string workingDirectory,
+        string name,
+        string commit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(commit);
+
+        if (BranchName.Validate(name) is { } problem)
+        {
+            throw new ArgumentException($"'{name}' is not a valid branch name ({problem}).", nameof(name));
+        }
+
+        string worktrees = await RunTextAsync(
+                workingDirectory, ["worktree", "list", "--porcelain"], cancellationToken)
+            .ConfigureAwait(false);
+
+        string checkedOut = "branch " + BranchName.HeadsPrefix + name;
+        string path = string.Empty;
+
+        foreach (string line in worktrees.Split('\n'))
+        {
+            if (line.StartsWith("worktree ", StringComparison.Ordinal))
+            {
+                path = line["worktree ".Length..];
+            }
+            else if (line == checkedOut)
+            {
+                throw new BranchCheckedOutException(name, path);
+            }
+        }
+
+        await _writer
+            .RunAsync(workingDirectory, ["branch", "--force", name, commit], cancellationToken)
             .ConfigureAwait(false);
     }
 

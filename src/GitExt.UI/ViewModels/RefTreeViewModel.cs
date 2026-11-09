@@ -173,6 +173,51 @@ public sealed class RefTreeViewModel : ViewModelBase
         }
     }
 
+    /// <summary>GitExtensions' "Select in left panel": selects the ref's node, opening its folders.</summary>
+    public bool Reveal(string name, RefNodeKind kind)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        List<RefNodeViewModel> path = [];
+
+        foreach (RefNodeViewModel root in Roots)
+        {
+            if (Find(root, path))
+            {
+                foreach (RefNodeViewModel ancestor in path.Take(path.Count - 1))
+                {
+                    ancestor.IsExpanded = true;
+                }
+
+                Selected = path[^1];
+                return true;
+            }
+        }
+
+        return false;
+
+        bool Find(RefNodeViewModel node, List<RefNodeViewModel> trail)
+        {
+            trail.Add(node);
+
+            if (node.Kind == kind && node.FullName == name)
+            {
+                return true;
+            }
+
+            foreach (RefNodeViewModel child in node.Children)
+            {
+                if (Find(child, trail))
+                {
+                    return true;
+                }
+            }
+
+            trail.RemoveAt(trail.Count - 1);
+            return false;
+        }
+    }
+
     public RefNodeViewModel? Selected
     {
         get => _selected;

@@ -832,6 +832,8 @@ public sealed partial class CommitListViewModel : ViewModelBase
     /// <returns><see langword="true"/> if a parent was found and selected.</returns>
     private readonly IMergeBaseReader? _mergeBase;
 
+    public IMergeBaseReader? MergeBase => _mergeBase;
+
     private const int MaximumVisited = 200;
 
     private readonly List<CommitId> _visited = [];

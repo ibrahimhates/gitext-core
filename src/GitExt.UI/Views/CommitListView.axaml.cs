@@ -517,6 +517,19 @@ public partial class CommitListView : UserControl
                 CreateTagAsync();
                 return;
 
+            case RevisionGridMenuId.SelectInLeftPanel:
+                if (DescribeSelection().Refs.OrderBy(r => r.IsTag ? 0 : 1).FirstOrDefault() is { } only)
+                {
+                    SelectInLeftPanel(only.Name);
+                }
+
+                return;
+
+            case RevisionGridMenuId.DynamicRef
+                when parent == RevisionGridMenuId.SelectInLeftPanel && entry.Argument is { Length: > 0 } shown:
+                SelectInLeftPanel(shown);
+                return;
+
             case RevisionGridMenuId.DynamicRef
                 when parent == RevisionGridMenuId.DeleteTag && entry.Argument is { Length: > 0 } tag:
                 DeleteTagAsync(tag);
@@ -670,6 +683,10 @@ public partial class CommitListView : UserControl
 
         switch (entry.Id)
         {
+            case RevisionGridMenuId.ResetAnotherBranchToHere:
+                _ = model.ResetAnotherBranchAsync();
+                return;
+
             case RevisionGridMenuId.RebaseSelectedCommitInteractively:
                 _ = model.RebaseInteractivelyAsync();
                 return;
@@ -738,6 +755,25 @@ public partial class CommitListView : UserControl
         };
 
         _ = command?.ExecuteAsync(null);
+    }
+
+    private void SelectInLeftPanel(string name)
+    {
+        if (TopLevel.GetTopLevel(this)?.DataContext is not MainWindowViewModel model)
+        {
+            return;
+        }
+
+        RevisionGridRef? target = DescribeSelection().Refs.FirstOrDefault(r => r.Name == name);
+
+        RefNodeKind kind = target?.Kind switch
+        {
+            RevisionGridRefKind.Tag => RefNodeKind.Tag,
+            RevisionGridRefKind.RemoteBranch => RefNodeKind.RemoteBranch,
+            _ => RefNodeKind.LocalBranch,
+        };
+
+        model.RefTree.Reveal(name, kind);
     }
 
     internal const string HistoryRewriteHelpUrl = "https://git-scm.com/docs/git-rebase#_interactive_mode";

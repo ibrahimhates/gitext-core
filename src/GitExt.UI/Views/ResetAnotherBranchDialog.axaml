@@ -1,0 +1,60 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:GitExt.UI.Localization"
+        xmlns:vm="using:GitExt.UI.ViewModels"
+        x:Class="GitExt.UI.Views.ResetAnotherBranchDialog"
+        x:DataType="vm:ResetAnotherBranchViewModel"
+        Title="{loc:Translate reset_another_branch.reset_branch}"
+        Width="520"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <!-- GitExtensions FormResetAnotherBranch.Designer.cs, top to bottom. -->
+    <StackPanel Margin="16" Spacing="10">
+
+        <TextBlock Text="{loc:Translate reset_another_branch.warning}" TextWrapping="Wrap" />
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="{loc:Translate reset_another_branch.reset_local_branch}" />
+            <ComboBox Name="BranchCombo"
+                      HorizontalAlignment="Stretch"
+                      ItemsSource="{Binding Branches}"
+                      SelectedItem="{Binding SelectedBranch}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ResetAnotherBranchCandidate">
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+        <TextBlock Name="TargetText"
+                   Text="{Binding TargetText}"
+                   FontFamily="{DynamicResource GitExtMonospaceFont}"
+                   TextTrimming="CharacterEllipsis"
+                   Opacity="0.75" />
+
+        <CheckBox Name="CheckoutBox"
+                  Content="{loc:Translate reset_another_branch.checkout_branch_after_reset}"
+                  IsChecked="{Binding CheckoutAfterReset}" />
+
+        <CheckBox Name="ForceBox"
+                  Content="{loc:Translate reset_another_branch.force_reset}"
+                  IsChecked="{Binding Force}" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Name="OkButton"
+                    Content="{loc:Translate reset_another_branch.ok}"
+                    MinWidth="90"
+                    IsDefault="True"
+                    IsEnabled="{Binding CanReset}"
+                    Click="OnOkClick" />
+            <Button Name="CancelButton"
+                    Content="{loc:Translate reset_another_branch.cancel}"
+                    MinWidth="90"
+                    IsCancel="True"
+                    Click="OnCancelClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -669,4 +669,52 @@ public class BranchWriterTests
         result.WasUnmerged.ShouldBeFalse();
         harness.Branches.ShouldNotContain("refs/heads/ust");
     }
+
+    [Fact]
+    public async Task Baska_dal_secilen_commite_kaydiriliyor_ve_reflog_tutuluyor()
+    {
+        using Harness harness = await CreateAsync();
+        harness.Repository.Git("branch", "yan");
+        harness.Repository.Git("commit", "--allow-empty", "-m", "ikinci");
+        string tip = harness.Repository.Git("rev-parse", "HEAD").Trim();
+
+        await harness.Writer.ResetAsync(harness.Path, "yan", tip, Ct);
+
+        harness.Repository.Git("rev-parse", "yan").Trim().ShouldBe(tip);
+        harness.Repository.Git("reflog", "show", "-1", "--format=%gs", "yan").Trim().ShouldStartWith("branch: Reset to");
+    }
+
+    [Fact]
+    public async Task Baska_worktreede_acik_dal_kaydirilmiyor()
+    {
+        using Harness harness = await CreateAsync();
+        using TestRepository other = harness.Repository.AddWorkTree("acik");
+        harness.Repository.Git("commit", "--allow-empty", "-m", "ikinci");
+        string before = harness.Repository.Git("rev-parse", "acik").Trim();
+        string tip = harness.Repository.Git("rev-parse", "HEAD").Trim();
+
+        BranchCheckedOutException error = await Should.ThrowAsync<BranchCheckedOutException>(
+            () => harness.Writer.ResetAsync(harness.Path, "acik", tip, Ct));
+
+        error.Name.ShouldBe("acik");
+        error.Path.ShouldNotBeEmpty();
+        harness.Repository.Git("rev-parse", "acik").Trim().ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task Bulunulan_dal_kaydirilmiyor()
+    {
+        using Harness harness = await CreateAsync();
+        string before = harness.Repository.Git("rev-parse", "HEAD").Trim();
+        harness.Repository.Git("branch", "baska");
+        harness.Repository.Git("checkout", "-q", "baska");
+        harness.Repository.Git("commit", "--allow-empty", "-m", "ikinci");
+        string tip = harness.Repository.Git("rev-parse", "HEAD").Trim();
+        harness.Repository.Git("checkout", "-q", "main");
+
+        await Should.ThrowAsync<BranchCheckedOutException>(
+            () => harness.Writer.ResetAsync(harness.Path, "main", tip, Ct));
+
+        harness.Repository.Git("rev-parse", "main").Trim().ShouldBe(before);
+    }
 }

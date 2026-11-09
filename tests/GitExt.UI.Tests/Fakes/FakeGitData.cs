@@ -1053,6 +1053,23 @@ public sealed class FakeBranchWriter : IBranchWriter
             SwitchResult ?? new BranchSwitchResult { Target = options.Target });
     }
 
+    public List<(string Name, string Commit)> Reset { get; } = [];
+
+    public Task ResetAsync(
+        string workingDirectory,
+        string name,
+        string commit,
+        CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
+        Reset.Add((name, commit));
+        return Task.CompletedTask;
+    }
+
     public List<(string Old, string New)> Renamed { get; } = [];
 
     public Task RenameAsync(
